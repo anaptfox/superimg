@@ -1,5 +1,5 @@
 import React from "npm:react";
-import satori from "npm:satori";
+import satori, { Font } from "npm:satori";
 import swc from "npm:@swc/core";
 import { walk, ensureDir } from "jsr:@std/fs";
 import { join, dirname, relative } from "jsr:@std/path";
@@ -14,17 +14,10 @@ type ImageConfig = {
 
 type LoaderFunction = () => Promise<Record<string, any>>;
 
-type FontDefinition = {
-  name: string;
-  data: string; // Path to the font file
-  weight: number;
-  style: string;
-};
-
 type ImageComponent = React.FC<any> & {
   loader?: LoaderFunction;
   config?: ImageConfig;
-  fonts?: FontDefinition[];
+  fonts?: Font[];
 };
 
 // Global configuration
@@ -58,7 +51,7 @@ function mergeConfigs(
 }
 
 // Function to load fonts
-async function loadFonts(fonts: FontDefinition[]) {
+async function loadFonts(fonts: Font[]) {
   console.log("Loading fonts:", fonts);
   return Promise.all(
     fonts.map(async (font) => {
@@ -77,15 +70,6 @@ async function loadFonts(fonts: FontDefinition[]) {
       }
     }),
   );
-}
-
-// Helper function to transform import paths
-function transformImportPath(path: string, componentDir: string): string {
-  if (path.startsWith("./") || path.startsWith("../")) {
-    const absolutePath = join(componentDir, path);
-    return relative(Deno.cwd(), absolutePath);
-  }
-  return path;
 }
 
 // Helper function to transform import paths
@@ -208,7 +192,7 @@ async function generateImage(componentPath: string, outputPath: string) {
     throw error;
   }
 
-  let fonts;
+  let fonts: Font[];
   try {
     fonts = fontDefinitions ? await loadFonts(fontDefinitions) : [];
   } catch (error) {
@@ -312,4 +296,4 @@ if (import.meta.main) {
 }
 
 // Exports for use as a module
-export { generateImage };
+export { generateImage, mergeConfigs, transpileWithSWC, transformImportPaths };
