@@ -1,0 +1,12 @@
+{
+    "tasks": {
+      "start": "deno run --allow-read --allow-ffi --allow-write --allow-env superimg.ts build",
+      "compile": "deno compile --allow-read --allow-ffi --allow-write --allow-env superimg.ts",
+      "link": "ln -s /Users/fox/src/open/superimg /Users/fox/src/bin/superimg"
+    },
+    "compilerOptions": {
+        "jsx": "react",
+        "jsxFactory": "React.createElement",
+        "jsxFragmentFactory": "React.Fragment"
+    }
+  }
