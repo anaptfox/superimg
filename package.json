@@ -1,0 +1,29 @@
+{
+  "name": "superimg",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SuperImg monorepo",
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
+    "rebuild": "pnpm -r clean && pnpm -r build",
+    "test": "pnpm -r test",
+    "clean": "pnpm -r clean",
+    "lint": "pnpm -r lint"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@10.30.0",
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  }
+}

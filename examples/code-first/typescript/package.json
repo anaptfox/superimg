@@ -1,0 +1,19 @@
+{
+  "name": "@superimg/example-server-ts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Server-side rendering example with TypeScript template",
+  "type": "module",
+  "scripts": {
+    "setup": "pnpm exec superimg setup",
+    "render": "tsx render.ts",
+    "clean": "true"
+  },
+  "dependencies": {
+    "superimg": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "@types/node": "^25.0.9"
+  }
+}

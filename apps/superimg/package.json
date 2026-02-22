@@ -1,0 +1,89 @@
+{
+  "name": "superimg",
+  "version": "0.0.5",
+  "description": "Programmatic video generation with HTML/CSS templates",
+  "type": "module",
+  "main": "./dist/index.browser.js",
+  "module": "./dist/index.browser.js",
+  "types": "./dist/index.browser.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.browser.d.ts",
+      "browser": "./dist/index.browser.js",
+      "bun": "./dist/index.server.js",
+      "deno": "./dist/index.server.js",
+      "node": "./dist/index.server.js",
+      "default": "./dist/index.browser.js"
+    },
+    "./browser": {
+      "types": "./dist/index.browser.d.ts",
+      "import": "./dist/index.browser.js",
+      "default": "./dist/index.browser.js"
+    },
+    "./server": {
+      "types": "./dist/index.server.d.ts",
+      "import": "./dist/index.server.js",
+      "default": "./dist/index.server.js"
+    },
+    "./player": {
+      "types": "./dist/index.player.d.ts",
+      "import": "./dist/index.player.js",
+      "default": "./dist/index.player.js"
+    },
+    "./stdlib": {
+      "types": "./dist/stdlib.d.ts",
+      "import": "./dist/stdlib.js",
+      "default": "./dist/stdlib.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest --run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "video",
+    "rendering",
+    "html",
+    "css",
+    "animation",
+    "programmatic"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/superimg"
+  },
+  "dependencies": {
+    "@superimg/playwright": "workspace:*",
+    "esbuild": "^0.27.0",
+    "esbuild-wasm": "^0.27.0",
+    "zustand": "^5.0.0",
+    "date-fns": "^4.1.0",
+    "colord": "^2.9.3",
+    "simplex-noise": "^4.0.3"
+  },
+  "peerDependencies": {
+    "playwright": "^1.57.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@superimg/types": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/core": "workspace:*",
+    "@superimg/runtime": "workspace:*",
+    "@superimg/player": "workspace:*"
+  }
+}

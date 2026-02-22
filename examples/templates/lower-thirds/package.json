@@ -1,0 +1,15 @@
+{
+  "name": "@superimg/example-lower-thirds",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Broadcast-style lower third graphic for SuperImg",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm exec superimg dev template.js",
+    "render": "pnpm exec superimg render template.js -o output.webm",
+    "clean": "true"
+  },
+  "dependencies": {
+    "@superimg/cli": "workspace:*"
+  }
+}

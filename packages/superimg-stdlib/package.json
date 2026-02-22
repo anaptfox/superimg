@@ -1,0 +1,76 @@
+{
+  "name": "@superimg/stdlib",
+  "version": "0.1.0",
+  "description": "Standard library for SuperImg templates - easing, math, color, date, text, responsive",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./easing": {
+      "import": "./dist/easing.js",
+      "types": "./dist/easing.d.ts"
+    },
+    "./math": {
+      "import": "./dist/math.js",
+      "types": "./dist/math.d.ts"
+    },
+    "./color": {
+      "import": "./dist/color.js",
+      "types": "./dist/color.d.ts"
+    },
+    "./date": {
+      "import": "./dist/date.js",
+      "types": "./dist/date.d.ts"
+    },
+    "./text": {
+      "import": "./dist/text.js",
+      "types": "./dist/text.d.ts"
+    },
+    "./timing": {
+      "import": "./dist/timing.js",
+      "types": "./dist/timing.d.ts"
+    },
+
+    "./responsive": {
+      "import": "./dist/responsive.js",
+      "types": "./dist/responsive.d.ts"
+    },
+    "./subtitle": {
+      "import": "./dist/subtitle.js",
+      "types": "./dist/subtitle.d.ts"
+    },
+    "./presets": {
+      "import": "./dist/presets.js",
+      "types": "./dist/presets.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest --run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "superimg",
+    "easing",
+    "animation",
+    "stdlib"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "colord": "^2.9.3",
+    "simplex-noise": "^4.0.3"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0"
+  }
+}

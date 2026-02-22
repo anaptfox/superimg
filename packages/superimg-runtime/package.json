@@ -1,0 +1,44 @@
+{
+  "name": "@superimg/runtime",
+  "version": "0.1.0",
+  "description": "Browser runtime for SuperImg (renderer, encoder, preview)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --outDir dist",
+    "dev": "tsup src/index.ts --format esm --dts --outDir dist --watch",
+    "test": "vitest --run --passWithNoTests --config vitest.node.config.ts",
+    "test:browser": "vitest --run --passWithNoTests --config vitest.config.ts",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "superimg",
+    "runtime",
+    "browser",
+    "rendering",
+    "video"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@zumer/snapdom": "^2.0.0",
+    "@superimg/core": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "mediabunny": "^1.28.0"
+  },
+  "devDependencies": {
+    "@vitest/browser": "^4.0.18",
+    "@vitest/browser-playwright": "^4.0.18",
+    "playwright": "^1.52.0"
+  }
+}

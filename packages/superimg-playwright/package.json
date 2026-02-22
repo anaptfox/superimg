@@ -1,0 +1,44 @@
+{
+  "name": "@superimg/playwright",
+  "version": "0.1.0",
+  "description": "Playwright-based server-side renderer for SuperImg",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup && npm run build:harness",
+    "build:harness": "vite build --config vite.harness.config.ts",
+    "dev": "tsup --watch",
+    "verify:harness": "tsx scripts/harness-integrity.ts verify",
+    "prepublishOnly": "npm run verify:harness",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist",
+    "src/harness/index.html"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "superimg",
+    "playwright",
+    "rendering",
+    "server"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@hono/node-server": "^1.14.1",
+    "@superimg/core": "workspace:*",
+    "@superimg/runtime": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "esbuild": "^0.27.0",
+    "hono": "^4.7.11",
+    "playwright": "^1.57.0",
+    "zod": "^4.3.5"
+  }
+}

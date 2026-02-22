@@ -1,0 +1,16 @@
+{
+  "name": "@superimg/example-countdown",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Countdown timer example for SuperImg",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm exec superimg dev template.js",
+    "render": "pnpm exec superimg render template.js -o output.mp4",
+    "clean": "true"
+  },
+  "dependencies": {
+    "@superimg/cli": "workspace:*",
+    "superimg": "workspace:*"
+  }
+}

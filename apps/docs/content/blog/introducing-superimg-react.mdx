@@ -1,0 +1,189 @@
+# Programmatic Video in React with SuperImg
+
+Video at scale is a content problem dressed up as a video problem. The brief is always the same: take this template, swap the copy, export it in five formats. Do it for 200 products. By Monday.
+
+Most tools solve this with a timeline editor. SuperImg solves it with code. Every frame is a pure function of time — deterministic, testable, and composable just like any other TypeScript module.
+
+This post walks through the React layer: from a single `<Player>` tag to a full compile-preview-export session.
+
+---
+
+## Templates: video as a function
+
+Everything starts with `defineTemplate`. The `render` function receives a `RenderContext` and returns an **HTML string** — the same HTML that gets rasterized into each frame:
+
+```ts
+import { defineTemplate } from 'superimg'
+
+export default defineTemplate({
+  config: {
+    fps: 30,
+    durationSeconds: 4,
+    width: 1920,
+    height: 1080,
+  },
+  render({ sceneProgress: p, std, width, height }) {
+    const hue = p * 360
+    const opacity = std.easing.easeOutCubic(std.math.clamp(p / 0.4, 0, 1))
+
+    return `
+      <div style="
+        width:${width}px; height:${height}px;
+        background:hsl(${hue},70%,20%);
+        display:flex; align-items:center; justify-content:center;
+        font-family:system-ui; font-size:64px; color:white;
+        opacity:${opacity};
+      ">
+        Hello, World
+      </div>
+    `
+  },
+})
+```
+
+`sceneProgress` runs from `0` to `1` over the clip's duration. The `std` object bundles easing functions (`easeOutCubic`, `easeInOut`, …), math helpers (`lerp`, `clamp`), and color utilities — everything you need to build motion without reaching for an animation library.
+
+---
+
+## The `<Player>` component
+
+Drop `<Player>` anywhere in your React app. Pass it a template and dimensions, and it renders to a canvas:
+
+```tsx
+import { Player } from 'superimg-react'
+import myTemplate from './templates/my-template'
+
+export function VideoCard() {
+  return (
+    <Player
+      template={myTemplate}
+      width={1280}
+      height={720}
+      playbackMode="loop"
+      loadMode="lazy"
+    />
+  )
+}
+```
+
+`loadMode="lazy"` defers rendering until the player scrolls into view — built on `IntersectionObserver`, zero config. `playbackMode` controls what happens at the end: `"loop"`, `"once"`, or `"bounce"`.
+
+### Hover-to-play for thumbnail grids
+
+`hoverBehavior="play"` keeps the video paused on frame 0 and starts playback on hover. Useful when you have a grid of cards and don't want them all animating simultaneously:
+
+```tsx
+<Player
+  template={myTemplate}
+  width={320}
+  height={180}
+  playbackMode="loop"
+  loadMode="lazy"
+  hoverBehavior="play"
+  hoverDelayMs={150}
+/>
+```
+
+Here's the template from this post running live — hover or use the controls:
+
+<PlayerDemo />
+
+### Imperative control via ref
+
+For custom playback UI, grab a ref:
+
+```tsx
+const playerRef = useRef<PlayerRef>(null)
+
+<Player ref={playerRef} template={myTemplate} width={640} height={360} />
+
+// Elsewhere:
+playerRef.current?.play()
+playerRef.current?.seekToProgress(0.5)
+playerRef.current?.seekToFrame(42)
+```
+
+---
+
+## `useVideoSession`: compile, preview, export in one hook
+
+When you need the full editor experience — compile code in the browser, preview it, then export — `useVideoSession` orchestrates the pipeline:
+
+```tsx
+import { useVideoSession, VideoCanvas, Timeline } from 'superimg-react'
+
+function VideoEditor({ code }: { code: string }) {
+  const session = useVideoSession({
+    duration: 5,
+    initialPreviewFormat: 'vertical',
+  })
+
+  useEffect(() => {
+    session.compile(code)
+  }, [code])
+
+  return (
+    <div>
+      <VideoCanvas session={session} />
+      <Timeline store={session.store} showTime />
+      <button onClick={session.togglePlayPause}>
+        {session.isPlaying ? 'Pause' : 'Play'}
+      </button>
+      <span>{session.currentFrame} / {session.totalFrames}</span>
+    </div>
+  )
+}
+```
+
+Under the hood it wires together four hooks — `useCompiler` (esbuild-wasm, compiles TypeScript in the browser), `usePlayer` (RAF-based playback engine), `usePreview` (canvas renderer), and `useExport` — so you don't have to.
+
+You can also skip compilation entirely and set a pre-built template directly:
+
+```ts
+session.setTemplate(myTemplate)
+```
+
+---
+
+## Exporting to multiple formats
+
+SuperImg ships a stdlib of platform presets. The aliases `"vertical"`, `"horizontal"`, and `"square"` map to common resolutions (1080×1920, 1920×1080, 1080×1080). Export to all of them in one call:
+
+```ts
+const handleExport = async () => {
+  await session.exportMultiple([
+    { format: 'vertical',   filename: 'reel.mp4' },
+    { format: 'horizontal', filename: 'youtube.mp4' },
+    { format: 'square',     filename: 'feed.mp4' },
+  ])
+}
+```
+
+Each format renders the template at the correct resolution — no upscaling, no letterboxing — and downloads automatically when ready. You can also target any stdlib preset directly:
+
+```ts
+{ format: 'youtube.video.short', filename: 'short.mp4' }
+```
+
+Or supply custom dimensions:
+
+```ts
+{ format: { width: 1080, height: 1350 }, filename: 'portrait.mp4' }
+```
+
+---
+
+## What's next
+
+SuperImg is early. The core pipeline — define, preview, export — works today. What's coming:
+
+- **Asset system**: fonts, images, and audio baked into the template config
+- **Data-driven rendering**: pass a `data` object to templates for personalization at scale
+- **Server-side rendering**: the same template, rendered to MP4 via the CLI or Node API
+
+Try it in the [editor](/), or install the CLI and render locally:
+
+```bash
+npm install -g superimg
+superimg render template.ts --output video.mp4
+```

@@ -1,0 +1,10 @@
+packages:
+  - packages/*
+  - apps/*
+  - examples/*/*
+
+onlyBuiltDependencies:
+  - core-js
+  - esbuild
+  - protobufjs
+  - sharp

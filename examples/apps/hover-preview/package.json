@@ -1,0 +1,19 @@
+{
+  "name": "@superimg/example-hover-preview",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hover preview demo using SuperImgPlayer",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "superimg": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}

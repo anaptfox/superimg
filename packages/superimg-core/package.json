@@ -1,0 +1,66 @@
+{
+  "name": "@superimg/core",
+  "version": "0.1.0",
+  "description": "Core environment-agnostic primitives for SuperImg",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./bundler": {
+      "import": "./dist/bundler.js",
+      "types": "./dist/bundler.d.ts"
+    },
+    "./bundler-browser": {
+      "import": "./dist/bundler-browser.js",
+      "types": "./dist/bundler-browser.d.ts"
+    },
+    "./engine": {
+      "import": "./dist/engine.js",
+      "types": "./dist/engine.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest --run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "superimg",
+    "core",
+    "rendering",
+    "video"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "acorn": "^8.14.0",
+    "zod": "^4.3.5",
+    "zustand": "^5.0.0"
+  },
+  "peerDependencies": {
+    "esbuild": "^0.27.0",
+    "esbuild-wasm": "^0.27.0"
+  },
+  "peerDependenciesMeta": {
+    "esbuild": {
+      "optional": true
+    },
+    "esbuild-wasm": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.0",
+    "esbuild-wasm": "^0.27.3"
+  }
+}

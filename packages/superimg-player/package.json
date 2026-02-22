@@ -1,0 +1,41 @@
+{
+  "name": "@superimg/player",
+  "version": "0.1.0",
+  "description": "Browser player for SuperImg templates",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --outDir dist",
+    "dev": "tsup src/index.ts --format esm --dts --outDir dist --watch",
+    "test": "vitest --run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist",
+    "styles"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "superimg",
+    "player",
+    "video",
+    "animation",
+    "browser"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@superimg/core": "workspace:*",
+    "@superimg/runtime": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {}
+}

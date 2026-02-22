@@ -1,0 +1,119 @@
+# Getting Started
+
+SuperImg is a TypeScript-first framework for programmatic video. You write a template — a function that takes time as input and returns HTML — and SuperImg renders it to video.
+
+Templates are pure functions. No timeline editor, no drag-and-drop. Every frame is deterministic: the same input always produces the same output.
+
+## Install
+
+```bash
+npm install superimg
+```
+
+For React projects:
+
+```bash
+npm install superimg superimg-react
+```
+
+## Write a template
+
+Create a file called `template.ts`:
+
+```ts
+import { defineTemplate } from 'superimg'
+
+export default defineTemplate({
+  config: {
+    fps: 30,
+    durationSeconds: 4,
+    width: 1920,
+    height: 1080,
+  },
+
+  render({ sceneProgress: p, std, width, height }) {
+    const hue = 230 + p * 60
+    const opacity = std.easing.easeOutCubic(std.math.clamp(p / 0.4, 0, 1))
+    const y = std.math.lerp(20, 0, std.easing.easeOutCubic(std.math.clamp(p / 0.35, 0, 1)))
+
+    return `
+      <div style="
+        width:${width}px; height:${height}px;
+        background:linear-gradient(135deg, hsl(${hue},65%,14%), hsl(${hue + 45},75%,8%));
+        display:flex; align-items:center; justify-content:center;
+        font-family:system-ui; color:white;
+      ">
+        <div style="text-align:center; opacity:${opacity}; transform:translateY(${y}px);">
+          <div style="font-size:64px; font-weight:700; letter-spacing:-2px;">Hello, SuperImg</div>
+          <div style="font-size:18px; margin-top:12px; opacity:0.5; letter-spacing:3px; text-transform:uppercase;">
+            Video &middot; as &middot; code
+          </div>
+        </div>
+      </div>
+    `
+  },
+})
+```
+
+The `render` function receives a `RenderContext` with everything you need:
+
+- **`sceneProgress`** — normalized time from `0` to `1`
+- **`sceneTimeSeconds`** — elapsed time in seconds
+- **`sceneFrame`** — current frame number
+- **`width`, `height`** — canvas dimensions in pixels
+- **`std`** — the standard library: `std.easing`, `std.math`, `std.color`, and more
+- **`data`** — template data, merged from defaults and incoming values
+
+The function returns an **HTML string**. SuperImg rasterizes it into each frame.
+
+## Preview with the dev server
+
+```bash
+npx superimg dev template.ts
+```
+
+This starts a local dev server with a live preview. Edit the template and see changes instantly.
+
+## Render to video
+
+```bash
+npx superimg render template.ts -o video.mp4
+```
+
+Renders every frame headlessly and encodes to MP4.
+
+## Use in React
+
+The `<Player>` component renders templates in the browser:
+
+```tsx
+import { Player } from 'superimg-react'
+import myTemplate from './template'
+
+function App() {
+  return (
+    <Player
+      template={myTemplate}
+      width={640}
+      height={360}
+      playbackMode="loop"
+    />
+  )
+}
+```
+
+Here's a template running live:
+
+<PlayerDemo />
+
+`<Player>` supports lazy loading (`loadMode="lazy"`), hover-to-play (`hoverBehavior="play"`), and imperative control via refs. See the [blog post](/blog/introducing-superimg-react) for a full walkthrough of the React layer.
+
+## What's next
+
+SuperImg is early. The core pipeline — define, preview, export — works today. More documentation is coming for:
+
+- **Templates** — the full `RenderContext` reference, `TemplateConfig` options, typed data
+- **Standard library** — easing functions, math helpers, color utilities, timing
+- **React** — `useVideoSession`, `usePlayer`, `useExport`, and all components
+- **CLI** — `dev`, `render`, `setup`, and `info` commands
+- **Export** — formats, encoding options, multi-format export

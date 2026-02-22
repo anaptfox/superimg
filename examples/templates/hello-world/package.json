@@ -1,0 +1,16 @@
+{
+  "name": "@superimg/example-hello-world",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hello World example for SuperImg",
+  "type": "module",
+  "scripts": {
+    "setup": "pnpm exec superimg setup",
+    "dev": "pnpm exec superimg dev template.js",
+    "render": "pnpm exec superimg render template.js -o output.mp4",
+    "clean": "true"
+  },
+  "dependencies": {
+    "@superimg/cli": "workspace:*"
+  }
+}

@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SuperImg Player with Checkpoints</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        background: #0b0b0b;
+        color: #f5f5f5;
+        margin: 0;
+        padding: 24px;
+      }
+      .player-container {
+        width: 640px;
+        max-width: 100%;
+      }
+      #player {
+        width: 100%;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #111;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+      #timeline {
+        margin-top: 16px;
+      }
+      .button-row {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        align-items: center;
+      }
+      button {
+        padding: 8px 16px;
+        background: #333;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      button:hover {
+        background: #444;
+      }
+      #controls {
+        display: flex;
+        align-items: center;
+      }
+      #controls select {
+        background: #222;
+        color: #fff;
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 6px 12px;
+      }
+      #controls button {
+        padding: 6px 12px;
+      }
+      .label {
+        margin-top: 24px;
+        color: #888;
+        font-size: 14px;
+      }
+      h1 {
+        margin-bottom: 24px;
+      }
+      .info {
+        margin-top: 16px;
+        padding: 16px;
+        background: #1a1a1a;
+        border-radius: 8px;
+        font-size: 14px;
+        color: #aaa;
+      }
+      .info code {
+        background: #333;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: #f59e0b;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SuperImg Player with Checkpoints</h1>
+    <div class="player-container">
+      <div id="player"></div>
+      <div id="timeline"></div>
+      <div class="button-row">
+        <button id="play-btn">▶ Play</button>
+        <button id="pause-btn">⏸ Pause</button>
+        <div style="flex:1"></div>
+        <div id="controls"></div>
+      </div>
+    </div>
+    <div class="label">Multi-scene composition with checkpoints and markers</div>
+    <div class="info">
+      <strong>Checkpoints:</strong><br>
+      • <code>Introduction</code> - Scene start<br>
+      • <code>Main Content</code> - Scene start<br>
+      • <code>Key Moment</code> - Marker at 2s into main content<br>
+      • <code>Outro</code> - Scene start<br><br>
+      Click the colored markers on the timeline or use the dropdown to navigate.
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

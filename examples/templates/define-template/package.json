@@ -1,0 +1,16 @@
+{
+  "name": "@superimg/example-define-template",
+  "version": "0.1.0",
+  "private": true,
+  "description": "defineTemplate example for SuperImg",
+  "type": "module",
+  "scripts": {
+    "setup": "pnpm exec superimg setup",
+    "dev": "pnpm exec superimg dev template.ts",
+    "render": "pnpm exec superimg render template.ts -o output.mp4",
+    "clean": "true"
+  },
+  "dependencies": {
+    "@superimg/cli": "workspace:*"
+  }
+}
