@@ -25,8 +25,9 @@ install:
 dev:
     cd "{{root}}" && pnpm run dev
 
-# Start the docs site (port 3001)
+# Start the docs site (port 3001) — builds workspace deps first
 docs:
+    cd "{{root}}" && pnpm --filter superimg --filter superimg-react build
     cd "{{root}}/apps/docs" && pnpm run dev
 
 # Run an example by name

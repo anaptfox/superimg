@@ -1,79 +1,64 @@
 "use client";
 
 import { useState } from "react";
-import dynamic from "next/dynamic";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HeroCode } from "./HeroCode";
+import { Check, Copy } from "lucide-react";
 
-const HeroPlayer = dynamic(() => import("./HeroPlayer"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[360px] w-[640px] animate-pulse rounded-xl bg-muted" />
-  ),
-});
+const INSTALL_COMMAND = "npx skills add https://github.com/anaptfox/superimg";
 
 export function Hero() {
-  const [view, setView] = useState<"video" | "code">("video");
+  const [copied, setCopied] = useState(false);
+
+  const copyCommand = async () => {
+    await navigator.clipboard.writeText(INSTALL_COMMAND);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <section className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
-      <div className="mb-4">
-        <Tabs
-          value={view}
-          onValueChange={(v) => setView(v as "video" | "code")}
-        >
-          <TabsList>
-            <TabsTrigger value="video">Preview</TabsTrigger>
-            <TabsTrigger value="code">Code</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
-      <div className="mb-10 overflow-hidden rounded-xl shadow-2xl shadow-purple-500/20">
-        {view === "video" ? <HeroPlayer /> : <HeroCode />}
-      </div>
-
+    <section className="flex min-h-[60vh] flex-col items-center justify-center px-6 py-20 text-center">
       <h1 className="max-w-4xl text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-        Create Programmatic Videos{" "}
+        Create videos{" "}
         <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-          with Code
+          with AI
         </span>
       </h1>
 
       <p className="mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-        Write JavaScript templates, preview in real-time, and export stunning
-        videos. Perfect for marketing, social content, and data visualizations.
+        Install the SuperImg skill. Ask your AI to make a video. Done.
       </p>
 
-      <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-        <Button asChild size="lg" className="h-12 px-8 text-base">
-          <Link href="/editor">Open Editor</Link>
-        </Button>
-        <Button
-          asChild
-          variant="outline"
-          size="lg"
-          className="h-12 px-8 text-base"
-        >
-          <Link href="/editor?example=hello-world">View Examples</Link>
-        </Button>
+      {/* Install Command */}
+      <div className="mt-10 w-full max-w-xl">
+        <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-[#1a1a1a] shadow-lg">
+          <code className="flex-1 px-4 py-3 text-left font-mono text-sm text-muted-foreground sm:text-base">
+            {INSTALL_COMMAND}
+          </code>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={copyCommand}
+            className="h-auto rounded-none border-l border-border px-4 hover:bg-muted"
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </div>
 
-      <div className="mt-16 flex items-center gap-8 text-sm text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-green-500"></span>
-          MP4 Export
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-blue-500"></span>
-          Live Preview
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-purple-500"></span>
-          TypeScript
-        </div>
+      {/* Works With */}
+      <div className="mt-8 text-sm text-muted-foreground">
+        <span className="mr-3">Works with:</span>
+        <span className="inline-flex items-center gap-4">
+          <span className="font-medium text-foreground">Cursor</span>
+          <span className="text-border">·</span>
+          <span className="font-medium text-foreground">Claude Code</span>
+          <span className="text-border">·</span>
+          <span className="font-medium text-foreground">Windsurf</span>
+        </span>
       </div>
     </section>
   );

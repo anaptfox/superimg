@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Player } from "superimg-react";
+import { Player } from "superimg-react/player";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   helloWorldTemplate,

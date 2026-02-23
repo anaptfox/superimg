@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Player, type PlayerRef } from "superimg-react";
+import { Player, type PlayerRef } from "superimg-react/player";
 import { introTemplate } from "@/content/blog/templates/intro-demo";
 
 export default function HeroPlayer() {
