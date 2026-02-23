@@ -16,6 +16,10 @@ export default defineConfig({
     "@superimg/stdlib",
     /^@superimg\/core/,
     "@superimg/runtime",
+    "@superimg/playwright",
+    "hono",
+    "@hono/node-server",
+    "zod",
   ],
   external: [
     "zustand",
@@ -24,6 +28,5 @@ export default defineConfig({
     "simplex-noise",
     "playwright",
     "esbuild",
-    "@superimg/playwright", // External since it's a separate package with its own dependencies
   ],
 });

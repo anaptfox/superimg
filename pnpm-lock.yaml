@@ -111,9 +111,6 @@ importers:
 
   apps/superimg:
     dependencies:
-      '@superimg/playwright':
-        specifier: workspace:*
-        version: link:../../packages/superimg-playwright
       colord:
         specifier: ^2.9.3
         version: 2.9.3
@@ -142,6 +139,9 @@ importers:
       '@superimg/player':
         specifier: workspace:*
         version: link:../../packages/superimg-player
+      '@superimg/playwright':
+        specifier: workspace:*
+        version: link:../../packages/superimg-playwright
       '@superimg/runtime':
         specifier: workspace:*
         version: link:../../packages/superimg-runtime

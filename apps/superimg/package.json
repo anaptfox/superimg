@@ -63,7 +63,6 @@
     "url": "https://github.com/user/superimg"
   },
   "dependencies": {
-    "@superimg/playwright": "workspace:*",
     "esbuild": "^0.27.0",
     "esbuild-wasm": "^0.27.0",
     "zustand": "^5.0.0",
@@ -84,6 +83,7 @@
     "@superimg/stdlib": "workspace:*",
     "@superimg/core": "workspace:*",
     "@superimg/runtime": "workspace:*",
-    "@superimg/player": "workspace:*"
+    "@superimg/player": "workspace:*",
+    "@superimg/playwright": "workspace:*"
   }
 }
