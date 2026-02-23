@@ -1,19 +1,14 @@
-import dynamic from "next/dynamic";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { ForDevelopers } from "@/components/landing/ForDevelopers";
-
-const LiveExample = dynamic(
-  () => import("@/components/landing/LiveExample").then((m) => m.LiveExample),
-  { ssr: false }
-);
+import { LiveExampleLoader } from "@/components/landing/LiveExampleLoader";
 
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <Hero />
       <HowItWorks />
-      <LiveExample />
+      <LiveExampleLoader />
       <ForDevelopers />
 
       <footer className="border-t border-border/50 px-6 py-12">

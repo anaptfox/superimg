@@ -74,12 +74,27 @@ clean:
 
 # Run all quality gates: build + test + lint + typecheck + verify harness
 check:
-    @gum spin --spinner dot --title "Building..." -- just build
-    @gum spin --spinner dot --title "Testing..." -- just test
-    @gum spin --spinner dot --title "Linting..." -- just lint
-    @gum spin --spinner dot --title "Type-checking..." -- just typecheck
-    @gum spin --spinner dot --title "Verifying harness integrity..." -- just verify-harness
+    @just _spin "Building..." build
+    @just _spin "Testing..." test
+    @just _spin "Linting..." lint
+    @just _spin "Type-checking..." typecheck
+    @just _spin "Verifying harness integrity..." verify-harness
     @gum style --foreground 212 "✓ All checks passed!"
+
+[private]
+_spin title task:
+    #!/usr/bin/env bash
+    tmpfile=$(mktemp)
+    trap 'rm -f "$tmpfile"' EXIT
+    if gum spin --spinner dot --title "{{ title }}" -- sh -c "just {{ task }} >\"$tmpfile\" 2>&1"; then
+        true
+    else
+        echo ""
+        gum style --foreground 196 "✗ {{ title }}"
+        echo ""
+        cat "$tmpfile"
+        exit 1
+    fi
 
 # Verify harness bundle integrity (source hash matches)
 verify-harness:

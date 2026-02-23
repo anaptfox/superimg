@@ -1,2 +1,6 @@
 /** @type {import("eslint").Linter.Config[]} */
-export default [];
+export default [
+  {
+    ignores: [".next/**", "node_modules/**", "dist/**"],
+  },
+];

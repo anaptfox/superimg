@@ -1,6 +1,6 @@
 {
   "name": "superimg",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "description": "Programmatic video generation with HTML/CSS templates",
   "type": "module",
   "main": "./dist/index.browser.js",
