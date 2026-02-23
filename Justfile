@@ -169,15 +169,29 @@ publish-dry:
     echo "=== superimg-react ==="
     cd "$ROOT/apps/superimg-react" && pnpm publish --dry-run
 
-# Full release: bump -> check -> publish
+# Full release: optionally bump -> check -> publish
 release:
     #!/usr/bin/env bash
     set -euo pipefail
+    ROOT="{{root}}"
+    
     gum style --border double --align center --width 50 --margin "1" \
         "$(gum style --foreground 212 --bold '🚀 Release Workflow')"
     echo ""
-    just bump
+    
+    # Show current versions first so user can verify
+    just versions
     echo ""
+    
+    # Ask if user wants to bump (default No for safety when already bumped)
+    if gum confirm "Bump versions?" --default=false; then
+        just bump
+        echo ""
+    else
+        gum style --foreground 99 "Skipping version bump (using existing versions)"
+        echo ""
+    fi
+    
     just check
     echo ""
     just publish
