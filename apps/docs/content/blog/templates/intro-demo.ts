@@ -1,4 +1,4 @@
-import { defineTemplate } from 'superimg'
+import { defineTemplate, type RenderContext } from 'superimg'
 
 export const introTemplate = defineTemplate({
   config: {
@@ -7,7 +7,7 @@ export const introTemplate = defineTemplate({
     width: 640,
     height: 360,
   },
-  render(ctx) {
+  render(ctx: RenderContext) {
     const { sceneProgress: p, std, width, height } = ctx
 
     // Shifting gradient hue

@@ -1,4 +1,4 @@
-import { defineTemplate } from "superimg";
+import { defineTemplate, type RenderContext } from "superimg";
 
 // Getting Started: Hello World with fade-in effect
 export const helloWorldTemplate = defineTemplate({
@@ -8,7 +8,7 @@ export const helloWorldTemplate = defineTemplate({
     width: 320,
     height: 180,
   },
-  render(ctx) {
+  render(ctx: RenderContext) {
     const { sceneProgress: p, std, width, height } = ctx;
 
     const textProgress = std.math.clamp(p / 0.4, 0, 1);
@@ -47,7 +47,7 @@ export const countdownTemplate = defineTemplate({
     width: 320,
     height: 180,
   },
-  render(ctx) {
+  render(ctx: RenderContext) {
     const { sceneProgress: p, std, width, height } = ctx;
 
     const units = [
@@ -113,7 +113,7 @@ export const testimonialTemplate = defineTemplate({
     width: 320,
     height: 180,
   },
-  render(ctx) {
+  render(ctx: RenderContext) {
     const { sceneProgress: p, std, width, height } = ctx;
 
     const cardOpacity = std.math.clamp(p * 3, 0, 1);
@@ -163,7 +163,7 @@ export const chartTemplate = defineTemplate({
     width: 320,
     height: 180,
   },
-  render(ctx) {
+  render(ctx: RenderContext) {
     const { sceneProgress: p, std, width, height } = ctx;
 
     const bars = [
@@ -236,7 +236,7 @@ export const terminalTemplate = defineTemplate({
     width: 320,
     height: 180,
   },
-  render(ctx) {
+  render(ctx: RenderContext) {
     const { sceneProgress: p, sceneTimeSeconds, std, width, height } = ctx;
 
     const command = "npm create superimg@latest";
