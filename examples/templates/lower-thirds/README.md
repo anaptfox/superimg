@@ -48,11 +48,14 @@ Title:      =====>                    <=====
 Edit the defaults in `template.js`:
 
 ```js
-export const defaults = {
-  name: "Jane Doe",
-  title: "Senior Engineer, Acme Corp",
-  accentColor: "#3b82f6",
-};
+export default defineTemplate({
+  defaults: {
+    name: "Jane Doe",
+    title: "Senior Engineer, Acme Corp",
+    accentColor: "#3b82f6",
+  },
+  // ...
+});
 ```
 
 Try different accent colors: `#ef4444` (red), `#22c55e` (green), `#f59e0b` (amber), `#8b5cf6` (purple).

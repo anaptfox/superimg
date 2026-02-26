@@ -1,7 +1,9 @@
 export const HELLO_WORLD = `// Hello World
 // A simple animated intro
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Fade in the text
@@ -28,12 +30,15 @@ export function render(ctx) {
       ">Hello, World!</h1>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const ANIMATED_TEXT = `// Animated Text
 // Text that types in character by character
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
 
   const text = "Building the future...";
@@ -60,12 +65,15 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const GRADIENT = `// Gradient Background
 // Smoothly shifting gradient animation
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   const hue1 = (sceneProgress * 360) % 360;
@@ -96,4 +104,61 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
+
+export const COMPLETE_TEMPLATE = `// Complete Template
+// Demonstrates config (width, fps, duration) and defaults (data) together
+
+import { defineTemplate } from "superimg";
+
+export default defineTemplate({
+  config: {
+    width: 1280,
+    height: 720,
+    fps: 30,
+    durationSeconds: 4,
+  },
+  defaults: {
+    title: "Welcome",
+    subtitle: "Customize via data",
+    accentColor: "#667eea",
+  },
+  render(ctx) {
+    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
+    const { title, subtitle, accentColor } = data;
+
+    const enterProgress = std.math.clamp(time / 1.0, 0, 1);
+    const eased = std.easing.easeOutCubic(enterProgress);
+    const opacity = std.math.lerp(0, 1, eased);
+    const y = std.math.lerp(30, 0, eased);
+
+    return \`
+      <div style="
+        width: \${width}px;
+        height: \${height}px;
+        background: linear-gradient(135deg, #0f0f23, #1a1a2e);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: system-ui, sans-serif;
+      ">
+        <h1 style="
+          font-size: 64px;
+          color: \${accentColor};
+          opacity: \${opacity};
+          transform: translateY(\${y}px);
+          margin: 0;
+        ">\${title}</h1>
+        <p style="
+          font-size: 24px;
+          color: white;
+          opacity: \${opacity * 0.8};
+          transform: translateY(\${y}px);
+          margin-top: 16px;
+        ">\${subtitle}</p>
+      </div>
+    \`;
+  },
+});`;

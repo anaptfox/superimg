@@ -127,4 +127,5 @@ export type {
   VideoEncoder,
   RenderEngine,
   RenderPlan,
+  FramePresenter,
 } from "./engine.js";

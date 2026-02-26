@@ -39,3 +39,6 @@ export type { CheckpointControls, CheckpointControlsOptions } from "./controls.j
 
 // Re-export CanvasRenderer from runtime for convenience
 export { CanvasRenderer } from "@superimg/runtime";
+
+export { HtmlPresenter } from "./html-presenter.js";
+export { CanvasPresenter } from "./canvas-presenter.js";

@@ -79,27 +79,30 @@ interface CssViewport {
 ### Usage Example
 
 ```typescript
-import type { RenderContext } from 'superimg';
+import { defineTemplate } from 'superimg';
 
-export function render(ctx: RenderContext): string {
-  const { std, sceneProgress, width, height, data } = ctx;
+export default defineTemplate({
+  defaults: { title: 'Hello' },
+  render(ctx) {
+    const { std, sceneProgress, width, height, data } = ctx;
 
-  // Use easing for smooth animation
-  const eased = std.easing.easeOutCubic(sceneProgress);
+    // Use easing for smooth animation
+    const eased = std.easing.easeOutCubic(sceneProgress);
 
-  // Interpolate position
-  const x = std.math.lerp(0, width, eased);
+    // Interpolate position
+    const x = std.math.lerp(0, width, eased);
 
-  return `
-    <div style="
-      transform: translateX(${x}px);
-      width: ${width}px;
-      height: ${height}px;
-    ">
-      ${data.title ?? 'Hello'}
-    </div>
-  `;
-}
+    return `
+      <div style="
+        transform: translateX(${x}px);
+        width: ${width}px;
+        height: ${height}px;
+      ">
+        ${data.title}
+      </div>
+    `;
+  },
+});
 ```
 
 ---
@@ -111,23 +114,27 @@ The Standard Library provides utility functions for animations, math, colors, te
 ### Usage
 
 ```typescript
-export function render(ctx: RenderContext): string {
-  const { std, sceneProgress } = ctx;
+import { defineTemplate } from 'superimg';
 
-  // Easing
-  const progress = std.easing.easeOutCubic(sceneProgress);
+export default defineTemplate({
+  render(ctx) {
+    const { std, sceneProgress } = ctx;
 
-  // Math
-  const x = std.math.lerp(0, 1920, progress);
-  const clamped = std.math.clamp(x, 100, 1800);
+    // Easing
+    const progress = std.easing.easeOutCubic(sceneProgress);
 
-  // Color
-  const bg = std.color.alpha('#FF0000', 0.5);
-  const mixed = std.color.mix('#FF0000', '#0000FF', progress);
-  const rgb = std.color.hslToRgb(progress * 360, 80, 50);
+    // Math
+    const x = std.math.lerp(0, 1920, progress);
+    const clamped = std.math.clamp(x, 100, 1800);
 
-  return `<div style="left: ${x}px; background: ${bg}">Hello</div>`;
-}
+    // Color
+    const bg = std.color.alpha('#FF0000', 0.5);
+    const mixed = std.color.mix('#FF0000', '#0000FF', progress);
+    const rgb = std.color.hslToRgb(progress * 360, 80, 50);
+
+    return `<div style="left: ${x}px; background: ${bg}">Hello</div>`;
+  },
+});
 ```
 
 ### Core Modules (start here)

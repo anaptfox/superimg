@@ -1,7 +1,7 @@
 //! React hook for video export
 
 import { useState, useCallback } from "react";
-import { exportToVideo, downloadBlob, type ExportConfig } from "superimg";
+import { exportToVideo, downloadBlob, type ExportConfig } from "superimg/browser";
 
 export interface UseExportReturn {
   /** Whether export is in progress */

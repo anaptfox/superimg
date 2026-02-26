@@ -1,10 +1,7 @@
 //! Playwright render engine - browser lifecycle and adapter factory
 
-import { chromium, type Browser, type Page } from "playwright";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import type { Browser, Page } from "playwright-core";
 import { Hono } from "hono";
-import { serveStatic } from "@hono/node-server/serve-static";
 import { serve, type ServerType } from "@hono/node-server";
 import type { RenderEngine } from "@superimg/types";
 import {
@@ -12,13 +9,12 @@ import {
   ensureBrowser,
   getBrowserInstallCommand,
   isCI,
+  launchBrowser,
   type BrowserStatus,
   type EnsureBrowserOptions,
 } from "./browser-utils.js";
 import { PlaywrightFrameRenderer, PlaywrightVideoEncoder } from "./adapters.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { HARNESS_HTML, HARNESS_JS } from "./harness-assets.js";
 
 function wrapInASCIIBox(text: string, padding = 1): string {
   const lines = text.split("\n");
@@ -95,7 +91,7 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
     }
 
     try {
-      this.browser = await chromium.launch();
+      this.browser = await launchBrowser();
     } catch (err) {
       if (err instanceof Error && err.message.includes("Executable doesn't exist")) {
         const prettyMessage = createBrowserNotFoundMessage();
@@ -121,9 +117,12 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
       }
     });
 
-    const harnessDir = join(__dirname, "harness");
     const app = new Hono();
-    app.use("/*", serveStatic({ root: harnessDir }));
+    app.get("/index.html", (c) => c.html(HARNESS_HTML));
+    app.get("/harness.js", (c) => {
+      c.header("Content-Type", "application/javascript");
+      return c.body(HARNESS_JS);
+    });
 
     this.server = serve({ fetch: app.fetch, port: 0 });
     const address = this.server.address();

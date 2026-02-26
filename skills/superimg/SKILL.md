@@ -17,15 +17,11 @@ SuperImg generates videos from HTML/CSS templates. A template is a function that
 - `ctx.std` provides easing, math, and color utilities
 - `ctx.data` carries template data (merged with defaults)
 
-Two authoring modes:
-- **`defineTemplate()`** (recommended) — single default export with `defaults`, `config`, and `render`
-- **Export-based** — separate `export const defaults`, `export const config`, `export function render`
-
-Templates render to MP4 via the CLI (`superimg render`) or the engine API.
+Templates render to MP4 via the CLI (`superimg render`) or the server API (`renderVideo`, `loadTemplate`).
 
 ## Template Authoring
 
-### defineTemplate (Recommended)
+### defineTemplate
 
 ```typescript
 import { defineTemplate } from "superimg";
@@ -207,21 +203,38 @@ const layout = ctx.isPortrait ? "column" : "row";
 ### CLI Rendering
 
 ```bash
-# Dev server with live preview
-superimg dev template.js
+# Scaffold a new project (detects package manager automatically)
+superimg init my-project
+superimg init my-project --pm pnpm   # override package manager
+superimg init --add                   # Add videos/ to existing project
+
+# Dev server with live preview (bare name resolves to videos/intro.ts)
+superimg dev intro
 
 # Render to video
-superimg render template.js -o output.mp4
+superimg render videos/intro.ts -o output.mp4
 
 # With options
-superimg render template.js -o output.mp4 --width 1080 --height 1920 --fps 60
+superimg render videos/intro.ts -o output.mp4 --width 1080 --height 1920 --fps 60
 ```
 
 ### Programmatic Rendering (Server)
 
 ```typescript
-import { createRenderPlan, executeRenderPlan, PlaywrightEngine } from "superimg/server";
+import { renderVideo, loadTemplate } from "superimg/server";
+
+// Load template from file
+const template = await loadTemplate("videos/intro.ts");
+
+// Render to MP4
+await renderVideo("videos/intro.ts", {
+  outputPath: "output.mp4",
+  width: 1920,
+  height: 1080,
+});
 ```
+
+For low-level control, use `createRenderPlan`, `executeRenderPlan`, and `PlaywrightEngine` from `superimg/server`.
 
 ## Gotchas
 

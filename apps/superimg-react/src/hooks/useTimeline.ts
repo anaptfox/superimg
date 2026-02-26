@@ -1,7 +1,7 @@
 //! React hook for timeline scrubbing
 
 import { useEffect, useCallback, useRef, type RefObject } from "react";
-import { formatTime, type PlayerStore } from "superimg";
+import { formatTime, type PlayerStore } from "superimg/browser";
 
 export interface UseTimelineReturn {
   /** Start scrubbing at a position (0-1) */

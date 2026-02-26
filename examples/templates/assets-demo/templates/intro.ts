@@ -1,22 +1,22 @@
-// Intro template with defaults
-export const config = {
-  fonts: ["IBM+Plex+Sans:wght@400;700"],
-};
+import { defineTemplate } from "superimg";
 
-export const defaults = {
-  title: "Welcome",
-  subtitle: undefined as string | undefined,
-  accentColor: "#667eea",
-};
+export default defineTemplate({
+  config: {
+    fonts: ["IBM+Plex+Sans:wght@400;700"],
+  },
+  defaults: {
+    title: "Welcome",
+    subtitle: undefined as string | undefined,
+    accentColor: "#667eea",
+  },
+  render(ctx) {
+    const { std, sceneProgress, data } = ctx;
+    const { title, subtitle, accentColor } = data;
 
-export function render(ctx) {
-  const { std, sceneProgress, data } = ctx;
-  const { title, subtitle, accentColor } = data;
-  
-  const opacity = std.easing.easeOutCubic(sceneProgress);
-  const scale = std.math.lerp(0.8, 1, opacity);
+    const opacity = std.easing.easeOutCubic(sceneProgress);
+    const scale = std.math.lerp(0.8, 1, opacity);
 
-  return `
+    return `
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
@@ -55,4 +55,5 @@ export function render(ctx) {
       ${subtitle ? `<p class="subtitle">${subtitle}</p>` : ""}
     </div>
   `;
-}
+  },
+});

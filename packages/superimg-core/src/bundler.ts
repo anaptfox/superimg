@@ -18,6 +18,20 @@ export async function bundleTemplate(entryPoint: string): Promise<string> {
   return result.outputFiles[0]!.text;
 }
 
+/** Bundle a template file as ESM for browser dynamic import. Server-side only. */
+export async function bundleTemplateESM(entryPoint: string): Promise<string> {
+  const result = await esbuild.build({
+    entryPoints: [entryPoint],
+    bundle: true,
+    write: false,
+    format: "esm",
+    platform: "neutral",
+    target: "es2020",
+    plugins: [createSuperimgPlugin()],
+  });
+  return result.outputFiles[0]!.text;
+}
+
 /** Bundle template code from a string. Server-side only. */
 export async function bundleTemplateCode(
   code: string,

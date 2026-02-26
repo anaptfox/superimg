@@ -25,7 +25,6 @@ export interface PlayerState {
   isReady: boolean;
   currentFrame: number;
   totalFrames: number;
-  frameCache: Map<number, ImageData>;
   fps: number;
   durationSeconds: number;
   
@@ -38,7 +37,6 @@ export interface PlayerState {
   startScrubbing: (frame: number) => void;
   scrubTo: (frame: number) => void;
   stopScrubbing: () => void;
-  clearCache: () => void;
   updateConfig: (newConfig: Partial<PlayerConfig>) => void;
   
   // Checkpoint navigation (optional, only if checkpoints exist)
@@ -76,7 +74,6 @@ export function createPlayerStore(
     isReady: false,
     currentFrame: 0,
     totalFrames: Math.floor(config.fps * config.durationSeconds),
-    frameCache: new Map(),
 
     // Config
     fps: config.fps,
@@ -129,16 +126,11 @@ export function createPlayerStore(
 
     stopScrubbing: () => set({ isScrubbing: false }),
 
-    clearCache: () => {
-      get().frameCache.clear();
-    },
-
     updateConfig: (newConfig: Partial<PlayerConfig>) => {
       const current = get();
       const fps = newConfig.fps ?? current.fps;
       const durationSeconds = newConfig.durationSeconds ?? current.durationSeconds;
 
-      get().frameCache.clear();
       set({
         fps,
         durationSeconds,

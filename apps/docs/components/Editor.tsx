@@ -18,65 +18,69 @@ import { getExampleById, type EditorExample } from "@/lib/video/examples/index";
 const DEFAULT_TEMPLATE = `// SuperImg Template
 // Available context: ctx.sceneFrame, ctx.sceneTimeSeconds, ctx.sceneProgress, ctx.width, ctx.height, ctx.fps, ctx.std
 
-export function render(ctx) {
-  const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
+import { defineTemplate } from "superimg";
 
-  // Animate a gradient that shifts over time
-  const hue = Math.floor(sceneProgress * 360);
-  const bgColor = \`hsl(\${hue}, 70%, 20%)\`;
+export default defineTemplate({
+  render(ctx) {
+    const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
 
-  // Bouncing circle
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const radius = 100 + Math.sin(sceneTimeSeconds * 2) * 50;
-  const circleX = centerX + Math.sin(sceneTimeSeconds * 3) * 200;
-  const circleY = centerY + Math.cos(sceneTimeSeconds * 2) * 150;
+    // Animate a gradient that shifts over time
+    const hue = Math.floor(sceneProgress * 360);
+    const bgColor = \`hsl(\${hue}, 70%, 20%)\`;
 
-  return \`
-    <div style="
-      width: \${width}px;
-      height: \${height}px;
-      background: \${bgColor};
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-    ">
-      <!-- Animated circle -->
+    // Bouncing circle
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = 100 + Math.sin(sceneTimeSeconds * 2) * 50;
+    const circleX = centerX + Math.sin(sceneTimeSeconds * 3) * 200;
+    const circleY = centerY + Math.cos(sceneTimeSeconds * 2) * 150;
+
+    return \`
       <div style="
-        position: absolute;
-        left: \${circleX - radius}px;
-        top: \${circleY - radius}px;
-        width: \${radius * 2}px;
-        height: \${radius * 2}px;
-        background: linear-gradient(135deg, #e94560, #0f3460);
-        border-radius: 50%;
-        box-shadow: 0 0 60px rgba(233, 69, 96, 0.5);
-      "></div>
-
-      <!-- Text overlay -->
-      <div style="
+        width: \${width}px;
+        height: \${height}px;
+        background: \${bgColor};
+        display: flex;
+        align-items: center;
+        justify-content: center;
         position: relative;
-        z-index: 1;
-        text-align: center;
-        color: white;
-        font-family: system-ui, sans-serif;
+        overflow: hidden;
       ">
-        <h1 style="
-          font-size: 72px;
-          margin: 0;
-          text-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        ">SuperImg Editor</h1>
-        <p style="
-          font-size: 24px;
-          opacity: 0.8;
-          margin-top: 16px;
-        ">Frame \${ctx.sceneFrame} / Time: \${sceneTimeSeconds.toFixed(2)}s</p>
+        <!-- Animated circle -->
+        <div style="
+          position: absolute;
+          left: \${circleX - radius}px;
+          top: \${circleY - radius}px;
+          width: \${radius * 2}px;
+          height: \${radius * 2}px;
+          background: linear-gradient(135deg, #e94560, #0f3460);
+          border-radius: 50%;
+          box-shadow: 0 0 60px rgba(233, 69, 96, 0.5);
+        "></div>
+
+        <!-- Text overlay -->
+        <div style="
+          position: relative;
+          z-index: 1;
+          text-align: center;
+          color: white;
+          font-family: system-ui, sans-serif;
+        ">
+          <h1 style="
+            font-size: 72px;
+            margin: 0;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+          ">SuperImg Editor</h1>
+          <p style="
+            font-size: 24px;
+            opacity: 0.8;
+            margin-top: 16px;
+          ">Frame \${ctx.sceneFrame} / Time: \${sceneTimeSeconds.toFixed(2)}s</p>
+        </div>
       </div>
-    </div>
-  \`;
-}
+    \`;
+  },
+});
 `;
 
 const DURATION_SECONDS = 5;

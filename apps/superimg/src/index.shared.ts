@@ -69,6 +69,7 @@ export type {
   VideoEncoder,
   RenderEngine,
   RenderPlan,
+  FramePresenter,
 } from "@superimg/types";
 
 // Branded type helpers
@@ -113,6 +114,7 @@ export {
 // Implementation types from the player package (source of truth)
 export {
   createPlayerStore,
+  formatTime,
 } from "@superimg/player";
 
 export type {

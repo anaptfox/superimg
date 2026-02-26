@@ -42,14 +42,17 @@ This template defines two output presets via `config.outputs`:
 
 ## Customize It
 
-This template uses a `defaults` export. Override values by passing data, or edit the defaults in `template.js`:
+This template uses `defaults` inside `defineTemplate`. Override values by passing data, or edit the defaults in `template.js`:
 
 ```js
-export const defaults = {
-  title: "Hello, SuperImg!",
-  subtitle: "Create stunning videos from code",
-  accentColor: "#667eea",
-};
+export default defineTemplate({
+  defaults: {
+    title: "Hello, SuperImg!",
+    subtitle: "Create stunning videos from code",
+    accentColor: "#667eea",
+  },
+  // ...
+});
 ```
 
 Try different accent colors: `#f093fb` (pink), `#4fd1c5` (teal), `#f6ad55` (orange).

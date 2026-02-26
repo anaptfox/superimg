@@ -9,7 +9,9 @@ const PRODUCT = {
   rank: 1,
 };
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Animate upvote count with easing
@@ -111,7 +113,8 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const YEAR_IN_REVIEW = `// Year in Review / Wrapped
 // Spotify Wrapped-style stats reveal
@@ -125,7 +128,9 @@ const STATS = [
 
 const YEAR = "2025";
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Gradient rotation
@@ -217,7 +222,8 @@ export function render(ctx) {
       "></div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const COUNTDOWN = `// Countdown Timer
 // Event countdown with flip animation effect
@@ -230,7 +236,9 @@ const EVENT = {
 // For demo, we'll show a fixed countdown that animates
 const COUNTDOWN_VALUES = { days: 14, hours: 8, mins: 32, secs: 45 };
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Simulate countdown animation
@@ -330,7 +338,8 @@ export function render(ctx) {
       "></div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const LOGO_ANIMATION = `// Logo Animation
 // Brand reveal with glow effect
@@ -341,7 +350,9 @@ const BRAND = {
   tagline: "Building the future",
 };
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Animation phases
@@ -433,7 +444,8 @@ export function render(ctx) {
       "></div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const PERSONALIZED_VIDEO = `// Personalized Video
 // Dynamic content with variable substitution
@@ -445,7 +457,9 @@ const USER = {
   plan: "Pro",
 };
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Animation phases
@@ -532,4 +546,5 @@ export function render(ctx) {
       ">Variables: {name}, {company}</div>
     </div>
   \`;
-}`;
+  },
+});`;

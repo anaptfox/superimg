@@ -13,38 +13,16 @@ export function compileTemplate(bundledCode: string): CompileResult {
     const factory = new Function(bundledCode + "\nreturn __template;");
     const exports = factory();
 
-    // Handle named exports (exports.render), default export (exports.default),
-    // and direct function (exports is the render function)
-    let render = exports?.render;
-    let config = exports?.config;
-    let defaults = exports?.defaults;
-
-    // Default export: exports.default can be a function or object with render
     const def = exports?.default;
-    if (def !== undefined) {
-      if (typeof def === "function") {
-        render = def;
-      } else if (def && typeof def.render === "function") {
-        render = def.render;
-        config = config ?? def.config;
-        defaults = defaults ?? def.defaults;
-      }
-    }
-
-    // Direct function (e.g. IIFE returning the function)
-    if (typeof exports === "function") {
-      render = exports;
-    }
-
-    if (typeof render !== "function") {
-      return { error: { message: "Template must export a 'render' function" } };
+    if (!def || typeof def.render !== "function") {
+      return { error: { message: "Template must use defineTemplate({ render(ctx) { ... } })" } };
     }
 
     return {
       template: {
-        render,
-        config,
-        defaults,
+        render: def.render,
+        config: def.config,
+        defaults: def.defaults,
       },
     };
   } catch (e) {

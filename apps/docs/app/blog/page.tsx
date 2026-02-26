@@ -2,11 +2,11 @@ import Link from 'next/link'
 
 const posts = [
   {
-    slug: 'introducing-superimg-react',
-    title: 'Programmatic Video in React with SuperImg',
+    slug: 'introducing-superimg',
+    title: 'Introducing SuperImg',
     date: '2026-02-22',
     description:
-      'From a single <Player> tag to compile-preview-export in one hook. A walkthrough of the SuperImg React layer.',
+      'Video at scale is a content problem. SuperImg solves it with code—templates as pure functions, rendered to MP4.',
   },
 ]
 

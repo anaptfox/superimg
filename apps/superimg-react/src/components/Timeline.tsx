@@ -2,7 +2,7 @@
 
 import { useRef, forwardRef, useImperativeHandle, useSyncExternalStore, useState } from "react";
 import { useTimeline, type UseTimelineReturn } from "../hooks/useTimeline.js";
-import type { PlayerStore, Checkpoint } from "superimg";
+import type { PlayerStore, Checkpoint } from "superimg/browser";
 
 export interface TimelineProps {
   /** The player store to control */

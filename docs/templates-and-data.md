@@ -81,52 +81,14 @@ export default defineTemplate({
 
 The active output preset is available via `ctx.output` (name, width, height, fit) so templates can adapt their layout accordingly.
 
-### Export-based Templates (quick start, untyped)
-
-For prototyping or simple scripts, you can use the export-based pattern. Note that `ctx.data` is untyped (`Record<string, unknown>`) in this form.
-
-```typescript
-// templates/intro.ts
-import type { RenderContext } from 'superimg';
-
-export const config = {
-  width: 1920,
-  height: 1080,
-  fps: 30,
-  durationSeconds: 5,
-};
-
-export function render(ctx: RenderContext): string {
-  const { std, sceneProgress, width, height } = ctx;
-
-  const eased = std.easing.easeOutCubic(sceneProgress);
-  const scale = std.math.lerp(0.8, 1, eased);
-
-  return `
-    <div style="
-      width: ${width}px;
-      height: ${height}px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transform: scale(${scale});
-    ">
-      Hello, ${ctx.data.name ?? 'World'}!
-    </div>
-  `;
-}
-```
-
-> _For production templates, use `defineTemplate` with `defaults` for type inference and self-contained templates._
-
 ### Using Templates
 
 ```bash
-# Dev server with live preview
-superimg dev templates/intro.ts
+# Dev server with live preview (bare name resolves to videos/intro.ts)
+superimg dev intro
 
 # Render to video
-superimg render templates/intro.ts -o output.mp4
+superimg render videos/intro.ts -o output.mp4
 ```
 
 ### Duration Resolution
@@ -144,22 +106,26 @@ Duration can be set in several places. The highest-priority source wins:
 The standard library is available via `ctx.std`:
 
 ```typescript
-export function render(ctx: RenderContext): string {
-  const { std, sceneProgress } = ctx;
-  
-  // Easing functions
-  const eased = std.easing.easeOutCubic(sceneProgress);
-  
-  // Math utilities
-  const value = std.math.lerp(0, 100, eased);
-  const clamped = std.math.clamp(value, 10, 90);
-  
-  // Color manipulation
-  const color = std.color.hsl(eased * 360, 80, 50);
-  const withAlpha = std.color.alpha('#ff6b35', 0.8);
-  
-  return `<div style="background: ${color}">...</div>`;
-}
+import { defineTemplate } from 'superimg';
+
+export default defineTemplate({
+  render(ctx) {
+    const { std, sceneProgress } = ctx;
+    
+    // Easing functions
+    const eased = std.easing.easeOutCubic(sceneProgress);
+    
+    // Math utilities
+    const value = std.math.lerp(0, 100, eased);
+    const clamped = std.math.clamp(value, 10, 90);
+    
+    // Color manipulation
+    const color = std.color.hsl(eased * 360, 80, 50);
+    const withAlpha = std.color.alpha('#ff6b35', 0.8);
+    
+    return `<div style="background: ${color}">...</div>`;
+  },
+});
 ```
 
 ---
@@ -219,18 +185,23 @@ Pass data to templates via `ctx.data`.
 Data is available via `ctx.data`:
 
 ```typescript
-export function render(ctx: RenderContext): string {
-  const { data } = ctx;
-  const { title, subtitle, showLogo } = data;
+import { defineTemplate } from 'superimg';
 
-  return `
-    <div class="slide">
-      <h1>${title}</h1>
-      ${subtitle ? `<h2>${subtitle}</h2>` : ''}
-      ${showLogo ? '<img src="logo.png" />' : ''}
-    </div>
-  `;
-}
+export default defineTemplate({
+  defaults: { title: 'Untitled', subtitle: undefined, showLogo: false },
+  render(ctx) {
+    const { data } = ctx;
+    const { title, subtitle, showLogo } = data;
+
+    return `
+      <div class="slide">
+        <h1>${title}</h1>
+        ${subtitle ? `<h2>${subtitle}</h2>` : ''}
+        ${showLogo ? '<img src="logo.png" />' : ''}
+      </div>
+    `;
+  },
+});
 ```
 
 ---
@@ -291,43 +262,44 @@ interface RenderContext<
 
 ## Best Practices
 
-### 1. Export Defaults for Reusable Templates
+### 1. Use defineTemplate with Defaults for Reusable Templates
 
 ```typescript
-// Good - self-contained with defaults
-export const defaults = {
-  title: 'Untitled',
-  items: [] as string[],
-};
+import { defineTemplate } from 'superimg';
 
-export function render(ctx: RenderContext) {
-  const { title, items } = ctx.data;
-  // ctx.data is merged from defaults + incoming data
-}
+// Good - self-contained with defaults
+export default defineTemplate({
+  defaults: {
+    title: 'Untitled',
+    items: [] as string[],
+  },
+  render(ctx) {
+    const { title, items } = ctx.data;
+    // ctx.data is merged from defaults + incoming data
+    return `<div>${title}</div>`;
+  },
+});
 ```
 
 ### 2. Use Defaults for Optional Fields
 
 ```typescript
-export const defaults = {
-  title: 'Hello',
-  subtitle: undefined as string | undefined,  // Optional
-  color: '#000',                              // Optional with default
-};
+export default defineTemplate({
+  defaults: {
+    title: 'Hello',
+    subtitle: undefined as string | undefined,  // Optional
+    color: '#000',                              // Optional with default
+  },
+  render(ctx) {
+    const { title, subtitle, color } = ctx.data;
+    return `<div>${title}</div>`;
+  },
+});
 ```
 
-### 3. Type Your Templates
+### 3. Full Type Inference
 
-```typescript
-import type { RenderContext } from 'superimg';
-
-export const defaults = { title: 'Hello' } as const;
-type Data = typeof defaults & Record<string, unknown>;
-
-export function render(ctx: RenderContext<Data>): string {
-  // Full type safety
-}
-```
+`defineTemplate` infers types from your `defaults` — no manual type annotations needed. `ctx.data` is automatically typed.
 
 ### 4. Use Explicit Duration in Config
 

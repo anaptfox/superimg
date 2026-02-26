@@ -1,13 +1,13 @@
 //! React hook for player state management
 
 import { useRef, useCallback, useSyncExternalStore } from "react";
-import { createPlayerStore, createPlaybackController } from "superimg";
+import { createPlayerStore, createPlaybackController } from "superimg/browser";
 import type {
   PlayerConfig,
   PlayerState,
   PlayerStore,
   PlayerStoreCallbacks,
-} from "superimg";
+} from "superimg/browser";
 
 export interface UsePlayerConfig {
   /** Frames per second */
@@ -124,8 +124,8 @@ export function usePlayer(config: UsePlayerConfig): UsePlayerReturn {
   }, [store]);
 
   const clearCache = useCallback(() => {
-    store.getState().clearCache();
-  }, [store]);
+    // No-op, cache is managed by presenter now
+  }, []);
 
   return {
     state,

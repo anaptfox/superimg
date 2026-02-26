@@ -1,27 +1,24 @@
-// Outro template with defaults
-export const config = {
-  fonts: ["IBM+Plex+Sans:wght@400;700"],
-};
+import { defineTemplate } from "superimg";
 
-export const defaults = {
-  cta: "Thanks for watching!",
-  url: undefined as string | undefined,
-  fadeOut: true,
-};
+export default defineTemplate({
+  config: {
+    fonts: ["IBM+Plex+Sans:wght@400;700"],
+  },
+  defaults: {
+    cta: "Thanks for watching!",
+    url: undefined as string | undefined,
+    fadeOut: true,
+  },
+  render(ctx) {
+    const { std, sceneProgress, data } = ctx;
+    const { cta, url, fadeOut } = data;
 
-export function render(ctx) {
-  const { std, sceneProgress, data } = ctx;
-  const { cta, url, fadeOut } = data;
+    const fadeInProgress = std.math.clamp(sceneProgress * 4, 0, 1);
+    const fadeOutProgress = fadeOut ? std.math.clamp((sceneProgress - 0.7) * 3.33, 0, 1) : 0;
+    const opacity = std.easing.easeOutCubic(fadeInProgress) * (1 - std.easing.easeInCubic(fadeOutProgress));
+    const pulse = 1 + Math.sin(sceneProgress * Math.PI * 4) * 0.02;
 
-  // Fade in at start, optionally fade out at end
-  const fadeInProgress = std.math.clamp(sceneProgress * 4, 0, 1);
-  const fadeOutProgress = fadeOut ? std.math.clamp((sceneProgress - 0.7) * 3.33, 0, 1) : 0;
-  const opacity = std.easing.easeOutCubic(fadeInProgress) * (1 - std.easing.easeInCubic(fadeOutProgress));
-
-  // Pulse animation for CTA
-  const pulse = 1 + Math.sin(sceneProgress * Math.PI * 4) * 0.02;
-
-  return `
+    return `
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
@@ -59,4 +56,5 @@ export function render(ctx) {
       ${url ? `<div class="url">${url}</div>` : ""}
     </div>
   `;
-}
+  },
+});

@@ -6,6 +6,7 @@ Use with `superimg init`, `superimg dev`, `superimg render`.
 - **hello-world** - Basic animated title card
 - **countdown** - Countdown timer animation
 - **define-template** - TypeScript template with defaults
+- **stats-card** - Animated stats card with counting number and progress bar
 - **assets-demo** - Using images and video assets
 - **lower-thirds** - Broadcast-style lower third graphic
 

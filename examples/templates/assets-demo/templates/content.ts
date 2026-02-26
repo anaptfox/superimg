@@ -1,30 +1,25 @@
-// Content template with defaults
-export const config = {
-  fonts: ["IBM+Plex+Sans:wght@400;700"],
-};
+import { defineTemplate } from "superimg";
 
-export const defaults = {
-  heading: "Main Content",
-  body: "This demonstrates the asset API.",
-  showProgress: true,
-  textColor: "#ffffff",
-};
+export default defineTemplate({
+  config: {
+    fonts: ["IBM+Plex+Sans:wght@400;700"],
+  },
+  defaults: {
+    heading: "Main Content",
+    body: "This demonstrates the asset API.",
+    showProgress: true,
+    textColor: "#ffffff",
+  },
+  render(ctx) {
+    const { std, sceneProgress, data, shared } = ctx;
+    const { heading, body, showProgress, textColor } = data;
 
-export function render(ctx) {
-  const { std, sceneProgress, data, shared } = ctx;
-  const { heading, body, showProgress, textColor } = data;
+    const headingOpacity = std.math.clamp(sceneProgress * 3, 0, 1);
+    const bodyOpacity = std.math.clamp((sceneProgress - 0.2) * 2, 0, 1);
+    const headingY = std.math.lerp(20, 0, std.easing.easeOutCubic(headingOpacity));
+    const brandName = shared?.brandName;
 
-  // Animate text reveal
-  const headingOpacity = std.math.clamp(sceneProgress * 3, 0, 1);
-  const bodyOpacity = std.math.clamp((sceneProgress - 0.2) * 2, 0, 1);
-
-  // Subtle parallax effect on heading
-  const headingY = std.math.lerp(20, 0, std.easing.easeOutCubic(headingOpacity));
-
-  // Access shared data if available (e.g., brand name)
-  const brandName = shared?.brandName;
-
-  return `
+    return `
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body {
@@ -92,4 +87,5 @@ export function render(ctx) {
       </div>
     ` : ""}
   `;
-}
+  },
+});

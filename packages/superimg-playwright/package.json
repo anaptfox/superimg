@@ -12,16 +12,17 @@
     }
   },
   "scripts": {
-    "build": "tsup && npm run build:harness",
+    "build": "npm run build:harness && npm run embed:harness && tsup",
     "build:harness": "vite build --config vite.harness.config.ts",
+    "embed:harness": "node scripts/embed-harness.mjs",
     "dev": "tsup --watch",
     "verify:harness": "tsx scripts/harness-integrity.ts verify",
     "prepublishOnly": "npm run verify:harness",
+    "test": "vitest run",
     "clean": "rm -rf dist"
   },
   "files": [
-    "dist",
-    "src/harness/index.html"
+    "dist"
   ],
   "sideEffects": false,
   "keywords": [
@@ -39,6 +40,15 @@
     "esbuild": "^0.27.0",
     "hono": "^4.7.11",
     "playwright": "^1.57.0",
+    "playwright-core": "^1.57.0",
     "zod": "^4.3.5"
+  },
+  "peerDependencies": {
+    "@sparticuz/chromium": "^133.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@sparticuz/chromium": {
+      "optional": true
+    }
   }
 }

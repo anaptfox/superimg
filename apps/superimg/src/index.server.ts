@@ -29,3 +29,12 @@ export { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 
 export { PlaywrightEngine } from "@superimg/playwright";
 export type { PlaywrightEngineOptions } from "@superimg/playwright";
+
+// =============================================================================
+// HIGH-LEVEL API
+// =============================================================================
+
+export { renderVideo } from "./render-video.js";
+export { loadTemplate } from "./load-template.js";
+export type { RenderVideoOptions } from "./render-video.js";
+export type { LoadedTemplate, LoadedTemplateRenderOptions } from "./load-template.js";

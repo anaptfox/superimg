@@ -10,7 +10,9 @@ const STARS = [
 ];
 const REPO = "facebook/react";
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   const padding = 60;
@@ -60,7 +62,8 @@ export function render(ctx) {
       </svg>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const NPM_STATS = `// NPM Downloads
 // Sample data for lodash
@@ -75,7 +78,9 @@ const DOWNLOADS = [
 ];
 const PACKAGE = "lodash";
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   const padding = 40;
@@ -118,7 +123,8 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const BENCHMARK = `// Benchmark Bars
 // Performance comparison chart
@@ -130,7 +136,9 @@ const BENCHMARKS = [
   { name: "Legacy", value: 23, color: "#64748b" },
 ];
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   const maxValue = Math.max(...BENCHMARKS.map(b => b.value));
@@ -176,7 +184,8 @@ export function render(ctx) {
       }).join('')}
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const TIMELINE = `// Animated Timeline
 // Project roadmap with milestones
@@ -189,7 +198,9 @@ const EVENTS = [
   { label: "Launch", title: "Public", icon: "🚀" },
 ];
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   const padding = 60;
@@ -270,4 +281,5 @@ export function render(ctx) {
       }).join('')}
     </div>
   \`;
-}`;
+  },
+});`;

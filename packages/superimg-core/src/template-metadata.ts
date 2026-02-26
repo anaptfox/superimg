@@ -15,7 +15,6 @@ export interface TemplateMetadata {
 }
 
 type VariableInitMap = Map<string, acorn.Expression | null>;
-type ExportMap = Map<string, string>;
 
 function getIdentifierName(node: acorn.Node | null | undefined): string | undefined {
   if (!node || node.type !== "Identifier") return undefined;
@@ -54,7 +53,6 @@ function readConfigObject(expr: acorn.Expression): TemplateMetadataConfig | unde
     }
     if (!key) continue;
 
-    // Parse outputs object
     if (key === "outputs") {
       const outputsExpr = property.value as acorn.Expression;
       if (outputsExpr.type === "ObjectExpression") {
@@ -135,17 +133,6 @@ function resolveExpression(
   return init;
 }
 
-function resolveObjectExpression(
-  name: string,
-  variableInits: VariableInitMap,
-  visited: Set<string> = new Set()
-): acorn.Expression | undefined {
-  const expr = resolveExpression(name, variableInits, visited);
-  if (!expr) return undefined;
-  if (expr.type === "ObjectExpression") return expr;
-  return undefined;
-}
-
 function unwrapDefineTemplate(expr: acorn.Expression): acorn.Expression {
   if (
     expr.type === "CallExpression" &&
@@ -159,6 +146,7 @@ function unwrapDefineTemplate(expr: acorn.Expression): acorn.Expression {
 
 /**
  * Extract template metadata without executing user code.
+ * Templates must use export default defineTemplate({ ... }).
  */
 export function extractTemplateMetadata(code: string): TemplateMetadata {
   const ast = acorn.parse(code, {
@@ -167,9 +155,9 @@ export function extractTemplateMetadata(code: string): TemplateMetadata {
   }) as acorn.Program;
 
   const variableInits: VariableInitMap = new Map();
-  const exportMap: ExportMap = new Map();
   let hasDefaultExport = false;
-  let defaultConfig: TemplateMetadataConfig | undefined;
+  let hasRenderExport = false;
+  let config: TemplateMetadataConfig | undefined;
 
   for (const node of ast.body) {
     if (node.type === "VariableDeclaration") {
@@ -180,71 +168,29 @@ export function extractTemplateMetadata(code: string): TemplateMetadata {
       }
     }
 
-    if (node.type === "FunctionDeclaration" && node.id) {
-      variableInits.set(node.id.name, null);
-    }
-
-    if (node.type === "ExportNamedDeclaration") {
-      if (node.declaration) {
-        if (node.declaration.type === "FunctionDeclaration" && node.declaration.id) {
-          exportMap.set(node.declaration.id.name, node.declaration.id.name);
-        }
-        if (node.declaration.type === "VariableDeclaration") {
-          for (const declaration of node.declaration.declarations) {
-            const name = getIdentifierName(declaration.id);
-            if (!name) continue;
-            exportMap.set(name, name);
-            variableInits.set(name, (declaration.init as acorn.Expression | null) ?? null);
-          }
-        }
-      }
-
-      if (!node.source) {
-        for (const specifier of node.specifiers) {
-          if (specifier.type !== "ExportSpecifier") continue;
-          const exported = getIdentifierName(specifier.exported);
-          const local = getIdentifierName(specifier.local);
-          if (exported && local) {
-            exportMap.set(exported, local);
-          }
-        }
-      }
-    }
-
     if (node.type === "ExportDefaultDeclaration") {
       hasDefaultExport = true;
 
-      // Resolve the declaration expression
       let expr: acorn.Expression | undefined;
       const decl = node.declaration;
 
-      if (decl.type === "FunctionDeclaration" || decl.type === "FunctionExpression") {
-        // `export default function render(ctx) {}` or `export default function(ctx) {}`
-        if (decl.id) {
-          exportMap.set("render", decl.id.name);
-        }
-      } else if (decl.type === "Identifier") {
-        // `export default mod` — resolve through variableInits
+      if (decl.type === "Identifier") {
         expr = resolveExpression(decl.name, variableInits);
-        if (expr) {
-          expr = unwrapDefineTemplate(expr);
-        }
+        if (expr) expr = unwrapDefineTemplate(expr);
       } else {
-        // `export default { ... }` or `export default defineTemplate({ ... })`
         expr = unwrapDefineTemplate(decl as acorn.Expression);
       }
 
-      // Extract render/config from resolved object expression
       if (expr && expr.type === "ObjectExpression") {
         for (const prop of expr.properties) {
           if (prop.type !== "Property" || prop.computed) continue;
           const key = getIdentifierName(prop.key);
           if (key === "render") {
-            exportMap.set("render", "__default_render__");
+            hasRenderExport = true;
           } else if (key === "config") {
             const configExpr = prop.value as acorn.Expression;
             if (configExpr.type === "ObjectExpression") {
-              defaultConfig = readConfigObject(configExpr);
+              config = readConfigObject(configExpr);
             }
           }
         }
@@ -252,24 +198,14 @@ export function extractTemplateMetadata(code: string): TemplateMetadata {
     }
   }
 
-  const localRender = exportMap.get("render");
-  const localConfig = exportMap.get("config");
-
-  let config: TemplateMetadataConfig | undefined;
-  if (localConfig) {
-    const configExpr = resolveObjectExpression(localConfig, variableInits);
-    if (configExpr) {
-      config = readConfigObject(configExpr);
-    }
-  }
-
-  // Fall back to config extracted from default export
-  if (!config && defaultConfig) {
-    config = defaultConfig;
+  if (!hasDefaultExport) {
+    throw new Error(
+      "Template must use export default defineTemplate({ ... }). Named exports are no longer supported."
+    );
   }
 
   return {
-    hasRenderExport: Boolean(localRender),
+    hasRenderExport,
     hasDefaultExport,
     config,
   };

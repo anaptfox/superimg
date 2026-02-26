@@ -7,7 +7,9 @@ const TESTIMONIALS = [
   { name: "Alex Kim", handle: "@alexk", text: "Finally, programmatic video that doesn't suck.", avatar: "🧑‍🚀" },
 ];
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   const cardWidth = (width - 100) / 3;
@@ -56,7 +58,8 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const MILESTONE = `// Follower Milestone
 // Dramatic counter reveal
@@ -64,7 +67,9 @@ export const MILESTONE = `// Follower Milestone
 const MILESTONE = 100000;
 const PLATFORM = "Twitter";
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Easing function for dramatic effect
@@ -120,7 +125,8 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const MRR = `// MRR Counter
 // Revenue milestone celebration
@@ -128,7 +134,9 @@ export const MRR = `// MRR Counter
 const TARGET_MRR = 50000;
 const CURRENCY = "$";
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Dramatic easing
@@ -169,7 +177,8 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const WEEKLY_SCHEDULE = `// Weekly Schedule
 // Calendar grid with animated time blocks
@@ -191,7 +200,9 @@ const SCHEDULE = {
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   const padding = 40;
@@ -342,7 +353,8 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const TWITTER_POST = `// Twitter/X Post Animation
 // Animated tweet card with engagement stats
@@ -360,7 +372,9 @@ const TWEET = {
   views: 42800,
 };
 
-export function render(ctx) {
+import { defineTemplate } from "superimg";
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Animate engagement counters
@@ -472,4 +486,5 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;

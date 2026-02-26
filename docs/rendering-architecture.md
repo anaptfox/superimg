@@ -369,10 +369,8 @@ try {
 │  │  COMPILE                                                 │   │
 │  │  compileTemplate(code) → TemplateModule { render() }     │   │
 │  │                                                          │   │
-│  │  Transforms:                                             │   │
-│  │    export function render → const render = function      │   │
-│  │    export const config → const config                    │   │
-│  │    export const defaults → const defaults                │   │
+│  │  Templates use defineTemplate({ render, config, defaults })  │   │
+│  │  Compiler extracts render, config, defaults from default   │   │
 │  │                                                          │   │
 │  │  Injects: std (stdlib namespace)                         │   │
 │  └────────────────────────┬────────────────────────────────┘   │

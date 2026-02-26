@@ -215,73 +215,19 @@ function App() {
           ))}
         </div>
 
-        {/* Demo Section - Basic Player */}
+        {/* Demo Section - Basic Player with Controls */}
         <div style={{ marginTop: "60px", padding: "24px", background: "#181818", borderRadius: "12px" }}>
-          <h2 style={{ marginTop: 0, marginBottom: "24px" }}>Basic Player Example</h2>
-          <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ flex: "1", minWidth: "320px" }}>
-              <Player
-                template={gradientTemplate}
-                width={640}
-                height={360}
-                playbackMode="loop"
-                loadMode="eager"
-                style={{ borderRadius: "8px", overflow: "hidden" }}
-              />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <button
-                onClick={() => {
-                  const ref = playerRefs.current.get(1);
-                  ref?.play();
-                }}
-                style={{
-                  padding: "12px 24px",
-                  background: "#272727",
-                  color: "#f1f1f1",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                }}
-              >
-                Play First Video
-              </button>
-              <button
-                onClick={() => {
-                  const ref = playerRefs.current.get(1);
-                  ref?.pause();
-                }}
-                style={{
-                  padding: "12px 24px",
-                  background: "#272727",
-                  color: "#f1f1f1",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                }}
-              >
-                Pause First Video
-              </button>
-              <button
-                onClick={() => {
-                  const ref = playerRefs.current.get(1);
-                  ref?.seekToFrame(0);
-                }}
-                style={{
-                  padding: "12px 24px",
-                  background: "#272727",
-                  color: "#f1f1f1",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                }}
-              >
-                Reset First Video
-              </button>
-            </div>
+          <h2 style={{ marginTop: 0, marginBottom: "24px" }}>Basic Player with Built-in Controls</h2>
+          <div style={{ maxWidth: "640px" }}>
+            <Player
+              template={gradientTemplate}
+              width={640}
+              height={360}
+              playbackMode="loop"
+              loadMode="eager"
+              controls
+              style={{ borderRadius: "8px", overflow: "hidden" }}
+            />
           </div>
         </div>
       </div>

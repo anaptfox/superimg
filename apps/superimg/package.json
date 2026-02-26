@@ -3,6 +3,9 @@
   "version": "0.0.8",
   "description": "Programmatic video generation with HTML/CSS templates",
   "type": "module",
+  "bin": {
+    "superimg": "./dist/cli.js"
+  },
   "main": "./dist/index.browser.js",
   "module": "./dist/index.browser.js",
   "types": "./dist/index.browser.d.ts",
@@ -63,12 +66,20 @@
     "url": "https://github.com/user/superimg"
   },
   "dependencies": {
+    "acorn": "^8.14.0",
+    "colord": "^2.9.3",
+    "commander": "^12.0.0",
+    "date-fns": "^4.1.0",
     "esbuild": "^0.27.0",
     "esbuild-wasm": "^0.27.0",
+    "ink": "^6.6.0",
+    "react": "^19.0.0",
+    "simplex-noise": "^4.0.3",
+    "vite": "^7.3.1",
+    "ws": "^8.18.0",
     "zustand": "^5.0.0",
-    "date-fns": "^4.1.0",
-    "colord": "^2.9.3",
-    "simplex-noise": "^4.0.3"
+    "hono": "^4.7.7",
+    "@hono/node-server": "^1.14.1"
   },
   "peerDependencies": {
     "playwright": "^1.57.0"
@@ -84,6 +95,8 @@
     "@superimg/core": "workspace:*",
     "@superimg/runtime": "workspace:*",
     "@superimg/player": "workspace:*",
-    "@superimg/playwright": "workspace:*"
+    "@superimg/playwright": "workspace:*",
+    "@types/react": "^19.2.8",
+    "@types/ws": "^8.18.0"
   }
 }

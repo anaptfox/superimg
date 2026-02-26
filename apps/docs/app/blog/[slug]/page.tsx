@@ -16,7 +16,7 @@ export default async function BlogPost({
 }
 
 export function generateStaticParams() {
-  return [{ slug: 'introducing-superimg-react' }]
+  return [{ slug: 'introducing-superimg' }]
 }
 
 export const dynamicParams = false

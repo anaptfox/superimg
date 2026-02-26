@@ -43,6 +43,8 @@ export { Preview, type PreviewProps, type PreviewRef } from "./components/Previe
 export { Timeline, type TimelineProps, type TimelineRef } from "./components/Timeline.js";
 export { VideoCanvas, type VideoCanvasProps } from "./components/VideoCanvas.js";
 export { ChapterNav, type ChapterNavProps } from "./components/ChapterNav.js";
+export { PlayButton, type PlayButtonProps } from "./components/PlayButton.js";
+export { VideoControls, type VideoControlsProps } from "./components/VideoControls.js";
 
 // =============================================================================
 // RE-EXPORTED TYPES
@@ -78,4 +80,4 @@ export type {
   
   // Stdlib
   Stdlib,
-} from "superimg";
+} from "superimg/browser";

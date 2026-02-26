@@ -1,190 +1,191 @@
 # SuperImg
 
-Programmatic video generation with HTML/CSS templates. Create stunning videos from code.
+Video is a function. Give it a frame number, get back HTML.
 
-## Features
+```
+┌──────────────┐      ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+│   Template   │      │     HTML     │      │    Frames    │      │     MP4      │
+│              │ ──▶  │              │ ──▶  │              │ ──▶  │              │
+│  render(ctx) │      │  <div>...</   │      │  ░░▓▓██████  │      │  video.mp4   │
+└──────────────┘      └──────────────┘      └──────────────┘      └──────────────┘
+     f(time)              string             rasterize             encode
+```
 
-- **Template-based rendering** - Write video frames as HTML/CSS, render to MP4
-- **TypeScript-first** - Full type safety with branded types and discriminated unions
-- **AI-friendly API** - Explicit, self-documenting, no magic globals
-- **Browser & Server** - Player for browser, Playwright renderer for server
-- **React components** - First-class React support with hooks and components
+No timeline editor. No After Effects. Just TypeScript that returns HTML strings.
+
+## Why
+
+Timeline editors are built for one video at a time. Drag keyframes, tweak curves, export, upload, repeat. Try to batch render 200 product videos and you're fighting the tool.
+
+SuperImg treats video like any other code problem:
+- **Deterministic** — Same input, same output. Every frame is testable.
+- **Composable** — Import functions, reuse components, version control everything.
+- **Scalable** — Render one video or ten thousand. Same template, different data.
+
+## Install
+
+```bash
+npm install superimg
+```
 
 ## Quick Start
 
-### CLI Rendering
-
-```bash
-# Create a template
-superimg dev template.js    # Live preview
-superimg render template.js -o output.mp4  # Render to video
-```
-
-### Template Example
-
 ```typescript
-// template.js
-import { defineTemplate } from 'superimg';
+import { defineTemplate } from 'superimg'
 
 export default defineTemplate({
   config: { width: 1920, height: 1080, fps: 30, durationSeconds: 5 },
   render(ctx) {
-    const { std, sceneProgress, width, height } = ctx;
-    const hue = std.math.lerp(0, 360, sceneProgress);
+    const { std, sceneProgress, width, height } = ctx
+
+    // sceneProgress runs from 0 → 1 over the duration
+    const scale = std.math.lerp(0.8, 1, std.easing.easeOutCubic(sceneProgress))
 
     return `
       <div style="
         width: ${width}px;
         height: ${height}px;
-        background: hsl(${hue}, 80%, 50%);
+        background: linear-gradient(135deg, #667eea, #764ba2);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 64px;
-        color: white;
       ">
-        Hello, SuperImg!
+        <h1 style="
+          font-size: 80px;
+          color: white;
+          transform: scale(${scale});
+        ">Hello, SuperImg</h1>
       </div>
-    `;
+    `
   },
-});
+})
 ```
 
-### Browser Player
-
-```typescript
-import { Player } from 'superimg/browser';
-import myTemplate from './templates/my-template';
-
-const player = new Player({
-  container: '#player',
-  width: 1280,
-  height: 720,
-  playbackMode: 'loop',
-});
-
-const result = await player.load(myTemplate);
-if (result.status === 'success') {
-  player.play();
-}
-
-// Explicit seeking (no ambiguous units)
-player.seekToFrame(45);
-player.seekToProgress(0.5);
-player.seekToTimeSeconds(2.5);
-```
-
-### React
-
-```tsx
-import { Player } from 'superimg-react';
-import myTemplate from './templates/my-template';
-
-function App() {
-  return (
-    <Player
-      template={myTemplate}
-      width={1280}
-      height={720}
-      playbackMode="loop"
-      hoverBehavior="play"
-    />
-  );
-}
-```
-
-## API Highlights
-
-### Explicit Context (No Magic Globals)
-
-```typescript
-// ctx.std is explicit - no ambient globals
-export function render(ctx: RenderContext) {
-  const { std, sceneProgress, width, height } = ctx;
-  const eased = std.easing.easeOutCubic(sceneProgress);
-  return `<div>...</div>`;
-}
-```
-
-### Descriptive Field Names
-
-| Old | New |
-|-----|-----|
-| `progress` | `globalProgress` / `sceneProgress` |
-| `frame` | `globalFrame` / `sceneFrame` |
-| `time` | `globalTimeSeconds` / `sceneTimeSeconds` |
-
-### Mode Enums
-
-```typescript
-const player = new Player({
-  playbackMode: 'loop',    // 'once' | 'loop' | 'ping-pong'
-  loadMode: 'lazy',        // 'eager' | 'lazy'
-  hoverBehavior: 'play',   // 'none' | 'play' | 'preview-scrub'
-});
-```
-
-### Self-Describing Returns
-
-```typescript
-const result = await player.load(template);
-
-if (result.status === 'success') {
-  console.log(`${result.totalFrames} frames loaded`);
-} else {
-  console.error(`Error: ${result.message}`);
-  console.error(`Suggestion: ${result.suggestion}`);
-}
-```
-
-## Installation
+Render it:
 
 ```bash
-# Main package
-npm install superimg
+npx superimg render template.ts -o video.mp4
+```
 
-# React components
-npm install superimg-react
+## Where It Runs
 
-# Server-side rendering requires Playwright
-npm install playwright
+```
+                    ┌─────────────────┐
+                    │    template.ts  │
+                    │                 │
+                    │  defineTemplate │
+                    └────────┬────────┘
+                             │
+           ┌─────────────────┼─────────────────┐
+           │                 │                 │
+           ▼                 ▼                 ▼
+    ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+    │   Browser   │   │     CLI     │   │    React    │
+    │             │   │             │   │             │
+    │  Live edit  │   │ npx render  │   │  <Player/>  │
+    │  60fps      │   │ Batch jobs  │   │  Embed      │
+    └─────────────┘   └─────────────┘   └─────────────┘
+```
+
+**CLI** — Render locally or in CI. Batch render from JSON data:
+
+```bash
+npx superimg render template.ts --data products.json -o ./output/
+```
+
+**Browser** — Live preview at 60fps while you edit.
+
+**React** — Embed anywhere with `<Player/>`:
+
+```tsx
+import { Player } from 'superimg-react'
+import template from './template'
+
+<Player template={template} width={1280} height={720} />
+```
+
+## The Render Context
+
+Every frame receives a context object. No magic globals.
+
+```typescript
+render(ctx) {
+  const {
+    width, height,           // Dimensions
+    sceneProgress,           // 0 → 1 over duration
+    sceneFrame,              // Current frame number
+    sceneTimeSeconds,        // Current time in seconds
+    std,                     // Standard library
+    data,                    // Your custom data
+  } = ctx
+
+  return `<div>...</div>`
+}
+```
+
+## Standard Library
+
+Everything you need for animation, available on `ctx.std`:
+
+| Module | What it does |
+|--------|-------------|
+| `std.easing` | 18+ easing functions: `easeOutCubic`, `easeInOutQuad`, `easeOutBounce` |
+| `std.math` | `lerp`, `clamp`, `map`, `smoothstep`, `inverseLerp` |
+| `std.color` | `hexToRgb`, `rgbToHsl`, `interpolateColor` |
+| `std.timing` | Segment helpers for multi-scene sequences |
+| `std.presets` | Platform dimensions: YouTube, Instagram, TikTok |
+
+## One Template, Many Formats
+
+```typescript
+await render(template, { format: 'youtube.video' })        // 1920×1080
+await render(template, { format: 'youtube.video.short' })  // 1080×1920
+await render(template, { format: 'instagram.post' })       // 1080×1080
+await render(template, { format: 'tiktok.video' })         // 1080×1920
+```
+
+## Data-Driven Templates
+
+Pass data at render time for personalization:
+
+```typescript
+export default defineTemplate({
+  defaults: {
+    productName: 'Widget',
+    price: '$99',
+  },
+  render(ctx) {
+    const { data } = ctx
+    return `<div>${data.productName} - ${data.price}</div>`
+  },
+})
+```
+
+```bash
+npx superimg render template.ts --data '{"productName": "Gadget", "price": "$149"}'
+```
+
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| `superimg` | Core library + CLI |
+| `superimg-react` | React `<Player/>` component |
+
+```bash
+npm install superimg           # Core + CLI
+npm install superimg-react     # React components
 ```
 
 ## Documentation
 
-- [API Reference](./docs/api.md) - RenderContext and stdlib
-- [Templates & Data](./docs/templates-and-data.md) - Creating templates with defaults
-- [Player Guide](./docs/player-guide.md) - Browser playback
+- [API Reference](./docs/api.md) — RenderContext and stdlib
+- [Templates & Data](./docs/templates-and-data.md) — Creating templates with defaults
+- [Examples](./examples/) — Working examples to copy from
 
 ## Security
 
-- Rendering executes template code. Treat templates as trusted input unless you run rendering in a sandboxed environment.
-- CLI metadata inspection (`superimg info`) statically parses template exports and does not execute template code.
-
-## Examples
-
-See the [examples/](./examples/) directory for working examples:
-
-- `examples/hello-world/` - Simple animated greeting
-- `examples/server/` - Server-side rendering
-- `examples/react-player/` - React player with hover previews
-
-## Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Build all packages
-pnpm build
-
-# Run tests
-pnpm test
-
-# Run an example
-cd examples/server
-pnpm render
-```
+Templates execute code. Treat them as trusted input, or run rendering in a sandbox.
 
 ## License
 

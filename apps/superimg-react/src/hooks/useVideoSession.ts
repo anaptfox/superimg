@@ -8,7 +8,7 @@ import {
   useRef,
   type RefObject,
 } from "react";
-import { createRenderContext, type PlayerStore, type TemplateModule, type EncodingOptions } from "superimg";
+import { createRenderContext, type PlayerStore, type TemplateModule, type EncodingOptions } from "superimg/browser";
 import { getPreset } from "superimg/stdlib";
 import { usePlayer } from "./usePlayer.js";
 import { useCompiler } from "./useCompiler.js";
@@ -37,12 +37,16 @@ export interface ExportOutput {
 }
 
 export interface VideoSessionConfig {
+  /** Mode to use for rendering */
+  mode?: "html" | "canvas";
   /** Duration in seconds - reactive, can change after mount */
   duration: number;
   /** Frames per second (default: 30) */
   fps?: number;
   /** Initial preview format (default: "vertical") */
   initialPreviewFormat?: FormatOption;
+  /** Container ref (for HTML mode) */
+  containerRef?: RefObject<HTMLDivElement | null>;
   /** Canvas ref (optional if using VideoCanvas component) */
   canvasRef?: RefObject<HTMLCanvasElement | null>;
   /** Encoding options (codec, bitrate, keyframe interval) */
@@ -104,9 +108,9 @@ export interface VideoSessionReturn {
   /** Underlying player store for Timeline component */
   store: PlayerStore;
 
-  // Canvas management (for VideoCanvas component)
-  /** Set the canvas element (used by VideoCanvas component) */
-  setCanvas: (canvas: HTMLCanvasElement | null) => void;
+  // Canvas/Container management (for VideoCanvas component)
+  /** Set the canvas/container element (used by VideoCanvas component) */
+  setCanvas: (el: HTMLElement | null) => void;
 
   // Preview format (mutable)
   /** Current preview format */
@@ -192,8 +196,10 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
   const { width: previewWidth, height: previewHeight } = resolveFormat(previewFormat);
 
   // Internal canvas ref management (for VideoCanvas component)
-  const internalCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const effectiveCanvasRef = config.canvasRef ?? internalCanvasRef;
+  const internalContainerRef = useRef<HTMLElement | null>(null);
+  const effectiveContainerRef = config.mode === "html" 
+    ? (config.containerRef ?? internalContainerRef)
+    : (config.canvasRef ?? internalContainerRef);
 
   // Status and error state
   const [status, setStatus] = useState("Ready");
@@ -212,7 +218,11 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
   });
 
   const compiler = useCompiler();
-  const preview = usePreview(effectiveCanvasRef, { width: previewWidth, height: previewHeight });
+  const preview = usePreview(effectiveContainerRef, { 
+    width: previewWidth, 
+    height: previewHeight,
+    mode: config.mode ?? "html"
+  });
   const exportHook = useExport();
 
   // Effective template (from compiler or direct)
@@ -285,19 +295,21 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
 
   // Export helper - can export at any format
   const exportMp4 = useCallback(async (options?: { format?: FormatOption }) => {
-    const canvas = effectiveCanvasRef.current;
-    if (!canvas || !template) return null;
+    if (!template) return null;
 
     const exportFormat = options?.format ?? previewFormat;
     const { width: exportWidth, height: exportHeight } = resolveFormat(exportFormat);
 
-    // Create a temporary canvas for export if dimensions differ
-    let exportCanvas = canvas;
-    if (exportWidth !== canvas.width || exportHeight !== canvas.height) {
-      exportCanvas = document.createElement("canvas");
-      exportCanvas.width = exportWidth;
-      exportCanvas.height = exportHeight;
-    }
+    // Create a temporary canvas for export
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = exportWidth;
+    exportCanvas.height = exportHeight;
+
+    // We need a CanvasRenderer for export, regardless of preview mode
+    // We import it dynamically or use a temporary one
+    const { CanvasRenderer } = await import("superimg/browser");
+    const exportRenderer = new CanvasRenderer(exportCanvas);
+    await exportRenderer.warmup();
 
     // Create a render function that renders at export resolution
     const renderAtExportSize = async (frame: number) => {
@@ -313,26 +325,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
       );
 
       const html = (template.render as RenderFn)(ctx);
-
-      // Use the preview sink's renderer but draw to export canvas
-      if (preview.sink) {
-        const imageData = await preview.sink.renderFrame(
-          () => html,
-          ctx
-        );
-
-        // If using temp canvas, copy the result
-        if (exportCanvas !== canvas) {
-          const tempCanvas = document.createElement("canvas");
-          tempCanvas.width = imageData.width;
-          tempCanvas.height = imageData.height;
-          const tempCtx = tempCanvas.getContext("2d")!;
-          tempCtx.putImageData(imageData, 0, 0);
-
-          const exportCtx = exportCanvas.getContext("2d")!;
-          exportCtx.drawImage(tempCanvas, 0, 0, exportWidth, exportHeight);
-        }
-      }
+      await exportRenderer.renderFrame(() => html, ctx);
     };
 
     return exportHook.exportMp4(
@@ -347,14 +340,13 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
       renderAtExportSize
     );
   }, [
-    effectiveCanvasRef,
     template,
     exportHook,
     fps,
     previewFormat,
     config.duration,
     player.state.totalFrames,
-    preview.sink,
+    config.encoding,
   ]);
 
   // Export multiple formats sequentially
@@ -374,9 +366,9 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
     return results;
   }, [exportMp4, exportHook]);
 
-  // Set canvas (for VideoCanvas component)
-  const setCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
-    internalCanvasRef.current = canvas;
+  // Set canvas/container (for VideoCanvas component)
+  const setCanvas = useCallback((el: HTMLElement | null) => {
+    internalContainerRef.current = el;
   }, []);
 
   // Re-render when preview becomes ready or template changes

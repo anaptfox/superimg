@@ -1,7 +1,7 @@
 //! Hook for checkpoint navigation and state
 
 import { useState, useEffect, useCallback, useMemo, type RefObject } from "react";
-import type { Checkpoint } from "superimg";
+import type { Checkpoint } from "superimg/browser";
 import type { PlayerRef } from "../components/Player.js";
 
 export interface UseCheckpointsReturn {

@@ -9,16 +9,13 @@ vi.mock("superimg", async (importOriginal) => {
     ...actual,
     initBundler: vi.fn().mockResolvedValue(undefined),
     bundleTemplateBrowser: vi.fn().mockImplementation(async (code: string) => {
-      const stripped = code.replace(/export\s+/g, "");
-      return [
-        "var __template = (function() {",
-        stripped,
-        "var __r = {};",
-        "if (typeof render !== 'undefined') __r.render = render;",
-        "if (typeof config !== 'undefined') __r.config = config;",
-        "if (typeof defaults !== 'undefined') __r.defaults = defaults;",
-        "return __r; })();",
-      ].join("\n");
+      // Mock produces defineTemplate-style output: { default: { render, config, defaults } }
+      const hasValidTemplate = /defineTemplate|render\s*\(/.test(code);
+      if (hasValidTemplate) {
+        return "var __template = { default: { render: function() { return '<div></div>'; } } };";
+      }
+      // Invalid code: return object without render so compile fails
+      return "var __template = { default: {} };";
     }),
   };
 });
@@ -268,7 +265,7 @@ describe("useVideoSession", () => {
       await act(async () => { await result.current.compile("invalid {{"); });
       expect(result.current.error).not.toBeNull();
 
-      await act(async () => { await result.current.compile('export function render() { return "<div></div>"; }'); });
+      await act(async () => { await result.current.compile('import { defineTemplate } from "superimg"; export default defineTemplate({ render() { return "<div></div>"; } });'); });
       expect(result.current.error).toBeNull();
       expect(result.current.template).not.toBeNull();
     });
@@ -280,7 +277,7 @@ describe("useVideoSession", () => {
       await act(async () => {});
 
       await act(async () => {
-        await result.current.compile('export function render() { return "<div></div>"; }');
+        await result.current.compile('import { defineTemplate } from "superimg"; export default defineTemplate({ render() { return "<div></div>"; } });');
       });
 
       expect(result.current.status).toBe("Ready");
@@ -293,7 +290,7 @@ describe("useVideoSession", () => {
       await act(async () => {});
 
       await act(async () => {
-        await result.current.compile('export function render() { return "<div>Hello</div>"; }');
+        await result.current.compile('import { defineTemplate } from "superimg"; export default defineTemplate({ render() { return "<div>Hello</div>"; } });');
       });
 
       expect(result.current.template).not.toBeNull();
@@ -407,36 +404,45 @@ describe("useVideoSession", () => {
   });
 
   describe("player controls", () => {
-    it("provides play function", () => {
+    it("play sets isPlaying to true", async () => {
       const { result } = renderHook(() =>
         useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
       );
+      await act(async () => {});
 
-      expect(typeof result.current.play).toBe("function");
+      act(() => {
+        result.current.play();
+      });
+
+      expect(result.current.isPlaying).toBe(true);
     });
 
-    it("provides pause function", () => {
+    it("pause sets isPlaying to false", async () => {
       const { result } = renderHook(() =>
         useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
       );
+      await act(async () => {});
+      act(() => result.current.play());
+      expect(result.current.isPlaying).toBe(true);
 
-      expect(typeof result.current.pause).toBe("function");
+      act(() => {
+        result.current.pause();
+      });
+
+      expect(result.current.isPlaying).toBe(false);
     });
 
-    it("provides togglePlayPause function", () => {
+    it("togglePlayPause toggles isPlaying", async () => {
       const { result } = renderHook(() =>
         useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
       );
+      await act(async () => {});
 
-      expect(typeof result.current.togglePlayPause).toBe("function");
-    });
+      act(() => result.current.togglePlayPause());
+      expect(result.current.isPlaying).toBe(true);
 
-    it("provides seek function", () => {
-      const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
-      );
-
-      expect(typeof result.current.seek).toBe("function");
+      act(() => result.current.togglePlayPause());
+      expect(result.current.isPlaying).toBe(false);
     });
 
     it("seek updates currentFrame", () => {
@@ -467,27 +473,12 @@ describe("useVideoSession", () => {
   });
 
   describe("export API", () => {
-    it("provides exportMp4 function", () => {
+    it("provides exportMp4, exportMultiple, and download functions", () => {
       const { result } = renderHook(() =>
         useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
       );
-
       expect(typeof result.current.exportMp4).toBe("function");
-    });
-
-    it("provides exportMultiple function", () => {
-      const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
-      );
-
       expect(typeof result.current.exportMultiple).toBe("function");
-    });
-
-    it("provides download function", () => {
-      const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
-      );
-
       expect(typeof result.current.download).toBe("function");
     });
   });
@@ -497,7 +488,6 @@ describe("useVideoSession", () => {
       const { result } = renderHook(() =>
         useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
       );
-
       expect(result.current.store).toBeDefined();
       expect(typeof result.current.store.subscribe).toBe("function");
       expect(typeof result.current.store.getState).toBe("function");
@@ -509,7 +499,6 @@ describe("useVideoSession", () => {
       const { result } = renderHook(() =>
         useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
       );
-
       expect(typeof result.current.setCanvas).toBe("function");
     });
   });

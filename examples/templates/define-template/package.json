@@ -11,6 +11,6 @@
     "clean": "true"
   },
   "dependencies": {
-    "@superimg/cli": "workspace:*"
+    "superimg": "workspace:*"
   }
 }

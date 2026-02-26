@@ -2,14 +2,16 @@
 //! Renders templates with playback controls, hover behavior, and ref-based imperative API
 
 import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback } from "react";
-import { 
-  Player as CorePlayer, 
-  type PlayerInput, 
+import {
+  Player as CorePlayer,
+  type PlayerInput,
   type LoadResult,
   type PlaybackMode,
   type LoadMode,
   type HoverBehavior,
 } from "superimg/player";
+import type { PlayerStore } from "superimg/browser";
+import { VideoControls } from "./VideoControls.js";
 
 export interface PlayerProps {
   /** Template module to render */
@@ -32,6 +34,8 @@ export interface PlayerProps {
   className?: string;
   /** Optional inline styles */
   style?: React.CSSProperties;
+  /** Show built-in controls: true = PlayButton + Timeline, "minimal" = PlayButton only */
+  controls?: boolean | "minimal";
   /** Called when player is loaded */
   onLoad?: (result: LoadResult) => void;
   /** Called on each frame */
@@ -123,6 +127,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     maxCacheFrames = 30,
     className,
     style,
+    controls,
     onLoad,
     onFrame,
     onPlay,
@@ -136,6 +141,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   const hoverTimeoutRef = useRef<number | undefined>(undefined);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [store, setStore] = useState<PlayerStore | null>(null);
 
   // Initialize player
   useEffect(() => {
@@ -177,12 +183,10 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     const loadPlayer = async () => {
       const result = await player.load(template);
       setIsReady(result.status === "success");
-      onLoad?.(result);
-      
-      // Auto-play if not using hover behavior and playback mode isn't 'once' starting paused
-      if (result.status === "success" && hoverBehavior === "none" && playbackMode !== "once") {
-        // Don't auto-play, let user control
+      if (result.status === "success" && player.store) {
+        setStore(player.store);
       }
+      onLoad?.(result);
     };
 
     if (loadMode === "lazy") {
@@ -201,6 +205,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
         observer.disconnect();
         player.destroy();
         playerRef.current = null;
+        setStore(null);
         setIsReady(false);
         setIsPlaying(false);
       };
@@ -211,6 +216,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     return () => {
       player.destroy();
       playerRef.current = null;
+      setStore(null);
       setIsReady(false);
       setIsPlaying(false);
     };
@@ -256,13 +262,24 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     seekToTimeSeconds: (seconds: number) => playerRef.current?.seekToTimeSeconds(seconds),
   }), [isReady, isPlaying]);
 
+  // Render controls based on the controls prop
+  const showControls = controls && store;
+  const showTimeline = controls === true;
+
   return (
     <div
-      ref={containerRef}
       className={className}
-      style={{ width, height, ...style }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    />
+      style={{ display: "flex", flexDirection: "column", ...style }}
+    >
+      <div
+        ref={containerRef}
+        style={{ width, height }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      />
+      {showControls && (
+        <VideoControls store={store} showTimeline={showTimeline} showTime />
+      )}
+    </div>
   );
 });

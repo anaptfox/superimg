@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-const CODE_EXAMPLE = `export function render(ctx) {
-  const { sceneFrame, width, height } = ctx;
+const CODE_EXAMPLE = `import { defineTemplate } from "superimg";
 
-  return \`
-    <div style="width: \${width}px; height: \${height}px;">
-      <h1>Frame \${sceneFrame}</h1>
-    </div>
-  \`;
-}`;
+export default defineTemplate({
+  render(ctx) {
+    const { sceneFrame, width, height } = ctx;
+    return \`
+      <div style="width: \${width}px; height: \${height}px;">
+        <h1>Frame \${sceneFrame}</h1>
+      </div>
+    \`;
+  },
+});`;
 
 export function ForDevelopers() {
   return (
@@ -24,12 +27,12 @@ export function ForDevelopers() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-border/50 bg-[#1a1a1a]">
-          <div className="border-b border-border/50 bg-[#252526] px-4 py-2 text-sm font-medium text-muted-foreground">
-            template.js
+        <div className="overflow-hidden rounded-xl border border-border/50 bg-[var(--code-bg)]">
+          <div className="border-b border-border/50 bg-[var(--code-header)] px-4 py-2 text-sm font-medium text-[var(--code-foreground)]">
+            videos/intro.ts
           </div>
           <pre className="overflow-x-auto p-4 text-sm">
-            <code className="text-muted-foreground">{CODE_EXAMPLE}</code>
+            <code className="text-[var(--code-foreground)]">{CODE_EXAMPLE}</code>
           </pre>
         </div>
 

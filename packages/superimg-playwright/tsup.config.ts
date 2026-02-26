@@ -6,5 +6,5 @@ export default defineConfig({
   ],
   format: ["esm"],
   dts: true,
-  external: ["esbuild"],
+  external: ["esbuild", "playwright", "playwright-core", "@sparticuz/chromium"],
 });

@@ -60,6 +60,10 @@ rebuild:
 test:
     cd "{{root}}" && pnpm run test
 
+# Run all tests with coverage
+test-coverage:
+    cd "{{root}}" && pnpm run test:coverage
+
 # Lint all packages
 lint:
     cd "{{root}}" && pnpm run lint

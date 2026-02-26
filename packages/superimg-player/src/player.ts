@@ -9,14 +9,56 @@ import type {
   PlaybackMode,
   LoadMode,
   HoverBehavior,
+  FramePresenter,
 } from "@superimg/types";
-import {
-  SuperImgError,
-} from "@superimg/types";
+import { SuperImgError } from "@superimg/types";
+import { getPreset } from "@superimg/stdlib";
 
 // =============================================================================
 // PLAYER-SPECIFIC TYPES (defined here, exported from this module)
 // =============================================================================
+
+/** Simple format aliases that map to stdlib presets */
+const SIMPLE_ALIASES: Record<string, string> = {
+  vertical: "instagram.video.reel", // 1080x1920
+  horizontal: "youtube.video.long", // 1920x1080
+  square: "instagram.video.feed", // 1080x1080
+} as const;
+
+/**
+ * Format option: simple alias, stdlib preset path, or custom dimensions.
+ *
+ * Examples:
+ * - "vertical" → 1080x1920
+ * - "horizontal" → 1920x1080
+ * - "square" → 1080x1080
+ * - "youtube.video.short" → 1080x1920
+ * - { width: 800, height: 600 } → custom dimensions
+ */
+export type FormatOption =
+  | "vertical"
+  | "horizontal"
+  | "square"
+  | string
+  | { width: number; height: number };
+
+/**
+ * Resolve a format option to width/height dimensions.
+ */
+export function resolveFormat(format: FormatOption): { width: number; height: number } {
+  if (typeof format === "object") {
+    return format;
+  }
+
+  const presetPath = SIMPLE_ALIASES[format] ?? format;
+  const preset = getPreset(presetPath);
+
+  if (!preset) {
+    throw new Error(`Unknown format: ${format}`);
+  }
+
+  return { width: preset.width, height: preset.height };
+}
 
 /**
  * Options for creating a Player instance
@@ -24,10 +66,8 @@ import {
 export interface PlayerOptions {
   /** Container element or CSS selector */
   container: string | HTMLElement;
-  /** Canvas width in pixels (optional, can be inferred from template) */
-  width?: number;
-  /** Canvas height in pixels (optional, can be inferred from template) */
-  height?: number;
+  /** Format for rendering - simple alias, stdlib preset path, or custom dimensions */
+  format?: FormatOption;
   /** Playback mode when video ends (default: 'once') */
   playbackMode?: PlaybackMode;
   /** When to load/compile the template (default: 'eager') */
@@ -100,7 +140,8 @@ class PlayerNotReadyError extends SuperImgError {
 import { CheckpointResolver, createRenderContext } from "@superimg/core";
 import { createPlayerStore, type PlayerStore, type PlayerConfig } from "./state.js";
 import { createPlaybackController, type PlaybackController } from "./playback.js";
-import { CanvasRenderer } from "@superimg/runtime";
+import { HtmlPresenter } from "./html-presenter.js";
+import { CanvasPresenter } from "./canvas-presenter.js";
 
 export interface LoadOptions {
   /** Explicit markers for non-scene checkpoints */
@@ -131,15 +172,17 @@ export interface LoadOptions {
  */
 export class Player {
   private container: HTMLElement;
-  private canvas: HTMLCanvasElement;
-  private renderer: CanvasRenderer;
+  private presenter: FramePresenter;
   private _store: PlayerStore | null = null;
   private playbackController: PlaybackController | null = null;
   private _checkpointResolver: CheckpointResolver | null = null;
   private template: TemplateModule | null = null;
   private _totalFrames: number = 0;
   private _fps: number = 30;
-  private options: Required<Omit<PlayerOptions, "container">>;
+  private _format: FormatOption | undefined;
+  private _renderWidth: number = 1920;
+  private _renderHeight: number = 1080;
+  private options: Required<Omit<PlayerOptions, "container" | "format">>;
   private events: Partial<PlayerEvents> = {};
   private _isReady = false;
 
@@ -155,10 +198,18 @@ export class Player {
       this.container = options.container;
     }
 
-    // Set defaults with new mode-based options
+    // Store format option
+    this._format = options.format;
+
+    // Resolve initial dimensions from format if provided
+    if (this._format) {
+      const dims = resolveFormat(this._format);
+      this._renderWidth = dims.width;
+      this._renderHeight = dims.height;
+    }
+
+    // Set defaults
     this.options = {
-      width: options.width ?? 1920,
-      height: options.height ?? 1080,
       playbackMode: options.playbackMode ?? "once",
       loadMode: options.loadMode ?? "eager",
       hoverBehavior: options.hoverBehavior ?? "none",
@@ -167,17 +218,8 @@ export class Player {
       showControls: options.showControls ?? false,
     };
 
-    // Create canvas
-    this.canvas = document.createElement("canvas");
-    this.canvas.width = this.options.width;
-    this.canvas.height = this.options.height;
-    this.canvas.style.display = "block";
-    this.canvas.style.maxWidth = "100%";
-    this.canvas.style.height = "auto";
-    this.container.appendChild(this.canvas);
-
-    // Create renderer
-    this.renderer = new CanvasRenderer(this.canvas);
+    // Always use HtmlPresenter for preview (CSS transform scaling)
+    this.presenter = new HtmlPresenter(this.container);
   }
 
   /**
@@ -195,13 +237,15 @@ export class Player {
       // Get config from template
       const fps = this.template.config?.fps ?? 30;
       const durationSeconds = this.template.config?.durationSeconds ?? 5;
-      const width = this.template.config?.width ?? this.options.width;
-      const height = this.template.config?.height ?? this.options.height;
 
-      // Update canvas if template specifies dimensions
-      if (this.template.config?.width || this.template.config?.height) {
-        this.canvas.width = width;
-        this.canvas.height = height;
+      // Resolve dimensions with precedence: format > template config > default
+      const { width, height } = this.resolveDimensions(this.template);
+      this._renderWidth = width;
+      this._renderHeight = height;
+
+      // Set presenter logical size
+      if (this.presenter.setLogicalSize) {
+        this.presenter.setLogicalSize(width, height);
       }
 
       // Calculate total frames directly
@@ -269,8 +313,10 @@ export class Player {
         },
       });
 
-      // Warmup renderer
-      await this.renderer.warmup();
+      // Warmup presenter
+      if (this.presenter.warmup) {
+        await this.presenter.warmup();
+      }
 
       // Render first frame
       await this.renderFrame(0);
@@ -301,20 +347,10 @@ export class Player {
   }
 
   /**
-   * Render a specific frame
+   * Render a specific frame. Public for export and advanced usage.
    */
-  private async renderFrame(frame: number): Promise<void> {
+  async renderFrame(frame: number): Promise<void> {
     if (!this.template || !this._store) {
-      return;
-    }
-
-    const state = this._store.getState();
-
-    // Check cache
-    const cached = state.frameCache.get(frame);
-    if (cached) {
-      const ctx2d = this.renderer.getCanvas().getContext("2d")!;
-      ctx2d.putImageData(cached, 0, 0);
       return;
     }
 
@@ -323,23 +359,32 @@ export class Player {
       frame,
       this._fps,
       this._totalFrames,
-      this.canvas.width,
-      this.canvas.height,
+      this._renderWidth,
+      this._renderHeight,
       this.template.defaults ?? {}
     );
 
-    // Render
-    const imageData = await this.renderer.renderFrame(this.template.render, ctx);
+    // Render HTML string
+    const html = this.template.render(ctx);
 
-    // Cache with LRU eviction
-    const frameCache = state.frameCache;
-    if (frameCache.size >= this.options.maxCacheFrames) {
-      const firstKey = frameCache.keys().next().value;
-      if (firstKey !== undefined) {
-        frameCache.delete(firstKey);
-      }
+    // Present frame
+    await this.presenter.present(html, ctx);
+  }
+
+  /**
+   * Resolve dimensions with precedence: format > template config > default
+   */
+  private resolveDimensions(template: TemplateModule): { width: number; height: number } {
+    // 1. format option (highest priority)
+    if (this._format) {
+      return resolveFormat(this._format);
     }
-    frameCache.set(frame, imageData);
+    // 2. template config
+    if (template.config?.width && template.config?.height) {
+      return { width: template.config.width, height: template.config.height };
+    }
+    // 3. default fallback
+    return { width: 1920, height: 1080 };
   }
 
   // ==========================================================================
@@ -423,6 +468,67 @@ export class Player {
     this._store.getState().setFrame(clampedFrame);
   }
 
+  /**
+   * Change the format and re-render at the new dimensions.
+   */
+  setFormat(format: FormatOption): void {
+    const { width, height } = resolveFormat(format);
+    this._format = format;
+    this._renderWidth = width;
+    this._renderHeight = height;
+
+    if (this.presenter.setLogicalSize) {
+      this.presenter.setLogicalSize(width, height);
+    }
+
+    // Re-render current frame at new dimensions
+    if (this._store) {
+      this.renderFrame(this._store.getState().currentFrame);
+    }
+  }
+
+  /**
+   * Get the current format option.
+   */
+  get format(): FormatOption | undefined {
+    return this._format;
+  }
+
+  /**
+   * Get the current render width.
+   */
+  get renderWidth(): number {
+    return this._renderWidth;
+  }
+
+  /**
+   * Get the current render height.
+   */
+  get renderHeight(): number {
+    return this._renderHeight;
+  }
+
+  /**
+   * Resize the presentation area and re-render the current frame.
+   * @deprecated Use setFormat instead
+   */
+  async resize(width: number, height: number): Promise<void> {
+    if (!this._store) {
+      throw new PlayerNotReadyError("resize");
+    }
+    this._renderWidth = width;
+    this._renderHeight = height;
+    if (this.presenter.setLogicalSize) {
+      this.presenter.setLogicalSize(width, height);
+    } else if (this.presenter.resize) {
+      this.presenter.resize(width, height);
+    }
+    if (this.presenter.warmup) {
+      await this.presenter.warmup();
+    }
+    await this.renderFrame(this._store.getState().currentFrame);
+  }
+
   // ==========================================================================
   // STATE PROPERTIES
   // ==========================================================================
@@ -473,6 +579,11 @@ export class Player {
   /** The player store (for advanced usage) */
   get store(): PlayerStore | null {
     return this._store;
+  }
+
+  /** The presenter element (for advanced usage) */
+  get element(): HTMLElement {
+    return this.presenter.getElement();
   }
 
   /** The checkpoint resolver (for timeline marker rendering) */
@@ -579,7 +690,7 @@ export class Player {
     this._store = null;
     this._checkpointResolver = null;
     this.template = null;
-    this.canvas.remove();
+    this.presenter.dispose();
     this.events = {};
     this._isReady = false;
   }

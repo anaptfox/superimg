@@ -1,7 +1,7 @@
 //! React hook for canvas preview rendering
 
 import { useEffect, useState, useCallback, useLayoutEffect, type RefObject } from "react";
-import { CanvasRenderer, type RenderContext } from "superimg";
+import { CanvasPresenter, HtmlPresenter, type RenderContext, type FramePresenter } from "superimg/browser";
 
 export type RenderFn = (ctx: RenderContext) => string;
 
@@ -10,67 +10,58 @@ export interface UsePreviewConfig {
   width: number;
   /** Canvas height in pixels */
   height: number;
+  /** Mode to use for rendering */
+  mode?: "html" | "canvas";
 }
 
 export interface UsePreviewReturn {
-  /** The canvas renderer instance (null until ready) */
-  sink: CanvasRenderer | null;
+  /** The presenter instance (null until ready) */
+  sink: FramePresenter | null;
   /** Whether the preview is ready for rendering */
   ready: boolean;
   /** Render a frame to the preview canvas */
-  renderFrame: (render: RenderFn, ctx: RenderContext) => Promise<ImageData | null>;
+  renderFrame: (render: RenderFn, ctx: RenderContext) => Promise<void>;
   /** Clear the preview canvas */
   clear: () => void;
 }
 
 /**
- * Hook for managing canvas preview rendering.
- *
- * @example
- * ```tsx
- * const canvasRef = useRef<HTMLCanvasElement>(null);
- * const { ready, renderFrame } = usePreview(canvasRef, { width: 1920, height: 1080 });
- *
- * useEffect(() => {
- *   if (ready) {
- *     renderFrame(myRenderFn, myContext);
- *   }
- * }, [ready, renderFrame]);
- * ```
+ * Hook for managing preview rendering.
  */
 export function usePreview(
-  canvasRef: RefObject<HTMLCanvasElement | null>,
+  containerRef: RefObject<HTMLElement | null>,
   config: UsePreviewConfig
 ): UsePreviewReturn {
-  const [sink, setSink] = useState<CanvasRenderer | null>(null);
+  const [sink, setSink] = useState<FramePresenter | null>(null);
   const [ready, setReady] = useState(false);
 
-  // Track canvas element in state to avoid canvasRef.current in deps
-  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  // Track container element in state to avoid ref.current in deps
+  const [container, setContainer] = useState<HTMLElement | null>(null);
 
   // Sync ref to state on layout (before paint)
   useLayoutEffect(() => {
-    setCanvas(canvasRef.current);
+    setContainer(containerRef.current);
   });
 
-  // Initialize canvas renderer when canvas is available
+  // Initialize presenter when container is available
   useEffect(() => {
-    if (!canvas) {
+    if (!container) {
       setSink(null);
       setReady(false);
       return;
     }
 
-    // Update canvas dimensions
-    canvas.width = config.width;
-    canvas.height = config.height;
-
-    // Create new canvas renderer and warmup for faster first render
-    const newSink = new CanvasRenderer(canvas);
+    // Create new presenter
+    const newSink: FramePresenter = config.mode === "canvas" 
+      ? new CanvasPresenter(container, config.width, config.height)
+      : new HtmlPresenter(container, config.width, config.height);
 
     // Start warmup (pre-cache fonts), then set ready
     let cancelled = false;
-    newSink.warmup().then(() => {
+    
+    const warmupPromise = newSink.warmup ? newSink.warmup() : Promise.resolve();
+    
+    warmupPromise.then(() => {
       if (!cancelled) {
         setSink(newSink);
         setReady(true);
@@ -80,20 +71,22 @@ export function usePreview(
     return () => {
       cancelled = true;
       setReady(false);
+      newSink.dispose();
     };
-  }, [canvas, config.width, config.height]);
+  }, [container, config.width, config.height, config.mode]);
 
   const renderFrame = useCallback(async (
     render: RenderFn,
     ctx: RenderContext
-  ): Promise<ImageData | null> => {
-    if (!sink) return null;
-    return sink.renderFrame(render, ctx);
+  ): Promise<void> => {
+    if (!sink) return;
+    const html = render(ctx);
+    await sink.present(html, ctx);
   }, [sink]);
 
   const clear = useCallback(() => {
-    sink?.clear();
-  }, [sink]);
+    // Presenters don't have a clear method, but we could implement one or just re-render empty
+  }, []);
 
   return {
     sink,

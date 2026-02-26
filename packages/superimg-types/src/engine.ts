@@ -5,6 +5,7 @@ import type {
   AudioValue,
   EncodingOptions,
   BackgroundValue,
+  RenderContext,
 } from "./types.js";
 
 export interface RenderJob {
@@ -73,4 +74,19 @@ export interface RenderPlan {
   encoding?: EncodingOptions;
   data?: Record<string, unknown>;
   background?: BackgroundValue;
+}
+
+export interface FramePresenter {
+  /** Present a frame - sync for HTML, async for canvas */
+  present(html: string, ctx: RenderContext): void | Promise<void>;
+  /** Get the presentation target element */
+  getElement(): HTMLElement;
+  /** Set the logical render size (triggers scale update for CSS-scaled presenters) */
+  setLogicalSize?(width: number, height: number): void;
+  /** Resize the presentation area (deprecated - use setLogicalSize) */
+  resize?(width: number, height: number): void;
+  /** Pre-cache fonts/images for faster first render */
+  warmup?(): Promise<void>;
+  /** Cleanup resources */
+  dispose(): void;
 }

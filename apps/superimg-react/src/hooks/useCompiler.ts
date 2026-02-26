@@ -10,7 +10,7 @@ import {
   type CompileError,
   type CompileResult,
   type RenderContext,
-} from "superimg";
+} from "superimg/browser";
 
 export interface UseCompilerReturn {
   /** Whether the bundler is ready (esbuild-wasm initialized) */

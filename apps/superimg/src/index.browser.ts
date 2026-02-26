@@ -13,7 +13,7 @@ export { initBundler, bundleTemplateBrowser } from "@superimg/core/bundler-brows
 // PLAYER (main browser export)
 // =============================================================================
 
-export { Player } from "@superimg/player";
+export { Player, HtmlPresenter, CanvasPresenter } from "@superimg/player";
 
 // =============================================================================
 // RUNTIME (for advanced usage)

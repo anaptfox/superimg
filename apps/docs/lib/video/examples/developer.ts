@@ -1,6 +1,8 @@
 export const CODE_TYPEWRITER = `// Code Typewriter
 // Syntax highlighted code typing animation
 
+import { defineTemplate } from "superimg";
+
 const CODE = \`function fibonacci(n) {
   if (n <= 1) return n;
   return fibonacci(n - 1) + fibonacci(n - 2);
@@ -8,7 +10,8 @@ const CODE = \`function fibonacci(n) {
 
 console.log(fibonacci(10)); // 55\`;
 
-export function render(ctx) {
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
 
   const visibleChars = Math.floor(CODE.length * sceneProgress * 1.2);
@@ -53,10 +56,13 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const GIT_DIFF = `// Git Diff
 // Side-by-side diff animation
+
+import { defineTemplate } from "superimg";
 
 const REMOVED = [
   "  const result = [];",
@@ -70,7 +76,8 @@ const ADDED = [
   "  return arr.map(x => x * 2);",
 ];
 
-export function render(ctx) {
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   const removedOpacity = Math.max(0, 1 - sceneProgress * 3);
@@ -118,10 +125,13 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const TERMINAL = `// Terminal Session
 // CLI demo with command output
+
+import { defineTemplate } from "superimg";
 
 const COMMANDS = [
   { cmd: "npm create superimg@latest", delay: 0 },
@@ -131,7 +141,8 @@ const COMMANDS = [
   { output: "Server running at http://localhost:3000", delay: 0.7 },
 ];
 
-export function render(ctx) {
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
 
   const showCursor = Math.floor(sceneTimeSeconds * 3) % 2 === 0;
@@ -182,10 +193,13 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const GIT_BRANCH = `// Git Branch Animation
 // Visualizing git workflow with branches
+
+import { defineTemplate } from "superimg";
 
 const COMMITS = {
   main: [
@@ -201,20 +215,21 @@ const COMMITS = {
   ],
 };
 
-export function render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+export default defineTemplate({
+  render(ctx) {
+    const { width, height, sceneProgress } = ctx;
 
-  const padding = 50;
-  const mainY = height * 0.35;
-  const featureY = height * 0.6;
-  const commitSpacing = (width - padding * 2) / 5;
+    const padding = 50;
+    const mainY = height * 0.35;
+    const featureY = height * 0.6;
+    const commitSpacing = (width - padding * 2) / 5;
 
-  // Animation phases
-  const mainProgress = Math.min(1, sceneProgress * 2);
-  const branchProgress = Math.max(0, Math.min(1, (sceneProgress - 0.3) * 2.5));
-  const mergeProgress = Math.max(0, Math.min(1, (sceneProgress - 0.7) * 3));
+    // Animation phases
+    const mainProgress = Math.min(1, sceneProgress * 2);
+    const branchProgress = Math.max(0, Math.min(1, (sceneProgress - 0.3) * 2.5));
+    const mergeProgress = Math.max(0, Math.min(1, (sceneProgress - 0.7) * 3));
 
-  return \`
+    return \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -322,10 +337,13 @@ export function render(ctx) {
       }).join('')}
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const GITHUB_README = `// GitHub README Animation
 // Animated stats badge for your README.md
+
+import { defineTemplate } from "superimg";
 
 const STATS = {
   repo: "superimg/superimg",
@@ -335,7 +353,8 @@ const STATS = {
   version: "v2.1.0",
 };
 
-export function render(ctx) {
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   // Animate counters
@@ -437,10 +456,13 @@ export function render(ctx) {
       ">Perfect for your GitHub README.md</div>
     </div>
   \`;
-}`;
+  },
+});`;
 
 export const CHANGELOG = `// Changelog / Release Notes
 // Animated release notes from version data
+
+import { defineTemplate } from "superimg";
 
 const RELEASES = [
   {
@@ -480,7 +502,8 @@ const typeColors = {
   major: "#8957e5",
 };
 
-export function render(ctx) {
+export default defineTemplate({
+  render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
   return \`
@@ -559,4 +582,5 @@ export function render(ctx) {
       </div>
     </div>
   \`;
-}`;
+  },
+});`;

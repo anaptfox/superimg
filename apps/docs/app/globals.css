@@ -91,6 +91,10 @@ a {
   --sidebar-ring: oklch(0.708 0 0);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+  /* Code block colors */
+  --code-bg: oklch(0.145 0 0);
+  --code-header: oklch(0.18 0 0);
+  --code-foreground: oklch(0.75 0 0);
 }
 
 .dark {
@@ -125,6 +129,10 @@ a {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Code block colors - same in dark mode */
+  --code-bg: oklch(0.145 0 0);
+  --code-header: oklch(0.18 0 0);
+  --code-foreground: oklch(0.75 0 0);
 }
 
 @layer base {

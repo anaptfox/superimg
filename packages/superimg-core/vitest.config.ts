@@ -10,6 +10,16 @@ export default defineConfig({
     resolve: {
       conditions: ['import', 'module', 'browser', 'default'],
     },
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/**/index.ts', 'src/**/__test-utils__/**'],
+      reporter: ['text', 'lcov'],
+      thresholds: {
+        statements: 50,
+        branches: 45,
+      },
+    },
   },
   resolve: {
     conditions: ['import', 'module', 'browser', 'default'],

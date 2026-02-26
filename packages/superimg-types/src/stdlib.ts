@@ -12,16 +12,20 @@ import type * as presets from "@superimg/stdlib/presets";
 
 /**
  * Standard library available via `ctx.std` in render functions.
- * 
+ *
  * @example
  * ```typescript
- * export function render(ctx: RenderContext) {
- *   const { std, sceneProgress } = ctx;
- *   const eased = std.easing.easeOutCubic(sceneProgress);
- *   const x = std.math.lerp(0, 1920, eased);
- *   const bg = std.color.alpha('#FF0000', 0.5);
- *   return `<div style="left: ${x}px; background: ${bg}">Hello</div>`;
- * }
+ * import { defineTemplate } from 'superimg';
+ *
+ * export default defineTemplate({
+ *   render(ctx) {
+ *     const { std, sceneProgress } = ctx;
+ *     const eased = std.easing.easeOutCubic(sceneProgress);
+ *     const x = std.math.lerp(0, 1920, eased);
+ *     const bg = std.color.alpha('#FF0000', 0.5);
+ *     return `<div style="left: ${x}px; background: ${bg}">Hello</div>`;
+ *   },
+ * });
  * ```
  */
 export interface Stdlib {

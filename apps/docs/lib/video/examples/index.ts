@@ -1,4 +1,4 @@
-import { HELLO_WORLD, ANIMATED_TEXT, GRADIENT } from "./basics";
+import { HELLO_WORLD, ANIMATED_TEXT, GRADIENT, COMPLETE_TEMPLATE } from "./basics";
 import { STAR_HISTORY, NPM_STATS, BENCHMARK, TIMELINE } from "./charts";
 import { TESTIMONIALS, MILESTONE, MRR, WEEKLY_SCHEDULE, TWITTER_POST } from "./social";
 import { CODE_TYPEWRITER, GIT_DIFF, TERMINAL, GIT_BRANCH, GITHUB_README, CHANGELOG } from "./developer";
@@ -24,6 +24,7 @@ export const EDITOR_EXAMPLES: EditorExample[] = [
   { id: "hello-world", title: "Hello World", category: "getting-started", code: HELLO_WORLD },
   { id: "animated-text", title: "Animated Text", category: "getting-started", code: ANIMATED_TEXT },
   { id: "gradient", title: "Gradient Background", category: "getting-started", code: GRADIENT },
+  { id: "complete-template", title: "Complete Template (config + defaults)", category: "getting-started", code: COMPLETE_TEMPLATE },
 
   // Marketing
   { id: "product-hunt", title: "Product Hunt Launch Card", category: "marketing", code: PRODUCT_HUNT },
