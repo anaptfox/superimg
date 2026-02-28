@@ -1,5 +1,5 @@
 {
-  "name": "@superimg/example-hover-preview",
+  "name": "superimg-example-hover-preview",
   "version": "0.1.0",
   "private": true,
   "description": "Hover preview demo using SuperImgPlayer",

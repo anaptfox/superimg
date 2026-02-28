@@ -1,5 +1,5 @@
 {
-  "name": "@superimg/example-stats-card",
+  "name": "superimg-example-stats-card",
   "version": "0.1.0",
   "private": true,
   "description": "Animated stats card with counting number and progress bar",

@@ -1,5 +1,5 @@
 {
-  "name": "@superimg/example-define-template",
+  "name": "superimg-example-define-template",
   "version": "0.1.0",
   "private": true,
   "description": "defineTemplate example for SuperImg",

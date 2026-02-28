@@ -1,5 +1,5 @@
 {
-  "name": "@superimg/example-assets-demo",
+  "name": "superimg-example-assets-demo",
   "version": "0.1.0",
   "private": true,
   "description": "Asset API demo with backgrounds, audio, and template defaults",

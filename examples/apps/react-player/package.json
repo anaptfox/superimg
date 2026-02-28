@@ -1,5 +1,5 @@
 {
-  "name": "@superimg/example-react-player",
+  "name": "superimg-example-react-player",
   "version": "0.1.0",
   "private": true,
   "description": "React Player component demo",

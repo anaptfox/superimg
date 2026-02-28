@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001",
-    "build": "pnpm --filter './packages/*' --filter '!@superimg/playwright' run build && SUPERIMG_BROWSER_ONLY=1 pnpm --filter superimg run build && pnpm --filter superimg-react build && next build",
+    "build": "pnpm --filter 'superimg^...' --filter '!@superimg/playwright' run build && SUPERIMG_BROWSER_ONLY=1 pnpm --filter superimg run build && pnpm --filter superimg-react build && next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit",

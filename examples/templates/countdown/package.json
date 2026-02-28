@@ -1,5 +1,5 @@
 {
-  "name": "@superimg/example-countdown",
+  "name": "superimg-example-countdown",
   "version": "0.1.0",
   "private": true,
   "description": "Countdown timer example for SuperImg",
