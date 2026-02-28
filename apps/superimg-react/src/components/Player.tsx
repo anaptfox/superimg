@@ -65,6 +65,8 @@ export interface PlayerProps {
   onPause?: () => void;
   /** Called when playback ends */
   onEnded?: () => void;
+  /** Auto-play when template loads successfully (default: false) */
+  autoPlay?: boolean;
 }
 
 export interface PlayerRef {
@@ -159,6 +161,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     onPlay,
     onPause,
     onEnded,
+    autoPlay,
   },
   ref
 ) {
@@ -235,6 +238,9 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
       setIsReady(result.status === "success");
       if (result.status === "success" && player.store) {
         setStore(player.store);
+        if (autoPlay) {
+          player.play();
+        }
       }
       onLoad?.(result);
     };
@@ -278,6 +284,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     hoverBehavior,
     hoverDelayMs,
     maxCacheFrames,
+    autoPlay,
     onLoad,
     onPlay,
     onPause,

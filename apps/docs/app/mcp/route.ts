@@ -7,7 +7,8 @@ import {
   EXAMPLE_CATEGORIES,
 } from "@/lib/video/examples/index";
 
-const WIDGET_URL = "https://widget.superimg.app/";
+const WIDGET_VERSION = "v4";
+const WIDGET_URL = `https://widget.superimg.app/?${WIDGET_VERSION}`;
 
 const CREATE_VIDEO_DESCRIPTION = `Create a SuperImg video template and open the live editor with a preview.
 

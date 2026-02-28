@@ -24,6 +24,18 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+/** Trusted origins for MCP message handling */
+const TRUSTED_ORIGIN_PATTERNS = [
+  /\.openai\.com$/,
+  /\.chatgpt\.com$/,
+  /\.oaiusercontent\.com$/,
+  /^https?:\/\/localhost(:\d+)?$/,
+];
+
+function isTrustedOrigin(origin: string): boolean {
+  return TRUSTED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
+}
+
 /**
  * Standard MCP Apps bridge listener.
  *
@@ -36,30 +48,41 @@ export function useMcpToolResult() {
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      const data = event.data as JsonRpcMessage;
-      if (!isObject(data)) return;
-
-      if (data.method === "ui/notifications/tool-result") {
-        const params = data.params;
-        if (!isObject(params)) return;
-
-        // Most hosts send result payload in params.result
-        if (params.result && isObject(params.result)) {
-          setResult(params.result);
+      try {
+        // Validate origin for security
+        if (event.origin && !isTrustedOrigin(event.origin)) {
           return;
         }
 
-        // Some hosts may flatten structuredContent at params level
-        if (isObject(params.structuredContent)) {
-          setResult({ structuredContent: params.structuredContent });
-        }
-      }
+        const data = event.data;
+        if (!isObject(data)) return;
 
-      if (data.method === "ui/notifications/tool-input") {
-        const params = data.params;
-        if (isObject(params)) {
-          setResult(params);
+        const message = data as JsonRpcMessage;
+
+        if (message.method === "ui/notifications/tool-result") {
+          const params = message.params;
+          if (!isObject(params)) return;
+
+          // Most hosts send result payload in params.result
+          if (params.result && isObject(params.result)) {
+            setResult(params.result);
+            return;
+          }
+
+          // Some hosts may flatten structuredContent at params level
+          if (isObject(params.structuredContent)) {
+            setResult({ structuredContent: params.structuredContent });
+          }
         }
+
+        if (message.method === "ui/notifications/tool-input") {
+          const params = message.params;
+          if (isObject(params)) {
+            setResult(params);
+          }
+        }
+      } catch {
+        // Silently ignore malformed messages
       }
     };
 
