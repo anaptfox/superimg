@@ -2,9 +2,11 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 import { useOpenAIGlobal } from "./use-openai-global";
+import { useMcpToolResult } from "./use-mcp-tool-result";
 import type { DisplayMode, OpenAIGlobals } from "./types";
 
 export { useOpenAIGlobal } from "./use-openai-global";
+export { useMcpToolResult } from "./use-mcp-tool-result";
 export type { DisplayMode, OpenAIGlobals } from "./types";
 
 /** Type-safe access to tool output delivered by ChatGPT */

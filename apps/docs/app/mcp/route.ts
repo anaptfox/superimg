@@ -160,24 +160,33 @@ function createServer(widgetHtml: string) {
     {
       title: "SuperImg Editor",
       description: "Interactive video editor powered by SuperImg",
-      mimeType: "text/html+skybridge",
+      mimeType: "text/html;profile=mcp-app",
       _meta: {
-        "openai/widgetDescription":
-          "Interactive video template editor with live preview, playback, and MP4 export",
-        "openai/widgetPrefersBorder": true,
+        ui: {
+          prefersBorder: true,
+          domain: baseURL,
+          csp: {
+            connectDomains: [baseURL],
+            resourceDomains: [baseURL],
+          },
+        },
       },
     },
     async (uri) => ({
       contents: [
         {
           uri: uri.href,
-          mimeType: "text/html+skybridge",
+          mimeType: "text/html;profile=mcp-app",
           text: widgetHtml,
           _meta: {
-            "openai/widgetDescription":
-              "Interactive video template editor with live preview",
-            "openai/widgetPrefersBorder": true,
-            "openai/widgetDomain": baseURL,
+            ui: {
+              prefersBorder: true,
+              domain: baseURL,
+              csp: {
+                connectDomains: [baseURL],
+                resourceDomains: [baseURL],
+              },
+            },
           },
         },
       ],
@@ -212,11 +221,11 @@ function createServer(widgetHtml: string) {
           .describe("Duration in seconds (default: 5)"),
       },
       _meta: {
-        "openai/outputTemplate": WIDGET_URI,
-        "openai/toolInvocation/invoking": "Loading editor…",
-        "openai/toolInvocation/invoked": "Editor ready",
-        "openai/widgetAccessible": false,
-        "openai/resultCanProduceWidget": true,
+        securitySchemes: [{ type: "noauth" }],
+        ui: {
+          resourceUri: WIDGET_URI,
+          visibility: ["model", "app"],
+        },
       },
     },
     async ({ code, title, format, duration }) => ({
@@ -254,11 +263,11 @@ function createServer(widgetHtml: string) {
           ),
       },
       _meta: {
-        "openai/outputTemplate": WIDGET_URI,
-        "openai/toolInvocation/invoking": "Loading template…",
-        "openai/toolInvocation/invoked": "Template loaded",
-        "openai/widgetAccessible": false,
-        "openai/resultCanProduceWidget": true,
+        securitySchemes: [{ type: "noauth" }],
+        ui: {
+          resourceUri: WIDGET_URI,
+          visibility: ["model", "app"],
+        },
       },
     },
     async ({ example_id }) => {
@@ -308,6 +317,9 @@ function createServer(widgetHtml: string) {
           ),
       },
       annotations: { readOnlyHint: true },
+      _meta: {
+        securitySchemes: [{ type: "noauth" }],
+      },
     },
     async ({ category }) => {
       const filtered = category

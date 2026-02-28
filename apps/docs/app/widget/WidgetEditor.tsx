@@ -3,13 +3,19 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useVideoSession, Timeline } from "superimg-react";
 import {
-  useWidgetProps,
+  useMcpToolResult,
   useIsChatGptApp,
   useRequestDisplayMode,
   useDisplayMode,
 } from "@/app/hooks";
 
 type ToolOutput = Record<string, unknown> & {
+  structuredContent?: {
+    code?: string;
+    title?: string;
+    format?: "horizontal" | "vertical" | "square";
+    duration?: number;
+  };
   result?: {
     structuredContent?: {
       code?: string;
@@ -57,9 +63,12 @@ export default function WidgetEditor() {
   const requestDisplayMode = useRequestDisplayMode();
   const displayMode = useDisplayMode();
 
-  const toolOutput = useWidgetProps<ToolOutput>();
+  const toolOutput = useMcpToolResult<ToolOutput>();
 
-  const sc = toolOutput?.result?.structuredContent ?? toolOutput;
+  const sc =
+    toolOutput?.structuredContent ??
+    toolOutput?.result?.structuredContent ??
+    toolOutput;
   const code = sc?.code ?? DEFAULT_CODE;
   const title = sc?.title ?? "SuperImg";
   const format = sc?.format ?? "horizontal";

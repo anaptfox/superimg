@@ -63,16 +63,35 @@ function NextChatSDKBootstrap({ baseUrl }: { baseUrl: string }) {
     });
     observer.observe(htmlEl, { attributes: true, attributeOldValue: true });
 
+    var toSafeHistoryUrl = function(url) {
+      try {
+        var u = new URL(url || "", window.location.href);
+        return u.pathname + u.search + u.hash;
+      } catch (_err) {
+        return window.location.pathname + window.location.search + window.location.hash;
+      }
+    };
+
     var origReplace = history.replaceState;
     history.replaceState = function(s, unused, url) {
-      var u = new URL(url || "", window.location.href);
-      origReplace.call(history, s, unused, u.pathname + u.search + u.hash);
+      var safeUrl = toSafeHistoryUrl(url);
+      try {
+        origReplace.call(history, s, unused, safeUrl);
+      } catch (_err) {
+        // Defensive fallback for sandbox cross-origin constraints.
+        origReplace.call(history, s, unused);
+      }
     };
 
     var origPush = history.pushState;
     history.pushState = function(s, unused, url) {
-      var u = new URL(url || "", window.location.href);
-      origPush.call(history, s, unused, u.pathname + u.search + u.hash);
+      var safeUrl = toSafeHistoryUrl(url);
+      try {
+        origPush.call(history, s, unused, safeUrl);
+      } catch (_err) {
+        // Defensive fallback for sandbox cross-origin constraints.
+        origPush.call(history, s, unused);
+      }
     };
 
     var appOrigin = new URL(baseUrl).origin;
