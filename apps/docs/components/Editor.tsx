@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTheme } from "next-themes";
 import { useVideoSession, DataForm, VideoControls, type ExportOptions } from "superimg-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 import posthog from "posthog-js";
+import { ThemeToggle } from "./ThemeToggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -74,6 +76,7 @@ const DURATION_OPTIONS = [1, 3, 5, 10, 15, 30];
 
 export default function Editor() {
   const searchParams = useSearchParams();
+  const { resolvedTheme } = useTheme();
   const [code, setCode] = useState(DEFAULT_TEMPLATE);
   const [activeExampleId, setActiveExampleId] = useState<string | undefined>();
   const [dataPanelOpen, setDataPanelOpen] = useState(true);
@@ -81,6 +84,7 @@ export default function Editor() {
   const [duration, setDuration] = useState(5);
   const [looping, setLooping] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isDark = resolvedTheme === "dark";
 
   // Load example from URL param on mount
   useEffect(() => {
@@ -221,18 +225,18 @@ export default function Editor() {
         activeExampleId={activeExampleId}
       />
       <SidebarInset>
-        <div className="flex h-screen bg-[#1a1a1a] text-white">
+        <div className="flex h-screen bg-background text-foreground">
           {/* Code Editor Panel - Left Side */}
-          <div className="flex min-w-0 flex-1 flex-col border-r border-[#333]">
-            <div className="flex items-center gap-2 border-b border-[#333] bg-[#252526] px-4 py-3 text-sm font-medium">
-              <SidebarTrigger className="-ml-1 text-[#888] hover:text-white" />
+          <div className="flex min-w-0 flex-1 flex-col border-r border-border">
+            <div className="flex items-center gap-2 border-b border-border bg-muted px-4 py-3 text-sm font-medium">
+              <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
               <span>Template Code</span>
             </div>
             <div className="flex-1 overflow-hidden">
               <CodeMirror
                 value={code}
                 height="100%"
-                theme={oneDark}
+                theme={isDark ? oneDark : "light"}
                 extensions={[javascript({ typescript: true })]}
                 onChange={(value) => {
                   setCode(value);
@@ -245,14 +249,14 @@ export default function Editor() {
 
           {/* Preview Panel - Right Side */}
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex items-center justify-between border-b border-[#333] bg-[#252526] px-4 py-2 text-sm font-medium">
+            <div className="flex items-center justify-between border-b border-border bg-muted px-4 py-2 text-sm font-medium">
               <div className="flex items-center gap-3">
                 <span>Preview</span>
                 <Select value={String(duration)} onValueChange={(v) => setDuration(Number(v))}>
-                  <SelectTrigger className="h-7 w-[80px] border-[#444] bg-[#333] text-xs">
+                  <SelectTrigger className="h-7 w-[80px] border-input bg-secondary text-xs">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="border-[#444] bg-[#333]">
+                  <SelectContent>
                     {DURATION_OPTIONS.map((d) => (
                       <SelectItem key={d} value={String(d)} className="text-xs">
                         {d}s
@@ -264,19 +268,22 @@ export default function Editor() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setLooping((prev) => !prev)}
-                  className={`h-7 w-7 p-0 ${looping ? "text-blue-400" : "text-[#888]"}`}
+                  className={`h-7 w-7 p-0 ${looping ? "text-blue-500" : "text-muted-foreground"}`}
                   title={looping ? "Loop enabled (L)" : "Loop disabled (L)"}
                 >
                   <Repeat className="h-4 w-4" />
                 </Button>
               </div>
-              <Badge variant={session.error ? "destructive" : "secondary"}>
-                {session.status}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Badge variant={session.error ? "destructive" : "secondary"}>
+                  {session.status}
+                </Badge>
+              </div>
             </div>
 
-            {/* Preview Container */}
-            <div className="flex flex-1 items-center justify-center overflow-hidden bg-[#0d0d0d] p-4">
+            {/* Preview Container - stays dark for video contrast */}
+            <div className="flex flex-1 items-center justify-center overflow-hidden bg-neutral-950 p-4">
               <div
                 ref={containerRef}
                 className="max-h-full max-w-full shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
@@ -289,9 +296,9 @@ export default function Editor() {
               <Collapsible
                 open={dataPanelOpen}
                 onOpenChange={setDataPanelOpen}
-                className="border-t border-[#333] bg-[#252526]"
+                className="border-t border-border bg-muted"
               >
-                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-2 text-sm font-medium hover:bg-[#2a2a2a]">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-2 text-sm font-medium hover:bg-accent">
                   <span>Data</span>
                   <svg
                     className={`h-4 w-4 transition-transform ${dataPanelOpen ? "rotate-180" : ""}`}
@@ -308,6 +315,7 @@ export default function Editor() {
                       defaults={session.template.defaults}
                       data={formData}
                       onChange={handleDataChange}
+                      theme={isDark ? "dark" : "light"}
                     />
                   </div>
                 </CollapsibleContent>
@@ -327,7 +335,7 @@ export default function Editor() {
               exportProgress={session.exportProgress}
               currentFormat={session.format}
               onFormatChange={session.setFormat}
-              className="border-t border-[#333]"
+              className="border-t border-border"
             />
 
             {/* Error Display */}

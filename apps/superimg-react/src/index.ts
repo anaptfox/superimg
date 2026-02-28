@@ -48,7 +48,7 @@ export { ExportButton, type ExportButtonProps } from "./components/ExportButton.
 export { ExportDialog, type ExportDialogProps, type ExportOptions } from "./components/ExportDialog.js";
 export { FormatSelector, type FormatSelectorProps, type FormatPreset } from "./components/FormatSelector.js";
 export { VideoControls, type VideoControlsProps } from "./components/VideoControls.js";
-export { DataForm, type DataFormProps } from "./components/DataForm.js";
+export { DataForm, type DataFormProps, type DataFormTheme } from "./components/DataForm.js";
 
 // =============================================================================
 // UTILITIES
