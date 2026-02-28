@@ -14,6 +14,12 @@ import {
   setNoiseSeed,
   degToRad,
   radToDeg,
+  smoothstep,
+  step,
+  fract,
+  sign,
+  repeat,
+  pingPong,
 } from './math';
 
 describe('lerp', () => {
@@ -225,5 +231,119 @@ describe('radToDeg', () => {
     expect(radToDeg(Math.PI / 2)).toBeCloseTo(90);
     expect(radToDeg(Math.PI)).toBeCloseTo(180);
     expect(radToDeg(Math.PI * 2)).toBeCloseTo(360);
+  });
+});
+
+describe('smoothstep', () => {
+  it('returns 0 when x <= edge0', () => {
+    expect(smoothstep(0, 1, -1)).toBe(0);
+    expect(smoothstep(0, 1, 0)).toBe(0);
+  });
+
+  it('returns 1 when x >= edge1', () => {
+    expect(smoothstep(0, 1, 1)).toBe(1);
+    expect(smoothstep(0, 1, 2)).toBe(1);
+  });
+
+  it('returns 0.5 at midpoint', () => {
+    expect(smoothstep(0, 1, 0.5)).toBe(0.5);
+  });
+
+  it('has smooth curve (Hermite interpolation)', () => {
+    // Values near edges should be close to 0 or 1
+    expect(smoothstep(0, 1, 0.1)).toBeLessThan(0.1);
+    expect(smoothstep(0, 1, 0.9)).toBeGreaterThan(0.9);
+  });
+});
+
+describe('step', () => {
+  it('returns 0 below edge', () => {
+    expect(step(0.5, 0.3)).toBe(0);
+    expect(step(0.5, 0)).toBe(0);
+  });
+
+  it('returns 1 at/above edge', () => {
+    expect(step(0.5, 0.5)).toBe(1);
+    expect(step(0.5, 0.7)).toBe(1);
+    expect(step(0.5, 1)).toBe(1);
+  });
+});
+
+describe('fract', () => {
+  it('returns fractional part', () => {
+    expect(fract(1.5)).toBeCloseTo(0.5);
+    expect(fract(2.75)).toBeCloseTo(0.75);
+    expect(fract(3)).toBeCloseTo(0);
+  });
+
+  it('handles negative numbers', () => {
+    expect(fract(-0.25)).toBeCloseTo(0.75);
+    expect(fract(-1.5)).toBeCloseTo(0.5);
+  });
+
+  it('always returns value in [0, 1)', () => {
+    for (let i = -10; i <= 10; i += 0.1) {
+      const result = fract(i);
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThan(1);
+    }
+  });
+});
+
+describe('sign', () => {
+  it('returns 1 for positive', () => {
+    expect(sign(5)).toBe(1);
+    expect(sign(0.001)).toBe(1);
+  });
+
+  it('returns -1 for negative', () => {
+    expect(sign(-5)).toBe(-1);
+    expect(sign(-0.001)).toBe(-1);
+  });
+
+  it('returns 0 for zero', () => {
+    expect(sign(0)).toBe(0);
+  });
+});
+
+describe('repeat', () => {
+  it('wraps to [0, length)', () => {
+    expect(repeat(2.5, 2)).toBeCloseTo(0.5);
+    expect(repeat(4, 2)).toBeCloseTo(0);
+    expect(repeat(5, 2)).toBeCloseTo(1);
+  });
+
+  it('handles values within range', () => {
+    expect(repeat(0.5, 2)).toBeCloseTo(0.5);
+    expect(repeat(1.5, 2)).toBeCloseTo(1.5);
+  });
+
+  it('handles negative input', () => {
+    expect(repeat(-0.5, 2)).toBeCloseTo(1.5);
+    expect(repeat(-2, 2)).toBeCloseTo(0);
+  });
+});
+
+describe('pingPong', () => {
+  it('oscillates between 0 and length', () => {
+    expect(pingPong(0, 1)).toBeCloseTo(0);
+    expect(pingPong(0.5, 1)).toBeCloseTo(0.5);
+    expect(pingPong(1, 1)).toBeCloseTo(1);
+    expect(pingPong(1.5, 1)).toBeCloseTo(0.5);
+    expect(pingPong(2, 1)).toBeCloseTo(0);
+  });
+
+  it('continues oscillating', () => {
+    expect(pingPong(2.5, 1)).toBeCloseTo(0.5);
+    expect(pingPong(3, 1)).toBeCloseTo(1);
+    expect(pingPong(4, 1)).toBeCloseTo(0);
+  });
+
+  it('stays within bounds', () => {
+    for (let t = 0; t <= 10; t += 0.1) {
+      const result = pingPong(t, 2);
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(2);
+    }
   });
 });

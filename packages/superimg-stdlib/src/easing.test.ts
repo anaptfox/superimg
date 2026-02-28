@@ -2,15 +2,27 @@ import { describe, it, expect } from 'vitest';
 import {
   clamp01,
   linear,
+  easeInQuad,
+  easeOutQuad,
+  easeInOutQuad,
+  easeInSine,
+  easeOutSine,
+  easeInOutSine,
   easeInCubic,
   easeOutCubic,
   easeInOutCubic,
   easeInQuart,
   easeOutQuart,
   easeInOutQuart,
+  easeInQuint,
+  easeOutQuint,
+  easeInOutQuint,
   easeInExpo,
   easeOutExpo,
   easeInOutExpo,
+  easeInCirc,
+  easeOutCirc,
+  easeInOutCirc,
   easeInBack,
   easeOutBack,
   easeInOutBack,
@@ -37,6 +49,48 @@ describe('linear', () => {
     expect(linear(0)).toBe(0);
     expect(linear(0.5)).toBe(0.5);
     expect(linear(1)).toBe(1);
+  });
+});
+
+// Quad family
+describe('easeInQuad', () => {
+  it('starts at 0', () => expect(easeInQuad(0)).toBe(0));
+  it('ends at 1', () => expect(easeInQuad(1)).toBe(1));
+  it('accelerates (t² curve)', () => expect(easeInQuad(0.5)).toBe(0.25));
+});
+
+describe('easeOutQuad', () => {
+  it('starts at 0', () => expect(easeOutQuad(0)).toBe(0));
+  it('ends at 1', () => expect(easeOutQuad(1)).toBe(1));
+  it('decelerates', () => expect(easeOutQuad(0.5)).toBe(0.75));
+});
+
+describe('easeInOutQuad', () => {
+  it('starts at 0', () => expect(easeInOutQuad(0)).toBe(0));
+  it('ends at 1', () => expect(easeInOutQuad(1)).toBe(1));
+  it('is symmetric', () => {
+    expect(Math.abs(easeInOutQuad(0.25) + easeInOutQuad(0.75) - 1)).toBeLessThan(0.01);
+  });
+});
+
+// Sine family
+describe('easeInSine', () => {
+  it('starts at 0', () => expect(easeInSine(0)).toBe(0));
+  it('ends at 1', () => expect(easeInSine(1)).toBeCloseTo(1));
+  it('accelerates gently', () => expect(easeInSine(0.5)).toBeLessThan(0.5));
+});
+
+describe('easeOutSine', () => {
+  it('starts at 0', () => expect(easeOutSine(0)).toBe(0));
+  it('ends at 1', () => expect(easeOutSine(1)).toBeCloseTo(1));
+  it('decelerates gently', () => expect(easeOutSine(0.5)).toBeGreaterThan(0.5));
+});
+
+describe('easeInOutSine', () => {
+  it('starts at 0', () => expect(easeInOutSine(0)).toBeCloseTo(0));
+  it('ends at 1', () => expect(easeInOutSine(1)).toBeCloseTo(1));
+  it('is symmetric', () => {
+    expect(Math.abs(easeInOutSine(0.25) + easeInOutSine(0.75) - 1)).toBeLessThan(0.01);
   });
 });
 
@@ -84,6 +138,48 @@ describe('easeInOutCubic', () => {
   });
 });
 
+// Quint family
+describe('easeInQuint', () => {
+  it('starts at 0', () => expect(easeInQuint(0)).toBe(0));
+  it('ends at 1', () => expect(easeInQuint(1)).toBe(1));
+  it('accelerates (t⁵ curve)', () => expect(easeInQuint(0.5)).toBe(0.03125));
+});
+
+describe('easeOutQuint', () => {
+  it('starts at 0', () => expect(easeOutQuint(0)).toBe(0));
+  it('ends at 1', () => expect(easeOutQuint(1)).toBe(1));
+  it('decelerates', () => expect(easeOutQuint(0.5)).toBe(0.96875));
+});
+
+describe('easeInOutQuint', () => {
+  it('starts at 0', () => expect(easeInOutQuint(0)).toBe(0));
+  it('ends at 1', () => expect(easeInOutQuint(1)).toBe(1));
+  it('is symmetric', () => {
+    expect(Math.abs(easeInOutQuint(0.25) + easeInOutQuint(0.75) - 1)).toBeLessThan(0.01);
+  });
+});
+
+// Circ family
+describe('easeInCirc', () => {
+  it('starts at 0', () => expect(easeInCirc(0)).toBe(0));
+  it('ends at 1', () => expect(easeInCirc(1)).toBe(1));
+  it('accelerates (circular curve)', () => expect(easeInCirc(0.5)).toBeLessThan(0.2));
+});
+
+describe('easeOutCirc', () => {
+  it('starts at 0', () => expect(easeOutCirc(0)).toBe(0));
+  it('ends at 1', () => expect(easeOutCirc(1)).toBe(1));
+  it('decelerates', () => expect(easeOutCirc(0.5)).toBeGreaterThan(0.8));
+});
+
+describe('easeInOutCirc', () => {
+  it('starts at 0', () => expect(easeInOutCirc(0)).toBe(0));
+  it('ends at 1', () => expect(easeInOutCirc(1)).toBe(1));
+  it('is symmetric', () => {
+    expect(Math.abs(easeInOutCirc(0.25) + easeInOutCirc(0.75) - 1)).toBeLessThan(0.01);
+  });
+});
+
 describe('easeOutBack', () => {
   it('overshoots at end', () => {
     const value = easeOutBack(0.8);
@@ -122,15 +218,27 @@ describe('easeOutBounce', () => {
 describe('easing out-of-range inputs', () => {
   const easings = [
     linear,
+    easeInQuad,
+    easeOutQuad,
+    easeInOutQuad,
+    easeInSine,
+    easeOutSine,
+    easeInOutSine,
     easeInCubic,
     easeOutCubic,
     easeInOutCubic,
     easeInQuart,
     easeOutQuart,
     easeInOutQuart,
+    easeInQuint,
+    easeOutQuint,
+    easeInOutQuint,
     easeInExpo,
     easeOutExpo,
     easeInOutExpo,
+    easeInCirc,
+    easeOutCirc,
+    easeInOutCirc,
     easeInBack,
     easeOutBack,
     easeInOutBack,
@@ -169,15 +277,27 @@ describe('easing out-of-range inputs', () => {
   it('non-overshoot curves stay in [0, 1] for t in [0, 1]', () => {
     const nonOvershoot = [
       linear,
+      easeInQuad,
+      easeOutQuad,
+      easeInOutQuad,
+      easeInSine,
+      easeOutSine,
+      easeInOutSine,
       easeInCubic,
       easeOutCubic,
       easeInOutCubic,
       easeInQuart,
       easeOutQuart,
       easeInOutQuart,
+      easeInQuint,
+      easeOutQuint,
+      easeInOutQuint,
       easeInExpo,
       easeOutExpo,
       easeInOutExpo,
+      easeInCirc,
+      easeOutCirc,
+      easeInOutCirc,
     ];
     for (const fn of nonOvershoot) {
       for (let i = 0; i <= 100; i++) {
