@@ -45,10 +45,13 @@ export default function RootLayout({
  * external link handler, fetch rewriting (sandbox origin → real app origin).
  */
 function NextChatSDKBootstrap({ baseUrl }: { baseUrl: string }) {
+  const bootstrapVersion = "superimg-bootstrap-v2";
   const bootstrapScript = `(function(){
+    var bootstrapVersion = ${JSON.stringify(bootstrapVersion)};
     var baseUrl = ${JSON.stringify(baseUrl)};
     window.innerBaseUrl = baseUrl;
     window.__isChatGptApp = typeof window.openai !== "undefined";
+    window.__superimgBootstrapVersion = bootstrapVersion;
 
     var htmlEl = document.documentElement;
     var observer = new MutationObserver(function(mutations) {
@@ -145,6 +148,19 @@ function NextChatSDKBootstrap({ baseUrl }: { baseUrl: string }) {
 
         return origFetch.call(window, input, init);
       };
+    }
+
+    // Runtime assertion marker: helps verify latest bootstrap loaded in ChatGPT iframe.
+    window.__superimgHistoryPatchActive = true;
+    try {
+      history.replaceState(
+        history.state,
+        "",
+        window.location.pathname + window.location.search + window.location.hash
+      );
+    } catch (_err) {
+      // If this still throws in sandbox, host is likely serving stale cached widget code.
+      window.__superimgHistoryPatchActive = false;
     }
   })();`;
 

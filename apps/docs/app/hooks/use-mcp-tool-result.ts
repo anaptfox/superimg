@@ -2,12 +2,22 @@
 
 import { useEffect, useState } from "react";
 
+export interface McpToolResultPayload {
+  structuredContent?: Record<string, unknown>;
+  result?: {
+    structuredContent?: Record<string, unknown>;
+  };
+  content?: unknown;
+  _meta?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 interface JsonRpcMessage {
   jsonrpc?: string;
   method?: string;
   params?: {
-    result?: unknown;
-    structuredContent?: unknown;
+    result?: McpToolResultPayload;
+    structuredContent?: Record<string, unknown>;
     [key: string]: unknown;
   };
 }
@@ -23,8 +33,8 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * - ui/notifications/tool-result
  * - ui/notifications/tool-input (fallback shape in some hosts)
  */
-export function useMcpToolResult<T extends Record<string, unknown>>() {
-  const [result, setResult] = useState<T | null>(null);
+export function useMcpToolResult() {
+  const [result, setResult] = useState<McpToolResultPayload | null>(null);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -36,21 +46,21 @@ export function useMcpToolResult<T extends Record<string, unknown>>() {
         if (!isObject(params)) return;
 
         // Most hosts send result payload in params.result
-        if (isObject(params.result)) {
-          setResult(params.result as T);
+        if (params.result && isObject(params.result)) {
+          setResult(params.result);
           return;
         }
 
         // Some hosts may flatten structuredContent at params level
         if (isObject(params.structuredContent)) {
-          setResult({ structuredContent: params.structuredContent } as unknown as T);
+          setResult({ structuredContent: params.structuredContent });
         }
       }
 
       if (data.method === "ui/notifications/tool-input") {
         const params = data.params;
         if (isObject(params)) {
-          setResult(params as T);
+          setResult(params);
         }
       }
     };

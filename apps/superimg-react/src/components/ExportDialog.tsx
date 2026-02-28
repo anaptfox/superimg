@@ -1,4 +1,4 @@
-//! ExportDialog - Self-contained export modal with format, quality, and progress
+//! ExportDialog - Self-contained export modal with size, format, and progress
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { FormatOption } from "superimg/browser";
@@ -8,7 +8,6 @@ import type { FormatOption } from "superimg/browser";
 // ============================================================================
 
 type OutputFormat = "mp4" | "webm";
-type QualityPreset = "low" | "medium" | "high" | "very-high";
 
 export interface ExportDialogProps {
   /** Whether the dialog is open */
@@ -33,7 +32,6 @@ export interface ExportOptions {
   format?: FormatOption;
   encoding?: {
     format?: OutputFormat;
-    video?: { bitrate?: QualityPreset };
   };
 }
 
@@ -46,13 +44,6 @@ const FORMAT_PRESETS = [
   { id: "vertical" as const, label: "1080 × 1920", sub: "Portrait" },
   { id: "square" as const, label: "1080 × 1080", sub: "Square" },
 ] as const;
-
-const QUALITY_PRESETS: { id: QualityPreset; label: string }[] = [
-  { id: "low", label: "Low" },
-  { id: "medium", label: "Medium" },
-  { id: "high", label: "High" },
-  { id: "very-high", label: "Very High" },
-];
 
 const OUTPUT_FORMATS: { id: OutputFormat; label: string }[] = [
   { id: "mp4", label: "MP4" },
@@ -206,7 +197,7 @@ const S = {
 // ============================================================================
 
 /**
- * A self-contained export dialog with format, quality, and output type pickers.
+ * A self-contained export dialog with size and format pickers.
  * Renders as a portal overlay.
  *
  * @example
@@ -243,7 +234,6 @@ export function ExportDialog({
       return "horizontal";
     }
   );
-  const [quality, setQuality] = useState<QualityPreset>("high");
   const [outputFmt, setOutputFmt] = useState<OutputFormat>("mp4");
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -278,7 +268,6 @@ export function ExportDialog({
       format: resolution as FormatOption,
       encoding: {
         format: outputFmt,
-        video: { bitrate: quality },
       },
     });
 
@@ -287,7 +276,7 @@ export function ExportDialog({
     } else {
       setError("Export failed. Check browser console for details.");
     }
-  }, [onExport, resolution, outputFmt, quality]);
+  }, [onExport, resolution, outputFmt]);
 
   const handleDownload = useCallback(() => {
     if (!resultBlob) return;
@@ -365,22 +354,6 @@ export function ExportDialog({
                   >
                     {p.sub}
                     <span style={S.pillSub}>{p.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Quality */}
-            <div style={S.fieldGroup}>
-              <span style={S.label}>Quality</span>
-              <div style={S.pillRow}>
-                {QUALITY_PRESETS.map((q) => (
-                  <button
-                    key={q.id}
-                    style={S.pill(quality === q.id)}
-                    onClick={() => setQuality(q.id)}
-                  >
-                    {q.label}
                   </button>
                 ))}
               </div>

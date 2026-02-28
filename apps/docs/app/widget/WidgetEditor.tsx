@@ -9,25 +9,20 @@ import {
   useDisplayMode,
 } from "@/app/hooks";
 
-type ToolOutput = Record<string, unknown> & {
-  structuredContent?: {
-    code?: string;
-    title?: string;
-    format?: "horizontal" | "vertical" | "square";
-    duration?: number;
-  };
-  result?: {
-    structuredContent?: {
-      code?: string;
-      title?: string;
-      format?: "horizontal" | "vertical" | "square";
-      duration?: number;
-    };
-  };
-  code?: string;
-  title?: string;
-  format?: "horizontal" | "vertical" | "square";
-  duration?: number;
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === "number" ? value : undefined;
+}
+
+function readFormat(
+  value: unknown
+): "horizontal" | "vertical" | "square" | undefined {
+  return value === "horizontal" || value === "vertical" || value === "square"
+    ? value
+    : undefined;
 }
 
 const DEFAULT_CODE = `import { defineTemplate } from "superimg";
@@ -63,16 +58,15 @@ export default function WidgetEditor() {
   const requestDisplayMode = useRequestDisplayMode();
   const displayMode = useDisplayMode();
 
-  const toolOutput = useMcpToolResult<ToolOutput>();
-
-  const sc =
-    toolOutput?.structuredContent ??
+  const toolOutput = useMcpToolResult();
+  const sc: Record<string, unknown> | undefined = (toolOutput?.structuredContent ??
     toolOutput?.result?.structuredContent ??
-    toolOutput;
-  const code = sc?.code ?? DEFAULT_CODE;
-  const title = sc?.title ?? "SuperImg";
-  const format = sc?.format ?? "horizontal";
-  const duration = sc?.duration ?? 5;
+    toolOutput ??
+    undefined);
+  const code = readString(sc?.["code"]) ?? DEFAULT_CODE;
+  const title = readString(sc?.["title"]) ?? "SuperImg";
+  const format = readFormat(sc?.["format"]) ?? "horizontal";
+  const duration = readNumber(sc?.["duration"]) ?? 5;
 
   const session = useVideoSession({
     containerRef,
