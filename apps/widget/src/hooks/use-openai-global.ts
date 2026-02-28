@@ -1,5 +1,3 @@
-"use client";
-
 import { useSyncExternalStore } from "react";
 import {
   SET_GLOBALS_EVENT_TYPE,

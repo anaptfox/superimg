@@ -7,7 +7,7 @@ import {
   EXAMPLE_CATEGORIES,
 } from "@/lib/video/examples/index";
 
-const WIDGET_URI = "ui://superimg/editor-v3.html";
+const WIDGET_URL = "https://widget.superimg.app/";
 
 const CREATE_VIDEO_DESCRIPTION = `Create a SuperImg video template and open the live editor with a preview.
 
@@ -142,21 +142,16 @@ export default defineTemplate({
 6. Use \${} interpolation for all dynamic values inside the HTML string.
 7. Always use std.tween() for smooth animations — avoid raw Math for motion.`;
 
-async function fetchWidgetHtml(): Promise<string> {
-  const res = await fetch(`${baseURL}/widget`);
-  return res.text();
-}
-
-function createServer(widgetHtml: string) {
+function createServer() {
   const server = new McpServer(
     { name: "superimg", version: "1.0.0" },
     { capabilities: { tools: {}, resources: {} } }
   );
 
-  // Resource: the editor widget (served from /widget page)
+  // Resource: the editor widget (fetched from widget.superimg.app)
   server.registerResource(
     "editor-widget",
-    WIDGET_URI,
+    WIDGET_URL,
     {
       title: "SuperImg Editor",
       description: "Interactive video editor powered by SuperImg",
@@ -166,31 +161,25 @@ function createServer(widgetHtml: string) {
           prefersBorder: true,
           domain: baseURL,
           csp: {
-            connectDomains: [baseURL],
-            resourceDomains: [baseURL],
+            connectDomains: [baseURL, "https://widget.superimg.app"],
+            resourceDomains: [baseURL, "https://widget.superimg.app"],
           },
         },
       },
     },
-    async (uri) => ({
-      contents: [
-        {
-          uri: uri.href,
-          mimeType: "text/html;profile=mcp-app",
-          text: widgetHtml,
-          _meta: {
-            ui: {
-              prefersBorder: true,
-              domain: baseURL,
-              csp: {
-                connectDomains: [baseURL],
-                resourceDomains: [baseURL],
-              },
-            },
+    async () => {
+      const res = await fetch(WIDGET_URL);
+      const text = await res.text();
+      return {
+        contents: [
+          {
+            uri: WIDGET_URL,
+            mimeType: "text/html;profile=mcp-app",
+            text,
           },
-        },
-      ],
-    })
+        ],
+      };
+    }
   );
 
   // Tool: create_video — AI generates template code, widget renders it
@@ -223,7 +212,7 @@ function createServer(widgetHtml: string) {
       _meta: {
         securitySchemes: [{ type: "noauth" }],
         ui: {
-          resourceUri: WIDGET_URI,
+          resourceUri: WIDGET_URL,
           visibility: ["model", "app"],
         },
       },
@@ -265,7 +254,7 @@ function createServer(widgetHtml: string) {
       _meta: {
         securitySchemes: [{ type: "noauth" }],
         ui: {
-          resourceUri: WIDGET_URI,
+          resourceUri: WIDGET_URL,
           visibility: ["model", "app"],
         },
       },
@@ -352,8 +341,7 @@ function createServer(widgetHtml: string) {
 }
 
 const handler = async (req: Request) => {
-  const widgetHtml = await fetchWidgetHtml();
-  const server = createServer(widgetHtml);
+  const server = createServer();
 
   const transport = new WebStandardStreamableHTTPServerTransport();
   await server.connect(transport);

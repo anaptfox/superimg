@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useVideoSession, Timeline } from "superimg-react";
 import {
@@ -7,7 +5,7 @@ import {
   useIsChatGptApp,
   useRequestDisplayMode,
   useDisplayMode,
-} from "@/app/hooks";
+} from "@/hooks";
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -52,7 +50,7 @@ export default defineTemplate({
 });
 `;
 
-export default function WidgetEditor() {
+export default function Widget() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isChatGptApp = useIsChatGptApp();
   const requestDisplayMode = useRequestDisplayMode();

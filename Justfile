@@ -44,6 +44,14 @@ build-pkg name:
 dev-pkg name:
     cd "{{root}}" && pnpm --filter "*{{name}}*" run dev
 
+# Build MCP widget (standalone Vite app for ChatGPT)
+build-widget:
+    cd "{{root}}/apps/widget" && pnpm run build
+
+# Dev widget standalone
+dev-widget:
+    cd "{{root}}/apps/widget" && pnpm run dev
+
 # Test a specific package
 test-pkg name:
     cd "{{root}}" && pnpm --filter "*{{name}}*" run test

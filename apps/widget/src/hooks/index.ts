@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useSyncExternalStore } from "react";
 import { useOpenAIGlobal } from "./use-openai-global";
 import { useMcpToolResult } from "./use-mcp-tool-result";
