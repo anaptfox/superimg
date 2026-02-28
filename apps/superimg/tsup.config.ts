@@ -46,9 +46,5 @@ export default defineConfig({
     "vite",
     "ws",
   ],
-  ...(browserOnly
-    ? {
-        onSuccess: "cp dist/index.browser.js dist/index.server.js && cp dist/index.browser.d.ts dist/index.server.d.ts",
-      }
-    : { onSuccess: "cd dev-ui && vite build" }),
+  ...(browserOnly ? {} : { onSuccess: "cd dev-ui && vite build" }),
 });

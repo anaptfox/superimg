@@ -46,7 +46,7 @@
   },
   "scripts": {
     "build": "tsup",
-    "build:browser": "SUPERIMG_BROWSER_ONLY=1 tsup",
+    "build:browser": "SUPERIMG_BROWSER_ONLY=1 tsup && cp dist/index.browser.js dist/index.server.js && cp dist/index.browser.d.ts dist/index.server.d.ts",
     "dev": "tsup --watch",
     "test": "vitest --run --passWithNoTests",
     "clean": "rm -rf dist"
