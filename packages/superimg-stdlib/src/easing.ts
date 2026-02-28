@@ -30,6 +30,44 @@ export function linear(t: number): number {
 }
 
 // ============================================================================
+// Quad Family — simple quadratic (t²), gentle acceleration
+// ============================================================================
+
+export function easeInQuad(t: number): number {
+  const x = clamp01(t);
+  return x * x;
+}
+
+export function easeOutQuad(t: number): number {
+  const x = 1 - clamp01(t);
+  return 1 - x * x;
+}
+
+export function easeInOutQuad(t: number): number {
+  const x = clamp01(t);
+  return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+}
+
+// ============================================================================
+// Sine Family — gentle, CSS default feel
+// ============================================================================
+
+export function easeInSine(t: number): number {
+  const x = clamp01(t);
+  return 1 - Math.cos((x * Math.PI) / 2);
+}
+
+export function easeOutSine(t: number): number {
+  const x = clamp01(t);
+  return Math.sin((x * Math.PI) / 2);
+}
+
+export function easeInOutSine(t: number): number {
+  const x = clamp01(t);
+  return -(Math.cos(Math.PI * x) - 1) / 2;
+}
+
+// ============================================================================
 // Cubic Family
 // ============================================================================
 
@@ -86,6 +124,25 @@ export function easeInOutQuart(t: number): number {
 }
 
 // ============================================================================
+// Quint Family — t⁵
+// ============================================================================
+
+export function easeInQuint(t: number): number {
+  const x = clamp01(t);
+  return x * x * x * x * x;
+}
+
+export function easeOutQuint(t: number): number {
+  const x = 1 - clamp01(t);
+  return 1 - x * x * x * x * x;
+}
+
+export function easeInOutQuint(t: number): number {
+  const x = clamp01(t);
+  return x < 0.5 ? 16 * x * x * x * x * x : 1 - Math.pow(-2 * x + 2, 5) / 2;
+}
+
+// ============================================================================
 // Exponential Family
 // ============================================================================
 
@@ -106,6 +163,27 @@ export function easeInOutExpo(t: number): number {
   return x < 0.5
     ? Math.pow(2, 20 * x - 10) / 2
     : (2 - Math.pow(2, -20 * x + 10)) / 2;
+}
+
+// ============================================================================
+// Circ Family — circular curve
+// ============================================================================
+
+export function easeInCirc(t: number): number {
+  const x = clamp01(t);
+  return 1 - Math.sqrt(1 - x * x);
+}
+
+export function easeOutCirc(t: number): number {
+  const x = clamp01(t) - 1;
+  return Math.sqrt(1 - x * x);
+}
+
+export function easeInOutCirc(t: number): number {
+  const x = clamp01(t);
+  return x < 0.5
+    ? (1 - Math.sqrt(1 - Math.pow(2 * x, 2))) / 2
+    : (Math.sqrt(1 - Math.pow(-2 * x + 2, 2)) + 1) / 2;
 }
 
 // ============================================================================

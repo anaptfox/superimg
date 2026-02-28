@@ -50,7 +50,7 @@ export default defineTemplate({
 
 ### std.tween — eased interpolation (canonical animation primitive)
   std.tween(from, to, progress, easing?)
-  Easings: "easeOutCubic", "easeInOutQuad", "easeOutBack", "easeOutElastic", "easeInCubic", "easeOutQuart", "linear"
+  Easings: "linear", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInSine", "easeOutSine", "easeInOutSine", "easeInCubic", "easeOutCubic", "easeInOutCubic", "easeInQuart", "easeOutQuart", "easeInOutQuart", "easeInQuint", "easeOutQuint", "easeInOutQuint", "easeInExpo", "easeOutExpo", "easeInOutExpo", "easeInCirc", "easeOutCirc", "easeInOutCirc", "easeInBack", "easeOutBack", "easeInOutBack", "easeInElastic", "easeOutElastic", "easeInOutElastic", "easeInBounce", "easeOutBounce", "easeInOutBounce"
 
 ### std.math
   std.math.clamp(val, min, max)

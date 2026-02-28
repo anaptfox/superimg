@@ -186,3 +186,75 @@ export function degToRad(deg: number): number {
 export function radToDeg(rad: number): number {
   return rad * (180 / Math.PI);
 }
+
+// ============================================================================
+// Animation & Graphics Utilities
+// ============================================================================
+
+/**
+ * Hermite interpolation: smooth 0→1 transition between edge0 and edge1.
+ * @ai-hint Used in shaders and smooth transitions. Returns 0 for x ≤ edge0, 1 for x ≥ edge1.
+ * @param edge0 - Start of transition
+ * @param edge1 - End of transition
+ * @param x - Input value
+ * @returns Value in [0, 1] with smooth edges
+ */
+export function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Step function: returns 0 if x < edge, 1 otherwise.
+ * @ai-hint Fundamental in graphics. Use for hard cutoffs.
+ * @param edge - Threshold
+ * @param x - Input value
+ * @returns 0 or 1
+ */
+export function step(edge: number, x: number): number {
+  return x < edge ? 0 : 1;
+}
+
+/**
+ * Fractional part of x (x - floor(x)).
+ * @ai-hint Common for looping animations: fract(time) gives 0→1 each cycle.
+ * @param x - Input value
+ * @returns Value in [0, 1)
+ */
+export function fract(x: number): number {
+  return x - Math.floor(x);
+}
+
+/**
+ * Sign of x: -1 if negative, 0 if zero, 1 if positive.
+ * @param x - Input value
+ * @returns -1, 0, or 1
+ */
+export function sign(x: number): number {
+  if (x > 0) return 1;
+  if (x < 0) return -1;
+  return 0;
+}
+
+/**
+ * Wrap t to [0, length). Use for looping animations.
+ * @ai-hint repeat(time, 2) gives 0→2, 0→2, ... for a 2-second loop.
+ * @param t - Time or value
+ * @param length - Period length
+ * @returns Value in [0, length)
+ */
+export function repeat(t: number, length: number): number {
+  return clamp(t - Math.floor(t / length) * length, 0, length);
+}
+
+/**
+ * Oscillate between 0 and length (ping-pong). Use for back-and-forth motion.
+ * @ai-hint pingPong(time, 1) goes 0→1→0→1... over time.
+ * @param t - Time or value
+ * @param length - Amplitude/period
+ * @returns Value in [0, length]
+ */
+export function pingPong(t: number, length: number): number {
+  const x = repeat(t, length * 2);
+  return length - Math.abs(x - length);
+}

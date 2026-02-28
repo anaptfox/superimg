@@ -90,3 +90,11 @@ export function center(): string {
 export function stack(): string {
   return "display:flex;flex-direction:column";
 }
+
+/**
+ * Preset: flexbox row layout.
+ * Use for horizontal layouts (opposite of stack).
+ */
+export function row(): string {
+  return "display:flex;flex-direction:row";
+}
