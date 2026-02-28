@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronRight, Search, X, Loader2 } from "lucide-react";
+import { ChevronRight, Search, X } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Player } from "superimg-react";
@@ -27,8 +32,6 @@ export function ExamplesPanel({
   activeExampleId,
 }: ExamplesPanelProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [hoveredExample, setHoveredExample] = useState<EditorExample | null>(null);
-  const [isCompiling, setIsCompiling] = useState(false);
   const isMobile = useIsMobile();
 
   // Filter examples based on search query
@@ -103,19 +106,35 @@ export function ExamplesPanel({
             <CollapsibleContent>
               <div className="ml-2 border-l border-border pl-2">
                 {category.examples.map((example) => (
-                  <button
-                    key={example.id}
-                    onClick={() => onSelectExample(example)}
-                    onMouseEnter={() => !isMobile && setHoveredExample(example)}
-                    onMouseLeave={() => setHoveredExample(null)}
-                    className={`w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
-                      activeExampleId === example.id
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                    }`}
-                  >
-                    {example.title}
-                  </button>
+                  <HoverCard key={example.id} openDelay={200} closeDelay={0}>
+                    <HoverCardTrigger asChild>
+                      <button
+                        onClick={() => onSelectExample(example)}
+                        className={`w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
+                          activeExampleId === example.id
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        }`}
+                      >
+                        {example.title}
+                      </button>
+                    </HoverCardTrigger>
+                    {!isMobile && (
+                      <HoverCardContent side="right" className="w-[320px] p-0">
+                        <Player
+                          code={example.code}
+                          format="horizontal"
+                          playbackMode="loop"
+                          autoPlay
+                          compileDebounceMs={150}
+                          style={{ width: "100%", aspectRatio: "16/9" }}
+                        />
+                        <div className="p-3 text-sm font-medium">
+                          {example.title}
+                        </div>
+                      </HoverCardContent>
+                    )}
+                  </HoverCard>
                 ))}
               </div>
             </CollapsibleContent>
@@ -128,30 +147,6 @@ export function ExamplesPanel({
         )}
       </div>
 
-      {/* Hover preview - positioned to the right of the panel */}
-      {hoveredExample && !isMobile && (
-        <div className="fixed left-[360px] top-1/2 z-50 -translate-y-1/2">
-          <div className="w-[320px] overflow-hidden rounded-lg border bg-card shadow-xl">
-            <div className="relative">
-              <Player
-                code={hoveredExample.code}
-                format="horizontal"
-                playbackMode="loop"
-                hoverBehavior="play"
-                compileDebounceMs={150}
-                onCompiling={setIsCompiling}
-                style={{ width: "100%", aspectRatio: "16/9" }}
-              />
-              {isCompiling && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              )}
-            </div>
-            <div className="p-3 text-sm font-medium">{hoveredExample.title}</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

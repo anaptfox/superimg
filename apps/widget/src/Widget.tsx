@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { useVideoSession, Timeline } from "superimg-react";
 import {
   useMcpToolResult,
@@ -57,14 +57,13 @@ export default function Widget() {
   const displayMode = useDisplayMode();
 
   const toolOutput = useMcpToolResult();
-  const sc: Record<string, unknown> | undefined = (toolOutput?.structuredContent ??
-    toolOutput?.result?.structuredContent ??
-    toolOutput ??
-    undefined);
-  const code = readString(sc?.["code"]) ?? DEFAULT_CODE;
-  const title = readString(sc?.["title"]) ?? "SuperImg";
-  const format = readFormat(sc?.["format"]) ?? "horizontal";
-  const duration = readNumber(sc?.["duration"]) ?? 5;
+
+  const isLoading = isChatGptApp && toolOutput === null;
+
+  const code = readString(toolOutput?.code) ?? DEFAULT_CODE;
+  const title = readString(toolOutput?.title) ?? "SuperImg";
+  const format = readFormat(toolOutput?.format) ?? "horizontal";
+  const duration = readNumber(toolOutput?.duration) ?? 5;
 
   const session = useVideoSession({
     containerRef,
@@ -95,6 +94,15 @@ export default function Widget() {
     const blob = await session.exportMp4();
     if (blob) session.download(blob, `${title.toLowerCase().replace(/\s+/g, "-")}.mp4`);
   }, [session, title]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-[#0d0d0d] text-white">
+        <div className="mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-indigo-500" />
+        <p className="text-sm text-white/60">Generating video template...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col bg-[#0d0d0d] text-white">

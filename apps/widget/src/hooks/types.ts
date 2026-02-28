@@ -24,22 +24,47 @@ export interface CallToolResponse {
 declare global {
   interface Window {
     openai?: {
-      [K in keyof OpenAIGlobals]?: OpenAIGlobals[K];
-    } & {
+      // Tool data
+      toolInput?: Record<string, unknown>;
+      toolOutput?: Record<string, unknown>;
+      toolResponseMetadata?: Record<string, unknown>;
+
+      // State
+      widgetState?: unknown;
+      setWidgetState?: (state: unknown) => void;
+
+      // Environment
+      theme?: "light" | "dark";
+      displayMode?: DisplayMode;
+      maxHeight?: number;
+      safeArea?: { top: number; right: number; bottom: number; left: number };
+      locale?: string;
+      userAgent?: string;
+
+      // Actions
       callTool?: (
         name: string,
         args: Record<string, unknown>
       ) => Promise<CallToolResponse | null>;
-      sendFollowUpMessage?: (params: { prompt: string }) => Promise<void>;
-      openExternal?: (params: { href: string }) => void;
+      sendFollowUpMessage?: (params: {
+        prompt: string;
+        scrollToBottom?: boolean;
+      }) => Promise<void>;
+      uploadFile?: (file: File) => Promise<{ fileId: string }>;
+      getFileDownloadUrl?: (params: {
+        fileId: string;
+      }) => Promise<{ url: string }>;
       requestDisplayMode?: (params: {
         mode: DisplayMode;
-      }) => Promise<{ mode: DisplayMode }>;
-      setWidgetState?: (state: unknown) => void;
+      }) => Promise<{ mode: string }>;
+      requestModal?: (params: { template: string }) => Promise<unknown>;
       notifyIntrinsicHeight?: (height: number) => void;
       requestClose?: () => void;
+      openExternal?: (params: { href: string }) => void;
     };
     __isChatGptApp?: boolean;
     innerBaseUrl?: string;
   }
 }
+
+export {};
