@@ -34,7 +34,6 @@
       "import": "./dist/timing.js",
       "types": "./dist/timing.d.ts"
     },
-
     "./responsive": {
       "import": "./dist/responsive.js",
       "types": "./dist/responsive.d.ts"
@@ -46,6 +45,14 @@
     "./presets": {
       "import": "./dist/presets.js",
       "types": "./dist/presets.d.ts"
+    },
+    "./css": {
+      "import": "./dist/css.js",
+      "types": "./dist/css.d.ts"
+    },
+    "./tween": {
+      "import": "./dist/tween.js",
+      "types": "./dist/tween.d.ts"
     }
   },
   "scripts": {
@@ -66,8 +73,9 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "date-fns": "^4.1.0",
+    "@emotion/unitless": "^0.10.0",
     "colord": "^2.9.3",
+    "date-fns": "^4.1.0",
     "simplex-noise": "^4.0.3"
   },
   "devDependencies": {

@@ -23,7 +23,7 @@ export interface LoadedTemplate {
   /** Template defaults (from defineTemplate) */
   readonly defaults: Record<string, unknown> | undefined;
   /** Template config (width, height, fps, durationSeconds, etc.) */
-  readonly config: { width?: number; height?: number; fps?: number; durationSeconds?: number; fonts?: string[] } | undefined;
+  readonly config: { width?: number; height?: number; fps?: number; durationSeconds?: number; fonts?: string[]; inlineCss?: string[]; stylesheets?: string[] } | undefined;
   /** Render to Uint8Array. Playwright is lazy-initialized on first call. */
   render(options?: LoadedTemplateRenderOptions): Promise<Uint8Array>;
   /** Render and write to file. */
@@ -39,7 +39,7 @@ export interface LoadedTemplate {
  */
 export async function loadTemplate(templatePath: string): Promise<LoadedTemplate> {
   const resolvedPath = resolve(templatePath);
-  const templateData = parseTemplate(resolvedPath);
+  const templateData = await parseTemplate(resolvedPath);
   const bundledCode = await bundleTemplate(resolvedPath);
 
   const compileResult = compileTemplate(bundledCode);
@@ -79,6 +79,8 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
       height: options.height ?? resolvedConfig.height,
       fps: options.fps ?? resolvedConfig.fps,
       fonts: templateData.templateConfig?.fonts,
+      inlineCss: templateData.templateConfig?.inlineCss,
+      stylesheets: templateData.templateConfig?.stylesheets,
       outputName: "default",
       encoding: options.encoding,
       data: options.data,

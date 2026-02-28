@@ -1,7 +1,14 @@
 //! Player - React component for SuperImg
 //! Renders templates with playback controls, hover behavior, and ref-based imperative API
 
-import { useRef, useEffect, forwardRef, useImperativeHandle, useState, useCallback } from "react";
+import {
+  useRef,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+  useState,
+  useCallback,
+} from "react";
 import {
   Player as CorePlayer,
   type PlayerInput,
@@ -9,6 +16,7 @@ import {
   type PlaybackMode,
   type LoadMode,
   type HoverBehavior,
+  type FormatOption,
 } from "superimg/player";
 import type { PlayerStore } from "superimg/browser";
 import { VideoControls } from "./VideoControls.js";
@@ -16,10 +24,12 @@ import { VideoControls } from "./VideoControls.js";
 export interface PlayerProps {
   /** Template module to render */
   template: PlayerInput;
-  /** Canvas width */
-  width: number;
-  /** Canvas height */
-  height: number;
+  /**
+   * Format for rendering - simple alias, stdlib preset path, or custom dimensions.
+   * If not provided, uses template config or defaults to 1920x1080.
+   * Examples: "vertical", "horizontal", "square", "youtube.video.short", { width: 800, height: 600 }
+   */
+  format?: FormatOption;
   /** Playback mode (default: 'loop') */
   playbackMode?: PlaybackMode;
   /** Load mode (default: 'eager') */
@@ -63,6 +73,8 @@ export interface PlayerRef {
   seekToProgress: (progress: number) => void;
   /** Seek to time in seconds */
   seekToTimeSeconds: (seconds: number) => void;
+  /** Change the format */
+  setFormat: (format: FormatOption) => void;
   /** Whether player is ready */
   isReady: boolean;
   /** Whether currently playing */
@@ -76,19 +88,22 @@ export interface PlayerRef {
 /**
  * React component wrapper for SuperImg Player.
  *
+ * Templates render at logical dimensions (e.g., 1920x1080) and scale
+ * via CSS transform to fit the container while maintaining aspect ratio.
+ *
  * @example
  * ```tsx
  * import { Player } from 'superimg-react';
  * import myTemplate from './templates/my-template';
- * 
+ *
  * function App() {
  *   return (
  *     <Player
  *       template={myTemplate}
- *       width={1280}
- *       height={720}
+ *       format="horizontal"
  *       playbackMode="loop"
  *       loadMode="eager"
+ *       style={{ width: "100%", aspectRatio: "16/9" }}
  *     />
  *   );
  * }
@@ -102,8 +117,7 @@ export interface PlayerRef {
  * <Player
  *   ref={playerRef}
  *   template={myTemplate}
- *   width={640}
- *   height={360}
+ *   format="vertical"
  *   onLoad={(result) => {
  *     if (result.status === 'success') {
  *       console.log(`Loaded ${result.totalFrames} frames`);
@@ -118,8 +132,7 @@ export interface PlayerRef {
 export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   {
     template,
-    width,
-    height,
+    format,
     playbackMode = "loop",
     loadMode = "eager",
     hoverBehavior = "none",
@@ -149,8 +162,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
 
     const player = new CorePlayer({
       container: containerRef.current,
-      width,
-      height,
+      format,
       playbackMode: hoverBehavior !== "none" ? "loop" : playbackMode,
       loadMode,
       hoverBehavior: "none", // We handle hover manually for React
@@ -220,12 +232,25 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
       setIsReady(false);
       setIsPlaying(false);
     };
-  }, [template, width, height, playbackMode, loadMode, hoverBehavior, hoverDelayMs, maxCacheFrames, onLoad, onPlay, onPause, onEnded, onFrame]);
+  }, [
+    template,
+    format,
+    playbackMode,
+    loadMode,
+    hoverBehavior,
+    hoverDelayMs,
+    maxCacheFrames,
+    onLoad,
+    onPlay,
+    onPause,
+    onEnded,
+    onFrame,
+  ]);
 
   // Hover handlers
   const handleMouseEnter = useCallback(() => {
     if (hoverBehavior === "none" || !playerRef.current?.isReady) return;
-    
+
     hoverTimeoutRef.current = window.setTimeout(() => {
       playerRef.current?.play();
     }, hoverDelayMs);
@@ -233,7 +258,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
 
   const handleMouseLeave = useCallback(() => {
     if (hoverBehavior === "none") return;
-    
+
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
@@ -244,23 +269,31 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   }, [hoverBehavior]);
 
   // Expose ref API
-  useImperativeHandle(ref, () => ({
-    player: playerRef.current,
-    isReady,
-    isPlaying,
-    get currentFrame() {
-      return playerRef.current?.currentFrame ?? 0;
-    },
-    get totalFrames() {
-      return playerRef.current?.totalFrames ?? 0;
-    },
-    play: () => playerRef.current?.play(),
-    pause: () => playerRef.current?.pause(),
-    stop: () => playerRef.current?.stop(),
-    seekToFrame: (frame: number) => playerRef.current?.seekToFrame(frame),
-    seekToProgress: (progress: number) => playerRef.current?.seekToProgress(progress),
-    seekToTimeSeconds: (seconds: number) => playerRef.current?.seekToTimeSeconds(seconds),
-  }), [isReady, isPlaying]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      player: playerRef.current,
+      isReady,
+      isPlaying,
+      get currentFrame() {
+        return playerRef.current?.currentFrame ?? 0;
+      },
+      get totalFrames() {
+        return playerRef.current?.totalFrames ?? 0;
+      },
+      play: () => playerRef.current?.play(),
+      pause: () => playerRef.current?.pause(),
+      stop: () => playerRef.current?.stop(),
+      seekToFrame: (frame: number) => playerRef.current?.seekToFrame(frame),
+      seekToProgress: (progress: number) =>
+        playerRef.current?.seekToProgress(progress),
+      seekToTimeSeconds: (seconds: number) =>
+        playerRef.current?.seekToTimeSeconds(seconds),
+      setFormat: (newFormat: FormatOption) =>
+        playerRef.current?.setFormat(newFormat),
+    }),
+    [isReady, isPlaying]
+  );
 
   // Render controls based on the controls prop
   const showControls = controls && store;
@@ -273,7 +306,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     >
       <div
         ref={containerRef}
-        style={{ width, height }}
+        style={{ width: "100%", height: "100%", flex: 1 }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       />

@@ -125,6 +125,17 @@ export class TemplateCompilationError extends SuperImgError {
 }
 
 /**
+ * Timeline context at the point of failure (for debugging)
+ */
+export interface TimeContext {
+  sceneFrame: number;
+  sceneTimeSeconds: number;
+  sceneProgress: number;
+  globalTimeSeconds: number;
+  globalProgress: number;
+}
+
+/**
  * Template threw an error during render
  */
 export class TemplateRuntimeError extends SuperImgError {
@@ -133,12 +144,19 @@ export class TemplateRuntimeError extends SuperImgError {
     frame: number;
     originalError: string;
     line?: number;
+    /** Timeline context for debugging */
+    timeContext?: TimeContext;
+    /** Data snapshot (truncated for large objects) */
+    dataSnapshot?: unknown;
   }) {
+    const timeInfo = details.timeContext
+      ? ` (${details.timeContext.sceneTimeSeconds.toFixed(3)}s, ${(details.timeContext.sceneProgress * 100).toFixed(1)}% progress)`
+      : "";
     super(
-      `Template error at frame ${details.frame}: ${details.originalError}`,
+      `Template error at frame ${details.frame}${timeInfo}: ${details.originalError}`,
       "TEMPLATE_RUNTIME_ERROR",
       details,
-      `The render function threw an error. Check that all data properties exist and are the expected types.`,
+      `The render function threw an error. Check that all data properties exist and values aren't NaN/undefined at this point in the timeline.`,
       "https://superimg.dev/docs/templates#debugging"
     );
     this.name = "TemplateRuntimeError";

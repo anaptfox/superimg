@@ -7,7 +7,7 @@ const REFERENCE_TEMPLATE = `
     config: { fps: 30, durationSeconds: 2, width: 640, height: 360 },
     defaults: { title: 'Snapshot Test' },
     render(ctx) {
-      const eased = ctx.std.easing.easeOutCubic(ctx.sceneProgress);
+      const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeOutCubic');
       return '<div class="frame" data-progress="' + ctx.sceneProgress + '" data-eased="' + eased + '">' + ctx.data.title + '</div>';
     }
   });

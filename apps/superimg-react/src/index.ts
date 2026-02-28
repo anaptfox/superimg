@@ -12,6 +12,8 @@ export { Player, type PlayerProps, type PlayerRef } from "./components/Player.js
 // =============================================================================
 
 export {
+  useMediaQuery,
+  useIsMobile,
   usePlayer,
   usePreview,
   useCompiler,
@@ -19,10 +21,8 @@ export {
   useTimeline,
   useCheckpoints,
   useVideoSession,
-  resolveFormat,
   type UsePlayerConfig,
   type UsePlayerReturn,
-  type UsePreviewConfig,
   type UsePreviewReturn,
   type UseCompilerReturn,
   type UseExportReturn,
@@ -44,7 +44,26 @@ export { Timeline, type TimelineProps, type TimelineRef } from "./components/Tim
 export { VideoCanvas, type VideoCanvasProps } from "./components/VideoCanvas.js";
 export { ChapterNav, type ChapterNavProps } from "./components/ChapterNav.js";
 export { PlayButton, type PlayButtonProps } from "./components/PlayButton.js";
+export { ExportButton, type ExportButtonProps } from "./components/ExportButton.js";
+export { ExportDialog, type ExportDialogProps, type ExportOptions } from "./components/ExportDialog.js";
+export { FormatSelector, type FormatSelectorProps, type FormatPreset } from "./components/FormatSelector.js";
 export { VideoControls, type VideoControlsProps } from "./components/VideoControls.js";
+export { DataForm, type DataFormProps } from "./components/DataForm.js";
+
+// =============================================================================
+// UTILITIES
+// =============================================================================
+
+export {
+  inferSchema,
+  inferFieldType,
+  humanizeKey,
+  getFieldKeys,
+  getNestedValue,
+  setNestedValue,
+  type FieldSchema,
+  type FieldType,
+} from "./utils/inferSchema.js";
 
 // =============================================================================
 // RE-EXPORTED TYPES

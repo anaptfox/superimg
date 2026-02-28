@@ -129,9 +129,8 @@ export default defineTemplate({
     const { title, subtitle, accentColor } = data;
 
     const enterProgress = std.math.clamp(time / 1.0, 0, 1);
-    const eased = std.easing.easeOutCubic(enterProgress);
-    const opacity = std.math.lerp(0, 1, eased);
-    const y = std.math.lerp(30, 0, eased);
+    const opacity = std.tween(0, 1, enterProgress, "easeOutCubic");
+    const y = std.tween(30, 0, enterProgress, "easeOutCubic");
 
     return \`
       <div style="

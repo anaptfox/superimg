@@ -12,7 +12,7 @@ The `RenderContext` is the central object passed to your template's `render` fun
 interface RenderContext<
   TData = Record<string, unknown>,
 > {
-  // Standard library (easing, math, color utilities)
+  // Standard library (tween, math, color utilities)
   std: Stdlib;
 
   // Global position (entire video)
@@ -86,11 +86,8 @@ export default defineTemplate({
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
 
-    // Use easing for smooth animation
-    const eased = std.easing.easeOutCubic(sceneProgress);
-
-    // Interpolate position
-    const x = std.math.lerp(0, width, eased);
+    // Eased interpolation in one call
+    const x = std.tween(0, width, sceneProgress, 'easeOutCubic');
 
     return `
       <div style="
@@ -120,17 +117,14 @@ export default defineTemplate({
   render(ctx) {
     const { std, sceneProgress } = ctx;
 
-    // Easing
-    const progress = std.easing.easeOutCubic(sceneProgress);
-
-    // Math
-    const x = std.math.lerp(0, 1920, progress);
+    // Tween: eased interpolation
+    const x = std.tween(0, 1920, sceneProgress, 'easeOutCubic');
     const clamped = std.math.clamp(x, 100, 1800);
 
     // Color
     const bg = std.color.alpha('#FF0000', 0.5);
-    const mixed = std.color.mix('#FF0000', '#0000FF', progress);
-    const rgb = std.color.hslToRgb(progress * 360, 80, 50);
+    const mixed = std.color.mix('#FF0000', '#0000FF', sceneProgress);
+    const rgb = std.color.hslToRgb(sceneProgress * 360, 80, 50);
 
     return `<div style="left: ${x}px; background: ${bg}">Hello</div>`;
   },
@@ -139,33 +133,40 @@ export default defineTemplate({
 
 ### Core Modules (start here)
 
-These three modules cover 90%+ of template needs. Start with these.
+These modules cover 90%+ of template needs. Start with these.
 
-#### `std.easing`
+#### `std.css`
 
-Easing functions for smooth animations. All functions take a normalized time value `t` in [0, 1] and return an eased value.
+Convert style objects to inline style strings. Numeric values get `px` automatically (except unitless properties like `opacity`, `zIndex`, `lineHeight` — uses canonical CSS unitless list):
 
 ```typescript
-std.easing.clamp01(t)              // Clamp t to [0, 1]
-std.easing.linear(t)
-std.easing.easeInCubic(t)
-std.easing.easeOutCubic(t)
-std.easing.easeInOutCubic(t)
-std.easing.easeInQuart(t)
-std.easing.easeOutQuart(t)
-std.easing.easeInOutQuart(t)
-std.easing.easeInExpo(t)
-std.easing.easeOutExpo(t)
-std.easing.easeInOutExpo(t)
-std.easing.easeInBack(t)
-std.easing.easeOutBack(t)
-std.easing.easeInOutBack(t)
-std.easing.easeInElastic(t)
-std.easing.easeOutElastic(t)
-std.easing.easeInOutElastic(t)
-std.easing.easeInBounce(t)
-std.easing.easeOutBounce(t)
-std.easing.easeInOutBounce(t)
+std.css({ width: 1920, height: 1080, opacity: 0.8 })
+// → "width:1920px;height:1080px;opacity:0.8"
+
+std.css({ display: 'flex', alignItems: 'center', transform: `scale(${scale})` })
+// → "display:flex;align-items:center;transform:scale(1.2)"
+```
+
+Layout presets:
+
+```typescript
+std.css.fill()   // position:absolute; top:0; left:0; width:100%; height:100%
+std.css.center() // display:flex; align-items:center; justify-content:center
+std.css.stack()  // display:flex; flex-direction:column
+```
+
+#### `std.tween`
+
+Eased interpolation in one call (canonical animation primitive):
+
+```typescript
+std.tween(0, 100, progress)                    // Linear
+std.tween(0, 100, progress, 'easeOutCubic')    // With easing
+std.tween(0, 100, sceneProgress, {             // With time window (20%-60%)
+  easing: 'easeOutCubic',
+  start: 0.2,
+  end: 0.6,
+})
 ```
 
 #### `std.math`
@@ -174,13 +175,14 @@ Mathematical utilities:
 
 ```typescript
 // Linear interpolation
-std.math.lerp(start, end, t)      // Interpolate between start and end
+std.math.inverseLerp(a, b, value)  // Normalize value to [0,1] within range
+std.math.mapClamp(val, inMin, inMax, outMin, outMax)  // Map + clamp output
 
 // Clamping
 std.math.clamp(value, min, max)   // Restrict value to range
 
 // Mapping
-std.math.map(value, inMin, inMax, outMin, outMax)  // Map value from one range to another
+std.math.map(value, inMin, inMax, outMin, outMax)  // Map value from one range to another (no clamp)
 
 // Random
 std.math.random(min, max)         // Random float between min and max
@@ -251,7 +253,7 @@ std.text.wrap(text, maxCharsPerLine)       // Wrap text into lines, returns stri
 Date formatting and manipulation:
 
 ```typescript
-std.date.formatDate(date, formatStr)  // Format date (tokens: YYYY, MM, DD, HH, mm, ss)
+std.date.formatDate(date, formatStr)  // Format date (date-fns tokens; legacy YYYY/DD supported; uses UTC)
 std.date.relativeTime(date)           // Relative time string (e.g., "2 hours ago")
 std.date.parseISO(str)                // Parse ISO date string to Date
 std.date.toISO(date)                  // Convert date to ISO string
@@ -266,7 +268,15 @@ Date inputs accept `Date`, `string`, or `number` (timestamp).
 Timing and phase management for animations:
 
 ```typescript
-// Create a phase manager
+// Sequential phases (durations only — boundaries computed automatically)
+const phases = std.timing.sequence({
+  intro: 1.0,
+  main: 3.0,
+  outro: 1.0,
+});
+// intro: 0-1s, main: 1-4s, outro: 4-5s
+
+// Or explicit boundaries
 const phases = std.timing.createPhaseManager({
   intro: { start: 0, end: 1.0 },
   bars: { start: 1.0, end: 5.5 },
@@ -274,7 +284,7 @@ const phases = std.timing.createPhaseManager({
 });
 
 const { name, progress } = phases.get(2.0);       // Get current phase at time
-const p = phases.getPhaseProgress(2.0, 'bars');    // Get progress within a specific phase
+const p = phases.getPhaseProgress(2.0, 'bars');  // Get progress within a specific phase
 
 // Convenience functions (no manager needed)
 std.timing.getPhase(time, phases)                  // Get phase at time
@@ -363,7 +373,7 @@ export default defineTemplate({
   },
   render(ctx) {
     const { std, sceneProgress, data } = ctx;
-    const opacity = std.easing.easeOutCubic(sceneProgress);
+    const opacity = std.tween(0, 1, sceneProgress, 'easeOutCubic');
 
     return `
       <div style="color: ${data.color}; opacity: ${opacity}">
@@ -393,6 +403,10 @@ interface TemplateConfig {
   height?: number;          // Canvas height (default: 1080)
   fps?: number;             // Frames per second (default: 30)
   durationSeconds?: number; // Duration in seconds (see Duration Precedence)
+  fonts?: string[];        // Google Fonts to load
+  inlineCss?: string[];    // Raw CSS strings (e.g. utility classes, precompiled Tailwind)
+  stylesheets?: string[];  // Stylesheet URLs to load
+  outputs?: Record<string, OutputPreset>;
 }
 ```
 

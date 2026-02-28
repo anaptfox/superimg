@@ -45,7 +45,7 @@ describe("compileTemplate (with bundled code)", () => {
     const result = await compileFromString(wrapDefineTemplate(`
       export default defineTemplate({
         render(ctx) {
-          const eased = ctx.std.easing.easeInOutCubic(ctx.sceneProgress);
+          const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeInOutCubic');
           return \`<div style="opacity: \${eased}">\${eased}</div>\`;
         }
       });
@@ -56,6 +56,25 @@ describe("compileTemplate (with bundled code)", () => {
 
     const html = result.template!.render(testCtx);
     expect(html).toContain("0.5");
+  });
+
+  it("provides ctx.std.tween for eased interpolation", async () => {
+    const result = await compileFromString(wrapDefineTemplate(`
+      export default defineTemplate({
+        render(ctx) {
+          const x = ctx.std.tween(0, 100, ctx.sceneProgress, 'easeOutCubic');
+          return \`<div style="left: \${x}px">\${x}</div>\`;
+        }
+      });
+    `));
+    expect(result.error).toBeUndefined();
+    const html = result.template!.render(makeTestContext({ sceneProgress: 0.5 }));
+    expect(html).toContain("left:");
+    const match = html.match(/left: (\d+(?:\.\d+)?)px/);
+    expect(match).toBeTruthy();
+    const x = parseFloat(match![1]);
+    expect(x).toBeGreaterThan(50);
+    expect(x).toBeLessThanOrEqual(100);
   });
 
   it("preserves function declarations (hoisting and .name)", async () => {
@@ -261,7 +280,7 @@ describe("validateTemplate", () => {
     const compileResult = await compileFromString(wrapDefineTemplate(`
       export default defineTemplate({
         render(ctx) {
-          const eased = ctx.std.easing.easeInOutCubic(ctx.sceneProgress);
+          const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeInOutCubic');
           return \`<div style="opacity: \${eased}">\${eased}</div>\`;
         }
       });

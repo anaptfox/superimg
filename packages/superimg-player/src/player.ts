@@ -185,6 +185,7 @@ export class Player {
   private options: Required<Omit<PlayerOptions, "container" | "format">>;
   private events: Partial<PlayerEvents> = {};
   private _isReady = false;
+  private _data: Record<string, unknown> = {};
 
   constructor(options: PlayerOptions) {
     // Resolve container
@@ -313,6 +314,14 @@ export class Player {
         },
       });
 
+      // Inject template CSS (inlineCss, stylesheets) into presenter
+      if (this.presenter.injectStyles) {
+        this.presenter.injectStyles(
+          this.template.config?.inlineCss ?? [],
+          this.template.config?.stylesheets ?? []
+        );
+      }
+
       // Warmup presenter
       if (this.presenter.warmup) {
         await this.presenter.warmup();
@@ -354,21 +363,35 @@ export class Player {
       return;
     }
 
-    // Build context directly
+    // Build context: merge template.defaults with external data
+    const mergedData = {
+      ...(this.template.defaults ?? {}),
+      ...this._data,
+    };
     const ctx = createRenderContext(
       frame,
       this._fps,
       this._totalFrames,
       this._renderWidth,
       this._renderHeight,
-      this.template.defaults ?? {}
+      mergedData
     );
 
-    // Render HTML string
-    const html = this.template.render(ctx);
-
-    // Present frame
-    await this.presenter.present(html, ctx);
+    try {
+      // Render HTML string
+      const html = this.template.render(ctx);
+      // Present frame
+      await this.presenter.present(html, ctx);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      // Create enriched error with context
+      const enrichedError = new Error(
+        `Render error at frame ${frame} (${ctx.sceneTimeSeconds.toFixed(3)}s, ` +
+          `${(ctx.sceneProgress * 100).toFixed(1)}% progress): ${err.message}`
+      );
+      // Fire error event with context
+      this.events.error?.(enrichedError);
+    }
   }
 
   /**
@@ -488,6 +511,17 @@ export class Player {
   }
 
   /**
+   * Set template data (merged with template.defaults, overrides on conflict).
+   * Re-renders the current frame.
+   */
+  setData(data: Record<string, unknown>): void {
+    this._data = { ...this._data, ...data };
+    if (this._store) {
+      void this.renderFrame(this._store.getState().currentFrame);
+    }
+  }
+
+  /**
    * Get the current format option.
    */
   get format(): FormatOption | undefined {
@@ -506,27 +540,6 @@ export class Player {
    */
   get renderHeight(): number {
     return this._renderHeight;
-  }
-
-  /**
-   * Resize the presentation area and re-render the current frame.
-   * @deprecated Use setFormat instead
-   */
-  async resize(width: number, height: number): Promise<void> {
-    if (!this._store) {
-      throw new PlayerNotReadyError("resize");
-    }
-    this._renderWidth = width;
-    this._renderHeight = height;
-    if (this.presenter.setLogicalSize) {
-      this.presenter.setLogicalSize(width, height);
-    } else if (this.presenter.resize) {
-      this.presenter.resize(width, height);
-    }
-    if (this.presenter.warmup) {
-      await this.presenter.warmup();
-    }
-    await this.renderFrame(this._store.getState().currentFrame);
   }
 
   // ==========================================================================

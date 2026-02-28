@@ -1,81 +1,68 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { useVideoSession, Timeline } from "superimg-react";
+import { useVideoSession, DataForm, VideoControls, type ExportOptions } from "superimg-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 import posthog from "posthog-js";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Repeat } from "lucide-react";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ExamplesSidebar } from "./ExamplesSidebar";
 import { getExampleById, type EditorExample } from "@/lib/video/examples/index";
 
 const DEFAULT_TEMPLATE = `// SuperImg Template
-// Available context: ctx.sceneFrame, ctx.sceneTimeSeconds, ctx.sceneProgress, ctx.width, ctx.height, ctx.fps, ctx.std
+// Edit the defaults below and use ctx.data in render to drive the output.
 
 import { defineTemplate } from "superimg";
 
 export default defineTemplate({
+  defaults: {
+    title: "SuperImg Editor",
+    accentColor: "#667eea",
+    bgColor: "#0f0f23",
+  },
+
   render(ctx) {
-    const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
+    const { width, height, sceneProgress: p, sceneTimeSeconds, std, data } = ctx;
 
-    // Animate a gradient that shifts over time
-    const hue = Math.floor(sceneProgress * 360);
-    const bgColor = \`hsl(\${hue}, 70%, 20%)\`;
+    // Fade in title
+    const opacity = std.tween(0, 1, std.math.clamp(p * 3, 0, 1), "easeOutCubic");
+    const y = std.tween(30, 0, std.math.clamp(p * 3, 0, 1), "easeOutCubic");
 
-    // Bouncing circle
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = 100 + Math.sin(sceneTimeSeconds * 2) * 50;
-    const circleX = centerX + Math.sin(sceneTimeSeconds * 3) * 200;
-    const circleY = centerY + Math.cos(sceneTimeSeconds * 2) * 150;
+    // Subtle hue pulse on accent
+    const pulsedColor = std.color.mix(data.accentColor, "#ffffff", Math.sin(sceneTimeSeconds * 2) * 0.08 + 0.08);
 
     return \`
-      <div style="
-        width: \${width}px;
-        height: \${height}px;
-        background: \${bgColor};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        overflow: hidden;
-      ">
-        <!-- Animated circle -->
-        <div style="
-          position: absolute;
-          left: \${circleX - radius}px;
-          top: \${circleY - radius}px;
-          width: \${radius * 2}px;
-          height: \${radius * 2}px;
-          background: linear-gradient(135deg, #e94560, #0f3460);
-          border-radius: 50%;
-          box-shadow: 0 0 60px rgba(233, 69, 96, 0.5);
-        "></div>
-
-        <!-- Text overlay -->
-        <div style="
-          position: relative;
-          z-index: 1;
-          text-align: center;
-          color: white;
-          font-family: system-ui, sans-serif;
-        ">
-          <h1 style="
-            font-size: 72px;
-            margin: 0;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
-          ">SuperImg Editor</h1>
-          <p style="
-            font-size: 24px;
-            opacity: 0.8;
-            margin-top: 16px;
-          ">Frame \${ctx.sceneFrame} / Time: \${sceneTimeSeconds.toFixed(2)}s</p>
+      <div style="\${std.css({ width, height, background: data.bgColor })};\${std.css.center()}">
+        <div style="\${std.css({
+          textAlign: "center",
+          fontFamily: "system-ui, sans-serif",
+          opacity,
+          transform: "translateY(" + y + "px)",
+        })}">
+          <h1 style="\${std.css({ fontSize: 72, color: pulsedColor, margin: 0 })}">
+            \${data.title}
+          </h1>
+          <p style="\${std.css({ fontSize: 20, color: "rgba(255,255,255,0.5)", marginTop: 12 })}">
+            Frame \${ctx.sceneFrame} · \${sceneTimeSeconds.toFixed(2)}s
+          </p>
         </div>
       </div>
     \`;
@@ -83,13 +70,17 @@ export default defineTemplate({
 });
 `;
 
-const DURATION_SECONDS = 5;
+const DURATION_OPTIONS = [1, 3, 5, 10, 15, 30];
 
 export default function Editor() {
   const searchParams = useSearchParams();
   const [code, setCode] = useState(DEFAULT_TEMPLATE);
   const [activeExampleId, setActiveExampleId] = useState<string | undefined>();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [dataPanelOpen, setDataPanelOpen] = useState(true);
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [duration, setDuration] = useState(5);
+  const [looping, setLooping] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Load example from URL param on mount
   useEffect(() => {
@@ -106,17 +97,19 @@ export default function Editor() {
   const handleSelectExample = (example: EditorExample) => {
     setCode(example.code);
     setActiveExampleId(example.id);
+    setFormData({}); // Reset form data when switching examples
   };
 
   const session = useVideoSession({
-    initialPreviewFormat: "horizontal",
-    duration: DURATION_SECONDS,
-    canvasRef,
+    containerRef,
+    initialFormat: "horizontal",
+    duration,
   });
 
   // Compile code when it changes
   useEffect(() => {
     session.compile(code);
+    setFormData({}); // Reset form data when code changes
 
     if (session.error) {
       posthog.capture("editor_compile_error", {
@@ -130,41 +123,96 @@ export default function Editor() {
     }
   }, [code]);
 
-  // Handle export
-  const handleExport = async () => {
+  // Auto-play when ready
+  useEffect(() => {
+    if (session.ready && !session.isPlaying && !session.exporting) {
+      session.play();
+    }
+  }, [session.ready]);
+
+  // Loop handling - restart when video ends
+  useEffect(() => {
+    if (looping && !session.isPlaying && session.progress >= 0.99 && !session.exporting) {
+      session.seek(0);
+      session.play();
+    }
+  }, [looping, session.isPlaying, session.progress, session.exporting]);
+
+  // Handle form data changes
+  const handleDataChange = (newData: Record<string, unknown>) => {
+    setFormData(newData);
+    session.setData(newData);
+  };
+
+  // Handle export with options from dialog
+  const handleExport = useCallback(async (options: ExportOptions) => {
     posthog.capture("editor_export_started", {
       fps: session.fps,
-      width: session.previewWidth,
-      height: session.previewHeight,
-      duration_seconds: DURATION_SECONDS,
+      format: options.format,
+      duration_seconds: duration,
     });
 
-    const blob = await session.exportMp4();
+    const blob = await session.exportMp4(options);
 
     if (blob) {
-      session.download(blob, "superimg-export.mp4");
       posthog.capture("editor_export_completed", {
         file_size_bytes: blob.size,
         fps: session.fps,
-        width: session.previewWidth,
-        height: session.previewHeight,
-        duration_seconds: DURATION_SECONDS,
+        format: options.format,
+        duration_seconds: duration,
       });
     }
-  };
 
-  // Handle play/pause with tracking
-  const handlePlayPause = () => {
-    const wasPlaying = session.isPlaying;
-    session.togglePlayPause();
-    posthog.capture(
-      wasPlaying ? "editor_pause_clicked" : "editor_play_clicked",
-      {
-        current_frame: session.currentFrame,
-        total_frames: session.totalFrames,
+    return blob;
+  }, [session, duration]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't capture if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
       }
-    );
-  };
+      // Don't capture if CodeMirror is focused
+      if ((e.target as HTMLElement)?.closest('.cm-editor')) {
+        return;
+      }
+
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          session.togglePlayPause();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          if (!session.isPlaying) {
+            session.seek(Math.max(0, session.currentFrame - (e.shiftKey ? 10 : 1)));
+          }
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          if (!session.isPlaying) {
+            session.seek(Math.min(session.totalFrames - 1, session.currentFrame + (e.shiftKey ? 10 : 1)));
+          }
+          break;
+        case "Home":
+          e.preventDefault();
+          session.seek(0);
+          break;
+        case "End":
+          e.preventDefault();
+          session.seek(session.totalFrames - 1);
+          break;
+        case "KeyL":
+          e.preventDefault();
+          setLooping((prev) => !prev);
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [session]);
 
   return (
     <>
@@ -197,61 +245,90 @@ export default function Editor() {
 
           {/* Preview Panel - Right Side */}
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex items-center justify-between border-b border-[#333] bg-[#252526] px-4 py-3 text-sm font-medium">
-              <span>Preview</span>
+            <div className="flex items-center justify-between border-b border-[#333] bg-[#252526] px-4 py-2 text-sm font-medium">
+              <div className="flex items-center gap-3">
+                <span>Preview</span>
+                <Select value={String(duration)} onValueChange={(v) => setDuration(Number(v))}>
+                  <SelectTrigger className="h-7 w-[80px] border-[#444] bg-[#333] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="border-[#444] bg-[#333]">
+                    {DURATION_OPTIONS.map((d) => (
+                      <SelectItem key={d} value={String(d)} className="text-xs">
+                        {d}s
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLooping((prev) => !prev)}
+                  className={`h-7 w-7 p-0 ${looping ? "text-blue-400" : "text-[#888]"}`}
+                  title={looping ? "Loop enabled (L)" : "Loop disabled (L)"}
+                >
+                  <Repeat className="h-4 w-4" />
+                </Button>
+              </div>
               <Badge variant={session.error ? "destructive" : "secondary"}>
                 {session.status}
               </Badge>
             </div>
 
-            {/* Canvas Preview */}
+            {/* Preview Container */}
             <div className="flex flex-1 items-center justify-center overflow-hidden bg-[#0d0d0d] p-4">
-              <canvas
-                ref={canvasRef}
-                width={session.previewWidth}
-                height={session.previewHeight}
-                className="max-h-full max-w-full object-contain shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+              <div
+                ref={containerRef}
+                className="max-h-full max-w-full shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+                style={{ width: "100%", height: "100%", aspectRatio: "16/9" }}
               />
             </div>
 
-            {/* Timeline */}
-            <div className="border-t border-[#333] bg-[#252526] p-4">
-              <Timeline
-                store={session.store}
-                className="h-2 rounded"
-                showTime
-              />
-            </div>
+            {/* Data Panel */}
+            {session.template?.defaults && Object.keys(session.template.defaults).length > 0 && (
+              <Collapsible
+                open={dataPanelOpen}
+                onOpenChange={setDataPanelOpen}
+                className="border-t border-[#333] bg-[#252526]"
+              >
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-2 text-sm font-medium hover:bg-[#2a2a2a]">
+                  <span>Data</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform ${dataPanelOpen ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="max-h-[200px] overflow-y-auto px-4 pb-4">
+                    <DataForm
+                      defaults={session.template.defaults}
+                      data={formData}
+                      onChange={handleDataChange}
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
             {/* Controls */}
-            <div className="space-y-3 border-t border-[#333] bg-[#252526] p-4">
-              {session.exporting && (
-                <div className="space-y-2">
-                  <Progress value={session.exportProgress * 100} className="h-2" />
-                  <p className="text-center text-xs text-muted-foreground">
-                    Exporting... {Math.round(session.exportProgress * 100)}%
-                  </p>
-                </div>
-              )}
-              <div className="flex gap-3">
-                <Button
-                  onClick={handlePlayPause}
-                  disabled={session.exporting}
-                  className="flex-1"
-                  size="lg"
-                >
-                  {session.isPlaying ? "Pause" : "Play"}
-                </Button>
-                <Button
-                  onClick={handleExport}
-                  disabled={session.exporting || !session.template}
-                  className="flex-1"
-                  size="lg"
-                >
-                  {session.exporting ? "Exporting..." : "Export MP4"}
-                </Button>
-              </div>
-            </div>
+            <VideoControls
+              store={session.store}
+              showTimeline
+              showTime
+              showFormat
+              showExport
+              onExport={handleExport}
+              onDownload={session.download}
+              exporting={session.exporting}
+              exportProgress={session.exportProgress}
+              currentFormat={session.format}
+              onFormatChange={session.setFormat}
+              className="border-t border-[#333]"
+            />
 
             {/* Error Display */}
             {session.error && (

@@ -32,6 +32,41 @@ export function clamp(val: number, min: number, max: number): number {
 }
 
 /**
+ * Inverse of lerp: given a value between a and b, return the normalized t in [0, 1].
+ * @ai-hint Use to convert a value back to progress: `inverseLerp(0, 100, 50)` → 0.5
+ * @param a - Start of range
+ * @param b - End of range
+ * @param value - Value within (or outside) the range
+ * @returns Normalized position: (value - a) / (b - a). Not clamped. When a === b (degenerate range), returns 0.
+ */
+export function inverseLerp(a: number, b: number, value: number): number {
+  if (a === b) return 0;
+  return (value - a) / (b - a);
+}
+
+/**
+ * Map a value from one range to another, clamping output to [outMin, outMax].
+ * @ai-hint Use when you want mapped values to never exceed the output range.
+ * @param val - Input value
+ * @param inMin - Input range minimum
+ * @param inMax - Input range maximum
+ * @param outMin - Output range minimum
+ * @param outMax - Output range maximum
+ * @returns Mapped and clamped value
+ */
+export function mapClamp(
+  val: number,
+  inMin: number,
+  inMax: number,
+  outMin: number,
+  outMax: number
+): number {
+  const t = inverseLerp(inMin, inMax, val);
+  const clamped = Math.max(0, Math.min(1, t));
+  return outMin + (outMax - outMin) * clamped;
+}
+
+/**
  * Map a value from one range to another.
  * @ai-hint Does NOT clamp — output can exceed [outMin, outMax] if input exceeds [inMin, inMax].
  * @param val - Input value

@@ -206,6 +206,16 @@ export interface TemplateConfig {
    * 3. Built-in default (5 s)
    */
   durationSeconds?: number;
+  /**
+   * Raw CSS strings to inject into the page (e.g. utility classes, Tailwind precompiled output).
+   * Injected once per render session, not per frame.
+   */
+  inlineCss?: string[];
+  /**
+   * Stylesheet URLs to load (e.g. CDN Tailwind, local file paths).
+   * Injected once per render session, not per frame.
+   */
+  stylesheets?: string[];
   /** Named output presets */
   outputs?: Record<string, OutputPreset>;
 }
@@ -255,6 +265,10 @@ export interface RenderOptions {
   backgroundColor?: string;
   /** List of Google Fonts to load */
   fonts?: string[];
+  /** Raw CSS strings to inject (e.g. utility classes, Tailwind precompiled) */
+  inlineCss?: string[];
+  /** Stylesheet URLs to load */
+  stylesheets?: string[];
 }
 
 // =============================================================================

@@ -12,8 +12,8 @@ export const helloWorldTemplate = defineTemplate({
     const { sceneProgress: p, std, width, height } = ctx;
 
     const textProgress = std.math.clamp(p / 0.4, 0, 1);
-    const textOpacity = std.easing.easeOutCubic(textProgress);
-    const textScale = std.math.lerp(0.8, 1, std.easing.easeOutCubic(textProgress));
+    const textOpacity = std.tween(0, 1, textProgress, "easeOutCubic");
+    const textScale = std.tween(0.8, 1, textProgress, "easeOutCubic");
 
     return `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
@@ -117,7 +117,7 @@ export const testimonialTemplate = defineTemplate({
     const { sceneProgress: p, std, width, height } = ctx;
 
     const cardOpacity = std.math.clamp(p * 3, 0, 1);
-    const cardY = std.math.lerp(20, 0, std.easing.easeOutCubic(std.math.clamp(p * 2, 0, 1)));
+    const cardY = std.tween(20, 0, std.math.clamp(p * 2, 0, 1), "easeOutCubic");
     const quoteOpacity = std.math.clamp((p - 0.2) * 2.5, 0, 1);
 
     return `
@@ -182,7 +182,7 @@ export const chartTemplate = defineTemplate({
       .map((bar, i) => {
         const delay = i * 0.1;
         const barProgress = std.math.clamp((p - delay) * 2, 0, 1);
-        const barHeight = (bar.value / maxValue) * chartHeight * std.easing.easeOutCubic(barProgress);
+        const barHeight = (bar.value / maxValue) * chartHeight * std.tween(0, 1, barProgress, "easeOutCubic");
         return `
           <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
             <div style="

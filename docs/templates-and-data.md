@@ -34,18 +34,11 @@ export default defineTemplate({
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
 
-    const eased = std.easing.easeOutCubic(sceneProgress);
-    const scale = std.math.lerp(0.8, 1, eased);
+    const scale = std.tween(0.8, 1, sceneProgress, 'easeOutCubic');
+    const bodyStyle = std.css({ width, height, transform: 'scale(' + scale + ')' }) + ';' + std.css.center();
 
     return `
-      <div style="
-        width: ${width}px;
-        height: ${height}px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transform: scale(${scale});
-      ">
+      <div style="${bodyStyle}">
         Hello, ${data.name}!
       </div>
     `;
@@ -112,21 +105,62 @@ export default defineTemplate({
   render(ctx) {
     const { std, sceneProgress } = ctx;
     
-    // Easing functions
-    const eased = std.easing.easeOutCubic(sceneProgress);
-    
-    // Math utilities
-    const value = std.math.lerp(0, 100, eased);
+    // Tween: eased interpolation (0-1 for progress, 0-100 for values)
+    const eased = std.tween(0, 1, sceneProgress, 'easeOutCubic');
+    const value = std.tween(0, 100, sceneProgress, 'easeOutCubic');
     const clamped = std.math.clamp(value, 10, 90);
     
     // Color manipulation
     const color = std.color.hsl(eased * 360, 80, 50);
     const withAlpha = std.color.alpha('#ff6b35', 0.8);
     
-    return `<div style="background: ${color}">...</div>`;
+    // CSS style helper (object syntax, auto-px for numbers)
+    const style = std.css({ width: 1920, height: 1080, opacity: eased });
+    
+    return `<div style="${style}">...</div>`;
   },
 });
 ```
+
+### `std.css` and Layout Presets
+
+Use `std.css()` to build inline styles from an object. Numeric values get `px` automatically (except unitless properties like `opacity`, `zIndex`, `lineHeight`):
+
+```typescript
+// Object syntax — no manual px interpolation
+std.css({ width, height, display: 'flex', alignItems: 'center', opacity: eased })
+// → "width:1920px;height:1080px;display:flex;align-items:center;opacity:0.8"
+```
+
+Presets for common layouts:
+
+```typescript
+std.css.fill()   // position:absolute; top:0; left:0; width:100%; height:100%
+std.css.center() // display:flex; align-items:center; justify-content:center
+std.css.stack()  // display:flex; flex-direction:column
+```
+
+### Template Stylesheets (Tailwind, etc.)
+
+Templates can inject CSS once per render session via `config.inlineCss` and `config.stylesheets`:
+
+```typescript
+export default defineTemplate({
+  config: {
+    width: 1920,
+    height: 1080,
+    // Raw CSS strings (e.g. utility classes, precompiled Tailwind)
+    inlineCss: [`.text-xl { font-size: 1.25rem; }`],
+    // Stylesheet URLs (CDN, local paths)
+    stylesheets: ['https://cdn.example.com/tailwind.min.css'],
+  },
+  render(ctx) {
+    return `<div class="text-xl">Hello</div>`;
+  },
+});
+```
+
+**Tailwind:** Use precompiled CSS. Run `npx tailwindcss -i input.css -o output.css` and pass the output via `inlineCss` (as a string) or `stylesheets` (as a file URL). Tailwind is supported via precompiled output only — no runtime JIT.
 
 ---
 
@@ -157,11 +191,11 @@ export default defineTemplate({
     const { std, sceneProgress, data } = ctx;
     const { title, price, accentColor, discount } = data;
 
-    const eased = std.easing.easeOutCubic(sceneProgress);
+    const opacity = std.tween(0, 1, sceneProgress, 'easeOutCubic');
     const finalPrice = discount ? price * (1 - discount / 100) : price;
 
     return `
-      <div style="--accent: ${accentColor}; opacity: ${eased}">
+      <div style="--accent: ${accentColor}; opacity: ${opacity}">
         <h1>${title}</h1>
         <p class="price">$${finalPrice.toFixed(2)}</p>
       </div>
@@ -215,7 +249,7 @@ interface RenderContext<
   TData = Record<string, unknown>,
 > {
   // Standard library
-  std: Stdlib;                      // Easing, math, color utilities
+  std: Stdlib;                      // Tween, math, color utilities
 
   // Global position (entire video)
   globalFrame: number;              // Current frame in video

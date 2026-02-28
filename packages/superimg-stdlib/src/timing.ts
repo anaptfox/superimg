@@ -25,6 +25,15 @@ export interface PhaseResult {
   progress: number;
 }
 
+/** Render function for a phase, receives progress 0-1 */
+export type PhaseRenderFn = (progress: number) => string;
+
+/** Phase definition with duration and render function */
+export interface RenderablePhase {
+  duration: number;
+  render: PhaseRenderFn;
+}
+
 /**
  * Phase manager for handling animation phases
  */
@@ -112,6 +121,30 @@ export class PhaseManager {
 }
 
 /**
+ * Phase manager with render dispatch capability
+ */
+export class RenderablePhaseManager extends PhaseManager {
+  private renderers: Map<string, PhaseRenderFn>;
+
+  constructor(phases: Phases, renderers: Map<string, PhaseRenderFn>) {
+    super(phases);
+    this.renderers = renderers;
+  }
+
+  /**
+   * Render the current phase at the given time
+   * @param time - Current time in seconds
+   * @returns HTML string from the active phase's render function
+   */
+  render(time: number): string {
+    const { name, progress } = this.get(time);
+    const renderFn = this.renderers.get(name);
+    if (!renderFn) return "";
+    return renderFn(progress);
+  }
+}
+
+/**
  * Create a phase manager from phase definitions
  * @param phases - Object mapping phase names to { start, end } times
  * @returns PhaseManager instance
@@ -128,6 +161,67 @@ export class PhaseManager {
  * ```
  */
 export function createPhaseManager(phases: Phases): PhaseManager {
+  return new PhaseManager(phases);
+}
+
+/**
+ * Create a phase manager from sequential durations.
+ * @overload Simple durations (returns PhaseManager)
+ */
+export function sequence(durations: Record<string, number>): PhaseManager;
+
+/**
+ * Create a phase manager from sequential phases with render functions.
+ * @overload Renderable phases (returns RenderablePhaseManager)
+ */
+export function sequence(
+  phases: Record<string, RenderablePhase>
+): RenderablePhaseManager;
+
+/**
+ * Create a phase manager from sequential durations or renderable phases.
+ * Phases are laid out back-to-back starting at time 0.
+ *
+ * @param input - Object mapping phase names to durations or renderable phases
+ * @returns PhaseManager or RenderablePhaseManager instance
+ *
+ * @example
+ * ```ts
+ * // Simple durations
+ * const phases = sequence({ intro: 1.0, main: 3.0, outro: 1.0 });
+ * const { name, progress } = phases.get(2.0);
+ *
+ * // With render functions
+ * const phases = sequence({
+ *   intro: { duration: 1.0, render: (p) => `<div style="opacity:${p}">...</div>` },
+ *   main: { duration: 3.0, render: () => `<div>Content</div>` },
+ * });
+ * return phases.render(time);
+ * ```
+ */
+export function sequence(
+  input: Record<string, number | RenderablePhase>
+): PhaseManager | RenderablePhaseManager {
+  let t = 0;
+  const phases: Phases = {};
+  const renderers = new Map<string, PhaseRenderFn>();
+
+  for (const [name, entry] of Object.entries(input)) {
+    const duration = typeof entry === "number" ? entry : entry.duration;
+    if (duration < 0) {
+      throw new Error(`sequence: duration for "${name}" must be >= 0`);
+    }
+    phases[name] = { start: t, end: t + duration };
+    t += duration;
+
+    if (typeof entry === "object" && "render" in entry) {
+      renderers.set(name, entry.render);
+    }
+  }
+
+  if (renderers.size > 0) {
+    return new RenderablePhaseManager(phases, renderers);
+  }
   return new PhaseManager(phases);
 }
 

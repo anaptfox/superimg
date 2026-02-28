@@ -21,6 +21,9 @@ export class HtmlPresenter implements FramePresenter {
   private isReady = false;
   private pendingHtml: string | null = null;
   private pendingCtx: RenderContext | null = null;
+  private pendingInlineCss: string[] = [];
+  private pendingStylesheets: string[] = [];
+  private stylesInjected = false;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -51,9 +54,39 @@ export class HtmlPresenter implements FramePresenter {
     this.iframe.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body></body></html>';
   }
 
+  private injectStylesIntoDoc(doc: Document): void {
+    if (this.stylesInjected) return;
+    if (this.pendingStylesheets.length === 0 && this.pendingInlineCss.length === 0) return;
+
+    for (const url of this.pendingStylesheets) {
+      const link = doc.createElement("link");
+      link.rel = "stylesheet";
+      link.href = url;
+      doc.head.appendChild(link);
+    }
+    if (this.pendingInlineCss.length > 0) {
+      const style = doc.createElement("style");
+      style.textContent = this.pendingInlineCss.join("\n");
+      doc.head.appendChild(style);
+    }
+    this.stylesInjected = true;
+  }
+
+  injectStyles(inlineCss?: string[], stylesheets?: string[]): void {
+    this.pendingInlineCss = inlineCss ?? [];
+    this.pendingStylesheets = stylesheets ?? [];
+    this.stylesInjected = false;
+    const doc = this.iframe.contentDocument;
+    if (doc && doc.head) {
+      this.injectStylesIntoDoc(doc);
+    }
+  }
+
   private setupIframeBody(): void {
     const doc = this.iframe.contentDocument;
     if (!doc) return;
+
+    this.injectStylesIntoDoc(doc);
 
     // Flexbox centering for object-fit: contain behavior
     doc.body.style.cssText = `
@@ -146,10 +179,11 @@ export class HtmlPresenter implements FramePresenter {
   }
 
   /**
-   * @deprecated Use setLogicalSize instead
+   * Pre-cache fonts/images for faster first render.
+   * For HtmlPresenter, this is a no-op since the iframe handles font loading.
    */
-  resize(width: number, height: number): void {
-    this.setLogicalSize(width, height);
+  async warmup(): Promise<void> {
+    // No-op for HTML presenter - browser handles font loading in iframe
   }
 
   dispose(): void {

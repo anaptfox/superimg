@@ -2,7 +2,7 @@
 name: superimg
 description: >
   SuperImg programmatic video generation framework. Create HTML/CSS video
-  templates with defineTemplate(), animate with ctx.std (easing, math, color),
+  templates with defineTemplate(), animate with ctx.std (tween, math, color),
   and render to MP4. Use when working with superimg templates or video rendering.
 ---
 
@@ -14,7 +14,7 @@ SuperImg generates videos from HTML/CSS templates. A template is a function that
 
 - `sceneProgress` (0 to 1) drives animation within a scene
 - `sceneTimeSeconds` gives elapsed time for phase-based timing
-- `ctx.std` provides easing, math, and color utilities
+- `ctx.std` provides tween, math, and color utilities
 - `ctx.data` carries template data (merged with defaults)
 
 Templates render to MP4 via the CLI (`superimg render`) or the server API (`renderVideo`, `loadTemplate`).
@@ -52,21 +52,18 @@ export default defineTemplate({
     // Phase timing: Enter 0-1.5s | Hold 1.5-3s | Exit 3-4s
     const enterProgress = std.math.clamp(time / 1.5, 0, 1);
     const exitProgress = std.math.clamp((time - 3.0) / 1.0, 0, 1);
-    const easedEnter = std.easing.easeOutCubic(enterProgress);
-
     // Animate title
-    const titleOpacity = std.math.lerp(0, 1, easedEnter) * (1 - exitProgress);
-    const titleY = std.math.lerp(40, 0, easedEnter);
+    const titleOpacity = std.tween(0, 1, enterProgress, "easeOutCubic") * (1 - exitProgress);
+    const titleY = std.tween(40, 0, enterProgress, "easeOutCubic");
 
     // Staggered subtitle (+0.3s delay)
     const subtitleEnter = std.math.clamp((time - 0.3) / 1.5, 0, 1);
-    const easedSubtitle = std.easing.easeOutCubic(subtitleEnter);
-    const subtitleOpacity = std.math.lerp(0, 0.8, easedSubtitle) * (1 - exitProgress);
-    const subtitleY = std.math.lerp(30, 0, easedSubtitle);
+    const subtitleOpacity = std.tween(0, 0.8, subtitleEnter, "easeOutCubic") * (1 - exitProgress);
+    const subtitleY = std.tween(30, 0, subtitleEnter, "easeOutCubic");
 
     // Accent line
     const lineEnter = std.math.clamp((time - 0.5) / 1.0, 0, 1);
-    const lineWidth = std.easing.easeOutCubic(lineEnter) * 100 * (1 - exitProgress);
+    const lineWidth = std.tween(0, 100, lineEnter, "easeOutCubic") * (1 - exitProgress);
     const lineColor = std.color.alpha(accentColor, 0.8 * (1 - exitProgress));
 
     return `
@@ -120,7 +117,7 @@ export default defineTemplate({
 
 ```typescript
 interface RenderContext<TData> {
-  std: Stdlib;                    // Easing, math, color utilities
+  std: Stdlib;                    // Tween, math, color utilities
 
   // Scene timing (use these for animation)
   sceneProgress: number;          // 0-1 progress through current scene
@@ -144,19 +141,15 @@ interface RenderContext<TData> {
 
 ### Core Stdlib
 
-**Easing** — all take `t` in [0,1], return eased value:
+**Tween (canonical animation primitive):**
 ```
-std.easing.easeOutCubic(t)     // Smooth deceleration (most common)
-std.easing.easeInOutCubic(t)   // Smooth start and end
-std.easing.easeOutBack(t)      // Overshoot then settle
-std.easing.easeOutElastic(t)   // Bouncy spring
-std.easing.easeOutBounce(t)    // Bounce effect
-std.easing.linear(t)           // No easing
+std.tween(from, to, progress)                        // Linear interpolation
+std.tween(from, to, progress, "easeOutCubic")       // Eased interpolation
+std.tween(from, to, progress, { start, end, easing }) // Windowed animation
 ```
 
 **Math:**
 ```
-std.math.lerp(start, end, t)         // Linear interpolation
 std.math.clamp(value, min, max)      // Restrict to range
 std.math.map(val, inMin, inMax, outMin, outMax)  // Remap range
 ```
@@ -181,10 +174,9 @@ render(ctx) {
   // Enter: 0-1s | Hold: 1-3s | Exit: 3-4s
   const enterProgress = std.math.clamp(time / 1.0, 0, 1);
   const exitProgress = std.math.clamp((time - 3.0) / 1.0, 0, 1);
-  const eased = std.easing.easeOutCubic(enterProgress);
-
+  const eased = std.tween(0, 1, enterProgress, "easeOutCubic");
   const opacity = eased * (1 - exitProgress);
-  const y = std.math.lerp(50, 0, eased);
+  const y = std.tween(50, 0, enterProgress, "easeOutCubic");
   // ...
 }
 ```

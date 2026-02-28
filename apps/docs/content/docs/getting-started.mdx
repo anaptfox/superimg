@@ -29,25 +29,27 @@ export default defineTemplate({
     durationSeconds: 4,
     width: 1920,
     height: 1080,
+    inlineCss: [`
+      body { font-family: system-ui; color: white; }
+      .tagline { font-size: 18px; margin-top: 12px; opacity: 0.5; letter-spacing: 3px; text-transform: uppercase; }
+    `],
   },
 
   render({ sceneProgress: p, std, width, height }) {
     const hue = 230 + p * 60
-    const opacity = std.easing.easeOutCubic(std.math.clamp(p / 0.4, 0, 1))
-    const y = std.math.lerp(20, 0, std.easing.easeOutCubic(std.math.clamp(p / 0.35, 0, 1)))
+    const opacity = std.tween(0, 1, std.math.clamp(p / 0.4, 0, 1), 'easeOutCubic')
+    const y = std.tween(20, 0, std.math.clamp(p / 0.35, 0, 1), 'easeOutCubic')
+
+    const bgStyle = std.css({
+      width, height,
+      background: `linear-gradient(135deg, hsl(${hue},65%,14%), hsl(${hue + 45},75%,8%))`,
+    }) + ';' + std.css.center()
 
     return `
-      <div style="
-        width:${width}px; height:${height}px;
-        background:linear-gradient(135deg, hsl(${hue},65%,14%), hsl(${hue + 45},75%,8%));
-        display:flex; align-items:center; justify-content:center;
-        font-family:system-ui; color:white;
-      ">
-        <div style="text-align:center; opacity:${opacity}; transform:translateY(${y}px);">
+      <div style="${bgStyle}">
+        <div style="${std.css({ textAlign: 'center', opacity, transform: 'translateY(' + y + 'px)' })}">
           <div style="font-size:64px; font-weight:700; letter-spacing:-2px;">Hello, SuperImg</div>
-          <div style="font-size:18px; margin-top:12px; opacity:0.5; letter-spacing:3px; text-transform:uppercase;">
-            Video &middot; as &middot; code
-          </div>
+          <div class="tagline">Video &middot; as &middot; code</div>
         </div>
       </div>
     `
@@ -61,7 +63,7 @@ The `render` function receives a `RenderContext` with everything you need:
 - **`sceneTimeSeconds`** — elapsed time in seconds
 - **`sceneFrame`** — current frame number
 - **`width`, `height`** — canvas dimensions in pixels
-- **`std`** — the standard library: `std.easing`, `std.math`, `std.color`, and more
+- **`std`** — the standard library: `std.tween`, `std.math`, `std.color`, `std.css`, and more
 - **`data`** — template data, merged from defaults and incoming values
 
 The function returns an **HTML string**. SuperImg rasterizes it into each frame.
@@ -87,16 +89,16 @@ Renders every frame headlessly and encodes to MP4.
 The `<Player>` component renders templates in the browser:
 
 ```tsx
-import { Player } from 'superimg-react'
+import { Player } from 'superimg-react/player'
 import myTemplate from './template'
 
 function App() {
   return (
     <Player
       template={myTemplate}
-      width={640}
-      height={360}
+      format="horizontal"
       playbackMode="loop"
+      style={{ width: '100%', maxWidth: 640, aspectRatio: '16/9' }}
     />
   )
 }

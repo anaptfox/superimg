@@ -15,8 +15,8 @@ export const introTemplate = defineTemplate({
 
     // Text fade in
     const textProgress = std.math.clamp(p / 0.4, 0, 1)
-    const textOpacity = std.easing.easeOutCubic(textProgress)
-    const textY = std.math.lerp(20, 0, std.easing.easeOutCubic(textProgress))
+    const textOpacity = std.tween(0, 1, textProgress, "easeOutCubic")
+    const textY = std.tween(20, 0, textProgress, "easeOutCubic")
 
     // Subtle pulsing glow
     const glowOpacity = 0.25 + Math.sin(p * Math.PI * 3) * 0.1

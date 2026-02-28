@@ -22,8 +22,7 @@ This template demonstrates six stdlib functions across three modules:
 
 | Function | What it does here |
 |----------|-------------------|
-| `std.easing.easeOutCubic(t)` | Smooth deceleration on element entrances |
-| `std.math.lerp(a, b, t)` | Interpolate opacity, position, and hue |
+| `std.tween(a, b, p, easing)` | Eased interpolation for opacity, position, and line width |
 | `std.math.clamp(val, 0, 1)` | Create timed animation phases (enter/hold/exit) |
 | `std.color.lighten(color, amount)` | Derive a lighter accent for gradient text |
 | `std.color.mix(c1, c2, weight)` | Blend accent with white for a glow effect |

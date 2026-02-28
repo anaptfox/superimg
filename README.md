@@ -39,7 +39,7 @@ export default defineTemplate({
     const { std, sceneProgress, width, height } = ctx
 
     // sceneProgress runs from 0 → 1 over the duration
-    const scale = std.math.lerp(0.8, 1, std.easing.easeOutCubic(sceneProgress))
+    const scale = std.tween(0.8, 1, sceneProgress, 'easeOutCubic')
 
     return `
       <div style="
@@ -129,10 +129,11 @@ Everything you need for animation, available on `ctx.std`:
 
 | Module | What it does |
 |--------|-------------|
-| `std.easing` | 18+ easing functions: `easeOutCubic`, `easeInOutQuad`, `easeOutBounce` |
-| `std.math` | `lerp`, `clamp`, `map`, `smoothstep`, `inverseLerp` |
-| `std.color` | `hexToRgb`, `rgbToHsl`, `interpolateColor` |
-| `std.timing` | Segment helpers for multi-scene sequences |
+| `std.math` | `clamp`, `map`, `inverseLerp`, `mapClamp` |
+| `std.color` | `hexToRgb`, `rgbToHsl`, `mix`, `alpha` |
+| `std.tween` | `tween(from, to, progress, easing?)` — canonical animation primitive |
+| `std.timing` | `createPhaseManager`, `sequence` — segment helpers for multi-scene |
+| `std.css` | `css`, `fill`, `center`, `stack` — style helpers |
 | `std.presets` | Platform dimensions: YouTube, Instagram, TikTok |
 
 ## One Template, Many Formats

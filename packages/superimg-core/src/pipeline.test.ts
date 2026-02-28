@@ -37,12 +37,12 @@ describe("render pipeline integration", () => {
     expect(html).toContain("Override");
   });
 
-  it("uses stdlib easing in output", async () => {
+  it("uses stdlib tween in output", async () => {
     const code = `
       import { defineTemplate } from 'superimg';
       export default defineTemplate({
         render(ctx) {
-          const eased = ctx.std.easing.easeOutCubic(ctx.sceneProgress);
+          const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeOutCubic');
           return '<div data-eased="' + eased + '"></div>';
         }
       });

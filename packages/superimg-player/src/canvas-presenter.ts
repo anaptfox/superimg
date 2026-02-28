@@ -54,17 +54,12 @@ export class CanvasPresenter implements FramePresenter {
     this.canvas.width = width;
     this.canvas.height = height;
     this.frameCache.clear();
-  }
-
-  /**
-   * @deprecated Use setLogicalSize instead
-   */
-  resize(width: number, height: number): void {
-    this.setLogicalSize(width, height);
+    void this.renderer.dispose();
   }
 
   dispose(): void {
     this.frameCache.clear();
+    void this.renderer.dispose();
     this.canvas.remove();
   }
 }

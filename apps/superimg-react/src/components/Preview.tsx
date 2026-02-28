@@ -1,13 +1,10 @@
-//! Preview canvas component
+//! Preview component with CSS transform scaling
+//! Templates render at logical dimensions and scale to fit container
 
 import { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { usePreview, type UsePreviewReturn } from "../hooks/usePreview.js";
 
 export interface PreviewProps {
-  /** Canvas width in pixels */
-  width: number;
-  /** Canvas height in pixels */
-  height: number;
   /** Optional CSS class name */
   className?: string;
   /** Optional inline styles */
@@ -17,14 +14,16 @@ export interface PreviewProps {
 }
 
 export interface PreviewRef {
-  /** The canvas element */
-  canvas: HTMLCanvasElement | null;
+  /** The container element */
+  container: HTMLDivElement | null;
   /** The preview hook return value */
   preview: UsePreviewReturn;
 }
 
 /**
- * A canvas component with preview rendering capabilities.
+ * A container component with preview rendering capabilities.
+ * Uses CSS transform scaling - templates render at logical dimensions
+ * and scale to fit the container while maintaining aspect ratio.
  *
  * @example
  * ```tsx
@@ -32,8 +31,7 @@ export interface PreviewRef {
  *
  * <Preview
  *   ref={previewRef}
- *   width={1920}
- *   height={1080}
+ *   style={{ width: "100%", aspectRatio: "16/9" }}
  *   onReady={(preview) => {
  *     preview.renderFrame(myTemplate.render, context);
  *   }}
@@ -41,17 +39,21 @@ export interface PreviewRef {
  * ```
  */
 export const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
-  { width, height, className, style, onReady },
+  { className, style, onReady },
   ref
 ) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const preview = usePreview(canvasRef, { width, height });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const preview = usePreview(containerRef);
 
-  // Expose canvas and preview via ref
-  useImperativeHandle(ref, () => ({
-    canvas: canvasRef.current,
-    preview,
-  }), [preview]);
+  // Expose container and preview via ref
+  useImperativeHandle(
+    ref,
+    () => ({
+      container: containerRef.current,
+      preview,
+    }),
+    [preview]
+  );
 
   // Call onReady when preview becomes ready
   useEffect(() => {
@@ -60,13 +62,5 @@ export const Preview = forwardRef<PreviewRef, PreviewProps>(function Preview(
     }
   }, [preview.ready, onReady]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      className={className}
-      style={style}
-    />
-  );
+  return <div ref={containerRef} className={className} style={style} />;
 });

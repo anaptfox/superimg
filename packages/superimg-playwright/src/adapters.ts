@@ -18,12 +18,12 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
     this.width = config.width;
     this.height = config.height;
     await this.page.setViewportSize({ width: config.width, height: config.height });
-    const shell = buildPageShell(config.fonts ?? []);
-    await this.page.evaluate((html: string) => {
-      document.open();
-      document.write(html);
-      document.close();
-    }, shell);
+    const shell = buildPageShell({
+      fonts: config.fonts ?? [],
+      inlineCss: config.inlineCss ?? [],
+      stylesheets: config.stylesheets ?? [],
+    });
+    await this.page.setContent(shell, { waitUntil: "load" });
     await this.page.evaluate(() => document.fonts.ready);
   }
 

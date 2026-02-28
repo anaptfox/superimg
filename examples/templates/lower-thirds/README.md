@@ -21,9 +21,7 @@ slide transitions:
 
 | Function | What it does here |
 |----------|-------------------|
-| `std.easing.easeOutCubic(t)` | Smooth deceleration on slide-in entrance |
-| `std.easing.easeInCubic(t)` | Smooth acceleration on slide-out exit |
-| `std.math.lerp(a, b, t)` | Interpolate translateX from off-screen to final position |
+| `std.tween(a, b, p, easing)` | Eased slide-in/slide-out translation and stagger timing |
 | `std.math.clamp(val, 0, 1)` | Create timed phases with stagger offsets |
 | `std.color.alpha(color, opacity)` | Semi-transparent backgrounds and accent glow |
 

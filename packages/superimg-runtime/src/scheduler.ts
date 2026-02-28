@@ -29,11 +29,14 @@ export class BrowserScheduler {
   }
 
   /**
-   * Run export: sequential frame rendering
+   * Run export: sequential frame rendering.
+   * Uses persistent renderer session (init-once, capture-many, dispose-once).
+   * @param data - Template data merged into ctx.data for every frame
    */
   async runExport(
     renderFn: (ctx: RenderContext) => string,
-    encoding?: EncodingOptions
+    encoding?: EncodingOptions,
+    data?: Record<string, unknown>
   ): Promise<Blob> {
     const totalFrames = Math.ceil(this.durationSeconds * this.fps);
     const encoder = new BrowserEncoder(
@@ -44,23 +47,30 @@ export class BrowserScheduler {
     );
     await encoder.init();
 
-    for (let frame = 0; frame < totalFrames; frame++) {
-      const ctx = createRenderContext(
-        frame,
-        this.fps,
-        totalFrames,
-        this.width,
-        this.height
-      );
-
-      const html = renderFn(ctx);
-      const imageData = await this.renderer.render(html, {
+    try {
+      await this.renderer.init({
         width: this.width,
         height: this.height,
       });
 
-      const timestamp = frame / this.fps;
-      await encoder.addFrame(imageData, timestamp);
+      for (let frame = 0; frame < totalFrames; frame++) {
+        const ctx = createRenderContext(
+          frame,
+          this.fps,
+          totalFrames,
+          this.width,
+          this.height,
+          data ?? {}
+        );
+
+        const html = renderFn(ctx);
+        const imageData = await this.renderer.captureFrame(html);
+
+        const timestamp = frame / this.fps;
+        await encoder.addFrame(imageData, timestamp);
+      }
+    } finally {
+      await this.renderer.dispose();
     }
 
     return encoder.finalize();

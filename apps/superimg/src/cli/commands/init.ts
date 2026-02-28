@@ -39,36 +39,25 @@ export default defineTemplate({
     durationSeconds: 3,
     width: 1920,
     height: 1080,
+    inlineCss: [\`
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #0f0f23; font-family: system-ui, sans-serif; }
+      .message { color: white; font-size: 64px; font-weight: 700; }
+    \`],
   },
 
   render(ctx) {
     const { std, sceneTimeSeconds: time, width, height, data } = ctx;
     const progress = std.math.clamp(time / 1.0, 0, 1);
-    const eased = std.easing.easeOutCubic(progress);
-    const opacity = std.math.lerp(0, 1, eased);
-    const y = std.math.lerp(30, 0, eased);
+    const opacity = std.tween(0, 1, progress, "easeOutCubic");
+    const y = std.tween(30, 0, progress, "easeOutCubic");
 
     return \`
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          width: \${width}px;
-          height: \${height}px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #0f0f23;
-          font-family: system-ui, sans-serif;
-        }
-        .message {
-          color: white;
-          font-size: 64px;
-          font-weight: 700;
-          opacity: \${opacity};
-          transform: translateY(\${y}px);
-        }
-      </style>
-      <div class="message">\${data.message}</div>
+      <div style="\${std.css({ width, height })};\${std.css.center()}">
+        <div class="message" style="\${std.css({ opacity, transform: "translateY(" + y + "px)" })}">
+          \${data.message}
+        </div>
+      </div>
     \`;
   },
 });
@@ -86,36 +75,25 @@ export default defineTemplate({
     durationSeconds: 3,
     width: 1920,
     height: 1080,
+    inlineCss: [\`
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #0f0f23; font-family: system-ui, sans-serif; }
+      .message { color: white; font-size: 64px; font-weight: 700; }
+    \`],
   },
 
   render(ctx) {
     const { std, sceneTimeSeconds: time, width, height, data } = ctx;
     const progress = std.math.clamp(time / 1.0, 0, 1);
-    const eased = std.easing.easeOutCubic(progress);
-    const opacity = std.math.lerp(0, 1, eased);
-    const y = std.math.lerp(30, 0, eased);
+    const opacity = std.tween(0, 1, progress, "easeOutCubic");
+    const y = std.tween(30, 0, progress, "easeOutCubic");
 
     return \`
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          width: \${width}px;
-          height: \${height}px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #0f0f23;
-          font-family: system-ui, sans-serif;
-        }
-        .message {
-          color: white;
-          font-size: 64px;
-          font-weight: 700;
-          opacity: \${opacity};
-          transform: translateY(\${y}px);
-        }
-      </style>
-      <div class="message">\${data.message}</div>
+      <div style="\${std.css({ width, height })};\${std.css.center()}">
+        <div class="message" style="\${std.css({ opacity, transform: "translateY(" + y + "px)" })}">
+          \${data.message}
+        </div>
+      </div>
     \`;
   },
 });

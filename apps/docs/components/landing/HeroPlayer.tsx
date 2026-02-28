@@ -11,10 +11,10 @@ export default function HeroPlayer() {
     <Player
       ref={playerRef}
       template={introTemplate}
-      width={640}
-      height={360}
+      format="horizontal"
       playbackMode="loop"
       loadMode="eager"
+      style={{ width: "100%", height: "100%", aspectRatio: "16/9" }}
       onLoad={(result) => {
         if (result.status === "success") {
           playerRef.current?.play();

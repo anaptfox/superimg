@@ -179,17 +179,14 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(function Timeline
         }}
       />
 
-      {/* Time labels */}
+      {/* Time labels - in-flow so they're not clipped by overflow:hidden parents */}
       {showTime && (
         <div
           className={timeClassName}
           style={{
             display: "flex",
             justifyContent: "space-between",
-            position: "absolute",
-            bottom: "-20px",
-            left: 0,
-            right: 0,
+            marginTop: 6,
             fontSize: "12px",
             color: "rgba(255, 255, 255, 0.7)",
           }}

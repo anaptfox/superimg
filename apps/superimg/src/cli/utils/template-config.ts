@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { extractTemplateMetadata } from "@superimg/core";
+import { extractTemplateMetadata } from "@superimg/core/template-metadata";
 
 export interface ParsedTemplate {
   templateCode: string;
@@ -26,6 +26,8 @@ export interface RenderConfig {
   fps?: number;
   durationSeconds?: number;
   fonts?: string[];
+  inlineCss?: string[];
+  stylesheets?: string[];
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
 }
 
@@ -104,12 +106,12 @@ export function resolveRenderConfig(input: ResolveRenderConfigInput): RenderConf
 /**
  * Parse template file and extract metadata/config
  */
-export function parseTemplate(templatePath: string): ParsedTemplate {
+export async function parseTemplate(templatePath: string): Promise<ParsedTemplate> {
   const fullPath = resolve(templatePath);
   const templateCode = readFileSync(fullPath, "utf-8");
 
   // Parse metadata statically without executing template code.
-  const metadata = extractTemplateMetadata(templateCode);
+  const metadata = await extractTemplateMetadata(templateCode);
   if (!metadata.hasRenderExport) {
     throw new Error("Template must define a `render` function inside `defineTemplate({ render(ctx) { ... } })`.");
   }

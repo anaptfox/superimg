@@ -16,6 +16,7 @@
     "@codemirror/theme-one-dark": "^6.0.0",
     "@mdx-js/loader": "^3.1.1",
     "@mdx-js/react": "^3.1.1",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@next/mdx": "^16.1.6",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/mdx": "^2.0.13",
@@ -29,11 +30,14 @@
     "radix-ui": "^1.4.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "rehype-pretty-code": "^0.14.1",
     "remark-gfm": "^4.0.1",
+    "shiki": "^3.23.0",
     "superimg": "workspace:*",
     "superimg-react": "workspace:*",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",

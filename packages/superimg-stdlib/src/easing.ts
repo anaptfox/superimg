@@ -40,7 +40,8 @@ export function linear(t: number): number {
  * @returns Eased value in [0, 1]
  */
 export function easeInCubic(t: number): number {
-  return clamp01(t) * t * t;
+  const x = clamp01(t);
+  return x * x * x;
 }
 
 /**

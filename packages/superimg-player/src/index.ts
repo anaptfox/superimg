@@ -1,13 +1,14 @@
 //! SuperImg Player - Browser player for rendering and playing templates
 
 // Main Player export
-export { Player } from "./player.js";
-export type { 
-  PlayerOptions, 
-  PlayerInput, 
-  PlayerEvents, 
-  LoadOptions, 
+export { Player, resolveFormat } from "./player.js";
+export type {
+  PlayerOptions,
+  PlayerInput,
+  PlayerEvents,
+  LoadOptions,
   LoadResult,
+  FormatOption,
 } from "./player.js";
 
 // Re-export player components for advanced usage

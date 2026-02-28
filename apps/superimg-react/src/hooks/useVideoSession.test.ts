@@ -3,24 +3,19 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
-vi.mock("superimg", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("superimg")>();
-  return {
-    ...actual,
-    initBundler: vi.fn().mockResolvedValue(undefined),
-    bundleTemplateBrowser: vi.fn().mockImplementation(async (code: string) => {
-      // Mock produces defineTemplate-style output: { default: { render, config, defaults } }
-      const hasValidTemplate = /defineTemplate|render\s*\(/.test(code);
-      if (hasValidTemplate) {
-        return "var __template = { default: { render: function() { return '<div></div>'; } } };";
-      }
-      // Invalid code: return object without render so compile fails
-      return "var __template = { default: {} };";
-    }),
-  };
-});
+vi.mock("superimg/bundler", () => ({
+  initBundler: vi.fn().mockResolvedValue(undefined),
+  bundleTemplateBrowser: vi.fn().mockImplementation(async (code: string) => {
+    const hasValidTemplate = /defineTemplate|render\s*\(/.test(code);
+    if (hasValidTemplate) {
+      return "var __template = { default: { render: function() { return '<div></div>'; } } };";
+    }
+    return "var __template = { default: {} };";
+  }),
+}));
 
-import { useVideoSession, resolveFormat } from "./useVideoSession.js";
+import { useVideoSession } from "./useVideoSession.js";
+import { resolveFormat } from "superimg/browser";
 
 describe("resolveFormat", () => {
   it('resolves "vertical" to 1080x1920', () => {
@@ -62,19 +57,19 @@ describe("resolveFormat", () => {
 
 describe("useVideoSession", () => {
   describe("state initialization", () => {
-    it("initializes with correct dimensions from initialPreviewFormat", () => {
+    it("initializes with correct dimensions from initialFormat", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
-      expect(result.current.previewWidth).toBe(1080);
-      expect(result.current.previewHeight).toBe(1920);
+      expect(result.current.width).toBe(1080);
+      expect(result.current.height).toBe(1920);
       expect(result.current.fps).toBe(30);
     });
 
     it("uses custom fps when provided", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5, fps: 60 })
+        useVideoSession({ initialFormat: "vertical", duration: 5, fps: 60 })
       );
 
       expect(result.current.fps).toBe(60);
@@ -82,44 +77,44 @@ describe("useVideoSession", () => {
 
     it("initializes with horizontal dimensions", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "horizontal", duration: 3 })
+        useVideoSession({ initialFormat: "horizontal", duration: 3 })
       );
 
-      expect(result.current.previewWidth).toBe(1920);
-      expect(result.current.previewHeight).toBe(1080);
+      expect(result.current.width).toBe(1920);
+      expect(result.current.height).toBe(1080);
     });
 
     it("initializes with square dimensions", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "square", duration: 3 })
+        useVideoSession({ initialFormat: "square", duration: 3 })
       );
 
-      expect(result.current.previewWidth).toBe(1080);
-      expect(result.current.previewHeight).toBe(1080);
+      expect(result.current.width).toBe(1080);
+      expect(result.current.height).toBe(1080);
     });
 
     it("initializes with custom dimensions", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: { width: 800, height: 600 }, duration: 3 })
+        useVideoSession({ initialFormat: { width: 800, height: 600 }, duration: 3 })
       );
 
-      expect(result.current.previewWidth).toBe(800);
-      expect(result.current.previewHeight).toBe(600);
+      expect(result.current.width).toBe(800);
+      expect(result.current.height).toBe(600);
     });
 
-    it("defaults to vertical when no initialPreviewFormat provided", () => {
+    it("defaults to vertical when no initialFormat provided", () => {
       const { result } = renderHook(() =>
         useVideoSession({ duration: 5 })
       );
 
-      expect(result.current.previewWidth).toBe(1080);
-      expect(result.current.previewHeight).toBe(1920);
-      expect(result.current.previewFormat).toBe("vertical");
+      expect(result.current.width).toBe(1080);
+      expect(result.current.height).toBe(1920);
+      expect(result.current.format).toBe("vertical");
     });
 
     it("starts not ready (no template compiled)", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       expect(result.current.ready).toBe(false);
@@ -128,7 +123,7 @@ describe("useVideoSession", () => {
 
     it("initializes player state correctly", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       expect(result.current.isPlaying).toBe(false);
@@ -139,7 +134,7 @@ describe("useVideoSession", () => {
 
     it("calculates totalFrames with custom fps", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5, fps: 60 })
+        useVideoSession({ initialFormat: "vertical", duration: 5, fps: 60 })
       );
 
       expect(result.current.totalFrames).toBe(300); // 5s * 60fps
@@ -147,7 +142,7 @@ describe("useVideoSession", () => {
 
     it("initializes export state correctly", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       expect(result.current.exporting).toBe(false);
@@ -156,7 +151,7 @@ describe("useVideoSession", () => {
 
     it("initializes status as Ready", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       expect(result.current.status).toBe("Ready");
@@ -164,86 +159,86 @@ describe("useVideoSession", () => {
 
     it("initializes error as null", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       expect(result.current.error).toBeNull();
     });
   });
 
-  describe("previewFormat", () => {
+  describe("format", () => {
     it("returns the current preview format", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "horizontal", duration: 5 })
+        useVideoSession({ initialFormat: "horizontal", duration: 5 })
       );
 
-      expect(result.current.previewFormat).toBe("horizontal");
+      expect(result.current.format).toBe("horizontal");
     });
 
-    it("can change preview format with setPreviewFormat", () => {
+    it("can change preview format with setFormat", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
-      expect(result.current.previewFormat).toBe("vertical");
-      expect(result.current.previewWidth).toBe(1080);
-      expect(result.current.previewHeight).toBe(1920);
+      expect(result.current.format).toBe("vertical");
+      expect(result.current.width).toBe(1080);
+      expect(result.current.height).toBe(1920);
 
       act(() => {
-        result.current.setPreviewFormat("horizontal");
+        result.current.setFormat("horizontal");
       });
 
-      expect(result.current.previewFormat).toBe("horizontal");
-      expect(result.current.previewWidth).toBe(1920);
-      expect(result.current.previewHeight).toBe(1080);
+      expect(result.current.format).toBe("horizontal");
+      expect(result.current.width).toBe(1920);
+      expect(result.current.height).toBe(1080);
     });
 
     it("can change to square format", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       act(() => {
-        result.current.setPreviewFormat("square");
+        result.current.setFormat("square");
       });
 
-      expect(result.current.previewFormat).toBe("square");
-      expect(result.current.previewWidth).toBe(1080);
-      expect(result.current.previewHeight).toBe(1080);
+      expect(result.current.format).toBe("square");
+      expect(result.current.width).toBe(1080);
+      expect(result.current.height).toBe(1080);
     });
 
     it("can change to custom dimensions", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       act(() => {
-        result.current.setPreviewFormat({ width: 640, height: 480 });
+        result.current.setFormat({ width: 640, height: 480 });
       });
 
-      expect(result.current.previewWidth).toBe(640);
-      expect(result.current.previewHeight).toBe(480);
+      expect(result.current.width).toBe(640);
+      expect(result.current.height).toBe(480);
     });
 
     it("can change to stdlib preset", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       act(() => {
-        result.current.setPreviewFormat("youtube.video.long");
+        result.current.setFormat("youtube.video.long");
       });
 
-      expect(result.current.previewFormat).toBe("youtube.video.long");
-      expect(result.current.previewWidth).toBe(1920);
-      expect(result.current.previewHeight).toBe(1080);
+      expect(result.current.format).toBe("youtube.video.long");
+      expect(result.current.width).toBe(1920);
+      expect(result.current.height).toBe(1080);
     });
   });
 
   describe("compile()", () => {
     it("sets error on invalid code", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
 
@@ -258,7 +253,7 @@ describe("useVideoSession", () => {
 
     it("clears error on valid code after error", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
 
@@ -272,7 +267,7 @@ describe("useVideoSession", () => {
 
     it("updates status to Ready on successful compile", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
 
@@ -285,7 +280,7 @@ describe("useVideoSession", () => {
 
     it("sets template on successful compile", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
 
@@ -299,7 +294,7 @@ describe("useVideoSession", () => {
 
     it("handles empty code as error", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
 
@@ -313,7 +308,7 @@ describe("useVideoSession", () => {
 
     it("handles code without render export as error", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
 
@@ -329,7 +324,7 @@ describe("useVideoSession", () => {
   describe("duration reactivity", () => {
     it("updates totalFrames when duration changes", () => {
       const { result, rerender } = renderHook(
-        ({ duration }) => useVideoSession({ initialPreviewFormat: "vertical", duration }),
+        ({ duration }) => useVideoSession({ initialFormat: "vertical", duration }),
         { initialProps: { duration: 5 } }
       );
 
@@ -342,7 +337,7 @@ describe("useVideoSession", () => {
 
     it("updates totalFrames when duration decreases", () => {
       const { result, rerender } = renderHook(
-        ({ duration }) => useVideoSession({ initialPreviewFormat: "vertical", duration }),
+        ({ duration }) => useVideoSession({ initialFormat: "vertical", duration }),
         { initialProps: { duration: 10 } }
       );
 
@@ -355,7 +350,7 @@ describe("useVideoSession", () => {
 
     it("maintains correct totalFrames with custom fps after duration change", () => {
       const { result, rerender } = renderHook(
-        ({ duration }) => useVideoSession({ initialPreviewFormat: "vertical", duration, fps: 60 }),
+        ({ duration }) => useVideoSession({ initialFormat: "vertical", duration, fps: 60 }),
         { initialProps: { duration: 5 } }
       );
 
@@ -367,10 +362,112 @@ describe("useVideoSession", () => {
     });
   });
 
+  describe("defaults and setData()", () => {
+    it("merges template.defaults into ctx.data during render", async () => {
+      const containerRef = { current: document.createElement("div") };
+      document.body.appendChild(containerRef.current);
+
+      const capturedData: Record<string, unknown>[] = [];
+      const templateWithDefaults = {
+        defaults: { name: "Default", count: 42 },
+        render: (ctx: { data: Record<string, unknown> }) => {
+          capturedData.push({ ...ctx.data });
+          return `<div>${ctx.data.name}-${ctx.data.count}</div>`;
+        },
+      };
+
+      const { result } = renderHook(() =>
+        useVideoSession({
+          containerRef,
+          initialFormat: "vertical",
+          duration: 5,
+        })
+      );
+
+      act(() => {
+        result.current.setTemplate(templateWithDefaults);
+      });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      await act(async () => {
+        await result.current.renderFrame(0);
+      });
+
+      expect(capturedData.length).toBeGreaterThanOrEqual(1);
+      expect(capturedData[capturedData.length - 1]).toEqual({
+        name: "Default",
+        count: 42,
+      });
+
+      document.body.removeChild(containerRef.current);
+    });
+
+    it("setData() overrides defaults in ctx.data", async () => {
+      const containerRef = { current: document.createElement("div") };
+      document.body.appendChild(containerRef.current);
+
+      const capturedData: Record<string, unknown>[] = [];
+      const templateWithDefaults = {
+        defaults: { name: "Default", color: "blue" },
+        render: (ctx: { data: Record<string, unknown> }) => {
+          capturedData.push({ ...ctx.data });
+          return `<div>${ctx.data.name}</div>`;
+        },
+      };
+
+      const { result } = renderHook(() =>
+        useVideoSession({
+          containerRef,
+          initialFormat: "vertical",
+          duration: 5,
+        })
+      );
+
+      act(() => {
+        result.current.setTemplate(templateWithDefaults);
+      });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      capturedData.length = 0;
+
+      act(() => {
+        result.current.setData({ name: "Override" });
+      });
+
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+      });
+
+      expect(capturedData.length).toBeGreaterThanOrEqual(1);
+      expect(capturedData[capturedData.length - 1]).toMatchObject({
+        name: "Override",
+        color: "blue",
+      });
+
+      document.body.removeChild(containerRef.current);
+    });
+
+    it("provides setData function", () => {
+      const { result } = renderHook(() =>
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
+      );
+      expect(typeof result.current.setData).toBe("function");
+      act(() => {
+        result.current.setData({ foo: "bar" });
+      });
+    });
+  });
+
   describe("setTemplate()", () => {
     it("sets template directly without compilation", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       const mockTemplate = {
@@ -388,7 +485,7 @@ describe("useVideoSession", () => {
 
     it("clears previous compile error when setting template", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
 
@@ -406,7 +503,7 @@ describe("useVideoSession", () => {
   describe("player controls", () => {
     it("play sets isPlaying to true", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
 
@@ -419,7 +516,7 @@ describe("useVideoSession", () => {
 
     it("pause sets isPlaying to false", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
       act(() => result.current.play());
@@ -434,7 +531,7 @@ describe("useVideoSession", () => {
 
     it("togglePlayPause toggles isPlaying", async () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       await act(async () => {});
 
@@ -447,7 +544,7 @@ describe("useVideoSession", () => {
 
     it("seek updates currentFrame", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       act(() => {
@@ -459,7 +556,7 @@ describe("useVideoSession", () => {
 
     it("seek updates progress", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
 
       // totalFrames = 150, progress = currentFrame / (totalFrames - 1)
@@ -475,7 +572,7 @@ describe("useVideoSession", () => {
   describe("export API", () => {
     it("provides exportMp4, exportMultiple, and download functions", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       expect(typeof result.current.exportMp4).toBe("function");
       expect(typeof result.current.exportMultiple).toBe("function");
@@ -486,7 +583,7 @@ describe("useVideoSession", () => {
   describe("store", () => {
     it("provides store for Timeline component", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
       expect(result.current.store).toBeDefined();
       expect(typeof result.current.store.subscribe).toBe("function");
@@ -494,12 +591,12 @@ describe("useVideoSession", () => {
     });
   });
 
-  describe("canvas management", () => {
-    it("provides setCanvas function", () => {
+  describe("container management", () => {
+    it("provides setContainer function", () => {
       const { result } = renderHook(() =>
-        useVideoSession({ initialPreviewFormat: "vertical", duration: 5 })
+        useVideoSession({ initialFormat: "vertical", duration: 5 })
       );
-      expect(typeof result.current.setCanvas).toBe("function");
+      expect(typeof result.current.setContainer).toBe("function");
     });
   });
 });

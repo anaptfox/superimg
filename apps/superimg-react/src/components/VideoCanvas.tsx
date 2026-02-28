@@ -1,4 +1,4 @@
-//! Auto-managed canvas component for use with useVideoSession
+//! Auto-managed container component for use with useVideoSession
 
 import { useEffect, useRef, type CSSProperties } from "react";
 import type { VideoSessionReturn } from "../hooks/useVideoSession.js";
@@ -13,19 +13,24 @@ export interface VideoCanvasProps {
 }
 
 /**
- * Canvas component that auto-integrates with useVideoSession.
+ * Container component that auto-integrates with useVideoSession.
  *
- * Automatically manages canvas ref registration with the session,
- * eliminating the need for manual ref management.
+ * Uses CSS transform scaling - templates render at logical dimensions
+ * and scale to fit the container while maintaining aspect ratio.
+ * Automatically manages container ref registration with the session.
  *
  * @example
  * ```tsx
  * function MyVideoEditor() {
- *   const session = useVideoSession({ initialPreviewFormat: "vertical", duration: 5 });
+ *   const session = useVideoSession({ initialFormat: "vertical", duration: 5 });
  *
  *   return (
  *     <div>
- *       <VideoCanvas session={session} className="preview" />
+ *       <VideoCanvas
+ *         session={session}
+ *         className="preview"
+ *         style={{ width: "100%", aspectRatio: "9/16" }}
+ *       />
  *       <Timeline store={session.store} showTime />
  *     </div>
  *   );
@@ -33,24 +38,16 @@ export interface VideoCanvasProps {
  * ```
  */
 export function VideoCanvas({ session, className, style }: VideoCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Register canvas with session on mount/unmount
+  // Register container with session on mount/unmount
   useEffect(() => {
-    session.setCanvas(canvasRef.current);
+    session.setContainer(containerRef.current);
 
     return () => {
-      session.setCanvas(null);
+      session.setContainer(null);
     };
   }, [session]);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      width={session.previewWidth}
-      height={session.previewHeight}
-      className={className}
-      style={style}
-    />
-  );
+  return <div ref={containerRef} className={className} style={style} />;
 }

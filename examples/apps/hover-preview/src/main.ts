@@ -5,7 +5,7 @@ import type { RenderContext, TemplateModule } from "superimg";
 const templates: TemplateModule[] = [
   // Gradient rotation
   {
-    config: { width: 640, height: 360, fps: 24, durationSeconds: 2 },
+    config: { fps: 24, durationSeconds: 2 },
     render: (ctx: RenderContext) => {
       const hue = Math.floor(ctx.sceneProgress * 360);
       return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:system-ui;font-size:32px;color:white;background:linear-gradient(120deg, hsl(${hue}, 80%, 40%), #0f0f0f)">Gradient ${(ctx.sceneProgress * 100).toFixed(0)}%</div>`;
@@ -13,7 +13,7 @@ const templates: TemplateModule[] = [
   },
   // Pulse animation
   {
-    config: { width: 640, height: 360, fps: 24, durationSeconds: 2 },
+    config: { fps: 24, durationSeconds: 2 },
     render: (ctx: RenderContext) => {
       const scale = 0.8 + Math.sin(ctx.sceneProgress * Math.PI * 4) * 0.2;
       return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1a1a2e"><div style="width:80px;height:80px;border-radius:50%;background:#16213e;transform:scale(${scale});box-shadow:0 0 40px rgba(0,149,255,0.8)"></div></div>`;
@@ -21,19 +21,21 @@ const templates: TemplateModule[] = [
   },
   // Color bars
   {
-    config: { width: 640, height: 360, fps: 24, durationSeconds: 2 },
+    config: { fps: 24, durationSeconds: 2 },
     render: (ctx: RenderContext) => {
-      const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8'];
-      const bars = colors.map((c, i) => {
-        const height = 20 + Math.sin(ctx.sceneProgress * Math.PI * 2 + i) * 60;
-        return `<div style="flex:1;background:${c};height:${height}%"></div>`;
-      }).join('');
+      const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
+      const bars = colors
+        .map((c, i) => {
+          const height = 20 + Math.sin(ctx.sceneProgress * Math.PI * 2 + i) * 60;
+          return `<div style="flex:1;background:${c};height:${height}%"></div>`;
+        })
+        .join("");
       return `<div style="width:100%;height:100%;display:flex;align-items:flex-end;background:#0f0f0f">${bars}</div>`;
     },
   },
   // Spinning squares
   {
-    config: { width: 640, height: 360, fps: 24, durationSeconds: 2 },
+    config: { fps: 24, durationSeconds: 2 },
     render: (ctx: RenderContext) => {
       const rotate = ctx.sceneProgress * 360;
       return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%)"><div style="width:60px;height:60px;background:white;transform:rotate(${rotate}deg)"></div></div>`;
@@ -41,14 +43,14 @@ const templates: TemplateModule[] = [
   },
   // Wave pattern
   {
-    config: { width: 640, height: 360, fps: 24, durationSeconds: 2 },
+    config: { fps: 24, durationSeconds: 2 },
     render: (ctx: RenderContext) => {
       return `<div style="width:100%;height:100%;background:#0a0e27;display:flex;align-items:center;justify-content:center;font-size:24px;color:#64ffda">◆ ◇ ◆ ◇<br>Wave ${Math.floor(ctx.sceneProgress * 100)}%</div>`;
     },
   },
   // Gradient sweep
   {
-    config: { width: 640, height: 360, fps: 24, durationSeconds: 2 },
+    config: { fps: 24, durationSeconds: 2 },
     render: (ctx: RenderContext) => {
       const angle = ctx.sceneProgress * 360;
       return `<div style="width:100%;height:100%;background:linear-gradient(${angle}deg, #ee0979 0%, #ff6a00 100%);display:flex;align-items:center;justify-content:center;font-size:28px;color:white;font-weight:bold">SWEEP</div>`;
@@ -78,7 +80,6 @@ interface VideoCard {
   hoverTimeout?: number;
   isLoaded: boolean;
   observer: IntersectionObserver;
-  resizeObserver: ResizeObserver;
 }
 
 const grid = document.querySelector<HTMLDivElement>("#grid");
@@ -87,14 +88,6 @@ if (!grid) {
 }
 
 const videoCards: VideoCard[] = [];
-
-// Helper to calculate responsive dimensions
-function getResponsiveDimensions(container: HTMLElement) {
-  const rect = container.getBoundingClientRect();
-  const width = Math.floor(rect.width);
-  const height = Math.floor(width * (9 / 16)); // 16:9 aspect ratio
-  return { width, height };
-}
 
 // Create video cards
 videos.forEach((video) => {
@@ -144,34 +137,16 @@ videos.forEach((video) => {
 
   grid.appendChild(cardElement);
 
-  // Get initial dimensions
-  const initialDims = getResponsiveDimensions(thumbnailContainer);
-
-  // Create player instance with new options
+  // Create player instance - no need to specify dimensions!
+  // HtmlPresenter uses CSS transform scaling automatically.
+  // Templates render at logical dimensions and scale to fit the container.
   const player = new Player({
     container: `#preview-${video.id}`,
-    width: initialDims.width,
-    height: initialDims.height,
+    format: "horizontal", // 1920x1080, scales down via CSS transform
     playbackMode: "loop",
     loadMode: "lazy",
     maxCacheFrames: 30,
   });
-
-  // ResizeObserver to handle responsive canvas sizing
-  const resizeObserver = new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      const dims = getResponsiveDimensions(entry.target as HTMLElement);
-      const canvas = thumbnail.querySelector("canvas");
-      if (canvas && (Math.abs(canvas.width - dims.width) > 10 || Math.abs(canvas.height - dims.height) > 10)) {
-        canvas.width = dims.width;
-        canvas.height = dims.height;
-        canvas.style.width = `${dims.width}px`;
-        canvas.style.height = `${dims.height}px`;
-      }
-    }
-  });
-
-  resizeObserver.observe(thumbnailContainer);
 
   // Intersection Observer for lazy loading
   const observer = new IntersectionObserver(
@@ -225,6 +200,5 @@ videos.forEach((video) => {
     player,
     isLoaded: false,
     observer,
-    resizeObserver,
   });
 });

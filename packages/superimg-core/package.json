@@ -21,6 +21,10 @@
     "./engine": {
       "import": "./dist/engine.js",
       "types": "./dist/engine.d.ts"
+    },
+    "./template-metadata": {
+      "import": "./dist/template-metadata.js",
+      "types": "./dist/template-metadata.d.ts"
     }
   },
   "scripts": {

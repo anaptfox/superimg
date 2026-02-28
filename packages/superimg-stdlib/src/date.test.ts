@@ -9,10 +9,21 @@ import {
 } from './date';
 
 describe('formatDate', () => {
-  it('formats date with simple tokens', () => {
+  it('formats date with legacy tokens (YYYY, DD)', () => {
     const date = new Date('2024-01-15T10:30:00Z');
     expect(formatDate(date, 'YYYY-MM-DD')).toBe('2024-01-15');
     expect(formatDate(date, 'HH:mm:ss')).toBe('10:30:00');
+  });
+
+  it('formats date with date-fns native tokens', () => {
+    const date = new Date('2024-01-15T10:30:00Z');
+    expect(formatDate(date, 'yyyy-MM-dd')).toBe('2024-01-15');
+    expect(formatDate(date, 'yyyy-MM-dd HH:mm:ss')).toBe('2024-01-15 10:30:00');
+  });
+
+  it('uses UTC components (timezone-independent)', () => {
+    const date = new Date('2024-01-15T10:30:00Z');
+    expect(formatDate(date, 'YYYY-MM-DD HH:mm:ss')).toBe('2024-01-15 10:30:00');
   });
 
   it('handles Date objects', () => {

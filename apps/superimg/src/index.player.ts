@@ -2,7 +2,7 @@
 //! Exports only the Player class and related types.
 //! Does NOT include bundler, export, or other browser-global APIs.
 
-export { Player } from "@superimg/player";
+export { Player, resolveFormat } from "@superimg/player";
 
 export type {
   PlayerOptions,
@@ -10,6 +10,7 @@ export type {
   PlayerEvents,
   LoadOptions,
   LoadResult,
+  FormatOption,
 } from "@superimg/player";
 
 export type {

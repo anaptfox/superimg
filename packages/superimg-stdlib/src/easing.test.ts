@@ -118,3 +118,74 @@ describe('easeOutBounce', () => {
     expect(easeOutBounce(1)).toBe(1);
   });
 });
+
+describe('easing out-of-range inputs', () => {
+  const easings = [
+    linear,
+    easeInCubic,
+    easeOutCubic,
+    easeInOutCubic,
+    easeInQuart,
+    easeOutQuart,
+    easeInOutQuart,
+    easeInExpo,
+    easeOutExpo,
+    easeInOutExpo,
+    easeInBack,
+    easeOutBack,
+    easeInOutBack,
+    easeInElastic,
+    easeOutElastic,
+    easeInOutElastic,
+    easeInBounce,
+    easeOutBounce,
+    easeInOutBounce,
+  ];
+
+  it('returns 0 for t < 0', () => {
+    for (const fn of easings) {
+      expect(fn(-1)).toBeCloseTo(0, 10);
+      expect(fn(-0.5)).toBeCloseTo(0, 10);
+    }
+  });
+
+  it('returns 1 for t > 1', () => {
+    for (const fn of easings) {
+      expect(fn(1.5)).toBeCloseTo(1, 10);
+      expect(fn(2)).toBeCloseTo(1, 10);
+    }
+  });
+
+  it('output stays finite for all t in [0, 1]', () => {
+    for (const fn of easings) {
+      for (let i = 0; i <= 100; i++) {
+        const t = i / 100;
+        const v = fn(t);
+        expect(Number.isFinite(v)).toBe(true);
+      }
+    }
+  });
+
+  it('non-overshoot curves stay in [0, 1] for t in [0, 1]', () => {
+    const nonOvershoot = [
+      linear,
+      easeInCubic,
+      easeOutCubic,
+      easeInOutCubic,
+      easeInQuart,
+      easeOutQuart,
+      easeInOutQuart,
+      easeInExpo,
+      easeOutExpo,
+      easeInOutExpo,
+    ];
+    for (const fn of nonOvershoot) {
+      for (let i = 0; i <= 100; i++) {
+        const t = i / 100;
+        const v = fn(t);
+        expect(v).toBeGreaterThanOrEqual(0);
+        expect(v).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+});

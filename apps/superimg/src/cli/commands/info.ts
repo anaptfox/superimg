@@ -4,9 +4,9 @@ import { resolve } from "node:path";
 import { parseTemplate, resolveRenderConfig } from "../utils/template-config.js";
 
 export async function infoCommand(template: string) {
-  let templateData!: ReturnType<typeof parseTemplate>;
+  let templateData!: Awaited<ReturnType<typeof parseTemplate>>;
   try {
-    templateData = parseTemplate(template);
+    templateData = await parseTemplate(template);
   } catch (err) {
     console.error(`Error parsing template: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

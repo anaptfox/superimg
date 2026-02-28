@@ -1,29 +1,6 @@
 # Introducing SuperImg
 
-Video at scale is a content problem dressed up as a video problem. The brief is always the same: take this template, swap the copy, export it in five formats. Do it for 200 products. By Monday.
-
-Timeline editors weren't built for this. They're built for one video at a time—dragging keyframes, tweaking bezier curves, exporting, uploading, repeating. Try to automate it and you're fighting the tool instead of shipping content.
-
-SuperImg flips the model. A video is a function: give it a frame number, get back HTML. That HTML gets rasterized, encoded, and out comes an MP4.
-
-```
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│   Template   │      │     HTML     │      │    Frames    │      │     MP4      │
-│              │ ──▶  │              │ ──▶  │              │ ──▶  │              │
-│  render(ctx) │      │  <div>...</   │      │  ░░▓▓██████  │      │  video.mp4   │
-└──────────────┘      └──────────────┘      └──────────────┘      └──────────────┘
-     f(time)              string             rasterize             encode
-```
-
-No timeline. No drag-and-drop. Just code.
-
-<PlayerDemo />
-
----
-
-## Video as a function
-
-Everything in SuperImg starts with `defineTemplate`. The `render` function receives a context object and returns an HTML string—the same HTML that gets rasterized into each frame:
+This is a video. It's also a TypeScript function.
 
 ```ts
 import { defineTemplate } from 'superimg'
@@ -32,7 +9,6 @@ export default defineTemplate({
   render(ctx) {
     const { width, height, sceneProgress } = ctx
 
-    // Fade in the text
     const opacity = Math.min(1, sceneProgress * 3)
     const scale = 0.8 + sceneProgress * 0.2
 
@@ -61,56 +37,59 @@ export default defineTemplate({
 
 <PlayerDemo templateId="hello-world" />
 
-That's it. `sceneProgress` runs from `0` to `1` over the clip's duration. Everything else—opacity, scale, position, color—is just math on that value.
+`render` gets called once per frame. `sceneProgress` goes from `0` to `1` over the clip's duration. The return value is an HTML string. That string gets rasterized into a pixel frame, and the frames get encoded into an MP4.
 
-```
-sceneProgress
-    1 ┤                                    ●━━━━━━━
-      │                              ●━━━━━
-      │                        ●━━━━━
-      │                  ●━━━━━
-      │            ●━━━━━
-      │      ●━━━━━
-    0 ┼━━━━━●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━▶ time
-      0s                                         4s
-
-      Frame 0 → progress = 0.0
-      Frame 60 → progress = 0.5
-      Frame 120 → progress = 1.0
-```
-
-The key insight: every frame is a pure function of time. Same input, same output. Deterministic, testable, composable—just like any other TypeScript module.
+That's the whole model. A video is a pure function of time. Same input, same output—deterministic, testable, composable, like any other TypeScript module.
 
 ---
 
-## The standard library
+## Adding easing
 
-Every animation needs easing. SuperImg ships 18+ easing functions, plus math helpers and color utilities—all on `ctx.std`:
+The example above uses `Math.min` for a linear fade-in. Real motion needs easing curves. SuperImg provides `std.tween()` to compose easing + interpolation in one call, plus math helpers for clamping and mapping:
+
+```ts
+render(ctx) {
+  const { std, sceneTimeSeconds: time } = ctx
+
+  // Map the first second of time to a 0–1 progress value
+  const progress = std.math.clamp(time / 1.0, 0, 1)
+
+  const opacity = std.tween(0, 1, progress, 'easeOutCubic')
+  const y = std.tween(30, 0, progress, 'easeOutCubic')
+
+  return `
+    <h1 style="
+      opacity: ${opacity};
+      transform: translateY(${y}px);
+    ">...</h1>
+  `
+}
+```
+
+Two functions turn a mechanical linear fade into smooth deceleration: `clamp` bounds time to a 0–1 range, and `tween` maps it to the value you need with your chosen easing curve. Swap in `easeOutBounce` or `easeOutElastic` and the character of motion changes completely.
+
+---
+
+## Making it data-driven
+
+Hardcoded text is a demo. Real templates need data. Add a `defaults` object and the values become overridable at render time:
 
 ```ts
 import { defineTemplate } from 'superimg'
 
 export default defineTemplate({
-  config: {
-    width: 1280,
-    height: 720,
-    fps: 30,
-    durationSeconds: 4,
-  },
   defaults: {
     title: 'Welcome',
     subtitle: 'Customize via data',
     accentColor: '#667eea',
   },
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx
+    const { data, std, sceneTimeSeconds: time, width, height } = ctx
     const { title, subtitle, accentColor } = data
 
-    // Animate over first second with easing
-    const enterProgress = std.math.clamp(time / 1.0, 0, 1)
-    const eased = std.easing.easeOutCubic(enterProgress)
-    const opacity = std.math.lerp(0, 1, eased)
-    const y = std.math.lerp(30, 0, eased)
+    const progress = std.math.clamp(time / 1.0, 0, 1)
+    const opacity = std.tween(0, 1, progress, 'easeOutCubic')
+    const y = std.tween(30, 0, progress, 'easeOutCubic')
 
     return `
       <div style="
@@ -145,113 +124,47 @@ export default defineTemplate({
 
 <PlayerDemo templateId="complete-template" duration={4} />
 
-The `config` object sets resolution, frame rate, and duration. The `defaults` object provides default data values that can be overridden at render time—useful for personalization at scale.
-
-### What's in `std`
-
-| Module | What it does |
-|--------|-------------|
-| `std.easing` | 18+ easing functions: `linear`, `easeInOut`, `easeOutCubic`, `easeOutBounce`, etc. |
-| `std.math` | `lerp`, `clamp`, `map`, `smoothstep`, `inverseLerp` |
-| `std.color` | `hexToRgb`, `rgbToHsl`, `interpolateColor` |
-| `std.timing` | Segment helpers for multi-scene sequences |
-| `std.presets` | Platform dimensions: YouTube, Instagram, TikTok |
+`defaults` provides the fallback values. At render time, pass overrides—a different title, a different color—and the template produces a different video from the same code.
 
 ---
 
-## One template, many formats
+## Rendering
 
-A single template can render to any aspect ratio. The stdlib includes presets for every major platform:
-
-```
-One Template, Multiple Formats:
-
-    ┌─────────┐     ┌───────────────────┐     ┌───────────┐
-    │         │     │                   │     │           │
-    │  Hello  │     │      Hello        │     │   Hello   │
-    │  World  │     │      World        │     │   World   │
-    │         │     │                   │     │           │
-    │         │     └───────────────────┘     └───────────┘
-    │         │          horizontal              square
-    │         │           1920×1080             1080×1080
-    └─────────┘
-     vertical
-     1080×1920
-```
-
-```ts
-// Render the same template at different sizes
-await render(template, { format: 'youtube.video.short' })  // 1080x1920
-await render(template, { format: 'youtube.video' })        // 1920x1080
-await render(template, { format: 'instagram.post' })       // 1080x1080
-await render(template, { format: 'tiktok.video' })         // 1080x1920
-```
-
-Or export to multiple formats in one call:
-
-```ts
-await exportMultiple([
-  { format: 'vertical',   filename: 'reel.mp4' },
-  { format: 'horizontal', filename: 'youtube.mp4' },
-  { format: 'square',     filename: 'feed.mp4' },
-])
-```
-
-Each format renders at the correct native resolution. No upscaling, no letterboxing.
-
----
-
-## Where it runs
-
-SuperImg works wherever JavaScript runs:
-
-```
-                    ┌─────────────────┐
-                    │    template.ts  │
-                    │                 │
-                    │  defineTemplate │
-                    └────────┬────────┘
-                             │
-           ┌─────────────────┼─────────────────┐
-           │                 │                 │
-           ▼                 ▼                 ▼
-    ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-    │   Browser   │   │     CLI     │   │    React    │
-    │             │   │             │   │             │
-    │  Live edit  │   │ npx render  │   │  <Player/>  │
-    │  60fps      │   │ Batch jobs  │   │  Embed      │
-    └─────────────┘   └─────────────┘   └─────────────┘
-```
-
-**Browser** — Real-time preview while you code. The [editor](/) compiles TypeScript in the browser using esbuild-wasm and renders to a canvas at 60fps.
-
-**CLI** — Batch render locally or in CI. Export hundreds of personalized videos from a JSON data file:
+One command to go from template to MP4:
 
 ```bash
 npx superimg render template.ts -o video.mp4
-npx superimg render template.ts --data products.json -o ./output/
 ```
 
-**React** — Embed videos in your app with the `<Player>` component. Lazy loading, autoplay on hover, custom playback controls—all built in.
+The pipeline: TypeScript compiles to a `render` function, each frame calls it to produce HTML, a headless browser rasterizes the HTML to pixels, and ffmpeg encodes the pixel frames into a video file. Templates also run in the browser with live preview at 60fps, and SuperImg ships a `<Player>` React component for embedding in apps.
+
+---
+
+## Why a function, not a component tree
+
+Other tools for programmatic video give you a component tree and a timeline. SuperImg gives you a function. No component lifecycle, no virtual DOM, no reconciler—just a string of HTML per frame, rasterized and encoded.
+
+This makes templates portable. They're plain TypeScript modules that return strings. You can unit test them with `assert.equal`. You can generate them from other code. You can run them anywhere JavaScript runs—browser, CLI, CI, serverless. The mental model is `(time) → HTML → pixels`, and nothing else.
+
+The trade-off is intentional: you give up declarative composition for total control over every pixel in every frame.
 
 ---
 
 ## What's next
 
-SuperImg is early. The core pipeline—define, preview, export—works today. What's coming:
+The core pipeline—define, preview, render—works today. What's coming:
 
-- **Asset system**: fonts, images, and audio baked into the template config
-- **Data-driven rendering**: pass arrays of data to render personalized videos at scale
+- **Asset system**: fonts, images, and audio declared in template config
 - **Server-side rendering**: the same template, rendered via Node API for cloud workflows
 
 ---
 
 ## Try it
 
-Open the [editor](/) and start building. Or install and render locally:
+Open the [editor](/) and start building. Or render locally:
 
 ```bash
 npx superimg render template.ts -o video.mp4
 ```
 
-Video is code now.
+Every frame is just HTML.

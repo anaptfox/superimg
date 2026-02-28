@@ -71,8 +71,7 @@ export default function PreviewCards() {
               <div className="overflow-hidden rounded-t-lg">
                 <Player
                   template={category.template}
-                  width={320}
-                  height={180}
+                  format="horizontal"
                   playbackMode="loop"
                   loadMode="lazy"
                   hoverBehavior="play"

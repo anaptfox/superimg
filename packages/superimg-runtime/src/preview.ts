@@ -6,7 +6,8 @@ import { get2DContext } from "./utils.js";
 
 /**
  * Canvas renderer that handles HTML → ImageData → Canvas drawing
- * Provides efficient frame rendering with scaling support and frame caching
+ * Provides efficient frame rendering with scaling support and frame caching.
+ * Uses persistent BrowserRenderer session (init-once, capture-many, dispose-once).
  */
 export class CanvasRenderer {
   private canvas: HTMLCanvasElement;
@@ -15,6 +16,8 @@ export class CanvasRenderer {
   // Cached temp canvas to avoid memory leak from creating one every frame
   private tempCanvas: HTMLCanvasElement | null = null;
   private tempCtx: CanvasRenderingContext2D | null = null;
+  private sessionInitialized = false;
+  private cachedOptions: { width: number; height: number } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -23,10 +26,27 @@ export class CanvasRenderer {
   }
 
   /**
-   * Pre-cache fonts/images for faster first render
+   * Pre-cache fonts/images and initialize renderer session for current dimensions
    */
   async warmup(): Promise<void> {
     await this.renderer.warmup();
+    await this.ensureSession();
+  }
+
+  private async ensureSession(): Promise<void> {
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    if (
+      this.sessionInitialized &&
+      this.cachedOptions &&
+      this.cachedOptions.width === width &&
+      this.cachedOptions.height === height
+    ) {
+      return;
+    }
+    await this.renderer.init({ width, height });
+    this.cachedOptions = { width, height };
+    this.sessionInitialized = true;
   }
 
   /**
@@ -49,11 +69,9 @@ export class CanvasRenderer {
     renderFn: (ctx: RenderContext) => string,
     ctx: RenderContext
   ): Promise<ImageData> {
+    await this.ensureSession();
     const html = renderFn(ctx);
-    const imageData = await this.renderer.render(html, {
-      width: this.canvas.width,
-      height: this.canvas.height,
-    });
+    const imageData = await this.renderer.captureFrame(html);
 
     // Scale imageData if it doesn't match canvas dimensions
     if (imageData.width !== this.canvas.width || imageData.height !== this.canvas.height) {
@@ -77,6 +95,15 @@ export class CanvasRenderer {
    */
   clear(): void {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  /**
+   * Dispose renderer session (removes persistent iframe). Call when done rendering.
+   */
+  async dispose(): Promise<void> {
+    await this.renderer.dispose();
+    this.sessionInitialized = false;
+    this.cachedOptions = null;
   }
 
   /**

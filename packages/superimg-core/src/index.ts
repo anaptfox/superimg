@@ -24,6 +24,5 @@ export * from "./constants.js";
 export * from "./html.js";
 export * from "./wasm.js";
 export * from "./compiler.js";
-export * from "./template-metadata.js";
 export * from "./assets.js";
 export * from "./checkpoint-resolver.js";

@@ -2,8 +2,6 @@
 
 import { useState, useCallback, useEffect } from "react";
 import {
-  initBundler,
-  bundleTemplateBrowser,
   compileTemplate,
   validateTemplate,
   type TemplateModule,
@@ -11,6 +9,7 @@ import {
   type CompileResult,
   type RenderContext,
 } from "superimg/browser";
+import { initBundler, bundleTemplateBrowser } from "superimg/bundler";
 
 export interface UseCompilerReturn {
   /** Whether the bundler is ready (esbuild-wasm initialized) */

@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   createPhaseManager,
+  sequence,
   getPhase,
   phaseProgress,
+  RenderablePhaseManager,
   type Phases,
 } from "./timing.js";
 
@@ -151,5 +153,89 @@ describe("phaseProgress", () => {
 
   it("returns 0 for unknown phase", () => {
     expect(phaseProgress(0.5, "unknown", phases)).toBe(0);
+  });
+});
+
+describe("sequence", () => {
+  it("creates phases from durations", () => {
+    const pm = sequence({ intro: 1.0, main: 3.0, outro: 1.0 });
+    expect(pm.get(0).name).toBe("intro");
+    expect(pm.get(0).progress).toBe(0);
+    expect(pm.get(0.5).name).toBe("intro");
+    expect(pm.get(0.5).progress).toBe(0.5);
+    expect(pm.get(1.0).name).toBe("main");
+    expect(pm.get(1.0).progress).toBeCloseTo(0, 5);
+    expect(pm.get(2.5).name).toBe("main");
+    expect(pm.get(2.5).progress).toBeCloseTo(0.5, 5);
+    expect(pm.get(4.0).name).toBe("outro");
+    expect(pm.get(4.0).progress).toBeCloseTo(0, 5);
+    expect(pm.get(5.0).name).toBe("outro");
+    expect(pm.get(5.0).progress).toBe(1);
+  });
+
+  it("throws for negative duration", () => {
+    expect(() => sequence({ bad: -1 })).toThrow(/duration.*must be >= 0/);
+  });
+});
+
+describe("sequence with render functions", () => {
+  it("creates RenderablePhaseManager", () => {
+    const pm = sequence({
+      intro: { duration: 1.0, render: (p) => `intro:${p.toFixed(2)}` },
+      main: { duration: 2.0, render: (p) => `main:${p.toFixed(2)}` },
+    });
+    expect(pm).toBeInstanceOf(RenderablePhaseManager);
+  });
+
+  it("renders correct phase at time", () => {
+    const pm = sequence({
+      intro: { duration: 1.0, render: (p) => `intro:${p.toFixed(1)}` },
+      main: { duration: 2.0, render: (p) => `main:${p.toFixed(1)}` },
+    });
+    expect(pm.render(0)).toBe("intro:0.0");
+    expect(pm.render(0.5)).toBe("intro:0.5");
+    expect(pm.render(1.0)).toBe("main:0.0");
+    expect(pm.render(2.0)).toBe("main:0.5");
+    expect(pm.render(3.0)).toBe("main:1.0");
+  });
+
+  it("passes correct progress to render function", () => {
+    const captured: number[] = [];
+    const pm = sequence({
+      phase: {
+        duration: 2.0,
+        render: (p) => {
+          captured.push(p);
+          return "";
+        },
+      },
+    });
+    pm.render(0);
+    pm.render(1.0);
+    pm.render(2.0);
+    expect(captured).toEqual([0, 0.5, 1]);
+  });
+
+  it("get() still works on RenderablePhaseManager", () => {
+    const pm = sequence({
+      a: { duration: 1.0, render: () => "a" },
+      b: { duration: 1.0, render: () => "b" },
+    });
+    expect(pm.get(0.5).name).toBe("a");
+    expect(pm.get(1.5).name).toBe("b");
+  });
+
+  it("renders first phase at time 0", () => {
+    const pm = sequence({
+      only: { duration: 1.0, render: (p) => `p:${p}` },
+    });
+    expect(pm.render(0)).toBe("p:0");
+  });
+
+  it("renders last phase at progress 1 after all phases", () => {
+    const pm = sequence({
+      only: { duration: 1.0, render: (p) => `p:${p}` },
+    });
+    expect(pm.render(5.0)).toBe("p:1");
   });
 });

@@ -4,82 +4,77 @@ import { useRef, useEffect } from "react";
 import { Code, Sparkles, Eye, Video } from "lucide-react";
 import { useVideoSession, VideoControls } from "superimg-react";
 import type { PlayerStore } from "superimg-react";
+import CodeMirror from "@uiw/react-codemirror";
+import { javascript } from "@codemirror/lang-javascript";
+import { oneDark } from "@codemirror/theme-one-dark";
 
-// Step 1: Simple template - just shows the frame number (before AI edit)
+// Step 1: Simple countdown template (before AI edit)
 const BEFORE_TEMPLATE = `import { defineTemplate } from "superimg";
 
 export default defineTemplate({
   render(ctx) {
-    const { sceneFrame, width, height } = ctx;
+    const { sceneFrame, fps, width, height, std } = ctx;
+    const count = Math.max(1, 5 - Math.floor(sceneFrame / fps));
+    const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }) + ";" + std.css.center();
     return \`
-      <div style="
-        width: \${width}px; height: \${height}px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        display: flex; align-items: center; justify-content: center;
-        font-family: system-ui, sans-serif;
-      ">
-        <div style="font-size: 48px; font-weight: 700; color: white;">
-          \${sceneFrame}
+      <div style="\${bgStyle}">
+        <div style="\${std.css({ fontSize: 180, fontWeight: 800, color: 'white', textShadow: '0 4px 20px rgba(0,0,0,0.5)' })}">
+          \${count}
         </div>
       </div>
     \`;
   }
 });`;
 
-// Step 3: Enhanced template - with fade-in animation (after AI edit)
+// Step 3: Enhanced countdown - with pulse animation (after AI edit)
 const AFTER_TEMPLATE = `import { defineTemplate } from "superimg";
 
 export default defineTemplate({
   render(ctx) {
-    const { sceneFrame, sceneProgress, width, height, std } = ctx;
-    const opacity = std.easing.easeOutQuad(Math.min(sceneProgress * 2, 1));
-    const scale = 0.8 + 0.2 * std.easing.easeOutBack(Math.min(sceneProgress * 2, 1));
+    const { sceneFrame, fps, width, height, std } = ctx;
+    const count = Math.max(1, 5 - Math.floor(sceneFrame / fps));
+    const showGo = Math.floor(sceneFrame / fps) >= 5;
+    const fraction = (sceneFrame % fps) / fps;
+    const pulse = std.tween(1.2, 1, fraction, "easeOutCubic");
+    const glow = std.tween(0.8, 0.2, fraction, "easeOutCubic");
+    const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }) + ";" + std.css.center();
+    const numStyle = std.css({ fontSize: 180, fontWeight: 800, color: "white", transform: "scale(" + pulse + ")", textShadow: "0 0 " + (40 * glow) + "px rgba(102,126,234," + glow + ")" });
     return \`
-      <div style="
-        width: \${width}px; height: \${height}px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        display: flex; align-items: center; justify-content: center;
-        font-family: system-ui, sans-serif;
-      ">
-        <div style="font-size: 48px; font-weight: 700; color: white;
-          opacity: \${opacity}; transform: scale(\${scale});">
-          \${sceneFrame}
-        </div>
+      <div style="\${bgStyle}">
+        <div style="\${numStyle}">\${showGo ? "GO!" : count}</div>
       </div>
     \`;
   }
 });`;
 
 const BEFORE_CODE_DISPLAY = `render(ctx) {
-  const { sceneFrame } = ctx;
-  return \`<div>\${sceneFrame}</div>\`;
+  const { sceneFrame, fps } = ctx;
+  const count = 5 - Math.floor(sceneFrame / fps);
+  return \`<div>\${count}</div>\`;
 }`;
 
 const AFTER_CODE_DISPLAY = `render(ctx) {
-  const { sceneFrame, std } = ctx;
-  const opacity = std.easing
-    .easeOutQuad(sceneProgress);
-  return \`<div>\${sceneFrame}</div>\`;
+  const { sceneFrame, fps, std } = ctx;
+  const count = 5 - Math.floor(sceneFrame / fps);
+  const pulse = std.tween(1.2, 1, fraction, 'easeOutCubic');
+  const s = std.css({
+    transform: 'scale(' + pulse + ')'
+  });
+  return \`<div style="\${s}">\${count}</div>\`;
 }`;
 
 function MiniVideoPreview({
-  canvasRef,
+  containerRef,
   store,
-  width = 200,
-  height = 200,
 }: {
-  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   store: PlayerStore;
-  width?: number;
-  height?: number;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border/50 bg-[#0d0d0d]">
       <div className="flex items-center justify-center p-4">
-        <canvas
-          ref={canvasRef}
-          width={width}
-          height={height}
+        <div
+          ref={containerRef}
           className="rounded-lg"
           style={{ width: 150, height: 150 }}
         />
@@ -90,19 +85,19 @@ function MiniVideoPreview({
 }
 
 export function HowItWorks() {
-  const step1CanvasRef = useRef<HTMLCanvasElement>(null);
-  const step3CanvasRef = useRef<HTMLCanvasElement>(null);
+  const step1ContainerRef = useRef<HTMLDivElement>(null);
+  const step3ContainerRef = useRef<HTMLDivElement>(null);
 
   const step1Session = useVideoSession({
-    initialPreviewFormat: "square",
+    initialFormat: "square",
     duration: 2,
-    canvasRef: step1CanvasRef,
+    containerRef: step1ContainerRef,
   });
 
   const step3Session = useVideoSession({
-    initialPreviewFormat: "square",
+    initialFormat: "square",
     duration: 2,
-    canvasRef: step3CanvasRef,
+    containerRef: step3ContainerRef,
   });
 
   useEffect(() => {
@@ -130,13 +125,22 @@ export function HowItWorks() {
       icon: Code,
       color: "text-blue-400",
       content: (
-        <div className="rounded-lg border border-border/50 bg-[var(--code-bg)] p-3 text-left">
-          <pre className="text-xs leading-relaxed text-[var(--code-foreground)]">
-            <code>{BEFORE_CODE_DISPLAY}</code>
-          </pre>
+        <div className="overflow-hidden rounded-lg border border-border/50 bg-[var(--code-bg)]">
+          <CodeMirror
+            value={BEFORE_CODE_DISPLAY}
+            theme={oneDark}
+            extensions={[javascript({ typescript: true })]}
+            readOnly
+            basicSetup={{
+              lineNumbers: false,
+              foldGutter: false,
+              highlightActiveLine: false,
+            }}
+            className="text-xs [&_.cm-editor]:!bg-transparent"
+          />
         </div>
       ),
-      video: <MiniVideoPreview canvasRef={step1CanvasRef} store={step1Session.store} />,
+      video: <MiniVideoPreview containerRef={step1ContainerRef} store={step1Session.store} />,
     },
     {
       number: "2",
@@ -145,8 +149,9 @@ export function HowItWorks() {
       icon: Sparkles,
       color: "text-purple-400",
       content: (
-        <div className="rounded-lg border border-border/50 bg-[var(--code-bg)] p-3 text-left">
+        <div className="rounded-lg border border-border/50 bg-[var(--code-bg)] p-3 text-left font-mono">
           <code className="text-sm text-[var(--code-foreground)]">
+            <span className="select-none text-muted-foreground">$ </span>
             superimg add skill
           </code>
         </div>
@@ -160,25 +165,51 @@ export function HowItWorks() {
       icon: Eye,
       color: "text-green-400",
       content: (
-        <div className="rounded-lg border border-border/50 bg-[var(--code-bg)] p-3 text-left">
-          <pre className="text-xs leading-relaxed text-[var(--code-foreground)]">
-            <code>{AFTER_CODE_DISPLAY}</code>
-          </pre>
+        <div className="overflow-hidden rounded-lg border border-border/50 bg-[var(--code-bg)]">
+          <CodeMirror
+            value={AFTER_CODE_DISPLAY}
+            theme={oneDark}
+            extensions={[javascript({ typescript: true })]}
+            readOnly
+            basicSetup={{
+              lineNumbers: false,
+              foldGutter: false,
+              highlightActiveLine: false,
+            }}
+            className="text-xs [&_.cm-editor]:!bg-transparent"
+          />
         </div>
       ),
-      video: <MiniVideoPreview canvasRef={step3CanvasRef} store={step3Session.store} />,
+      video: <MiniVideoPreview containerRef={step3ContainerRef} store={step3Session.store} />,
     },
     {
       number: "4",
-      title: "Export to MP4",
-      description: "Production-ready video",
+      title: "Export or embed",
+      description: "Render to MP4 or embed with React",
       icon: Video,
       color: "text-orange-400",
       content: (
-        <div className="rounded-lg border border-border/50 bg-[var(--code-bg)] p-3 text-left">
-          <code className="text-sm text-[var(--code-foreground)]">
-            npx superimg render -o video.mp4
-          </code>
+        <div className="space-y-2">
+          <div className="rounded-lg border border-border/50 bg-[var(--code-bg)] p-3 text-left font-mono">
+            <code className="text-sm text-[var(--code-foreground)]">
+              <span className="select-none text-muted-foreground">$ </span>
+              npx superimg render -o video.mp4
+            </code>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-border/50 bg-[var(--code-bg)]">
+            <CodeMirror
+              value={'<Player template={template} />'}
+              theme={oneDark}
+              extensions={[javascript({ jsx: true, typescript: true })]}
+              readOnly
+              basicSetup={{
+                lineNumbers: false,
+                foldGutter: false,
+                highlightActiveLine: false,
+              }}
+              className="text-sm [&_.cm-editor]:!bg-transparent"
+            />
+          </div>
         </div>
       ),
       video: null,

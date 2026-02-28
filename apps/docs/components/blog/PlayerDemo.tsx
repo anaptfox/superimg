@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from 'react'
 import { Player } from 'superimg-react/player'
-import { useVideoSession, VideoControls } from 'superimg-react'
+import { useVideoSession, VideoControls, VideoCanvas } from 'superimg-react'
 import { introTemplate } from '@/content/blog/templates/intro-demo'
 import { getExampleById } from '@/lib/video/examples'
 
@@ -30,8 +30,7 @@ export function PlayerDemo({ templateId, duration = 5 }: PlayerDemoProps) {
         >
           <Player
             template={introTemplate}
-            width={640}
-            height={360}
+            format="horizontal"
             playbackMode="loop"
             loadMode="eager"
             controls
@@ -47,13 +46,13 @@ export function PlayerDemo({ templateId, duration = 5 }: PlayerDemoProps) {
 }
 
 function CompiledPlayerDemo({ templateId, duration }: { templateId: string; duration: number }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const example = getExampleById(templateId)
 
   const session = useVideoSession({
-    initialPreviewFormat: 'horizontal',
+    containerRef,
+    initialFormat: 'horizontal',
     duration,
-    canvasRef,
   })
 
   useEffect(() => {
@@ -83,12 +82,10 @@ function CompiledPlayerDemo({ templateId, duration }: { templateId: string; dura
         style={{ maxWidth: 640 }}
       >
         <div className="flex items-center justify-center p-4" style={{ aspectRatio: '16/9' }}>
-          <canvas
-            ref={canvasRef}
-            width={session.previewWidth}
-            height={session.previewHeight}
+          <div
+            ref={containerRef}
             className="max-h-full max-w-full rounded shadow-lg"
-            style={{ aspectRatio: '16/9' }}
+            style={{ width: '100%', height: '100%', aspectRatio: '16/9' }}
           />
         </div>
         <div className="border-t border-border/50">

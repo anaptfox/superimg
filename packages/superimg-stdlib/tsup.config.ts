@@ -8,7 +8,8 @@ export default defineConfig({
     "src/date.ts",
     "src/text.ts",
     "src/timing.ts",
-
+    "src/css.ts",
+    "src/tween.ts",
     "src/responsive.ts",
     "src/alea.ts",
     "src/subtitle.ts",

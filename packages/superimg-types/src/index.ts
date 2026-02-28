@@ -65,6 +65,7 @@ export type {
   LoadResult,
   RenderResult,
   RenderBufferResult,
+  TimeContext,
 } from "./results.js";
 
 export {

@@ -8,27 +8,19 @@ import {
   useRef,
   type RefObject,
 } from "react";
-import { createRenderContext, type PlayerStore, type TemplateModule, type EncodingOptions } from "superimg/browser";
-import { getPreset } from "superimg/stdlib";
+import {
+  createRenderContext,
+  resolveFormat,
+  type PlayerStore,
+  type TemplateModule,
+  type EncodingOptions,
+  type FormatOption,
+} from "superimg/browser";
 import { usePlayer } from "./usePlayer.js";
 import { useCompiler } from "./useCompiler.js";
 import { usePreview, type RenderFn } from "./usePreview.js";
 import { useExport } from "./useExport.js";
 
-/** Simple format aliases that map to stdlib presets */
-const SIMPLE_ALIASES: Record<string, string> = {
-  vertical: "instagram.video.reel",     // 1080x1920
-  horizontal: "youtube.video.long",     // 1920x1080
-  square: "instagram.video.feed",       // 1080x1080
-} as const;
-
-/** Format option: simple alias, stdlib path, or custom dimensions */
-export type FormatOption =
-  | "vertical"
-  | "horizontal"
-  | "square"
-  | string
-  | { width: number; height: number };
 
 /** Export output configuration */
 export interface ExportOutput {
@@ -37,18 +29,14 @@ export interface ExportOutput {
 }
 
 export interface VideoSessionConfig {
-  /** Mode to use for rendering */
-  mode?: "html" | "canvas";
+  /** Container ref for preview rendering */
+  containerRef?: RefObject<HTMLDivElement | null>;
   /** Duration in seconds - reactive, can change after mount */
   duration: number;
   /** Frames per second (default: 30) */
   fps?: number;
-  /** Initial preview format (default: "vertical") */
-  initialPreviewFormat?: FormatOption;
-  /** Container ref (for HTML mode) */
-  containerRef?: RefObject<HTMLDivElement | null>;
-  /** Canvas ref (optional if using VideoCanvas component) */
-  canvasRef?: RefObject<HTMLCanvasElement | null>;
+  /** Initial format (default: "vertical") */
+  initialFormat?: FormatOption;
   /** Encoding options (codec, bitrate, keyframe interval) */
   encoding?: EncodingOptions;
 }
@@ -85,6 +73,8 @@ export interface VideoSessionReturn {
   compile: (code: string) => Promise<void>;
   /** Set a pre-compiled template directly */
   setTemplate: (template: TemplateModule) => void;
+  /** Set template data (merged with template.defaults, overrides on conflict) */
+  setData: (data: Record<string, unknown>) => void;
   /** Current compiled template (null if not compiled) */
   template: TemplateModule | null;
 
@@ -97,8 +87,8 @@ export interface VideoSessionReturn {
   exporting: boolean;
   /** Export progress from 0-1 */
   exportProgress: number;
-  /** Export video to MP4 blob at specified format (defaults to preview format) */
-  exportMp4: (options?: { format?: FormatOption }) => Promise<Blob | null>;
+  /** Export video to blob at specified format and encoding (defaults to current format) */
+  exportMp4: (options?: { format?: FormatOption; encoding?: EncodingOptions }) => Promise<Blob | null>;
   /** Export to multiple formats sequentially */
   exportMultiple: (outputs: ExportOutput[]) => Promise<Map<string, Blob>>;
   /** Download a blob with the given filename */
@@ -108,58 +98,41 @@ export interface VideoSessionReturn {
   /** Underlying player store for Timeline component */
   store: PlayerStore;
 
-  // Canvas/Container management (for VideoCanvas component)
-  /** Set the canvas/container element (used by VideoCanvas component) */
-  setCanvas: (el: HTMLElement | null) => void;
+  // Container management (for VideoCanvas component)
+  /** Set the container element (used by VideoCanvas component) */
+  setContainer: (el: HTMLElement | null) => void;
 
-  // Preview format (mutable)
-  /** Current preview format */
-  previewFormat: FormatOption;
-  /** Change the preview format (clears cache, re-renders) */
-  setPreviewFormat: (format: FormatOption) => void;
-  /** Preview width in pixels (derived from previewFormat) */
-  previewWidth: number;
-  /** Preview height in pixels (derived from previewFormat) */
-  previewHeight: number;
+  // Format (mutable)
+  /** Current format */
+  format: FormatOption;
+  /** Change the format (re-renders at new dimensions) */
+  setFormat: (format: FormatOption) => void;
+  /** Current width in pixels (derived from format) */
+  width: number;
+  /** Current height in pixels (derived from format) */
+  height: number;
   /** Frames per second */
   fps: number;
 }
 
 /**
- * Resolve format option to width/height dimensions.
- * Exported for testing and advanced use cases.
- */
-export function resolveFormat(format: FormatOption): { width: number; height: number } {
-  if (typeof format === "object") {
-    return format;
-  }
-
-  const presetPath = SIMPLE_ALIASES[format] ?? format;
-  const preset = getPreset(presetPath);
-
-  if (!preset) {
-    throw new Error(`Unknown format: ${format}`);
-  }
-
-  return { width: preset.width, height: preset.height };
-}
-
-/**
  * Hook for managing a complete video session.
  *
- * Combines player, compiler, preview, and export into a single orchestrated hook,
- * reducing boilerplate by 60-70%.
+ * Templates render at logical dimensions (e.g., 1920x1080) and scale
+ * via CSS transform to fit the container while maintaining aspect ratio.
  *
  * @example
  * ```tsx
  * function MyVideoEditor() {
+ *   const containerRef = useRef<HTMLDivElement>(null);
  *   const session = useVideoSession({
+ *     containerRef,
  *     duration: 5,
- *     initialPreviewFormat: "vertical",
+ *     initialFormat: "vertical",
  *   });
  *
- *   // Change preview format
- *   session.setPreviewFormat("horizontal");
+ *   // Change format
+ *   session.setFormat("horizontal");
  *
  *   // Export at different format than preview
  *   const handleExport = async () => {
@@ -167,17 +140,9 @@ export function resolveFormat(format: FormatOption): { width: number; height: nu
  *     if (blob) session.download(blob, "export.mp4");
  *   };
  *
- *   // Or export multiple formats
- *   const handleMultiExport = async () => {
- *     await session.exportMultiple([
- *       { format: "instagram.video.reel", filename: "video-ig.mp4" },
- *       { format: "youtube.video.short", filename: "video-yt.mp4" },
- *     ]);
- *   };
- *
  *   return (
  *     <div>
- *       <VideoCanvas session={session} />
+ *       <div ref={containerRef} style={{ width: 400, height: 300 }} />
  *       <Timeline store={session.store} showTime />
  *     </div>
  *   );
@@ -187,19 +152,17 @@ export function resolveFormat(format: FormatOption): { width: number; height: nu
 export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn {
   const fps = config.fps ?? 30;
 
-  // Preview format state (mutable)
-  const [previewFormat, setPreviewFormatState] = useState<FormatOption>(
-    config.initialPreviewFormat ?? "vertical"
+  // Format state (mutable)
+  const [format, setFormatState] = useState<FormatOption>(
+    config.initialFormat ?? "vertical"
   );
 
-  // Derive dimensions from preview format
-  const { width: previewWidth, height: previewHeight } = resolveFormat(previewFormat);
+  // Derive dimensions from format
+  const { width, height } = resolveFormat(format);
 
-  // Internal canvas ref management (for VideoCanvas component)
+  // Internal container ref management (for VideoCanvas component)
   const internalContainerRef = useRef<HTMLElement | null>(null);
-  const effectiveContainerRef = config.mode === "html" 
-    ? (config.containerRef ?? internalContainerRef)
-    : (config.canvasRef ?? internalContainerRef);
+  const effectiveContainerRef = config.containerRef ?? internalContainerRef;
 
   // Status and error state
   const [status, setStatus] = useState("Ready");
@@ -207,6 +170,9 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
 
   // Template state (for setTemplate)
   const [directTemplate, setDirectTemplate] = useState<TemplateModule | null>(null);
+
+  // External data (ref to avoid stale closures in frame callback)
+  const dataRef = useRef<Record<string, unknown>>({});
 
   // Internal hooks
   const player = usePlayer({
@@ -218,29 +184,29 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
   });
 
   const compiler = useCompiler();
-  const preview = usePreview(effectiveContainerRef, { 
-    width: previewWidth, 
-    height: previewHeight,
-    mode: config.mode ?? "html"
-  });
+  const preview = usePreview(effectiveContainerRef);
   const exportHook = useExport();
 
   // Effective template (from compiler or direct)
   const template = directTemplate ?? compiler.template;
 
-  // Render a frame to the canvas at preview dimensions
+  // Render a frame to the preview at current format dimensions
   const renderFrameInternal = useCallback(
     async (frame: number) => {
       if (!template || !preview.ready) return;
 
       try {
+        const mergedData = {
+          ...(template.defaults ?? {}),
+          ...dataRef.current,
+        };
         const ctx = createRenderContext(
           frame,
           fps,
           player.state.totalFrames,
-          previewWidth,
-          previewHeight,
-          {}
+          width,
+          height,
+          mergedData
         );
 
         await preview.renderFrame(template.render as RenderFn, ctx);
@@ -250,7 +216,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
         setStatus("Render error");
       }
     },
-    [template, preview.ready, fps, previewWidth, previewHeight, player.state.totalFrames, preview]
+    [template, preview.ready, fps, width, height, player.state.totalFrames, preview]
   );
 
   // Public render frame function
@@ -279,115 +245,148 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
   );
 
   // Set template directly
-  const setTemplate = useCallback((tmpl: TemplateModule) => {
-    setError(null);
-    compiler.clear();
-    setDirectTemplate(tmpl);
-    setStatus("Ready");
-    player.clearCache();
-  }, [compiler, player]);
+  const setTemplate = useCallback(
+    (tmpl: TemplateModule) => {
+      setError(null);
+      compiler.clear();
+      setDirectTemplate(tmpl);
+      setStatus("Ready");
+      player.clearCache();
+    },
+    [compiler, player]
+  );
 
-  // Set preview format (clears cache)
-  const setPreviewFormat = useCallback((format: FormatOption) => {
-    setPreviewFormatState(format);
-    player.clearCache();
-  }, [player]);
+  // Set template data (merged with template.defaults)
+  const setData = useCallback(
+    (data: Record<string, unknown>) => {
+      dataRef.current = { ...dataRef.current, ...data };
+      player.clearCache();
+      renderFrameInternal(player.state.currentFrame);
+    },
+    [player, renderFrameInternal]
+  );
 
-  // Export helper - can export at any format
-  const exportMp4 = useCallback(async (options?: { format?: FormatOption }) => {
-    if (!template) return null;
+  // Set format (clears cache, updates logical size)
+  const setFormat = useCallback(
+    (newFormat: FormatOption) => {
+      setFormatState(newFormat);
+      const { width: newWidth, height: newHeight } = resolveFormat(newFormat);
+      preview.setLogicalSize(newWidth, newHeight);
+      player.clearCache();
+    },
+    [player, preview]
+  );
 
-    const exportFormat = options?.format ?? previewFormat;
-    const { width: exportWidth, height: exportHeight } = resolveFormat(exportFormat);
+  // Export helper - can export at any format and encoding
+  const exportMp4 = useCallback(
+    async (options?: { format?: FormatOption; encoding?: EncodingOptions }) => {
+      if (!template) return null;
 
-    // Create a temporary canvas for export
-    const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = exportWidth;
-    exportCanvas.height = exportHeight;
+      const exportFormat = options?.format ?? format;
+      const { width: exportWidth, height: exportHeight } =
+        resolveFormat(exportFormat);
 
-    // We need a CanvasRenderer for export, regardless of preview mode
-    // We import it dynamically or use a temporary one
-    const { CanvasRenderer } = await import("superimg/browser");
-    const exportRenderer = new CanvasRenderer(exportCanvas);
-    await exportRenderer.warmup();
+      // Merge encoding: dialog options override session config
+      const encoding: EncodingOptions = {
+        ...config.encoding,
+        ...options?.encoding,
+        video: { ...config.encoding?.video, ...options?.encoding?.video },
+        audio: { ...config.encoding?.audio, ...options?.encoding?.audio },
+      };
 
-    // Create a render function that renders at export resolution
-    const renderAtExportSize = async (frame: number) => {
-      if (!template) return;
+      // Create a temporary canvas for export
+      const exportCanvas = document.createElement("canvas");
+      exportCanvas.width = exportWidth;
+      exportCanvas.height = exportHeight;
 
-      const ctx = createRenderContext(
-        frame,
-        fps,
-        player.state.totalFrames,
-        exportWidth,
-        exportHeight,
-        {}
-      );
+      // Use CanvasRenderer for export
+      const { CanvasRenderer } = await import("superimg/browser");
+      const exportRenderer = new CanvasRenderer(exportCanvas);
+      await exportRenderer.warmup();
 
-      const html = (template.render as RenderFn)(ctx);
-      await exportRenderer.renderFrame(() => html, ctx);
-    };
+      // Create a render function that renders at export resolution
+      const renderAtExportSize = async (frame: number) => {
+        if (!template) return;
 
-    return exportHook.exportMp4(
-      exportCanvas,
-      {
-        fps,
-        durationSeconds: config.duration,
-        width: exportWidth,
-        height: exportHeight,
-        encoding: config.encoding,
-      },
-      renderAtExportSize
-    );
-  }, [
-    template,
-    exportHook,
-    fps,
-    previewFormat,
-    config.duration,
-    player.state.totalFrames,
-    config.encoding,
-  ]);
+        const mergedData = {
+          ...(template.defaults ?? {}),
+          ...dataRef.current,
+        };
+        const ctx = createRenderContext(
+          frame,
+          fps,
+          player.state.totalFrames,
+          exportWidth,
+          exportHeight,
+          mergedData
+        );
+
+        const html = (template.render as RenderFn)(ctx);
+        await exportRenderer.renderFrame(() => html, ctx);
+      };
+
+      try {
+        return await exportHook.exportMp4(
+          exportCanvas,
+          {
+            fps,
+            durationSeconds: config.duration,
+            width: exportWidth,
+            height: exportHeight,
+            encoding,
+          },
+          renderAtExportSize
+        );
+      } finally {
+        await exportRenderer.dispose();
+      }
+    },
+    [template, exportHook, fps, format, config.duration, player.state.totalFrames, config.encoding]
+  );
 
   // Export multiple formats sequentially
-  const exportMultiple = useCallback(async (outputs: ExportOutput[]) => {
-    const results = new Map<string, Blob>();
+  const exportMultiple = useCallback(
+    async (outputs: ExportOutput[]) => {
+      const results = new Map<string, Blob>();
 
-    for (const output of outputs) {
-      setStatus(`Exporting ${output.filename}...`);
-      const blob = await exportMp4({ format: output.format });
-      if (blob) {
-        results.set(output.filename, blob);
-        exportHook.download(blob, output.filename);
+      for (const output of outputs) {
+        setStatus(`Exporting ${output.filename}...`);
+        const blob = await exportMp4({ format: output.format });
+        if (blob) {
+          results.set(output.filename, blob);
+          exportHook.download(blob, output.filename);
+        }
       }
-    }
 
-    setStatus("Ready");
-    return results;
-  }, [exportMp4, exportHook]);
+      setStatus("Ready");
+      return results;
+    },
+    [exportMp4, exportHook]
+  );
 
-  // Set canvas/container (for VideoCanvas component)
-  const setCanvas = useCallback((el: HTMLElement | null) => {
+  // Set container (for VideoCanvas component)
+  const setContainer = useCallback((el: HTMLElement | null) => {
     internalContainerRef.current = el;
   }, []);
 
-  // Re-render when preview becomes ready or template changes
+  // Re-render when preview becomes ready, template changes, or format (width/height) changes
   useEffect(() => {
     if (preview.ready && template) {
+      preview.setLogicalSize(width, height);
       renderFrameInternal(player.state.currentFrame);
     }
-  }, [preview.ready, template]);
+  }, [preview.ready, template, width, height, renderFrameInternal]);
 
   // Update player config when duration changes
   useEffect(() => {
     player.updateConfig({ durationSeconds: config.duration });
   }, [config.duration, player.updateConfig]);
 
-  // Clear cache when preview format changes (handled by setPreviewFormat)
-
   // Compute derived state
   const ready = preview.ready && template !== null;
-  const currentStatus = exportHook.exporting ? exportHook.status ?? status : status;
+  const currentStatus = exportHook.exporting
+    ? exportHook.status ?? status
+    : status;
 
   return {
     // State
@@ -400,8 +399,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
     currentFrame: player.state.currentFrame,
     totalFrames: player.state.totalFrames,
     progress:
-      player.state.currentFrame /
-      Math.max(1, player.state.totalFrames - 1),
+      player.state.currentFrame / Math.max(1, player.state.totalFrames - 1),
     play: player.play,
     pause: player.pause,
     togglePlayPause: player.togglePlayPause,
@@ -410,6 +408,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
     // Template
     compile,
     setTemplate,
+    setData,
     template,
 
     // Rendering
@@ -425,14 +424,14 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
     // For Timeline component
     store: player.store,
 
-    // Canvas management
-    setCanvas,
+    // Container management
+    setContainer,
 
-    // Preview format
-    previewFormat,
-    setPreviewFormat,
-    previewWidth,
-    previewHeight,
+    // Format
+    format,
+    setFormat,
+    width,
+    height,
     fps,
   };
 }

@@ -21,10 +21,10 @@ export const EXAMPLE_CATEGORIES = [
 
 export const EDITOR_EXAMPLES: EditorExample[] = [
   // Getting Started
+  { id: "complete-template", title: "Complete Template (config + defaults)", category: "getting-started", code: COMPLETE_TEMPLATE },
   { id: "hello-world", title: "Hello World", category: "getting-started", code: HELLO_WORLD },
   { id: "animated-text", title: "Animated Text", category: "getting-started", code: ANIMATED_TEXT },
   { id: "gradient", title: "Gradient Background", category: "getting-started", code: GRADIENT },
-  { id: "complete-template", title: "Complete Template (config + defaults)", category: "getting-started", code: COMPLETE_TEMPLATE },
 
   // Marketing
   { id: "product-hunt", title: "Product Hunt Launch Card", category: "marketing", code: PRODUCT_HUNT },

@@ -4,16 +4,10 @@
 export * from "./index.shared.js";
 
 // =============================================================================
-// BROWSER BUNDLER (esbuild-wasm for template compilation)
-// =============================================================================
-
-export { initBundler, bundleTemplateBrowser } from "@superimg/core/bundler-browser";
-
-// =============================================================================
 // PLAYER (main browser export)
 // =============================================================================
 
-export { Player, HtmlPresenter, CanvasPresenter } from "@superimg/player";
+export { Player, HtmlPresenter, CanvasPresenter, resolveFormat } from "@superimg/player";
 
 // =============================================================================
 // RUNTIME (for advanced usage)
@@ -51,4 +45,5 @@ export type {
   TimelineController,
   TimelineElements,
   LoadOptions,
+  FormatOption,
 } from "@superimg/player";

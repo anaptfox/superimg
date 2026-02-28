@@ -102,7 +102,6 @@ export {
 export {
   createRenderContext,
   compileTemplate,
-  extractTemplateMetadata,
   validateTemplate,
   CheckpointResolver,
 } from "@superimg/core";

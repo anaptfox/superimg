@@ -3,7 +3,8 @@
 import { render, Box, Text } from "ink";
 import { useState, useEffect } from "react";
 import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
-import type { RenderJob, RenderProgress } from "@superimg/types";
+import type { RenderJob, RenderProgress, TimeContext } from "@superimg/types";
+import { TemplateRuntimeError } from "@superimg/types";
 import { PlaywrightEngine } from "@superimg/playwright";
 import { writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -186,9 +187,9 @@ export async function renderCommand(template: string, options: RenderOptions) {
     process.exit(1);
   }
 
-  let templateData!: ReturnType<typeof parseTemplate>;
+  let templateData!: Awaited<ReturnType<typeof parseTemplate>>;
   try {
-    templateData = parseTemplate(resolvedTemplate);
+    templateData = await parseTemplate(resolvedTemplate);
   } catch (err) {
     console.error(`Error parsing template: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
@@ -300,6 +301,8 @@ export async function renderCommand(template: string, options: RenderOptions) {
               height: target.height,
               fps: target.fps,
               fonts: templateData.templateConfig?.fonts,
+              inlineCss: templateData.templateConfig?.inlineCss,
+              stylesheets: templateData.templateConfig?.stylesheets,
               outputName: target.outputName,
               encoding: buildEncodingOptions(options),
             };
@@ -326,7 +329,28 @@ export async function renderCommand(template: string, options: RenderOptions) {
           setTimeout(() => process.exit(0), 1000);
         } catch (err) {
           if (!mounted) return;
-          setError(err instanceof Error ? err.message : String(err));
+
+          // Rich error formatting for TemplateRuntimeError
+          if (err instanceof TemplateRuntimeError) {
+            const details = err.details as {
+              frame: number;
+              timeContext?: TimeContext;
+              dataSnapshot?: unknown;
+            };
+            const timeInfo = details.timeContext
+              ? ` (${details.timeContext.sceneTimeSeconds.toFixed(3)}s, ${(details.timeContext.sceneProgress * 100).toFixed(1)}% progress)`
+              : "";
+
+            let errorMessage = `Frame ${details.frame}${timeInfo}\n\n${err.message}`;
+            errorMessage += `\n\nSuggestion: ${err.suggestion}`;
+            if (details.dataSnapshot) {
+              errorMessage += `\n\nData at failure:\n${JSON.stringify(details.dataSnapshot, null, 2)}`;
+            }
+            setError(errorMessage);
+          } else {
+            setError(err instanceof Error ? err.message : String(err));
+          }
+
           setStatus("Error");
           await engine.dispose();
           setTimeout(() => process.exit(1), 2000);

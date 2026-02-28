@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createRenderPlan, executeRenderPlan } from "./engine.js";
 import { bundleTemplateCode } from "./bundler.js";
+import { TemplateRuntimeError } from "@superimg/types";
 
 async function jobFromCode(code: string) {
   const bundled = await bundleTemplateCode(code);
@@ -61,6 +62,42 @@ describe("createRenderPlan", () => {
     const plan = createRenderPlan(job);
     expect(plan.fonts).toContain("GlobalFont");
     expect(plan.fonts).toContain("TemplateFont");
+  });
+
+  it("collects inlineCss and stylesheets from template config", async () => {
+    const code = `
+      import { defineTemplate } from 'superimg';
+      export default defineTemplate({
+        config: {
+          inlineCss: ['.foo { color: red; }'],
+          stylesheets: ['https://example.com/style.css'],
+        },
+        render(ctx) { return '<div></div>'; }
+      });
+    `;
+    const job = await jobFromCode(code);
+    const plan = createRenderPlan(job);
+    expect(plan.inlineCss).toContain(".foo { color: red; }");
+    expect(plan.stylesheets).toContain("https://example.com/style.css");
+  });
+
+  it("merges global inlineCss and stylesheets with template config", async () => {
+    const code = `
+      import { defineTemplate } from 'superimg';
+      export default defineTemplate({
+        config: {
+          inlineCss: ['.template { }'],
+          stylesheets: ['https://template.css'],
+        },
+        render(ctx) { return '<div></div>'; }
+      });
+    `;
+    const job = await jobFromCode(code);
+    job.inlineCss = [".global { }"];
+    job.stylesheets = ["https://global.css"];
+    const plan = createRenderPlan(job);
+    expect(plan.inlineCss).toEqual([".global { }", ".template { }"]);
+    expect(plan.stylesheets).toEqual(["https://global.css", "https://template.css"]);
   });
 
   it("throws on invalid template", async () => {
@@ -138,5 +175,56 @@ describe("executeRenderPlan", () => {
 
     expect(progressUpdates.length).toBeGreaterThan(0);
     expect(progressUpdates[0].totalFrames).toBe(1);
+  });
+
+  it("wraps render errors with TemplateRuntimeError containing frame context", async () => {
+    const code = `
+      import { defineTemplate } from 'superimg';
+      export default defineTemplate({
+        render(ctx) {
+          if (ctx.sceneProgress > 0.5) {
+            throw new Error('Intentional fail at 50%');
+          }
+          return '<div>ok</div>';
+        }
+      });
+    `;
+    const job = await jobFromCode(code);
+    job.durationSeconds = 1;
+    job.fps = 10;
+    const plan = createRenderPlan(job);
+
+    const renderer = {
+      init: async () => {},
+      captureFrame: async (html: string) => html,
+      dispose: async () => {},
+    };
+    const encoder = {
+      init: async () => {},
+      addFrame: async () => {},
+      finalize: async () => new Uint8Array(0),
+      dispose: async () => {},
+    };
+
+    await expect(executeRenderPlan(plan, renderer, encoder)).rejects.toThrow(
+      TemplateRuntimeError
+    );
+
+    try {
+      await executeRenderPlan(plan, renderer, encoder);
+    } catch (err) {
+      expect(err).toBeInstanceOf(TemplateRuntimeError);
+      const runtimeErr = err as TemplateRuntimeError;
+      expect(runtimeErr.code).toBe("TEMPLATE_RUNTIME_ERROR");
+      expect(runtimeErr.details.frame).toBeGreaterThanOrEqual(5); // Fails at ~50%
+      expect(runtimeErr.details.timeContext).toBeDefined();
+      const timeCtx = runtimeErr.details.timeContext as {
+        sceneProgress: number;
+        sceneTimeSeconds: number;
+      };
+      expect(timeCtx.sceneProgress).toBeGreaterThan(0.5);
+      expect(runtimeErr.message).toContain("Intentional fail at 50%");
+      expect(runtimeErr.message).toContain("progress");
+    }
   });
 });

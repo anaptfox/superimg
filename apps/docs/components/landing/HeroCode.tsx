@@ -6,7 +6,12 @@ import { oneDark } from "@codemirror/theme-one-dark";
 
 const HERO_CODE = `import { defineTemplate } from 'superimg'
 
-export const introTemplate = defineTemplate({
+export default defineTemplate({
+  defaults: {
+    title: 'This video was made with',
+    highlight: '100% code',
+    accentColor: '#a78bfa',
+  },
   config: {
     fps: 30,
     durationSeconds: 4,
@@ -14,28 +19,26 @@ export const introTemplate = defineTemplate({
     height: 360,
   },
   render(ctx) {
-    const { sceneProgress: p, std, width, height } = ctx
+    const { sceneProgress: p, std, width, height, data } = ctx
 
     // Shifting gradient hue
     const hue = 260 + p * 40
 
     // Text fade in
     const textProgress = std.math.clamp(p / 0.4, 0, 1)
-    const textOpacity = std.easing.easeOutCubic(textProgress)
+    const opacity = std.tween(0, 1, textProgress, 'easeOutCubic')
 
     return \`
-      <div style="
-        width: \${width}px;
-        height: \${height}px;
-        background: linear-gradient(135deg,
-          hsl(\${hue}, 65%, 18%),
-          hsl(\${hue + 40}, 70%, 10%));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      ">
-        <div style="opacity: \${textOpacity}">
-          This video was made with 100% code
+      <div style="\${std.css({
+        width, height,
+        background: \`linear-gradient(135deg,
+          hsl(\${hue},65%,18%), hsl(\${hue+40},70%,10%))\`,
+      })};\${std.css.center()}">
+        <div style="\${std.css({ opacity, textAlign: 'center',
+            fontFamily: 'system-ui, sans-serif', color: 'white' })}">
+          <div style="font-size:24px">\${data.title}</div>
+          <div style="font-size:40px;font-weight:800;
+            color:\${data.accentColor}">\${data.highlight}</div>
         </div>
       </div>
     \`

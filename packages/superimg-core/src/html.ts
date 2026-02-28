@@ -37,10 +37,21 @@ export function buildCompositeHtml(
   return layers.join("\n");
 }
 
+export interface PageShellConfig {
+  fonts?: string[];
+  inlineCss?: string[];
+  stylesheets?: string[];
+}
+
 /**
- * Build page shell HTML with font links
+ * Build page shell HTML with font links, stylesheets, and inline CSS.
+ * Injected once per render session, not per frame.
  */
-export function buildPageShell(fonts: string[]): string {
+export function buildPageShell(config: PageShellConfig | string[]): string {
+  const fonts = Array.isArray(config) ? config : config.fonts ?? [];
+  const inlineCss = Array.isArray(config) ? [] : config.inlineCss ?? [];
+  const stylesheets = Array.isArray(config) ? [] : config.stylesheets ?? [];
+
   const fontLinks =
     fonts.length > 0
       ? fonts
@@ -50,5 +61,17 @@ export function buildPageShell(fonts: string[]): string {
           })
           .join("")
       : "";
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8">${fontLinks}<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}</style></head><body><div id="frame" style="position:relative;width:100%;height:100%;"></div></body></html>`;
+
+  const stylesheetLinks =
+    stylesheets.length > 0
+      ? stylesheets.map((url) => `<link rel="stylesheet" href="${url}">`).join("")
+      : "";
+
+  const inlineStyleBlock =
+    inlineCss.length > 0 ? `<style>${inlineCss.join("\n")}</style>` : "";
+
+  const baseStyles =
+    "<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}</style>";
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">${fontLinks}${stylesheetLinks}${inlineStyleBlock}${baseStyles}</head><body><div id="frame" style="position:relative;width:100%;height:100%;"></div></body></html>`;
 }

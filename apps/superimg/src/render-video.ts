@@ -36,7 +36,7 @@ export async function renderVideo(
   options: RenderVideoOptions = {}
 ): Promise<Uint8Array> {
   const resolvedPath = resolve(templatePath);
-  const templateData = parseTemplate(resolvedPath);
+  const templateData = await parseTemplate(resolvedPath);
 
   const resolvedConfig = resolveRenderConfig({
     cli: {
@@ -62,6 +62,8 @@ export async function renderVideo(
       height: options.height ?? resolvedConfig.height,
       fps: options.fps ?? resolvedConfig.fps,
       fonts: templateData.templateConfig?.fonts,
+      inlineCss: templateData.templateConfig?.inlineCss,
+      stylesheets: templateData.templateConfig?.stylesheets,
       outputName: "default",
       encoding: options.encoding,
       data: options.data,

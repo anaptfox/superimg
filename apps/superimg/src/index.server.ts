@@ -8,6 +8,7 @@ export * from "./index.shared.js";
 // =============================================================================
 
 export { bundleTemplate, bundleTemplateCode } from "@superimg/core/bundler";
+export { extractTemplateMetadata } from "@superimg/core/template-metadata";
 
 // =============================================================================
 // ENGINE (from core + types)

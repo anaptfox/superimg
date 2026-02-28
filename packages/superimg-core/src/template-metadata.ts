@@ -1,10 +1,14 @@
 import * as acorn from "acorn";
+import * as esbuild from "esbuild";
 
 export interface TemplateMetadataConfig {
   width?: number;
   height?: number;
   fps?: number;
   durationSeconds?: number;
+  fonts?: string[];
+  inlineCss?: string[];
+  stylesheets?: string[];
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
 }
 
@@ -148,8 +152,14 @@ function unwrapDefineTemplate(expr: acorn.Expression): acorn.Expression {
  * Extract template metadata without executing user code.
  * Templates must use export default defineTemplate({ ... }).
  */
-export function extractTemplateMetadata(code: string): TemplateMetadata {
-  const ast = acorn.parse(code, {
+export async function extractTemplateMetadata(code: string): Promise<TemplateMetadata> {
+  // Strip TypeScript syntax before parsing with acorn (JS-only parser)
+  const transformed = await esbuild.transform(code, {
+    loader: "ts",
+    target: "esnext",
+  });
+
+  const ast = acorn.parse(transformed.code, {
     sourceType: "module",
     ecmaVersion: "latest",
   }) as acorn.Program;

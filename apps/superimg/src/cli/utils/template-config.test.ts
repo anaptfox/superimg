@@ -22,8 +22,8 @@ describe("resolveRenderConfig", () => {
 });
 
 describe("parseTemplate", () => {
-  it("does not execute template side effects while parsing metadata", () => {
-    withTempDir((dir) => {
+  it("does not execute template side effects while parsing metadata", async () => {
+    await withTempDir(async (dir) => {
       const templatePath = join(dir, "template.js");
       writeFileSync(
         templatePath,
@@ -37,14 +37,14 @@ describe("parseTemplate", () => {
         `
       );
 
-      const parsed = parseTemplate(templatePath);
+      const parsed = await parseTemplate(templatePath);
       expect(parsed.metadata.hasRenderExport).toBe(true);
       expect(parsed.templateConfig?.fps).toBe(48);
     });
   });
 
-  it("uses template duration from config", () => {
-    withTempDir((dir) => {
+  it("uses template duration from config", async () => {
+    await withTempDir(async (dir) => {
       const templatePath = join(dir, "template.js");
       writeFileSync(
         templatePath,
@@ -57,7 +57,7 @@ describe("parseTemplate", () => {
         `
       );
 
-      const parsed = parseTemplate(templatePath);
+      const parsed = await parseTemplate(templatePath);
       expect(parsed.config?.durationSeconds).toBe(9);
     });
   });

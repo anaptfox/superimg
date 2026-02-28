@@ -38,43 +38,31 @@ function toDate(date: DateInput): Date {
   throw new Error(`Invalid date format: ${date}`);
 }
 
+/** Legacy token aliases (moment-style) → date-fns tokens */
+function normalizeFormatTokens(fmt: string): string {
+  return fmt
+    .replace(/YYYY/g, 'yyyy')
+    .replace(/DD/g, 'dd')
+    .replace(/HH/g, 'HH')
+    .replace(/mm/g, 'mm')
+    .replace(/ss/g, 'ss');
+}
+
 /**
- * Format a date using tokens
- * Supports simple tokens: YYYY, MM, DD, HH, mm, ss
- * Also supports date-fns format tokens for advanced formatting
+ * Format a date using date-fns tokens.
+ * Legacy aliases supported: YYYY→yyyy, DD→dd. Full date-fns token set available.
+ * Uses UTC for consistent results (ISO dates are UTC-based).
+ *
  * @param date - Date to format
- * @param formatStr - Format string with tokens
+ * @param formatStr - Format string (date-fns tokens, e.g. yyyy-MM-dd HH:mm:ss)
  * @returns Formatted date string
  */
 export function formatDate(date: DateInput, formatStr: string): string {
   const d = toDate(date);
-
-  // Check if format includes time components
-  const hasTime = formatStr.includes('HH') || formatStr.includes('mm') || formatStr.includes('ss');
-  
-  // Use UTC for consistent results (ISO dates are UTC-based)
-  const year = d.getUTCFullYear();
-  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  
-  if (hasTime) {
-    const hours = String(d.getUTCHours()).padStart(2, '0');
-    const minutes = String(d.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(d.getUTCSeconds()).padStart(2, '0');
-    
-    return formatStr
-      .replace('YYYY', String(year))
-      .replace('MM', month)
-      .replace('DD', day)
-      .replace('HH', hours)
-      .replace('mm', minutes)
-      .replace('ss', seconds);
-  } else {
-    return formatStr
-      .replace('YYYY', String(year))
-      .replace('MM', month)
-      .replace('DD', day);
-  }
+  const normalized = normalizeFormatTokens(formatStr);
+  // Format as UTC: shift to "display" UTC so date-fns uses UTC components
+  const utcDate = new Date(d.getTime() + d.getTimezoneOffset() * 60_000);
+  return dfFormat(utcDate, normalized);
 }
 
 /**

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   lerp,
+  inverseLerp,
+  mapClamp,
   clamp,
   map,
   random,
@@ -48,6 +50,44 @@ describe('clamp', () => {
   it('handles edge cases', () => {
     expect(clamp(0, 0, 10)).toBe(0);
     expect(clamp(10, 0, 10)).toBe(10);
+  });
+});
+
+describe('inverseLerp', () => {
+  it('returns 0 when value equals start', () => {
+    expect(inverseLerp(0, 100, 0)).toBe(0);
+  });
+
+  it('returns 1 when value equals end', () => {
+    expect(inverseLerp(0, 100, 100)).toBe(1);
+  });
+
+  it('returns 0.5 at midpoint', () => {
+    expect(inverseLerp(0, 100, 50)).toBe(0.5);
+  });
+
+  it('extrapolates outside range', () => {
+    expect(inverseLerp(0, 100, 150)).toBe(1.5);
+    expect(inverseLerp(0, 100, -50)).toBe(-0.5);
+  });
+
+  it('handles a === b', () => {
+    expect(inverseLerp(10, 10, 10)).toBe(0);
+  });
+});
+
+describe('mapClamp', () => {
+  it('maps and clamps within range', () => {
+    expect(mapClamp(0.5, 0, 1, 0, 100)).toBe(50);
+  });
+
+  it('clamps output when input exceeds range', () => {
+    expect(mapClamp(1.5, 0, 1, 0, 100)).toBe(100);
+    expect(mapClamp(-0.5, 0, 1, 0, 100)).toBe(0);
+  });
+
+  it('handles negative ranges', () => {
+    expect(mapClamp(0, -10, 10, 0, 100)).toBe(50);
   });
 });
 

@@ -34,6 +34,7 @@
   "dependencies": {
     "@superimg/core": "workspace:*",
     "@superimg/runtime": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
     "morphdom": "^2.7.8",
     "zustand": "^5.0.0"

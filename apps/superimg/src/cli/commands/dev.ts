@@ -3,7 +3,8 @@
 import { createServer as createHttpServer } from "node:http";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFileSync, existsSync, watch } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import chokidar from "chokidar";
 import { resolveTemplatePath } from "../utils/resolve-template.js";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
@@ -61,7 +62,7 @@ export async function devCommand(template: string, options: DevOptions) {
     ws.on("close", () => clients.delete(ws));
   });
 
-  watch(templatePath, () => {
+  chokidar.watch(templatePath, { ignoreInitial: true }).on("change", () => {
     bundleCache = null;
     console.log("  Template changed, notifying clients...");
     for (const client of clients) {
