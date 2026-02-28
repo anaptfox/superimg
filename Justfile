@@ -27,7 +27,9 @@ dev:
 
 # Start the docs site (port 3001) — builds workspace deps first
 docs:
-    cd "{{root}}" && pnpm --filter superimg --filter superimg-react build
+    cd "{{root}}" && pnpm --filter './packages/*' --filter '!@superimg/playwright' run build
+    cd "{{root}}" && SUPERIMG_BROWSER_ONLY=1 pnpm --filter superimg run build
+    cd "{{root}}" && pnpm --filter superimg-react build
     cd "{{root}}/apps/docs" && pnpm run dev
 
 # Run an example by name
