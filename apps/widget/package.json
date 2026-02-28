@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "pnpm --filter 'superimg^...' --filter '!@superimg/playwright' run build && pnpm --filter superimg run build:browser && pnpm --filter superimg-react build && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

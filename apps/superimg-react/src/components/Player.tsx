@@ -18,12 +18,21 @@ import {
   type HoverBehavior,
   type FormatOption,
 } from "superimg/player";
-import type { PlayerStore } from "superimg/browser";
+import type { PlayerStore, CompileError } from "superimg/browser";
 import { VideoControls } from "./VideoControls.js";
+import { useCompiledTemplate } from "../hooks/useCompiledTemplate.js";
 
 export interface PlayerProps {
-  /** Template module to render */
-  template: PlayerInput;
+  /** Template module to render (use this OR code, not both) */
+  template?: PlayerInput;
+  /** Raw code string to compile (use this OR template, not both) */
+  code?: string;
+  /** Debounce delay for code compilation in ms (default: 300) */
+  compileDebounceMs?: number;
+  /** Called when compilation starts/ends */
+  onCompiling?: (compiling: boolean) => void;
+  /** Called when compilation fails */
+  onCompileError?: (error: CompileError) => void;
   /**
    * Format for rendering - simple alias, stdlib preset path, or custom dimensions.
    * If not provided, uses template config or defaults to 1920x1080.
@@ -131,7 +140,11 @@ export interface PlayerRef {
  */
 export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   {
-    template,
+    template: templateProp,
+    code,
+    compileDebounceMs = 300,
+    onCompiling,
+    onCompileError,
     format,
     playbackMode = "loop",
     loadMode = "eager",
@@ -156,9 +169,34 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   const [isPlaying, setIsPlaying] = useState(false);
   const [store, setStore] = useState<PlayerStore | null>(null);
 
+  // Compile code if provided (instead of template)
+  const {
+    template: compiledTemplate,
+    compiling,
+    error: compileError,
+  } = useCompiledTemplate({
+    code: code ?? "",
+    debounceMs: compileDebounceMs,
+    enabled: !!code,
+  });
+
+  // Report compilation state changes
+  useEffect(() => {
+    onCompiling?.(compiling);
+  }, [compiling, onCompiling]);
+
+  useEffect(() => {
+    if (compileError) {
+      onCompileError?.(compileError);
+    }
+  }, [compileError, onCompileError]);
+
+  // Determine the effective template (prop takes precedence over compiled)
+  const template = templateProp ?? compiledTemplate;
+
   // Initialize player
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !template) return;
 
     const player = new CorePlayer({
       container: containerRef.current,

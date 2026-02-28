@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronRight, Search, X } from "lucide-react";
+import { ChevronRight, Search, X, Loader2 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Player } from "superimg-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   EXAMPLE_CATEGORIES,
   getExamplesByCategory,
@@ -25,6 +27,9 @@ export function ExamplesPanel({
   activeExampleId,
 }: ExamplesPanelProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [hoveredExample, setHoveredExample] = useState<EditorExample | null>(null);
+  const [isCompiling, setIsCompiling] = useState(false);
+  const isMobile = useIsMobile();
 
   // Filter examples based on search query
   const filteredCategories = useMemo(() => {
@@ -101,6 +106,8 @@ export function ExamplesPanel({
                   <button
                     key={example.id}
                     onClick={() => onSelectExample(example)}
+                    onMouseEnter={() => !isMobile && setHoveredExample(example)}
+                    onMouseLeave={() => setHoveredExample(null)}
                     className={`w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
                       activeExampleId === example.id
                         ? "bg-primary text-primary-foreground"
@@ -120,6 +127,31 @@ export function ExamplesPanel({
           </div>
         )}
       </div>
+
+      {/* Hover preview - positioned to the right of the panel */}
+      {hoveredExample && !isMobile && (
+        <div className="fixed left-[360px] top-1/2 z-50 -translate-y-1/2">
+          <div className="w-[320px] overflow-hidden rounded-lg border bg-card shadow-xl">
+            <div className="relative">
+              <Player
+                code={hoveredExample.code}
+                format="horizontal"
+                playbackMode="loop"
+                hoverBehavior="play"
+                compileDebounceMs={150}
+                onCompiling={setIsCompiling}
+                style={{ width: "100%", aspectRatio: "16/9" }}
+              />
+              {isCompiling && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
+            <div className="p-3 text-sm font-medium">{hoveredExample.title}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
