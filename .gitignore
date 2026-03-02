@@ -35,7 +35,7 @@ tmp/
 .cache/
 
 # Generated media outputs
-examples/**/output.*
+output/
 *.mp4
 *.webm
 *.mov
