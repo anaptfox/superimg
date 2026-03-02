@@ -4,10 +4,15 @@ import { fork } from "node:child_process";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { access } from "node:fs/promises";
-import { chromium } from "playwright";
 import type { Browser } from "playwright-core";
 
 const require = createRequire(import.meta.url);
+
+/** Lazy-load chromium to avoid ERR_MODULE_NOT_FOUND when playwright is not installed. */
+async function getChromium(): Promise<typeof import("playwright").chromium> {
+  const pw = await import("playwright");
+  return pw.chromium;
+}
 
 // =============================================================================
 // TYPES
@@ -93,14 +98,11 @@ export async function checkBrowserStatus(): Promise<BrowserStatus> {
   let installed = false;
 
   try {
-    // Get the executable path from Playwright
+    const chromium = await getChromium();
     executablePath = chromium.executablePath();
-
-    // Verify the executable actually exists on disk
     await access(executablePath);
     installed = true;
   } catch {
-    // Either executablePath() threw or file doesn't exist
     executablePath = null;
     installed = false;
   }
@@ -148,10 +150,16 @@ export async function installBrowser(options: InstallOptions = {}): Promise<void
 
   onProgress?.("Installing Playwright Chromium browser...");
 
+  let cliPath: string;
   try {
-    // Resolve playwright CLI from node_modules
-    const cliPath = join(require.resolve("playwright/package.json"), "..", "cli.js");
+    cliPath = join(require.resolve("playwright/package.json"), "..", "cli.js");
+  } catch {
+    throw new Error(
+      "Playwright is not installed. Run 'superimg setup' or 'npm install playwright' first."
+    );
+  }
 
+  try {
     await new Promise<void>((resolve, reject) => {
       const child = fork(cliPath, ["install", "chromium"], {
         stdio: onProgress ? "pipe" : "inherit",
@@ -261,5 +269,6 @@ export async function launchBrowser(): Promise<Browser> {
   }
 
   // Use regular playwright (existing behavior)
+  const chromium = await getChromium();
   return chromium.launch();
 }

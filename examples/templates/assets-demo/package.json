@@ -5,8 +5,10 @@
   "description": "Asset API demo with backgrounds, audio, and template defaults",
   "type": "module",
   "scripts": {
-    "setup": "pnpm exec superimg setup",
-    "clean": "true"
+    "setup": "superimg setup",
+    "dev": "superimg dev ./templates/intro.video.ts",
+    "render": "superimg render --all",
+    "clean": "rm -rf output"
   },
   "dependencies": {
     "superimg": "workspace:*"

@@ -9,11 +9,15 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./encoder": {
+      "import": "./dist/encoder.js",
+      "types": "./dist/encoder.d.ts"
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --outDir dist",
-    "dev": "tsup src/index.ts --format esm --dts --outDir dist --watch",
+    "build": "tsup src/index.ts src/encoder.ts --format esm --dts --outDir dist",
+    "dev": "tsup src/index.ts src/encoder.ts --format esm --dts --outDir dist --watch",
     "test": "vitest --run --passWithNoTests --config vitest.node.config.ts",
     "test:browser": "vitest --run --passWithNoTests --config vitest.config.ts",
     "clean": "rm -rf dist"

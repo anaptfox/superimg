@@ -1,5 +1,5 @@
-//! SuperImg Core - Environment-agnostic primitives
-//! Types, compilation, and validation utilities
+//! SuperImg Core - Browser-safe primitives
+//! Types, compilation, validation. NO html (use @superimg/core/html)
 
 // Re-export types for convenience
 export type {
@@ -19,11 +19,11 @@ export type {
   MarkerPosition,
 } from "@superimg/types";
 
-// Core functionality (browser-safe)
+// Core functionality (browser-safe only)
 export * from "./constants.js";
-export * from "./html.js";
 export * from "./wasm.js";
 export * from "./compiler.js";
 export * from "./assets.js";
 export * from "./checkpoint-resolver.js";
 export * from "./sanitize.js";
+export * from "./css.js";

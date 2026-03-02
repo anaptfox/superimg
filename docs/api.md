@@ -253,7 +253,7 @@ std.text.wrap(text, maxCharsPerLine)       // Wrap text into lines, returns stri
 Date formatting and manipulation:
 
 ```typescript
-std.date.formatDate(date, formatStr)  // Format date (date-fns tokens; legacy YYYY/DD supported; uses UTC)
+std.date.formatDate(date, formatStr)  // Format date (date-fns tokens; uses UTC)
 std.date.relativeTime(date)           // Relative time string (e.g., "2 hours ago")
 std.date.parseISO(str)                // Parse ISO date string to Date
 std.date.toISO(date)                  // Convert date to ISO string
@@ -499,5 +499,6 @@ type HoverBehavior = 'none' | 'play' | 'preview-scrub';
 
 ## See Also
 
+- [Project Configuration](./project-config.md) - Cascading config and video discovery
 - [Templates & Data](./templates-and-data.md) - Creating templates with defaults
 - [Player Guide](./player-guide.md) - Browser playback

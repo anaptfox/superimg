@@ -2,12 +2,8 @@
 
 import type { BackgroundValue } from "@superimg/types";
 import { resolveBackground } from "./assets.js";
-import {
-  escapeHtmlAttr,
-  escapeCssInStyle,
-  escapeCssUrl,
-  isSafeStylesheetUrl,
-} from "./sanitize.js";
+import { escapeHtmlAttr, escapeCssUrl } from "./sanitize.js";
+import { buildHeadStyles, type CssConfig } from "./css.js";
 
 /**
  * Build composite HTML from template output and background
@@ -45,47 +41,14 @@ export function buildCompositeHtml(
   return layers.join("\n");
 }
 
-export interface PageShellConfig {
-  fonts?: string[];
-  inlineCss?: string[];
-  stylesheets?: string[];
-}
+export interface PageShellConfig extends CssConfig {}
 
 /**
  * Build page shell HTML with font links, stylesheets, and inline CSS.
  * Injected once per render session, not per frame.
  */
-export function buildPageShell(config: PageShellConfig | string[]): string {
-  const fonts = Array.isArray(config) ? config : config.fonts ?? [];
-  const inlineCss = Array.isArray(config) ? [] : config.inlineCss ?? [];
-  const stylesheets = Array.isArray(config) ? [] : config.stylesheets ?? [];
+export function buildPageShell(config: PageShellConfig): string {
+  const headStyles = buildHeadStyles(config);
 
-  const fontLinks =
-    fonts.length > 0
-      ? fonts
-          .map((f) => {
-            const family = encodeURIComponent(f.trim());
-            const url = `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
-            return `<link rel="stylesheet" href="${escapeHtmlAttr(url)}">`;
-          })
-          .join("")
-      : "";
-
-  const stylesheetLinks =
-    stylesheets.length > 0
-      ? stylesheets
-          .filter((url) => isSafeStylesheetUrl(url))
-          .map((url) => `<link rel="stylesheet" href="${escapeHtmlAttr(url.trim())}">`)
-          .join("")
-      : "";
-
-  const inlineStyleBlock =
-    inlineCss.length > 0
-      ? `<style>${inlineCss.map(escapeCssInStyle).join("\n")}</style>`
-      : "";
-
-  const baseStyles =
-    "<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}</style>";
-
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8">${fontLinks}${stylesheetLinks}${inlineStyleBlock}${baseStyles}</head><body><div id="frame" style="position:relative;width:100%;height:100%;"></div></body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">${headStyles}</head><body><div id="frame" style="position:relative;width:100%;height:100%;"></div></body></html>`;
 }

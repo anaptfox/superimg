@@ -1,6 +1,6 @@
 //! Render harness - runs in Playwright's browser context (encoder-only)
 
-import { BrowserEncoder } from "@superimg/runtime";
+import { BrowserEncoder } from "@superimg/runtime/encoder";
 import type { EncodingOptions } from "@superimg/types";
 
 // Declare global interface for window.__superimg

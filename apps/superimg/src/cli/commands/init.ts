@@ -3,9 +3,31 @@
 import { mkdirSync, writeFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolvePackageManager, getPackageManagerCommands } from "../utils/package-manager.js";
+import { spawn } from "node:child_process";
+import * as p from "@clack/prompts";
+import type { PackageManager } from "../utils/package-manager.js";
+import {
+  resolvePackageManager,
+  detectPackageManager,
+  getPackageManagerCommands,
+  getAddPackagesCommand,
+} from "../utils/package-manager.js";
+import { getSkillContent } from "../utils/skill-content.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const isWindows = process.platform === "win32";
+
+async function runInDir(cwd: string, command: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { cwd, stdio: "inherit", shell: isWindows });
+    child.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`Command failed with exit code ${code}`));
+    });
+    child.on("error", reject);
+  });
+}
 
 function getSuperimgVersion(): string {
   const candidatePaths = [
@@ -116,80 +138,220 @@ const TSCONFIG = `{
 }
 `;
 
-export async function initCommand(name: string, options: { js?: boolean; pm?: string }) {
-  const targetDir = join(process.cwd(), name === "." ? "" : name);
+export async function initCommand(
+  name: string,
+  options: { yes?: boolean; js?: boolean; pm?: string; skipInstall?: boolean; skipBrowser?: boolean }
+) {
+  let targetDir = join(process.cwd(), name === "." ? "" : name);
   const dirExists = existsSync(targetDir);
   const pkgJsonPath = join(targetDir, "package.json");
-  const existingProject = dirExists && existsSync(pkgJsonPath);
+  let existingProject = dirExists && existsSync(pkgJsonPath);
 
   // Non-empty dir with no package.json — not a JS/TS project, bail
   if (dirExists && !existingProject) {
     const entries = readdirSync(targetDir).filter((e) => !e.startsWith("."));
     if (entries.length > 0) {
-      console.error(`\n  Error: "${name === "." ? "Current directory" : name}" is not empty and has no package.json.`);
-      console.error("  Run superimg init inside a JS/TS project, or provide a new directory name.\n");
+      const dirLabel = name === "." ? "Current directory" : name;
+      console.error(`\n"${dirLabel}" already has files but no package.json.`);
+      console.error("Run superimg init inside an existing JS/TS project, or choose a new directory name.\n");
       process.exit(1);
     }
   }
 
-  // Auto-detect TS: in existing projects, check for tsconfig.json; for new projects default to TS
-  const hasTs = existingProject && existsSync(join(targetDir, "tsconfig.json"));
-  const useJs = options.js ?? (existingProject ? !hasTs : false);
-  const templateFile = useJs ? "intro.video.js" : "intro.video.ts";
-  const configFile = "_config.ts";
   const videosDir = join(targetDir, "videos");
-  const templatePath = join(videosDir, templateFile);
-  const configPath = join(videosDir, configFile);
+  const templateTsPath = join(videosDir, "intro.video.ts");
+  const templateJsPath = join(videosDir, "intro.video.js");
 
-  if (existsSync(templatePath)) {
-    console.error(`\n  Error: videos/${templateFile} already exists.`);
-    console.error("  Remove it first or pick a different directory.\n");
+  if (existsSync(templateTsPath) || existsSync(templateJsPath)) {
+    const existing = existsSync(templateTsPath) ? "intro.video.ts" : "intro.video.js";
+    console.error(`\nvideos/${existing} already exists.`);
+    console.error("Delete it first, or run superimg init in a different directory.\n");
     process.exit(1);
   }
 
-  const pm = resolvePackageManager(options.pm);
-  const { install, add: addCmd, run } = getPackageManagerCommands(pm);
+  let useJs: boolean;
+  let pm: PackageManager;
+  let skipInstall: boolean;
+  let skipBrowser: boolean;
+  let projectName = name === "." ? "my-superimg-project" : name;
+
+  if (options.yes) {
+    // Use defaults: TS, auto-detect pm, install + browser
+    const hasTs = existingProject && existsSync(join(targetDir, "tsconfig.json"));
+    useJs = options.js ?? (existingProject ? !hasTs : false);
+    pm = resolvePackageManager(options.pm);
+    skipInstall = options.skipInstall ?? false;
+    skipBrowser = options.skipBrowser ?? false;
+  } else {
+    // Interactive mode
+    p.intro("SuperImg  —  HTML/CSS → MP4");
+
+    if (!existingProject && name === ".") {
+      const dirName = await p.text({
+        message: "Where should we create your project?",
+        placeholder: "my-superimg-project",
+        initialValue: "my-superimg-project",
+      });
+      if (p.isCancel(dirName)) {
+        p.cancel("Setup cancelled. Run superimg init whenever you're ready.");
+        process.exit(1);
+      }
+      projectName = (dirName as string).trim() || "my-superimg-project";
+      targetDir = join(process.cwd(), projectName);
+    }
+
+    const detectedPm = detectPackageManager();
+    const pmResult = await p.select({
+      message: "Which package manager do you use?",
+      options: [
+        { value: "npm", label: "npm" },
+        { value: "pnpm", label: "pnpm" },
+        { value: "yarn", label: "yarn" },
+        { value: "bun", label: "bun" },
+      ],
+      initialValue: detectedPm,
+    });
+    if (p.isCancel(pmResult)) {
+      p.cancel("Setup cancelled. Run superimg init whenever you're ready.");
+      process.exit(1);
+    }
+    pm = pmResult as PackageManager;
+
+    if (!existingProject) {
+      const langResult = await p.select({
+        message: "TypeScript or JavaScript?",
+        options: [
+          { value: "ts", label: "TypeScript" },
+          { value: "js", label: "JavaScript" },
+        ],
+        initialValue: "ts",
+      });
+      if (p.isCancel(langResult)) {
+        p.cancel("Setup cancelled. Run superimg init whenever you're ready.");
+        process.exit(1);
+      }
+      useJs = langResult === "js";
+    } else {
+      const hasTs = existsSync(join(targetDir, "tsconfig.json"));
+      useJs = !hasTs;
+    }
+
+    const installResult = await p.confirm({
+      message: "Install dependencies now?",
+      initialValue: true,
+    });
+    if (p.isCancel(installResult)) {
+      p.cancel("Setup cancelled. Run superimg init whenever you're ready.");
+      process.exit(1);
+    }
+    skipInstall = !installResult;
+
+    const browserResult = await p.confirm({
+      message: "Download Chromium for rendering? (~170MB, one-time)",
+      initialValue: true,
+    });
+    if (p.isCancel(browserResult)) {
+      p.cancel("Setup cancelled. Run superimg init whenever you're ready.");
+      process.exit(1);
+    }
+    skipBrowser = !browserResult;
+  }
+
+  const templateFileName = useJs ? "intro.video.js" : "intro.video.ts";
+  const configFile = "_config.ts";
+  const finalTemplatePath = join(targetDir, "videos", templateFileName);
+  const configPath = join(targetDir, "videos", configFile);
+  const finalVideosDir = join(targetDir, "videos");
+
+  const { install, run } = getPackageManagerCommands(pm);
 
   if (existingProject) {
     // ── Add to existing project ──
-    mkdirSync(videosDir, { recursive: true });
-    writeFileSync(templatePath, useJs ? TEMPLATE_JS : TEMPLATE_TS);
+    mkdirSync(finalVideosDir, { recursive: true });
+    writeFileSync(finalTemplatePath, useJs ? TEMPLATE_JS : TEMPLATE_TS);
     if (!useJs) {
       writeFileSync(configPath, CONFIG_TS);
     }
 
-    // Inject superimg:* scripts into the existing package.json (use bare name for convention)
+    const agentsPath = join(targetDir, "AGENTS.md");
+    const wroteAgents = !existsSync(agentsPath);
+    if (wroteAgents) {
+      writeFileSync(agentsPath, getSkillContent());
+    }
+
+    const version = getSuperimgVersion();
+    const versionRange = version === "latest" ? "latest" : `^${version}`;
+
     const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
     pkg.scripts = pkg.scripts ?? {};
     pkg.scripts["superimg:dev"] = "superimg dev intro";
     pkg.scripts["superimg:render"] = "superimg render intro -o output.mp4";
     pkg.scripts["superimg:setup"] = "superimg setup";
+    pkg.dependencies = pkg.dependencies ?? {};
+    if (!pkg.dependencies.superimg) pkg.dependencies.superimg = versionRange;
+    if (!pkg.dependencies.playwright) pkg.dependencies.playwright = "^1.57.0";
     writeFileSync(pkgJsonPath, JSON.stringify(pkg, null, 2) + "\n");
 
-    console.log("\n  Existing project detected\n");
-    console.log("  Created:");
-    console.log(`    videos/${templateFile}   Example video with fade-in animation`);
-    if (!useJs) {
-      console.log(`    videos/${configFile}     Project config (width, height, fps)\n`);
-    } else {
-      console.log("");
+    if (!options.yes) {
+      p.log.step("SuperImg added to your project");
+      p.log.message(`videos/${templateFileName}   starter template with a fade-in animation`);
+      if (!useJs) {
+        p.log.message(`videos/${configFile}       set your canvas size, fps, and duration`);
+      }
+      if (wroteAgents) {
+        p.log.message(`AGENTS.md         AI assistant skill (SuperImg context)`);
+      }
+      p.log.message(`superimg:dev      live preview in your browser`);
+      p.log.message(`superimg:render   export to MP4`);
+      p.log.message(`superimg:setup    download Chromium (run once)`);
     }
-    console.log("  Added scripts to package.json:");
-    console.log(`    superimg:dev             Preview in browser`);
-    console.log(`    superimg:render          Render to MP4`);
-    console.log(`    superimg:setup           Install browser (one-time)\n`);
-    console.log("  Get started:\n");
-    console.log(`    ${addCmd}`);
-    console.log(`    ${run} superimg:dev\n`);
-    console.log("  Render to video:\n");
-    console.log(`    ${run} superimg:setup`);
-    console.log(`    ${run} superimg:render\n`);
+
+    if (!skipInstall) {
+      const addCommand = getAddPackagesCommand(pm, ["superimg", "playwright"]);
+      const s = p.spinner();
+      s.start("Installing dependencies");
+      try {
+        const [cmd, ...args] = addCommand.split(/\s+/);
+        await runInDir(targetDir, cmd, args);
+        s.stop("Dependencies installed");
+      } catch (err) {
+        s.stop("Dependency install failed");
+        console.error("\nRun this yourself:");
+        console.error(`  ${addCommand}\n`);
+        process.exit(1);
+      }
+
+      if (!skipBrowser) {
+        const execCmd = pm === "npm" ? "npx" : pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm" : "bunx";
+        const execArgs = pm === "yarn" ? ["exec", "playwright", "install", "chromium"] : ["playwright", "install", "chromium"];
+        const s2 = p.spinner();
+        s2.start("Downloading Chromium (this takes a minute)");
+        try {
+          await runInDir(targetDir, execCmd, execArgs);
+          s2.stop("Chromium ready");
+        } catch (err) {
+          s2.stop("Chromium download failed");
+          console.error("\nRun this to try again:");
+          console.error(`  ${run} superimg:setup\n`);
+          process.exit(1);
+        }
+      }
+    }
+
+    if (!options.yes) {
+      p.outro("You're ready. Start here:");
+      console.log(`\n  ${run} superimg:dev      open the live preview`);
+      console.log(`  ${run} superimg:render   export your first video\n`);
+    } else {
+      console.log("\nSuperImg added to your project.");
+      console.log(`  ${run} superimg:dev      open the live preview`);
+      console.log(`  ${run} superimg:render   export your first video\n`);
+    }
   } else {
     // ── New project ──
-    if (!dirExists) mkdirSync(targetDir, { recursive: true });
-    mkdirSync(videosDir, { recursive: true });
+    if (!existsSync(targetDir)) mkdirSync(targetDir, { recursive: true });
+    mkdirSync(finalVideosDir, { recursive: true });
 
-    const projectName = name === "." ? "my-superimg-project" : name;
     const version = getSuperimgVersion();
     const versionRange = version === "latest" ? "latest" : `^${version}`;
 
@@ -205,25 +367,57 @@ export async function initCommand(name: string, options: { js?: boolean; pm?: st
       },
       dependencies: {
         superimg: versionRange,
+        playwright: "^1.57.0",
       },
     };
 
     writeFileSync(join(targetDir, "package.json"), JSON.stringify(packageJson, null, 2) + "\n");
-    writeFileSync(templatePath, useJs ? TEMPLATE_JS : TEMPLATE_TS);
+    writeFileSync(finalTemplatePath, useJs ? TEMPLATE_JS : TEMPLATE_TS);
     if (!useJs) {
       writeFileSync(configPath, CONFIG_TS);
       writeFileSync(join(targetDir, "tsconfig.json"), TSCONFIG);
     }
+    writeFileSync(join(targetDir, "AGENTS.md"), getSkillContent());
 
-    console.log("\n  SuperImg project created!\n");
-    console.log("  Next steps:\n");
-    if (name !== ".") {
-      console.log(`    cd ${name}`);
+    if (!skipInstall) {
+      const s = p.spinner();
+      s.start("Installing dependencies");
+      try {
+        const [cmd, ...args] = install.split(/\s+/);
+        await runInDir(targetDir, cmd, args);
+        s.stop("Dependencies installed");
+      } catch (err) {
+        s.stop("Dependency install failed");
+        console.error("\nRun this yourself:");
+        if (projectName !== ".") console.error(`  cd ${projectName}\n`);
+        console.error(`  ${install}\n`);
+        process.exit(1);
+      }
+
+      if (!skipBrowser) {
+        const execCmd = pm === "npm" ? "npx" : pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm" : "bunx";
+        const execArgs = pm === "yarn" ? ["exec", "playwright", "install", "chromium"] : ["playwright", "install", "chromium"];
+        const s2 = p.spinner();
+        s2.start("Downloading Chromium (this takes a minute)");
+        try {
+          await runInDir(targetDir, execCmd, execArgs);
+          s2.stop("Chromium ready");
+        } catch (err) {
+          s2.stop("Chromium download failed");
+          console.error("\nRun this to try again:");
+          console.error(`  ${run} setup\n`);
+          process.exit(1);
+        }
+      }
     }
-    console.log(`    ${install}`);
-    console.log(`    ${run} dev\n`);
-    console.log("  Render to video:\n");
-    console.log(`    ${run} setup`);
-    console.log(`    ${run} render\n`);
+
+    if (!options.yes) {
+      p.outro("You're ready. Start here:");
+    }
+    if (projectName !== ".") {
+      console.log(`\n  cd ${projectName}`);
+    }
+    console.log(`  ${run} dev      open the live preview`);
+    console.log(`  ${run} render   export your first video\n`);
   }
 }

@@ -16,6 +16,13 @@ const PM_COMMANDS: Record<PackageManager, PackageManagerCommands> = {
   bun:  { install: "bun install",  add: "bun add superimg",     exec: "bunx",      run: "bun run" },
 };
 
+const PM_ADD_PATTERNS: Record<PackageManager, (pkgs: string[]) => string> = {
+  npm:  (pkgs) => `npm install ${pkgs.join(" ")}`,
+  yarn: (pkgs) => `yarn add ${pkgs.join(" ")}`,
+  pnpm: (pkgs) => `pnpm add ${pkgs.join(" ")}`,
+  bun:  (pkgs) => `bun add ${pkgs.join(" ")}`,
+};
+
 const VALID_PACKAGE_MANAGERS = Object.keys(PM_COMMANDS) as PackageManager[];
 
 /**
@@ -47,4 +54,11 @@ export function resolvePackageManager(override?: string): PackageManager {
  */
 export function getPackageManagerCommands(pm: PackageManager): PackageManagerCommands {
   return PM_COMMANDS[pm];
+}
+
+/**
+ * Get the command to add one or more packages.
+ */
+export function getAddPackagesCommand(pm: PackageManager, packages: string[]): string {
+  return PM_ADD_PATTERNS[pm](packages);
 }

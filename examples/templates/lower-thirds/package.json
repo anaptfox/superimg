@@ -5,9 +5,10 @@
   "description": "Broadcast-style lower third graphic for SuperImg",
   "type": "module",
   "scripts": {
-    "dev": "pnpm exec superimg dev template",
-    "render": "pnpm exec superimg render template -o output.webm",
-    "clean": "true"
+    "setup": "superimg setup",
+    "dev": "superimg dev ./template.video.js",
+    "render": "superimg render ./template.video.js -o output/template.webm",
+    "clean": "rm -rf output"
   },
   "dependencies": {
     "superimg": "workspace:*"

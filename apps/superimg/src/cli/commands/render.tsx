@@ -6,22 +6,24 @@ import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 import type { RenderJob, RenderProgress, TimeContext } from "@superimg/types";
 import { TemplateRuntimeError } from "@superimg/types";
 import { PlaywrightEngine } from "@superimg/playwright";
-import { writeFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { writeFileSync, existsSync, mkdirSync, statSync } from "node:fs";
+import { resolve, dirname, basename, join } from "node:path";
 import { bundleTemplateCode } from "@superimg/core/bundler";
 import { parseTemplate, resolveRenderConfig, resolvePresetConfig, resolveAllPresets } from "../utils/template-config.js";
 import { resolveTemplatePath } from "../utils/resolve-template.js";
 import { findProjectRoot } from "../utils/find-project-root.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";
+import { discoverVideos } from "../utils/discover-videos.js";
 import type { EncodingOptions } from "@superimg/types";
 
 interface RenderOptions {
-  output: string;
+  output?: string;
   format?: string;
   width?: string;
   height?: string;
   fps?: string;
   preset?: string;
+  presets?: boolean;
   all?: boolean;
   quality?: string;
   videoCodec?: string;
@@ -39,7 +41,7 @@ function resolveFormat(opts: RenderOptions): "mp4" | "webm" | undefined {
     return undefined;
   }
   // Auto-detect from output file extension
-  if (opts.output.endsWith(".webm")) return "webm";
+  if (opts.output?.endsWith(".webm")) return "webm";
   return undefined;
 }
 
@@ -129,6 +131,54 @@ function splitFilename(filepath: string): { base: string; ext: string } {
   return { base: filepath.slice(0, dot), ext: filepath.slice(dot) };
 }
 
+/** Extract video name from template path (e.g., "intro.video.ts" -> "intro") */
+function deriveVideoName(templatePath: string): string {
+  const base = basename(templatePath);
+  return base.replace(/\.video\.(ts|js)$/, "");
+}
+
+/** Check if path is a directory (exists and is dir, or ends with /) */
+function isDirectory(path: string): boolean {
+  if (path.endsWith("/")) return true;
+  try {
+    return existsSync(path) && statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** Resolve output path with smart defaults */
+function resolveOutputPath(
+  outputArg: string | undefined,
+  templatePath: string,
+  presetSuffix?: string
+): string {
+  const videoName = deriveVideoName(templatePath);
+  const suffix = presetSuffix ? `-${presetSuffix}` : "";
+  const defaultFilename = `${videoName}${suffix}.mp4`;
+
+  // No -o provided: use output/ folder
+  if (!outputArg) {
+    const outputDir = resolve("output");
+    if (!existsSync(outputDir)) {
+      mkdirSync(outputDir, { recursive: true });
+    }
+    return join(outputDir, defaultFilename);
+  }
+
+  // -o is a directory: auto-derive filename
+  if (isDirectory(outputArg)) {
+    const outputDir = resolve(outputArg.replace(/\/$/, ""));
+    if (!existsSync(outputDir)) {
+      mkdirSync(outputDir, { recursive: true });
+    }
+    return join(outputDir, defaultFilename);
+  }
+
+  // -o is explicit filename
+  return resolve(outputArg);
+}
+
 async function checkPlaywrightAvailable(): Promise<{ available: boolean; message?: string; isServerless?: boolean }> {
   // Check for serverless environment
   const isServerless = Boolean(
@@ -181,6 +231,35 @@ export async function renderCommand(template: string, options: RenderOptions) {
     process.exit(1);
   }
 
+  // Handle --all: render all videos in project
+  if (options.all) {
+    const projectRoot = findProjectRoot();
+    const videos = discoverVideos(projectRoot);
+    if (videos.length === 0) {
+      console.error("Error: No *.video.ts files found in project.");
+      process.exit(1);
+    }
+    console.log(`Found ${videos.length} video(s) to render:\n`);
+    for (const video of videos) {
+      console.log(`  - ${video.name} (${video.relativePath})`);
+    }
+    console.log("");
+
+    // Render each video sequentially
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i];
+      console.log(`\n[${i + 1}/${videos.length}] Rendering ${video.name}...`);
+      // Create output path - use explicit -o as base dir, or default to output/
+      const outputDir = options.output
+        ? (isDirectory(options.output) ? options.output : dirname(options.output))
+        : "output";
+      const videoOutput = resolveOutputPath(outputDir + "/", video.entrypoint);
+      // Recursively call without --all
+      await renderCommand(video.entrypoint, { ...options, all: false, output: videoOutput });
+    }
+    return;
+  }
+
   let resolvedTemplate: string;
   try {
     resolvedTemplate = resolveTemplatePath(template);
@@ -201,8 +280,8 @@ export async function renderCommand(template: string, options: RenderOptions) {
   }
 
   // Mutual exclusion check
-  if (options.preset && options.all) {
-    console.error("Error: --preset and --all cannot be used together.");
+  if (options.preset && options.presets) {
+    console.error("Error: --preset and --presets cannot be used together.");
     process.exit(1);
   }
 
@@ -221,19 +300,18 @@ export async function renderCommand(template: string, options: RenderOptions) {
   // Build render targets
   let targets: RenderTarget[];
 
-  if (options.all) {
+  if (options.presets) {
     if (!outputs || Object.keys(outputs).length === 0) {
-      console.error("Error: --all requires config.outputs to be defined in the template.");
+      console.error("Error: --presets requires config.outputs to be defined in the template.");
       process.exit(1);
     }
     const presets = resolveAllPresets(outputs, resolvedConfig);
-    const { base, ext } = splitFilename(options.output);
     targets = presets.map((p) => ({
       name: p.name,
       width: p.width,
       height: p.height,
       fps: p.fps,
-      outputPath: resolve(`${base}-${p.name}${ext}`),
+      outputPath: resolveOutputPath(options.output, resolvedTemplate, p.name),
       outputName: p.name,
     }));
   } else if (options.preset) {
@@ -248,7 +326,7 @@ export async function renderCommand(template: string, options: RenderOptions) {
         width: preset.width,
         height: preset.height,
         fps: preset.fps,
-        outputPath: resolve(options.output),
+        outputPath: resolveOutputPath(options.output, resolvedTemplate, preset.name),
         outputName: preset.name,
       }];
     } catch (err) {
@@ -262,7 +340,7 @@ export async function renderCommand(template: string, options: RenderOptions) {
       width: resolvedConfig.width,
       height: resolvedConfig.height,
       fps: resolvedConfig.fps,
-      outputPath: resolve(options.output),
+      outputPath: resolveOutputPath(options.output, resolvedTemplate),
       outputName: "default",
     }];
   }

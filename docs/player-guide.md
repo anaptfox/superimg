@@ -507,5 +507,6 @@ Make sure you have both dependencies:
 
 ## Next Steps
 
+- [Project Configuration](./project-config.md) - Cascading config and video discovery
 - [Templates & Data](./templates-and-data.md) - How to write templates
 - [Rendering Architecture](./rendering-architecture.md) - How rendering works

@@ -5,10 +5,10 @@
   "description": "defineScene example for SuperImg",
   "type": "module",
   "scripts": {
-    "setup": "pnpm exec superimg setup",
-    "dev": "pnpm exec superimg dev template",
-    "render": "pnpm exec superimg render template -o output.mp4",
-    "clean": "true"
+    "setup": "superimg setup",
+    "dev": "superimg dev ./template.video.ts",
+    "render": "superimg render ./template.video.ts",
+    "clean": "rm -rf output"
   },
   "dependencies": {
     "superimg": "workspace:*"

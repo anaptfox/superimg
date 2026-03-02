@@ -2,11 +2,7 @@
 
 import { snapdom, preCache } from "@zumer/snapdom";
 import type { RenderOptions, RenderContext } from "@superimg/types";
-import {
-  escapeHtmlAttr,
-  escapeCssInStyle,
-  isSafeStylesheetUrl,
-} from "@superimg/core";
+import { buildHeadStyles, isSafeStylesheetUrl } from "@superimg/core";
 import { get2DContext } from "./utils.js";
 
 const IMPORT_URL_RE = /@import\s+url\(\s*['"]([^'"]+)['"]\s*\)\s*;?/g;
@@ -50,9 +46,9 @@ function waitForStylesheets(doc: Document): Promise<void> {
 }
 
 /**
- * Build shell HTML from options (fonts, stylesheets, inlineCss, base styles).
+ * Collect stylesheet URLs from options for de-duplication tracking.
  */
-function buildShell(options: RenderOptions): { headContent: string; urls: string[] } {
+function collectStylesheetUrls(options: RenderOptions): string[] {
   const urls: string[] = [];
 
   if (options.fonts && options.fonts.length > 0) {
@@ -68,20 +64,7 @@ function buildShell(options: RenderOptions): { headContent: string; urls: string
     );
   }
 
-  const linkTags = urls
-    .map((url) => `<link rel="stylesheet" href="${escapeHtmlAttr(url)}">`)
-    .join("");
-  const inlineStyleBlock =
-    options.inlineCss && options.inlineCss.length > 0
-      ? `<style>${options.inlineCss.map(escapeCssInStyle).join("\n")}</style>`
-      : "";
-  const baseStyles =
-    "<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;}</style>";
-
-  return {
-    headContent: `${linkTags}${inlineStyleBlock}${baseStyles}`,
-    urls,
-  };
+  return urls;
 }
 
 /**
@@ -138,7 +121,12 @@ export class BrowserRenderer {
     iframe.width = String(options.width);
     iframe.height = String(options.height);
 
-    const { headContent, urls } = buildShell(options);
+    const headContent = buildHeadStyles({
+      fonts: options.fonts,
+      stylesheets: options.stylesheets,
+      inlineCss: options.inlineCss,
+    });
+    const urls = collectStylesheetUrls(options);
     const frameDiv = `<div id="frame" style="position:relative;width:100%;height:100%;"></div>`;
     const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8">${headContent}</head><body>${frameDiv}</body></html>`;
 

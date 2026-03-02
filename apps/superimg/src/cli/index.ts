@@ -1,17 +1,11 @@
 #!/usr/bin/env node
 //! SuperImg CLI entry point
+// Commands are lazy-loaded so init/dev/list work without Playwright installed.
 
 import { Command } from "commander";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
-import { initCommand } from "./commands/init.js";
-import { devCommand } from "./commands/dev.js";
-import { renderCommand } from "./commands/render.js";
-import { infoCommand } from "./commands/info.js";
-import { listCommand } from "./commands/list.js";
-import { setupCommand } from "./commands/setup.js";
-import { addCommand } from "./commands/add.js";
 
 const program = new Command();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -45,9 +39,15 @@ program
   .command("init")
   .description("Create a new SuperImg template project, or add to an existing one")
   .argument("[name]", "Project directory name", ".")
+  .option("-y, --yes", "Skip prompts and use defaults")
   .option("--js", "Use JavaScript instead of TypeScript")
   .option("--pm <manager>", "Package manager to use: npm, yarn, pnpm, bun")
-  .action(initCommand);
+  .option("--skip-install", "Skip dependency installation")
+  .option("--skip-browser", "Skip browser download")
+  .action(async (name: string, options: { yes?: boolean; js?: boolean; pm?: string; skipInstall?: boolean; skipBrowser?: boolean }) => {
+    const { initCommand } = await import("./commands/init.js");
+    await initCommand(name, options);
+  });
 
 program
   .command("dev")
@@ -55,47 +55,74 @@ program
   .argument("[template]", "Video name or path (omit for home page with all videos)")
   .option("-p, --port <port>", "Port number", "3000")
   .option("--no-open", "Don't open browser automatically")
-  .action((template: string | undefined, options: { port: string; open: boolean }) => devCommand(template, options));
+  .action(async (template: string | undefined, options: { port: string; open: boolean }) => {
+    const { devCommand } = await import("./commands/dev.js");
+    await devCommand(template, options);
+  });
 
 program
   .command("render")
   .description("Render template to video")
-  .argument("<template>", "Path to template file")
-  .requiredOption("-o, --output <file>", "Output video file path")
+  .argument("[template]", "Video name or path (optional with --all)")
+  .option("-o, --output <path>", "Output path (file or directory, defaults to output/)")
   .option("--format <type>", "Output format: mp4, webm")
   .option("-w, --width <pixels>", "Video width")
   .option("-h, --height <pixels>", "Video height")
   .option("--fps <fps>", "Frames per second")
   .option("--preset <name>", "Render a named output preset from config.outputs")
-  .option("--all", "Render all output presets defined in config.outputs")
+  .option("--presets", "Render all output presets defined in config.outputs")
+  .option("--all", "Render all videos in project")
   .option("--quality <level>", "Video quality: very-low, low, medium, high, very-high")
   .option("--video-codec <codec>", "Video codec: avc, vp9, av1")
   .option("--video-bitrate <bps>", "Video bitrate in bits/second")
   .option("--audio-codec <codec>", "Audio codec: aac, opus")
   .option("--audio-bitrate <bps>", "Audio bitrate in bits/second")
   .option("--keyframe-interval <seconds>", "Keyframe interval in seconds")
-  .action(renderCommand);
+  .action(async (template: string | undefined, options) => {
+    const mod = await import("./commands/render.js");
+    // Require template unless --all is used
+    if (!template && !options.all) {
+      console.error("Error: <template> argument required unless using --all");
+      process.exit(1);
+    }
+    await mod.renderCommand(template ?? "", options as Parameters<typeof mod.renderCommand>[1]);
+  });
 
 program
   .command("info")
   .description("Show template information")
   .argument("<template>", "Path to template file")
-  .action(infoCommand);
+  .action(async (template: string) => {
+    const { infoCommand } = await import("./commands/info.js");
+    await infoCommand(template);
+  });
 
 program
   .command("list")
   .description("List all discovered videos in the project")
-  .action(listCommand);
+  .action(async () => {
+    const { listCommand } = await import("./commands/list.js");
+    await listCommand();
+  });
 
 program
   .command("setup")
   .description("Download required browser for rendering")
-  .action(setupCommand);
+  .action(async () => {
+    const { setupCommand } = await import("./commands/setup.js");
+    await setupCommand();
+  });
 
 program
   .command("add")
   .description("Add capabilities to your project")
   .argument("<item>", "Item to add: skill")
-  .action(addCommand);
+  .option("-y, --yes", "Skip prompts and use defaults")
+  .option("--project", "Project only (AGENTS.md)")
+  .option("--global", "Global only (skills.sh)")
+  .action(async (item: string, options: { yes?: boolean; project?: boolean; global?: boolean }) => {
+    const { addCommand } = await import("./commands/add.js");
+    await addCommand(item, options);
+  });
 
 program.parse();

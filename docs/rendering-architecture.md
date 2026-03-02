@@ -485,3 +485,9 @@ try {
 | **Determinism** | Browser clock | Frozen time (2025-01-01) |
 | **Use Case** | Preview, streaming | Batch generation, CLI |
 | **Dependencies** | None (runs in browser) | Playwright, Chromium |
+
+---
+
+## See Also
+
+- [Project Configuration](./project-config.md) - Cascading config and video discovery

@@ -45,14 +45,15 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/copy-skills.cjs",
     "build:browser": "SUPERIMG_BROWSER_ONLY=1 tsup && cp dist/index.browser.js dist/index.server.js && cp dist/index.browser.d.ts dist/index.server.d.ts",
     "dev": "tsup --watch",
     "test": "vitest --run --passWithNoTests",
     "clean": "rm -rf dist"
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "sideEffects": false,
   "engines": {
@@ -72,21 +73,22 @@
     "url": "https://github.com/user/superimg"
   },
   "dependencies": {
+    "@clack/prompts": "^1.0.1",
+    "@hono/node-server": "^1.14.1",
     "acorn": "^8.14.0",
+    "chokidar": "^5.0.0",
     "colord": "^2.9.3",
-    "commander": "^12.0.0",
+    "commander": "^14.0.3",
     "date-fns": "^4.1.0",
     "esbuild": "^0.27.0",
     "esbuild-wasm": "^0.27.0",
+    "hono": "^4.7.7",
     "ink": "^6.6.0",
     "react": "catalog:",
     "simplex-noise": "^4.0.3",
     "vite": "^7.3.1",
     "ws": "^8.18.0",
-    "chokidar": "^4.0.0",
-    "zustand": "^5.0.0",
-    "hono": "^4.7.7",
-    "@hono/node-server": "^1.14.1"
+    "zustand": "^5.0.0"
   },
   "peerDependencies": {
     "playwright": "^1.57.0"
@@ -97,12 +99,12 @@
     }
   },
   "devDependencies": {
-    "@superimg/types": "workspace:*",
-    "@superimg/stdlib": "workspace:*",
     "@superimg/core": "workspace:*",
-    "@superimg/runtime": "workspace:*",
     "@superimg/player": "workspace:*",
     "@superimg/playwright": "workspace:*",
+    "@superimg/runtime": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/types": "workspace:*",
     "@types/react": "catalog:",
     "@types/ws": "^8.18.0"
   }

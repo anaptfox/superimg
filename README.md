@@ -181,6 +181,7 @@ npm install superimg-react     # React components
 ## Documentation
 
 - [API Reference](./docs/api.md) — RenderContext and stdlib
+- [Project Configuration](./docs/project-config.md) — Cascading config and video discovery
 - [Templates & Data](./docs/templates-and-data.md) — Creating templates with defaults
 - [Examples](./examples/) — Working examples to copy from
 

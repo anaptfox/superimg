@@ -2,7 +2,8 @@
 
 import type { Page } from "playwright";
 import type { FrameRendererConfig, VideoEncoderConfig, FrameRenderer, VideoEncoder } from "@superimg/types";
-import { buildPageShell, resolveAudio } from "@superimg/core";
+import { buildPageShell } from "@superimg/core/html";
+import { resolveAudio } from "@superimg/core";
 
 /**
  * Playwright-based frame renderer.
