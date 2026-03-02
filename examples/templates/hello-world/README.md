@@ -41,10 +41,10 @@ This template defines two output presets via `config.outputs`:
 
 ## Customize It
 
-This template uses `defaults` inside `defineTemplate`. Override values by passing data, or edit the defaults in `template.js`:
+This template uses `defaults` inside `defineScene`. Override values by passing data, or edit the defaults in `template.js`:
 
 ```js
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: "Hello, SuperImg!",
     subtitle: "Create stunning videos from code",

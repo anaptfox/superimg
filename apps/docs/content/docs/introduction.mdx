@@ -1,0 +1,57 @@
+# What is SuperImg?
+
+SuperImg is a TypeScript framework for programmatic video generation. Write a function that returns HTML — SuperImg renders every frame to a high-quality MP4.
+
+<CodeDemo templateId="blog-intro" />
+
+## Why Video-as-Code?
+
+Generating video manually does not scale. If you need 1,000 personalized videos, or you want an AI agent to produce video output, clicking around a timeline editor is not a viable path.
+
+SuperImg treats video as software. Here is what that changes:
+
+**Without SuperImg:** Open a video editor. Drag assets onto a timeline. Export. Repeat for every variation. Ten videos takes a day. One thousand is impossible.
+
+**With SuperImg:** Write a template once. Pass a JSON file. Run one command. One thousand videos render in the time it takes a fresh install.
+
+## Why it works
+
+### Built for AI
+
+Templates are pure functions that return an HTML string. Any LLM can write, debug, and iterate on that without any special training or tooling. Compare that to After Effects expressions, Remotion JSX, or Canvas API code — all of which require domain-specific knowledge.
+
+### Batch rendering
+
+Every template accepts a `data` parameter. Pass a JSON array and get one video per row. The same template that renders a single demo video renders a thousand personalized ones.
+
+### One template, every format
+
+Because templates return HTML and CSS, they are inherently responsive. Write once, render in 16:9 for YouTube, 9:16 for TikTok, or 1:1 for Instagram — just change the canvas dimensions.
+
+### Version control
+
+Video templates live in your repo. Diff them in pull requests. Roll back a bad animation the same way you roll back a bad deploy.
+
+## Core Concepts
+
+### Templates are pure functions
+
+```ts
+f(time, data) = HTML
+```
+
+A template receives the current `sceneProgress` (from 0 to 1) and your custom `data`. It uses these to calculate positions, colors, and opacities, and returns an HTML string for that specific frame. No timelines. No keyframes. No state.
+
+### The Standard Library
+
+SuperImg ships a built-in `std` library so you are not writing animation math from scratch. Use `std.tween` to smoothly transition values between keypoints, `std.math.clamp` to constrain them, and `std.color` to work with gradients and palettes.
+
+### Use it where it fits
+
+**CLI:** Scaffold projects (`init`), preview templates at 60fps in your browser (`dev`), and render headlessly to MP4 (`render`).
+
+**React:** Embed live, interactive templates in your web app using the `<Player>` component. Pass data props to update the video dynamically.
+
+**AI pipeline:** Call the renderer from Node. Pass generated data in, get MP4 out. No browser required.
+
+Ready to write your first template? [Get started →](/docs/getting-started)

@@ -16,8 +16,34 @@ export default function HomePage() {
       <TemplatesPanelSection />
 
       <footer className="border-t border-border/50 px-6 py-12">
-        <div className="mx-auto max-w-4xl text-center text-sm text-muted-foreground">
-          <p>Built with SuperImg - Programmatic video generation for developers</p>
+        <div className="mx-auto max-w-5xl">
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+            <div>
+              <p className="mb-3 text-sm font-semibold">Product</p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="/editor" className="hover:text-foreground transition-colors">Editor</a></li>
+                <li><a href="/templates" className="hover:text-foreground transition-colors">Templates</a></li>
+              </ul>
+            </div>
+            <div>
+              <p className="mb-3 text-sm font-semibold">Docs</p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="/docs/introduction" className="hover:text-foreground transition-colors">Introduction</a></li>
+                <li><a href="/docs/getting-started" className="hover:text-foreground transition-colors">Getting Started</a></li>
+              </ul>
+            </div>
+            <div>
+              <p className="mb-3 text-sm font-semibold">More</p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="/blog" className="hover:text-foreground transition-colors">Blog</a></li>
+                <li><a href="https://github.com/anaptfox/superimg" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a></li>
+              </ul>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <p className="mb-1 text-sm font-semibold">SuperImg</p>
+              <p className="text-sm text-muted-foreground">Programmatic video generation for developers and AI agents.</p>
+            </div>
+          </div>
         </div>
       </footer>
     </main>

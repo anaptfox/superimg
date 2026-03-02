@@ -10,9 +10,10 @@ export interface NavSection {
 
 export const docsNav: NavSection[] = [
   {
-    title: 'Getting Started',
+    title: 'Overview',
     items: [
-      { title: 'Introduction', slug: 'getting-started' },
+      { title: 'Introduction', slug: 'introduction' },
+      { title: 'Getting Started', slug: 'getting-started' },
     ],
   },
 ]

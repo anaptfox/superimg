@@ -2,7 +2,7 @@
 // Animated countdown with pulsing numbers and particle effects
 // Demonstrates: std.css(), std.css.center(), inlineCss, easing, math, and color utilities
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
 function generateParticles(std, time, count) {
   let particles = "";
@@ -29,7 +29,7 @@ function generateParticles(std, time, count) {
   return particles;
 }
 
-export default defineTemplate({
+export default defineScene({
   config: {
     fps: 30,
     durationSeconds: 5,

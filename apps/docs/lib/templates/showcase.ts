@@ -1,7 +1,7 @@
-import { defineTemplate, type RenderContext } from "superimg";
+import { defineScene, type RenderContext } from "superimg";
 
 // Getting Started: Hello World with fade-in effect
-export const helloWorldTemplate = defineTemplate({
+export const helloWorldTemplate = defineScene({
   config: {
     fps: 30,
     durationSeconds: 3,
@@ -40,7 +40,7 @@ export const helloWorldTemplate = defineTemplate({
 });
 
 // Marketing: Countdown timer animation
-export const countdownTemplate = defineTemplate({
+export const countdownTemplate = defineScene({
   config: {
     fps: 30,
     durationSeconds: 3,
@@ -106,7 +106,7 @@ export const countdownTemplate = defineTemplate({
 });
 
 // Social: Testimonial quote card animation
-export const testimonialTemplate = defineTemplate({
+export const testimonialTemplate = defineScene({
   config: {
     fps: 30,
     durationSeconds: 3,
@@ -156,7 +156,7 @@ export const testimonialTemplate = defineTemplate({
 });
 
 // Data: Animated bar chart
-export const chartTemplate = defineTemplate({
+export const chartTemplate = defineScene({
   config: {
     fps: 30,
     durationSeconds: 3,
@@ -229,7 +229,7 @@ export const chartTemplate = defineTemplate({
 });
 
 // Developer: Terminal typing effect
-export const terminalTemplate = defineTemplate({
+export const terminalTemplate = defineScene({
   config: {
     fps: 30,
     durationSeconds: 3,

@@ -150,7 +150,7 @@ function unwrapDefineTemplate(expr: acorn.Expression): acorn.Expression {
 
 /**
  * Extract template metadata without executing user code.
- * Templates must use export default defineTemplate({ ... }).
+ * Templates must use export default defineScene({ ... }).
  */
 export async function extractTemplateMetadata(code: string): Promise<TemplateMetadata> {
   // Strip TypeScript syntax before parsing with acorn (JS-only parser)
@@ -210,7 +210,7 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
 
   if (!hasDefaultExport) {
     throw new Error(
-      "Template must use export default defineTemplate({ ... }). Named exports are no longer supported."
+      "Template must use export default defineScene({ ... }). Named exports are no longer supported."
     );
   }
 

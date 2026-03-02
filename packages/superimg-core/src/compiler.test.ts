@@ -4,13 +4,13 @@ import { bundleTemplateCode } from "./bundler.js";
 import { makeTestContext, compileFromString } from "./__test-utils__/index.js";
 
 function wrapDefineTemplate(code: string) {
-  return `import { defineTemplate } from 'superimg';\n${code}`;
+  return `import { defineScene } from 'superimg';\n${code}`;
 }
 
 describe("compileTemplate (with bundled code)", () => {
   it("compiles a simple template with render function", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) { return '<div>Hello</div>'; }
       });
     `));
@@ -21,7 +21,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("compiles template with config export", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         config: { fps: 30 },
         render(ctx) { return '<div>Test</div>'; }
       });
@@ -32,7 +32,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("compiles template with defaults export", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         defaults: { title: 'Hello', count: 42 },
         render(ctx) { return '<div>' + ctx.data.title + '</div>'; }
       });
@@ -43,7 +43,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("provides stdlib access via ctx.std", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) {
           const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeInOutCubic');
           return \`<div style="opacity: \${eased}">\${eased}</div>\`;
@@ -60,7 +60,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("provides ctx.std.tween for eased interpolation", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) {
           const x = ctx.std.tween(0, 100, ctx.sceneProgress, 'easeOutCubic');
           return \`<div style="left: \${x}px">\${x}</div>\`;
@@ -79,7 +79,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("preserves function declarations (hoisting and .name)", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) { return '<div>Test</div>'; }
       });
     `));
@@ -90,7 +90,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("compiles export const correctly", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         config: { width: 1920 },
         render(ctx) { return '<div></div>'; }
       });
@@ -102,7 +102,7 @@ describe("compileTemplate (with bundled code)", () => {
   it("compiles export let correctly", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
       let config = { height: 1080 };
-      export default defineTemplate({ config, render(ctx) { return '<div></div>'; } });
+      export default defineScene({ config, render(ctx) { return '<div></div>'; } });
     `));
     expect(result.error).toBeUndefined();
     expect(result.template?.config).toEqual({ height: 1080 });
@@ -110,17 +110,17 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("returns error when render function is missing", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({ config: { fps: 30 } });
+      export default defineScene({ config: { fps: 30 } });
     `));
     expect(result.error).toBeDefined();
-    expect(result.error?.message).toContain("defineTemplate");
+    expect(result.error?.message).toContain("defineScene");
     expect(result.template).toBeUndefined();
   });
 
   it("returns error for bundling syntax errors", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         render(ctx) {
           return '<div>Unclosed
         }
@@ -132,7 +132,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("returns error for runtime errors", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) { throw new Error('Test error'); }
       });
     `));
@@ -142,7 +142,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("handles complex template with ctx.std usage", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         config: { fps: 30, width: 1920 },
         render(ctx) {
           const color = ctx.std.color.parseColor('#ff0000');
@@ -157,7 +157,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("does not mangle export keyword inside string literals", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) { return '<div>export default is a keyword</div>'; }
       });
     `));
@@ -168,7 +168,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("compiles export async function", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         async render(ctx) { return '<div>async</div>'; }
       });
     `));
@@ -197,15 +197,15 @@ describe("compileTemplate (with bundled code)", () => {
     expect(html).toBe("<div>Object default</div>");
   });
 
-  it("compiles export default defineTemplate({ render, config, defaults })", async () => {
+  it("compiles export default defineScene({ render, config, defaults })", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
+      import { defineScene } from 'superimg';
       function render(ctx) {
         return '<div>' + ctx.data.title + '</div>';
       }
       const config = { fps: 24 };
       const defaults = { title: 'Define default' };
-      export default defineTemplate({ render, config, defaults });
+      export default defineScene({ render, config, defaults });
     `;
 
     const result = await compileFromString(code);
@@ -225,14 +225,14 @@ describe("compileTemplate (with bundled code)", () => {
       export default { config: { fps: 30 } };
     `);
     expect(result.error).toBeDefined();
-    expect(result.error?.message).toContain("defineTemplate");
+    expect(result.error?.message).toContain("defineScene");
   });
 });
 
 describe("validateTemplate", () => {
   it("validates a working template", async () => {
     const code = wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) { return '<div>Valid</div>'; }
       });
     `);
@@ -248,7 +248,7 @@ describe("validateTemplate", () => {
 
   it("returns error when render returns non-string", async () => {
     const compileResult = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) { return 123; }
       });
     `));
@@ -263,7 +263,7 @@ describe("validateTemplate", () => {
 
   it("returns error for runtime exceptions", async () => {
     const compileResult = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) { throw new Error('Runtime error'); }
       });
     `));
@@ -278,7 +278,7 @@ describe("validateTemplate", () => {
 
   it("validates template with ctx.std usage", async () => {
     const compileResult = await compileFromString(wrapDefineTemplate(`
-      export default defineTemplate({
+      export default defineScene({
         render(ctx) {
           const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeInOutCubic');
           return \`<div style="opacity: \${eased}">\${eased}</div>\`;

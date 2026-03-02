@@ -13,15 +13,15 @@ This guide covers how to create templates, define default data, pass data to sce
 
 ## Basic Templates
 
-A template is a function that receives a `RenderContext` and returns HTML. The recommended way to create templates is with `defineTemplate` and a `defaults` object:
+A template is a function that receives a `RenderContext` and returns HTML. The recommended way to create templates is with `defineScene` and a `defaults` object:
 
 ### Module Templates (recommended)
 
 ```typescript
 // templates/intro.ts
-import { defineTemplate } from 'superimg';
+import { defineScene } from 'superimg';
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     name: 'World',
   },
@@ -46,14 +46,14 @@ export default defineTemplate({
 });
 ```
 
-`defineTemplate` gives you full type inference — `ctx.data.name` is typed as `string` automatically.
+`defineScene` gives you full type inference — `ctx.data.name` is typed as `string` automatically.
 
 ### Multi-Output Presets
 
 Templates can define named output presets via `config.outputs` to target multiple aspect ratios or resolutions from a single template:
 
 ```typescript
-export default defineTemplate({
+export default defineScene({
   defaults: { title: 'Untitled' },
   config: {
     width: 1920,
@@ -99,9 +99,9 @@ Duration can be set in several places. The highest-priority source wins:
 The standard library is available via `ctx.std`:
 
 ```typescript
-import { defineTemplate } from 'superimg';
+import { defineScene } from 'superimg';
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
     const { std, sceneProgress } = ctx;
     
@@ -145,7 +145,7 @@ std.css.stack()  // display:flex; flex-direction:column
 Templates can inject CSS once per render session via `config.inlineCss` and `config.stylesheets`:
 
 ```typescript
-export default defineTemplate({
+export default defineScene({
   config: {
     width: 1920,
     height: 1080,
@@ -171,10 +171,10 @@ Templates can export a `defaults` object. The runtime merges `{ ...defaults, ...
 ### Defining Defaults
 
 ```typescript
-// templates/product.ts — using defineTemplate (recommended)
-import { defineTemplate } from 'superimg';
+// templates/product.ts — using defineScene (recommended)
+import { defineScene } from 'superimg';
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: 'Untitled',
     price: 0,
@@ -219,9 +219,9 @@ Pass data to templates via `ctx.data`.
 Data is available via `ctx.data`:
 
 ```typescript
-import { defineTemplate } from 'superimg';
+import { defineScene } from 'superimg';
 
-export default defineTemplate({
+export default defineScene({
   defaults: { title: 'Untitled', subtitle: undefined, showLogo: false },
   render(ctx) {
     const { data } = ctx;
@@ -296,13 +296,13 @@ interface RenderContext<
 
 ## Best Practices
 
-### 1. Use defineTemplate with Defaults for Reusable Templates
+### 1. Use defineScene with Defaults for Reusable Templates
 
 ```typescript
-import { defineTemplate } from 'superimg';
+import { defineScene } from 'superimg';
 
 // Good - self-contained with defaults
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: 'Untitled',
     items: [] as string[],
@@ -318,7 +318,7 @@ export default defineTemplate({
 ### 2. Use Defaults for Optional Fields
 
 ```typescript
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: 'Hello',
     subtitle: undefined as string | undefined,  // Optional
@@ -333,7 +333,7 @@ export default defineTemplate({
 
 ### 3. Full Type Inference
 
-`defineTemplate` infers types from your `defaults` — no manual type annotations needed. `ctx.data` is automatically typed.
+`defineScene` infers types from your `defaults` — no manual type annotations needed. `ctx.data` is automatically typed.
 
 ### 4. Use Explicit Duration in Config
 

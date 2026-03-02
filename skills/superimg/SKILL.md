@@ -2,7 +2,7 @@
 name: superimg
 description: >
   SuperImg programmatic video generation framework. Create HTML/CSS video
-  templates with defineTemplate(), animate with ctx.std (tween, math, color),
+  templates with defineScene(), animate with ctx.std (tween, math, color),
   and render to MP4. Use when working with superimg templates or video rendering.
 ---
 
@@ -21,12 +21,12 @@ Templates render to MP4 via the CLI (`superimg render`) or the server API (`rend
 
 ## Template Authoring
 
-### defineTemplate
+### defineScene
 
 ```typescript
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: "Hello, SuperImg!",
     subtitle: "Create stunning videos from code",
@@ -238,7 +238,7 @@ For low-level control, use `createRenderPlan`, `executeRenderPlan`, and `Playwri
 
 4. **Set root dimensions to canvas size.** Style the root element (typically `body` or an outer `div`) to `width: ${width}px; height: ${height}px` so content fills the frame.
 
-5. **Import from the right path.** Templates import from `"superimg"` (for `defineTemplate`, types). Server/rendering imports from `"superimg/server"`.
+5. **Import from the right path.** Templates import from `"superimg"` (for `defineScene`, types). Server/rendering imports from `"superimg/server"`.
 
 6. **Data merges with defaults.** When a template has `defaults`, scene `data` is merged: `{ ...defaults, ...data }`. You only need to pass overrides.
 

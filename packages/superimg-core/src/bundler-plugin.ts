@@ -7,20 +7,20 @@ interface EsbuildPlugin {
 }
 
 /**
- * Creates the esbuild plugin that shims `superimg` imports (defineTemplate)
+ * Creates the esbuild plugin that shims `superimg` imports (defineScene)
  * and strips `@superimg/stdlib` imports (accessed via ctx.std at runtime).
  */
 export function createSuperimgPlugin(namespace = "superimg-virtual"): EsbuildPlugin {
   return {
     name: "superimg-resolve",
     setup(build) {
-      // Shim defineTemplate
+      // Shim defineScene
       build.onResolve({ filter: /^superimg$/ }, () => ({
         path: "superimg",
         namespace,
       }));
       build.onLoad({ filter: /^superimg$/, namespace }, () => ({
-        contents: 'export function defineTemplate(m) { return m; }',
+        contents: 'export function defineScene(m) { return m; }\nexport function defineConfig(c) { return c; }',
         loader: "js",
       }));
       // Strip stdlib imports (accessed via ctx.std at runtime)

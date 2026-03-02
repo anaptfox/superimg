@@ -6,7 +6,7 @@ import { renderHook, act } from "@testing-library/react";
 vi.mock("superimg/bundler", () => ({
   initBundler: vi.fn().mockResolvedValue(undefined),
   bundleTemplateBrowser: vi.fn().mockImplementation(async (code: string) => {
-    const hasValidTemplate = /defineTemplate|render\s*\(/.test(code);
+    const hasValidTemplate = /defineScene|render\s*\(/.test(code);
     if (hasValidTemplate) {
       return "var __template = { default: { render: function() { return '<div></div>'; } } };";
     }
@@ -260,7 +260,7 @@ describe("useVideoSession", () => {
       await act(async () => { await result.current.compile("invalid {{"); });
       expect(result.current.error).not.toBeNull();
 
-      await act(async () => { await result.current.compile('import { defineTemplate } from "superimg"; export default defineTemplate({ render() { return "<div></div>"; } });'); });
+      await act(async () => { await result.current.compile('import { defineScene } from "superimg"; export default defineScene({ render() { return "<div></div>"; } });'); });
       expect(result.current.error).toBeNull();
       expect(result.current.template).not.toBeNull();
     });
@@ -272,7 +272,7 @@ describe("useVideoSession", () => {
       await act(async () => {});
 
       await act(async () => {
-        await result.current.compile('import { defineTemplate } from "superimg"; export default defineTemplate({ render() { return "<div></div>"; } });');
+        await result.current.compile('import { defineScene } from "superimg"; export default defineScene({ render() { return "<div></div>"; } });');
       });
 
       expect(result.current.status).toBe("Ready");
@@ -285,7 +285,7 @@ describe("useVideoSession", () => {
       await act(async () => {});
 
       await act(async () => {
-        await result.current.compile('import { defineTemplate } from "superimg"; export default defineTemplate({ render() { return "<div>Hello</div>"; } });');
+        await result.current.compile('import { defineScene } from "superimg"; export default defineScene({ render() { return "<div>Hello</div>"; } });');
       });
 
       expect(result.current.template).not.toBeNull();

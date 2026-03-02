@@ -369,7 +369,7 @@ try {
 │  │  COMPILE                                                 │   │
 │  │  compileTemplate(code) → TemplateModule { render() }     │   │
 │  │                                                          │   │
-│  │  Templates use defineTemplate({ render, config, defaults })  │   │
+│  │  Templates use defineScene({ render, config, defaults })  │   │
 │  │  Compiler extracts render, config, defaults from default   │   │
 │  │                                                          │   │
 │  │  Injects: std (stdlib namespace)                         │   │

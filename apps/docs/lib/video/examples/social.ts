@@ -7,8 +7,8 @@ const TESTIMONIALS = [
   { name: "Alex Kim", handle: "@alexk", text: "Finally, programmatic video that doesn't suck.", avatar: "🧑‍🚀" },
 ];
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -67,8 +67,8 @@ export const MILESTONE = `// Follower Milestone
 const MILESTONE = 100000;
 const PLATFORM = "Twitter";
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -134,8 +134,8 @@ export const MRR = `// MRR Counter
 const TARGET_MRR = 50000;
 const CURRENCY = "$";
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -200,8 +200,8 @@ const SCHEDULE = {
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -372,8 +372,8 @@ const TWEET = {
   views: 42800,
 };
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 

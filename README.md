@@ -31,9 +31,9 @@ npm install superimg
 ## Quick Start
 
 ```typescript
-import { defineTemplate } from 'superimg'
+import { defineScene } from 'superimg'
 
-export default defineTemplate({
+export default defineScene({
   config: { width: 1920, height: 1080, fps: 30, durationSeconds: 5 },
   render(ctx) {
     const { std, sceneProgress, width, height } = ctx
@@ -73,7 +73,7 @@ npx superimg render template.ts -o video.mp4
                     ┌─────────────────┐
                     │    template.ts  │
                     │                 │
-                    │  defineTemplate │
+                    │  defineScene │
                     └────────┬────────┘
                              │
            ┌─────────────────┼─────────────────┐
@@ -150,7 +150,7 @@ await render(template, { format: 'tiktok.video' })         // 1080×1920
 Pass data at render time for personalization:
 
 ```typescript
-export default defineTemplate({
+export default defineScene({
   defaults: {
     productName: 'Widget',
     price: '$99',

@@ -137,9 +137,57 @@
             font-size: 0.875rem;
             color: #a0a0a0;
         }
+        #home-view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+        #home-view.visible { display: flex; }
+        #player-view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+        #player-view.visible { display: flex; }
+        .video-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        .video-card {
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .video-card:hover { border-color: #00aaff; }
+        .video-card-preview {
+            aspect-ratio: 16/9;
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .video-card-preview canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .video-card-preview .loading { color: #666; font-size: 0.875rem; }
+        .video-card-info {
+            padding: 1rem;
+        }
+        .video-card-info .name { font-weight: 600; font-size: 1rem; }
+        .video-card-info .path { font-size: 0.75rem; color: #888; margin-top: 0.25rem; }
     </style>
 </head>
 <body>
+    <div id="home-view">
+        <header>
+            <h1>SuperImg</h1>
+            <p style="margin-top: 0.25rem; font-size: 0.875rem; color: #888;">Select a video to preview</p>
+        </header>
+        <div id="video-grid" class="video-grid"></div>
+    </div>
+    <div id="player-view">
     <header>
         <h1>SuperImg Dev Server</h1>
         <div class="controls">
@@ -165,6 +213,7 @@
     <div id="preview-container" class="preview-container"></div>
     <div class="status" id="status">
         Loading...
+    </div>
     </div>
 
     <script type="module" src="./src/main.ts"></script>

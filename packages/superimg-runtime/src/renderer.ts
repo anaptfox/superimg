@@ -2,6 +2,11 @@
 
 import { snapdom, preCache } from "@zumer/snapdom";
 import type { RenderOptions, RenderContext } from "@superimg/types";
+import {
+  escapeHtmlAttr,
+  escapeCssInStyle,
+  isSafeStylesheetUrl,
+} from "@superimg/core";
 import { get2DContext } from "./utils.js";
 
 const IMPORT_URL_RE = /@import\s+url\(\s*['"]([^'"]+)['"]\s*\)\s*;?/g;
@@ -51,18 +56,24 @@ function buildShell(options: RenderOptions): { headContent: string; urls: string
   const urls: string[] = [];
 
   if (options.fonts && options.fonts.length > 0) {
-    const fontFamilies = options.fonts.map((f) => `family=${f.replace(/ /g, "+")}`).join("&");
+    const fontFamilies = options.fonts
+      .map((f) => `family=${encodeURIComponent(f.trim())}`)
+      .join("&");
     urls.push(`https://fonts.googleapis.com/css2?${fontFamilies}&display=swap`);
   }
 
   if (options.stylesheets && options.stylesheets.length > 0) {
-    urls.push(...options.stylesheets);
+    urls.push(
+      ...options.stylesheets.filter(isSafeStylesheetUrl).map((url) => url.trim())
+    );
   }
 
-  const linkTags = urls.map((url) => `<link rel="stylesheet" href="${url}">`).join("");
+  const linkTags = urls
+    .map((url) => `<link rel="stylesheet" href="${escapeHtmlAttr(url)}">`)
+    .join("");
   const inlineStyleBlock =
     options.inlineCss && options.inlineCss.length > 0
-      ? `<style>${options.inlineCss.join("\n")}</style>`
+      ? `<style>${options.inlineCss.map(escapeCssInStyle).join("\n")}</style>`
       : "";
   const baseStyles =
     "<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;}</style>";
@@ -165,6 +176,7 @@ export class BrowserRenderer {
     const { cleanedHtml, urls } = extractCSSImports(html);
     if (urls.length > 0 && this.doc.head) {
       for (const url of urls) {
+        if (!isSafeStylesheetUrl(url)) continue;
         if (!this.sessionStylesheetUrls.has(url)) {
           this.sessionStylesheetUrls.add(url);
           const link = this.doc.createElement("link");

@@ -2,34 +2,24 @@ import { Check } from "lucide-react";
 
 const VALUE_PROPS = [
   {
-    title: "Just HTML & CSS",
+    title: "Built for AI",
     description:
-      "No framework to learn. If you can build a web page, you can make a video.",
-  },
-  {
-    title: "Live preview",
-    description:
-      "Edit code, see the video update at 60fps in your browser.",
-  },
-  {
-    title: "One template, every format",
-    description:
-      "YouTube, Reels, TikTok, Square — same code, different dimensions.",
+      "Write a render() function that returns HTML. Any LLM can write, debug, and iterate on that — no special training required.",
   },
   {
     title: "Batch render from data",
     description:
-      "Pass a JSON file, get 1,000 personalized videos from one template.",
+      "Pass a JSON array, get 1,000 personalized videos. One template, any volume.",
   },
   {
-    title: "Built for AI",
+    title: "Live preview",
     description:
-      "Templates are pure functions returning HTML. The simplest format for AI to write, debug, and iterate on.",
+      "Save the file. The video updates in your browser — no refresh, no rebuild. Full 60fps.",
   },
   {
-    title: "One command to MP4",
+    title: "One template, every format",
     description:
-      "npx superimg render template.ts -o video.mp4 — no accounts, no cloud.",
+      "YouTube, Reels, TikTok, Square — same code, different canvas dimensions.",
   },
 ];
 

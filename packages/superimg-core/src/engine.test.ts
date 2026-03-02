@@ -18,8 +18,8 @@ async function jobFromCode(code: string) {
 describe("createRenderPlan", () => {
   it("creates plan from valid template", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         config: { fps: 30 },
         render(ctx) { return '<div>Hello</div>'; }
       });
@@ -38,8 +38,8 @@ describe("createRenderPlan", () => {
 
   it("collects fonts from template config", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         config: { fonts: ['Roboto:wght@400'] },
         render(ctx) { return '<div></div>'; }
       });
@@ -51,8 +51,8 @@ describe("createRenderPlan", () => {
 
   it("merges global fonts with template fonts", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         config: { fonts: ['TemplateFont'] },
         render(ctx) { return '<div></div>'; }
       });
@@ -66,8 +66,8 @@ describe("createRenderPlan", () => {
 
   it("collects inlineCss and stylesheets from template config", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         config: {
           inlineCss: ['.foo { color: red; }'],
           stylesheets: ['https://example.com/style.css'],
@@ -83,8 +83,8 @@ describe("createRenderPlan", () => {
 
   it("merges global inlineCss and stylesheets with template config", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         config: {
           inlineCss: ['.template { }'],
           stylesheets: ['https://template.css'],
@@ -109,8 +109,8 @@ describe("createRenderPlan", () => {
 describe("executeRenderPlan", () => {
   it("calls renderer and encoder in order", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         render(ctx) { return '<div>' + ctx.sceneProgress + '</div>'; }
       });
     `;
@@ -146,8 +146,8 @@ describe("executeRenderPlan", () => {
 
   it("calls onProgress callback", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         render(ctx) { return '<div></div>'; }
       });
     `;
@@ -179,8 +179,8 @@ describe("executeRenderPlan", () => {
 
   it("wraps render errors with TemplateRuntimeError containing frame context", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         render(ctx) {
           if (ctx.sceneProgress > 0.5) {
             throw new Error('Intentional fail at 50%');

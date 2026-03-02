@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, Copy } from "lucide-react";
 
@@ -41,14 +42,14 @@ export function Hero() {
   return (
     <section className="relative flex flex-col items-center justify-center px-6 py-16 text-center">
       <h1 className="max-w-4xl text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-        Create videos{" "}
+        Video generation for{" "}
         <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-          with code
+          developers and AI agents
         </span>
       </h1>
 
       <p className="mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-        Programmatic video generation. HTML/CSS templates, rendered to MP4.
+        Write a function that returns HTML. SuperImg renders every frame to MP4. Use it from the CLI, embed it in React, or call it from an AI agent.
       </p>
 
       {/* Install Command */}
@@ -87,6 +88,15 @@ export function Hero() {
             )}
           </Button>
         </div>
+      </div>
+
+      <div className="mt-6 flex items-center justify-center gap-3">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/docs/introduction">Read the docs</Link>
+        </Button>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/templates">Browse templates →</Link>
+        </Button>
       </div>
     </section>
   );

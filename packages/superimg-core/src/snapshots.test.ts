@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { compileFromString, makeTestContext } from "./__test-utils__/index.js";
 
 const REFERENCE_TEMPLATE = `
-  import { defineTemplate } from 'superimg';
-  export default defineTemplate({
+  import { defineScene } from 'superimg';
+  export default defineScene({
     config: { fps: 30, durationSeconds: 2, width: 640, height: 360 },
     defaults: { title: 'Snapshot Test' },
     render(ctx) {

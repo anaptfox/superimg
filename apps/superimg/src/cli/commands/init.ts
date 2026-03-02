@@ -27,18 +27,25 @@ function getSuperimgVersion(): string {
   return "latest";
 }
 
-const TEMPLATE_TS = `import { defineTemplate } from "superimg";
+const CONFIG_TS = `import { defineConfig } from "superimg";
 
-export default defineTemplate({
+export default defineConfig({
+  width: 1920,
+  height: 1080,
+  fps: 30,
+  durationSeconds: 5,
+});
+`;
+
+const TEMPLATE_TS = `import { defineScene } from "superimg";
+
+export default defineScene({
   defaults: {
     message: "Hello, SuperImg!",
   },
 
   config: {
-    fps: 30,
     durationSeconds: 3,
-    width: 1920,
-    height: 1080,
     inlineCss: [\`
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: #0f0f23; font-family: system-ui, sans-serif; }
@@ -63,18 +70,15 @@ export default defineTemplate({
 });
 `;
 
-const TEMPLATE_JS = `import { defineTemplate } from "superimg";
+const TEMPLATE_JS = `import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     message: "Hello, SuperImg!",
   },
 
   config: {
-    fps: 30,
     durationSeconds: 3,
-    width: 1920,
-    height: 1080,
     inlineCss: [\`
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: #0f0f23; font-family: system-ui, sans-serif; }
@@ -131,9 +135,11 @@ export async function initCommand(name: string, options: { js?: boolean; pm?: st
   // Auto-detect TS: in existing projects, check for tsconfig.json; for new projects default to TS
   const hasTs = existingProject && existsSync(join(targetDir, "tsconfig.json"));
   const useJs = options.js ?? (existingProject ? !hasTs : false);
-  const templateFile = useJs ? "intro.js" : "intro.ts";
+  const templateFile = useJs ? "intro.video.js" : "intro.video.ts";
+  const configFile = "_config.ts";
   const videosDir = join(targetDir, "videos");
   const templatePath = join(videosDir, templateFile);
+  const configPath = join(videosDir, configFile);
 
   if (existsSync(templatePath)) {
     console.error(`\n  Error: videos/${templateFile} already exists.`);
@@ -148,18 +154,26 @@ export async function initCommand(name: string, options: { js?: boolean; pm?: st
     // ── Add to existing project ──
     mkdirSync(videosDir, { recursive: true });
     writeFileSync(templatePath, useJs ? TEMPLATE_JS : TEMPLATE_TS);
+    if (!useJs) {
+      writeFileSync(configPath, CONFIG_TS);
+    }
 
-    // Inject superimg:* scripts into the existing package.json
+    // Inject superimg:* scripts into the existing package.json (use bare name for convention)
     const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
     pkg.scripts = pkg.scripts ?? {};
-    pkg.scripts["superimg:dev"] = `superimg dev videos/${templateFile}`;
-    pkg.scripts["superimg:render"] = `superimg render videos/${templateFile} -o output.mp4`;
+    pkg.scripts["superimg:dev"] = "superimg dev intro";
+    pkg.scripts["superimg:render"] = "superimg render intro -o output.mp4";
     pkg.scripts["superimg:setup"] = "superimg setup";
     writeFileSync(pkgJsonPath, JSON.stringify(pkg, null, 2) + "\n");
 
     console.log("\n  Existing project detected\n");
     console.log("  Created:");
-    console.log(`    videos/${templateFile}   Example template with fade-in animation\n`);
+    console.log(`    videos/${templateFile}   Example video with fade-in animation`);
+    if (!useJs) {
+      console.log(`    videos/${configFile}     Project config (width, height, fps)\n`);
+    } else {
+      console.log("");
+    }
     console.log("  Added scripts to package.json:");
     console.log(`    superimg:dev             Preview in browser`);
     console.log(`    superimg:render          Render to MP4`);
@@ -186,8 +200,8 @@ export async function initCommand(name: string, options: { js?: boolean; pm?: st
       type: "module",
       scripts: {
         setup: "superimg setup",
-        dev: `superimg dev videos/${templateFile}`,
-        render: `superimg render videos/${templateFile} -o output.mp4`,
+        dev: "superimg dev intro",
+        render: "superimg render intro -o output.mp4",
       },
       dependencies: {
         superimg: versionRange,
@@ -196,8 +210,8 @@ export async function initCommand(name: string, options: { js?: boolean; pm?: st
 
     writeFileSync(join(targetDir, "package.json"), JSON.stringify(packageJson, null, 2) + "\n");
     writeFileSync(templatePath, useJs ? TEMPLATE_JS : TEMPLATE_TS);
-
     if (!useJs) {
+      writeFileSync(configPath, CONFIG_TS);
       writeFileSync(join(targetDir, "tsconfig.json"), TSCONFIG);
     }
 

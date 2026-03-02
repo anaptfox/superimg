@@ -35,7 +35,7 @@ export function CreateWithAI() {
               AI generates code
             </div>
             <pre className="text-xs text-[var(--code-foreground)]">
-              <code>{`defineTemplate({
+              <code>{`defineScene({
   render(ctx) {
     const count = 5 - ctx.second;
     return \`<div>\${count}</div>\`;

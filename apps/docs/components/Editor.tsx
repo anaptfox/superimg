@@ -32,9 +32,9 @@ import { getExampleById, type EditorExample } from "@/lib/video/examples/index";
 const DEFAULT_TEMPLATE = `// SuperImg Template
 // Edit the defaults below and use ctx.data in render to drive the output.
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: "SuperImg Editor",
     accentColor: "#667eea",

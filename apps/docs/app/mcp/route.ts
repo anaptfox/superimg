@@ -15,9 +15,9 @@ const CREATE_VIDEO_DESCRIPTION = `Create a SuperImg video template and open the 
 ## Template Structure
 
 \`\`\`
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: "Hello",
     accentColor: "#667eea",
@@ -95,9 +95,9 @@ const item3Enter = std.math.clamp((time - 0.4) / 1.0, 0, 1);
 ## Complete Example
 
 \`\`\`
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: "Launch Day",
     subtitle: "Something amazing is coming",
@@ -193,8 +193,8 @@ function createServer() {
         code: z
           .string()
           .describe(
-            "Complete SuperImg template. MUST start with: import { defineTemplate } from 'superimg'; " +
-            "MUST export default defineTemplate({...}). The render(ctx) function returns an HTML template literal string (NOT JSX). " +
+            "Complete SuperImg template. MUST start with: import { defineScene } from 'superimg'; " +
+            "MUST export default defineScene({...}). The render(ctx) function returns an HTML template literal string (NOT JSX). " +
             "Use ${} interpolation for dynamic values. Set root element dimensions to width/height px."
           ),
         title: z

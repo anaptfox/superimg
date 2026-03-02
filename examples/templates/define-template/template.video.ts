@@ -1,15 +1,12 @@
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
-    message: "Built with defineTemplate",
+    message: "Built with defineScene",
   },
 
   config: {
-    fps: 30,
     durationSeconds: 3,
-    width: 1920,
-    height: 1080,
     inlineCss: [`
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: #0f0f23; font-family: system-ui, sans-serif; }

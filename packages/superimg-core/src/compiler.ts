@@ -15,7 +15,7 @@ export function compileTemplate(bundledCode: string): CompileResult {
 
     const def = exports?.default;
     if (!def || typeof def.render !== "function") {
-      return { error: { message: "Template must use defineTemplate({ render(ctx) { ... } })" } };
+      return { error: { message: "Template must use defineScene({ render(ctx) { ... } })" } };
     }
 
     return {

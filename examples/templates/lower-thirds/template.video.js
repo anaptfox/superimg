@@ -2,9 +2,9 @@
 // Demonstrates: std.css(), std.css.stack(), inlineCss, staggered tweens, color.alpha()
 // Customize by passing data or editing the defaults!
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     name: "Jane Doe",
     title: "Senior Engineer, Acme Corp",

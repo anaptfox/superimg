@@ -1,13 +1,13 @@
 import { useRef } from "react";
 import { Player, type PlayerRef } from "superimg-react";
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
 // =============================================================================
 // TEMPLATE MODULES - Templates are responsive, no dimensions needed
 // =============================================================================
 
 // Gradient rotation template
-const gradientTemplate = defineTemplate({
+const gradientTemplate = defineScene({
   config: { fps: 24, durationSeconds: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
@@ -17,7 +17,7 @@ const gradientTemplate = defineTemplate({
 });
 
 // Pulse animation template
-const pulseTemplate = defineTemplate({
+const pulseTemplate = defineScene({
   config: { fps: 24, durationSeconds: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
@@ -27,7 +27,7 @@ const pulseTemplate = defineTemplate({
 });
 
 // Color bars template
-const barsTemplate = defineTemplate({
+const barsTemplate = defineScene({
   config: { fps: 24, durationSeconds: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
@@ -43,7 +43,7 @@ const barsTemplate = defineTemplate({
 });
 
 // Spinning squares template
-const spinTemplate = defineTemplate({
+const spinTemplate = defineScene({
   config: { fps: 24, durationSeconds: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
@@ -53,7 +53,7 @@ const spinTemplate = defineTemplate({
 });
 
 // Wave pattern template
-const waveTemplate = defineTemplate({
+const waveTemplate = defineScene({
   config: { fps: 24, durationSeconds: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
@@ -62,7 +62,7 @@ const waveTemplate = defineTemplate({
 });
 
 // Gradient sweep template
-const sweepTemplate = defineTemplate({
+const sweepTemplate = defineScene({
   config: { fps: 24, durationSeconds: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;

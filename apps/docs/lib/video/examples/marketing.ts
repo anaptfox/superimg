@@ -9,8 +9,8 @@ const PRODUCT = {
   rank: 1,
 };
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -128,8 +128,8 @@ const STATS = [
 
 const YEAR = "2025";
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -236,8 +236,8 @@ const EVENT = {
 // For demo, we'll show a fixed countdown that animates
 const COUNTDOWN_VALUES = { days: 14, hours: 8, mins: 32, secs: 45 };
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -350,8 +350,8 @@ const BRAND = {
   tagline: "Building the future",
 };
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -457,8 +457,8 @@ const USER = {
   plan: "Pro",
 };
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 

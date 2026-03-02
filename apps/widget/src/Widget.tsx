@@ -26,9 +26,9 @@ function readFormat(
     : undefined;
 }
 
-const DEFAULT_CODE = `import { defineTemplate } from "superimg";
+const DEFAULT_CODE = `import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: "Hello from ChatGPT",
     accentColor: "#667eea",

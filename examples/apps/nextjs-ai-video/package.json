@@ -1,0 +1,28 @@
+{
+  "name": "superimg-example-nextjs-ai-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-generated video with Next.js AI SDK + SuperImg",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "clean": "rm -rf .next"
+  },
+  "dependencies": {
+    "superimg": "workspace:*",
+    "superimg-react": "workspace:*",
+    "ai": "^6.0.105",
+    "ai-sdk-ollama": "^3.8.0",
+    "zod": "^3.24.2",
+    "next": "^16.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.8.3"
+  }
+}

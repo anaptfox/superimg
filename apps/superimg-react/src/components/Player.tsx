@@ -22,6 +22,16 @@ import type { PlayerStore, CompileError } from "superimg/browser";
 import { VideoControls } from "./VideoControls.js";
 import { useCompiledTemplate } from "../hooks/useCompiledTemplate.js";
 
+// Inject shimmer keyframes once into the document
+let shimmerInjected = false;
+function ensureShimmerStyle() {
+  if (shimmerInjected || typeof document === "undefined") return;
+  const style = document.createElement("style");
+  style.textContent = `@keyframes superimg-shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}`;
+  document.head.appendChild(style);
+  shimmerInjected = true;
+}
+
 export interface PlayerProps {
   /** Template module to render (use this OR code, not both) */
   template?: PlayerInput;
@@ -47,6 +57,12 @@ export interface PlayerProps {
   hoverBehavior?: HoverBehavior;
   /** Delay before hover behavior triggers, in ms (default: 200) */
   hoverDelayMs?: number;
+  /**
+   * What happens to the video when the mouse leaves during hoverBehavior="play".
+   * "reset" (default): pauses and seeks back to frame 0.
+   * "pause": pauses at current frame.
+   */
+  hoverResetBehavior?: "reset" | "pause";
   /** Maximum frames to cache (default: 30) */
   maxCacheFrames?: number;
   /** Optional CSS class */
@@ -102,6 +118,9 @@ export interface PlayerRef {
  * Templates render at logical dimensions (e.g., 1920x1080) and scale
  * via CSS transform to fit the container while maintaining aspect ratio.
  *
+ * Clicking the video canvas toggles play/pause (when hoverBehavior="none").
+ * When hoverBehavior="play", a play icon overlay hints that hovering will play.
+ *
  * @example
  * ```tsx
  * import { Player } from 'superimg-react';
@@ -152,6 +171,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     loadMode = "eager",
     hoverBehavior = "none",
     hoverDelayMs = 200,
+    hoverResetBehavior = "reset",
     maxCacheFrames = 30,
     className,
     style,
@@ -171,6 +191,10 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [store, setStore] = useState<PlayerStore | null>(null);
+
+  useEffect(() => {
+    ensureShimmerStyle();
+  }, []);
 
   // Compile code if provided (instead of template)
   const {
@@ -196,6 +220,9 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
 
   // Determine the effective template (prop takes precedence over compiled)
   const template = templateProp ?? compiledTemplate;
+
+  // Show shimmer while compiling code or while template is loading into the player
+  const isLoading = compiling || (!!template && !isReady);
 
   // Initialize player
   useEffect(() => {
@@ -292,7 +319,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     onFrame,
   ]);
 
-  // Hover handlers
+  // Hover handlers for hoverBehavior="play"
   const handleMouseEnter = useCallback(() => {
     if (hoverBehavior === "none" || !playerRef.current?.isReady) return;
 
@@ -309,9 +336,17 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     }
     if (playerRef.current?.isReady) {
       playerRef.current.pause();
-      playerRef.current.seekToFrame(0);
+      if (hoverResetBehavior === "reset") {
+        playerRef.current.seekToFrame(0);
+      }
     }
-  }, [hoverBehavior]);
+  }, [hoverBehavior, hoverResetBehavior]);
+
+  // Click-to-play/pause — only when hoverBehavior="none" (hover owns state otherwise)
+  const handleClick = useCallback(() => {
+    if (hoverBehavior !== "none" || !isReady || !store) return;
+    store.getState().togglePlayPause();
+  }, [hoverBehavior, isReady, store]);
 
   // Expose ref API
   useImperativeHandle(
@@ -344,6 +379,12 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   const showControls = controls && store;
   const showTimeline = controls === true;
 
+  // Show play icon overlay when hoverBehavior="play" and video is at rest
+  const showHoverPlayOverlay = hoverBehavior === "play" && isReady && !isPlaying;
+
+  // Click is active when hoverBehavior="none" and player is ready
+  const clickable = hoverBehavior === "none" && isReady;
+
   return (
     <div
       className={className}
@@ -351,10 +392,74 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     >
       <div
         ref={containerRef}
-        style={{ width: "100%", height: "100%", flex: 1 }}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          flex: 1,
+          cursor: clickable ? "pointer" : "default",
+        }}
+        onClick={clickable ? handleClick : undefined}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-      />
+      >
+        {/* Loading shimmer */}
+        {isLoading && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 1,
+              background:
+                "linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.04) 100%)",
+              backgroundSize: "200% 100%",
+              animation: "superimg-shimmer 1.5s ease-in-out infinite",
+              pointerEvents: "none",
+            }}
+          />
+        )}
+
+        {/* Hover play affordance — shown at rest when hoverBehavior="play" */}
+        {showHoverPlayOverlay && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: "rgba(0,0,0,0.5)",
+                backdropFilter: "blur(4px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <svg
+                width={18}
+                height={18}
+                viewBox="0 0 24 24"
+                fill="white"
+                style={{ marginLeft: 2 }}
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+          </div>
+        )}
+      </div>
+
       {showControls && (
         <VideoControls store={store} showTimeline={showTimeline} showTime />
       )}

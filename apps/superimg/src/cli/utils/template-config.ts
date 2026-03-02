@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { extractTemplateMetadata } from "@superimg/core/template-metadata";
+import type { ProjectConfig } from "@superimg/types";
 
 export interface ParsedTemplate {
   templateCode: string;
@@ -66,6 +67,7 @@ export interface ResolveRenderConfigInput {
     durationSeconds?: string;
   };
   templateConfig?: RenderConfig;
+  cascadingConfig?: ProjectConfig;
   defaults?: RenderConfigDefaults;
 }
 
@@ -73,8 +75,9 @@ export interface ResolveRenderConfigInput {
  * Resolve render config with explicit precedence (highest wins):
  *
  * 1. CLI flags (`--width`, `--height`, `--fps`, `--duration`)
- * 2. Template-exported `config` object (`export const config = { ... }`)
- * 3. Built-in defaults (1920x1080, 30 fps, 5 s)
+ * 2. Template-exported `config` object
+ * 3. Cascading `_config.ts` (folder/project)
+ * 4. Built-in defaults (1920x1080, 30 fps, 5 s)
  */
 export function resolveRenderConfig(input: ResolveRenderConfigInput): RenderConfigDefaults {
   const defaults = input.defaults ?? DEFAULT_RENDER_CONFIG;
@@ -86,40 +89,73 @@ export function resolveRenderConfig(input: ResolveRenderConfigInput): RenderConf
   const width =
     cliWidth ??
     positiveNumberOrUndefined(input.templateConfig?.width) ??
+    positiveNumberOrUndefined(input.cascadingConfig?.width) ??
     defaults.width;
   const height =
     cliHeight ??
     positiveNumberOrUndefined(input.templateConfig?.height) ??
+    positiveNumberOrUndefined(input.cascadingConfig?.height) ??
     defaults.height;
   const fps =
     cliFps ??
     positiveNumberOrUndefined(input.templateConfig?.fps) ??
+    positiveNumberOrUndefined(input.cascadingConfig?.fps) ??
     defaults.fps;
   const durationSeconds =
     cliDuration ??
     positiveNumberOrUndefined(input.templateConfig?.durationSeconds) ??
+    positiveNumberOrUndefined(input.cascadingConfig?.durationSeconds) ??
     defaults.durationSeconds;
 
   return { width, height, fps, durationSeconds };
 }
 
+/** Merge fonts, inlineCss, stylesheets from cascading config into template config */
+export function mergeCascadingIntoRenderConfig(
+  templateConfig: RenderConfig | undefined,
+  cascadingConfig: ProjectConfig | undefined
+): RenderConfig {
+  const merged: RenderConfig = { ...templateConfig };
+  if (cascadingConfig?.fonts?.length) {
+    merged.fonts = [...(cascadingConfig.fonts ?? []), ...(templateConfig?.fonts ?? [])];
+  }
+  if (cascadingConfig?.inlineCss?.length) {
+    merged.inlineCss = [...(cascadingConfig.inlineCss ?? []), ...(templateConfig?.inlineCss ?? [])];
+  }
+  if (cascadingConfig?.stylesheets?.length) {
+    merged.stylesheets = [...(cascadingConfig.stylesheets ?? []), ...(templateConfig?.stylesheets ?? [])];
+  }
+  if (cascadingConfig?.outputs && !merged.outputs) {
+    merged.outputs = cascadingConfig.outputs;
+  }
+  return merged;
+}
+
 /**
- * Parse template file and extract metadata/config
+ * Parse template file and extract metadata/config.
+ * Optionally merges cascadingConfig (from _config.ts) into template config.
  */
-export async function parseTemplate(templatePath: string): Promise<ParsedTemplate> {
+export async function parseTemplate(
+  templatePath: string,
+  options?: { cascadingConfig?: ProjectConfig }
+): Promise<ParsedTemplate> {
   const fullPath = resolve(templatePath);
   const templateCode = readFileSync(fullPath, "utf-8");
 
   // Parse metadata statically without executing template code.
   const metadata = await extractTemplateMetadata(templateCode);
   if (!metadata.hasRenderExport) {
-    throw new Error("Template must define a `render` function inside `defineTemplate({ render(ctx) { ... } })`.");
+    throw new Error("Template must define a `render` function inside `defineScene({ render(ctx) { ... } })`.");
   }
 
-  const templateConfig = metadata.config;
+  const rawTemplateConfig = metadata.config;
+  const templateConfig = options?.cascadingConfig
+    ? mergeCascadingIntoRenderConfig(rawTemplateConfig, options.cascadingConfig)
+    : rawTemplateConfig;
 
   const resolvedConfig = resolveRenderConfig({
     templateConfig,
+    cascadingConfig: options?.cascadingConfig,
   });
 
   return {

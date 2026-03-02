@@ -2,16 +2,16 @@
 
 import { useRef, useEffect } from "react";
 import { Code, Sparkles, Eye, Video } from "lucide-react";
-import { useVideoSession, VideoControls } from "superimg-react";
+import { useVideoSession } from "superimg-react";
 import type { PlayerStore } from "superimg-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 
 // Step 1: Simple countdown template (before AI edit)
-const BEFORE_TEMPLATE = `import { defineTemplate } from "superimg";
+const BEFORE_TEMPLATE = `import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
     const { sceneFrame, fps, width, height, std } = ctx;
     const count = Math.max(1, 5 - Math.floor(sceneFrame / fps));
@@ -27,9 +27,9 @@ export default defineTemplate({
 });`;
 
 // Step 3: Enhanced countdown - with pulse animation (after AI edit)
-const AFTER_TEMPLATE = `import { defineTemplate } from "superimg";
+const AFTER_TEMPLATE = `import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
     const { sceneFrame, fps, width, height, std } = ctx;
     const count = Math.max(1, 5 - Math.floor(sceneFrame / fps));
@@ -70,8 +70,16 @@ function MiniVideoPreview({
   containerRef: React.RefObject<HTMLDivElement | null>;
   store: PlayerStore;
 }) {
+  const handleClick = () => {
+    store.getState().togglePlayPause();
+  };
+
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-[#0d0d0d]">
+    <div
+      className="cursor-pointer overflow-hidden rounded-xl border border-border/50 bg-[#0d0d0d]"
+      onClick={handleClick}
+      title="Click to play/pause"
+    >
       <div className="flex items-center justify-center p-4">
         <div
           ref={containerRef}
@@ -79,7 +87,6 @@ function MiniVideoPreview({
           style={{ width: 150, height: 150 }}
         />
       </div>
-      <VideoControls store={store} showTimeline={false} />
     </div>
   );
 }
@@ -125,7 +132,7 @@ export function HowItWorks() {
       icon: Code,
       color: "text-blue-400",
       content: (
-        <div className="overflow-hidden rounded-lg border border-border/50 bg-[var(--code-bg)]">
+        <div className="overflow-hidden rounded-lg border border-border/50 bg-(--code-bg)">
           <CodeMirror
             value={BEFORE_CODE_DISPLAY}
             theme={oneDark}
@@ -136,7 +143,7 @@ export function HowItWorks() {
               foldGutter: false,
               highlightActiveLine: false,
             }}
-            className="text-xs [&_.cm-editor]:!bg-transparent"
+            className="text-xs [&_.cm-editor]:bg-transparent!"
           />
         </div>
       ),
@@ -149,8 +156,8 @@ export function HowItWorks() {
       icon: Sparkles,
       color: "text-purple-400",
       content: (
-        <div className="rounded-lg border border-border/50 bg-[var(--code-bg)] p-3 text-left font-mono">
-          <code className="text-sm text-[var(--code-foreground)]">
+        <div className="rounded-lg border border-border/50 bg-(--code-bg) p-3 text-left font-mono">
+          <code className="text-sm text-(--code-foreground)">
             <span className="select-none text-muted-foreground">$ </span>
             superimg add skill
           </code>
@@ -165,7 +172,7 @@ export function HowItWorks() {
       icon: Eye,
       color: "text-green-400",
       content: (
-        <div className="overflow-hidden rounded-lg border border-border/50 bg-[var(--code-bg)]">
+        <div className="overflow-hidden rounded-lg border border-border/50 bg-(--code-bg)">
           <CodeMirror
             value={AFTER_CODE_DISPLAY}
             theme={oneDark}
@@ -176,7 +183,7 @@ export function HowItWorks() {
               foldGutter: false,
               highlightActiveLine: false,
             }}
-            className="text-xs [&_.cm-editor]:!bg-transparent"
+            className="text-xs [&_.cm-editor]:bg-transparent!"
           />
         </div>
       ),
@@ -190,13 +197,13 @@ export function HowItWorks() {
       color: "text-orange-400",
       content: (
         <div className="space-y-2">
-          <div className="rounded-lg border border-border/50 bg-[var(--code-bg)] p-3 text-left font-mono">
-            <code className="text-sm text-[var(--code-foreground)]">
+          <div className="rounded-lg border border-border/50 bg-(--code-bg) p-3 text-left font-mono">
+            <code className="text-sm text-(--code-foreground)">
               <span className="select-none text-muted-foreground">$ </span>
               npx superimg render -o video.mp4
             </code>
           </div>
-          <div className="overflow-hidden rounded-lg border border-border/50 bg-[var(--code-bg)]">
+          <div className="overflow-hidden rounded-lg border border-border/50 bg-(--code-bg)">
             <CodeMirror
               value={'<Player template={template} />'}
               theme={oneDark}
@@ -207,7 +214,7 @@ export function HowItWorks() {
                 foldGutter: false,
                 highlightActiveLine: false,
               }}
-              className="text-sm [&_.cm-editor]:!bg-transparent"
+              className="text-sm [&_.cm-editor]:bg-transparent!"
             />
           </div>
         </div>

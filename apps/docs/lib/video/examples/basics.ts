@@ -1,8 +1,8 @@
 export const HELLO_WORLD = `// Hello World
 // A simple animated intro
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -36,8 +36,8 @@ export default defineTemplate({
 export const ANIMATED_TEXT = `// Animated Text
 // Text that types in character by character
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
 
@@ -71,8 +71,8 @@ export default defineTemplate({
 export const GRADIENT = `// Gradient Background
 // Smoothly shifting gradient animation
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -110,9 +110,9 @@ export default defineTemplate({
 export const COMPLETE_TEMPLATE = `// Complete Template
 // Demonstrates config (width, fps, duration) and defaults (data) together
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   config: {
     width: 1280,
     height: 720,

@@ -2,6 +2,12 @@
 
 import type { BackgroundValue } from "@superimg/types";
 import { resolveBackground } from "./assets.js";
+import {
+  escapeHtmlAttr,
+  escapeCssInStyle,
+  escapeCssUrl,
+  isSafeStylesheetUrl,
+} from "./sanitize.js";
 
 /**
  * Build composite HTML from template output and background
@@ -18,13 +24,15 @@ export function buildCompositeHtml(
   if (background) {
     const resolved = resolveBackground(background);
     if (resolved.type === "solid") {
+      const safeSrc = escapeHtmlAttr(resolved.src);
       layers.push(
-        `<div style="position:absolute;inset:0;background:${resolved.src};opacity:${resolved.opacity}"></div>`
+        `<div style="position:absolute;inset:0;background:${safeSrc};opacity:${resolved.opacity}"></div>`
       );
     } else if (resolved.type === "image") {
       const fit = resolved.fit === "cover" ? "cover" : resolved.fit === "contain" ? "contain" : "cover";
+      const safeSrc = escapeCssUrl(resolved.src);
       layers.push(
-        `<div style="position:absolute;inset:0;background:url('${resolved.src}') center/${fit} no-repeat;opacity:${resolved.opacity}"></div>`
+        `<div style="position:absolute;inset:0;background:url('${safeSrc}') center/${fit} no-repeat;opacity:${resolved.opacity}"></div>`
       );
     }
   }
@@ -56,19 +64,25 @@ export function buildPageShell(config: PageShellConfig | string[]): string {
     fonts.length > 0
       ? fonts
           .map((f) => {
-            const family = f.replace(/ /g, "+");
-            return `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${family}&display=swap">`;
+            const family = encodeURIComponent(f.trim());
+            const url = `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
+            return `<link rel="stylesheet" href="${escapeHtmlAttr(url)}">`;
           })
           .join("")
       : "";
 
   const stylesheetLinks =
     stylesheets.length > 0
-      ? stylesheets.map((url) => `<link rel="stylesheet" href="${url}">`).join("")
+      ? stylesheets
+          .filter((url) => isSafeStylesheetUrl(url))
+          .map((url) => `<link rel="stylesheet" href="${escapeHtmlAttr(url.trim())}">`)
+          .join("")
       : "";
 
   const inlineStyleBlock =
-    inlineCss.length > 0 ? `<style>${inlineCss.join("\n")}</style>` : "";
+    inlineCss.length > 0
+      ? `<style>${inlineCss.map(escapeCssInStyle).join("\n")}</style>`
+      : "";
 
   const baseStyles =
     "<style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}</style>";

@@ -9,6 +9,7 @@ export default defineConfig({
     bundler: "src/bundler.ts",
     engine: "src/engine.ts",
     "template-metadata": "src/template-metadata.ts",
+    "bundler-plugin": "src/bundler-plugin.ts",
   },
   format: ["esm"],
   dts: true,

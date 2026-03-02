@@ -16,9 +16,9 @@ import type * as presets from "@superimg/stdlib/presets";
  *
  * @example
  * ```typescript
- * import { defineTemplate } from 'superimg';
+ * import { defineScene } from 'superimg';
  *
- * export default defineTemplate({
+ * export default defineScene({
  *   render(ctx) {
  *     const { std, sceneProgress } = ctx;
  *     const x = std.tween(0, 1920, sceneProgress, 'easeOutCubic');

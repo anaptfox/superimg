@@ -4,9 +4,9 @@ import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 
-const HERO_CODE = `import { defineTemplate } from 'superimg'
+const HERO_CODE = `import { defineScene } from 'superimg'
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: 'This video was made with',
     highlight: '100% code',

@@ -79,9 +79,9 @@ interface CssViewport {
 ### Usage Example
 
 ```typescript
-import { defineTemplate } from 'superimg';
+import { defineScene } from 'superimg';
 
-export default defineTemplate({
+export default defineScene({
   defaults: { title: 'Hello' },
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
@@ -111,9 +111,9 @@ The Standard Library provides utility functions for animations, math, colors, te
 ### Usage
 
 ```typescript
-import { defineTemplate } from 'superimg';
+import { defineScene } from 'superimg';
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
     const { std, sceneProgress } = ctx;
 
@@ -355,12 +355,12 @@ A `Preset` has: `{ width, height, aspect_ratio?, fps?, duration_max_seconds?, no
 
 ## Template Module
 
-The recommended way to create a template is with `defineTemplate`:
+The recommended way to create a template is with `defineScene`:
 
 ```typescript
-import { defineTemplate } from 'superimg';
+import { defineScene } from 'superimg';
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: 'Hello',
     color: '#ffffff',
@@ -384,7 +384,7 @@ export default defineTemplate({
 });
 ```
 
-`defineTemplate` is an identity function that provides full type inference from the defaults — no manual type annotations needed.
+`defineScene` is an identity function that provides full type inference from the defaults — no manual type annotations needed.
 
 ### TemplateModule Interface
 

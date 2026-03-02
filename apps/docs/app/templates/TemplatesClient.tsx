@@ -118,7 +118,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Do I need SuperImg installed?",
-    a: "Yes. The templates use defineTemplate from the superimg package (free, open source). Install with npm install superimg.",
+    a: "Yes. The templates use defineScene from the superimg package (free, open source). Install with npm install superimg.",
   },
 ];
 

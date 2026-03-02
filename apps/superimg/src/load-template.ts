@@ -20,7 +20,7 @@ export interface LoadedTemplateRenderOptions {
 }
 
 export interface LoadedTemplate {
-  /** Template defaults (from defineTemplate) */
+  /** Template defaults (from defineScene) */
   readonly defaults: Record<string, unknown> | undefined;
   /** Template config (width, height, fps, durationSeconds, etc.) */
   readonly config: { width?: number; height?: number; fps?: number; durationSeconds?: number; fonts?: string[]; inlineCss?: string[]; stylesheets?: string[] } | undefined;

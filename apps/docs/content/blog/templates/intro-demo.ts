@@ -1,6 +1,6 @@
-import { defineTemplate, type RenderContext } from 'superimg'
+import { defineScene, type RenderContext } from 'superimg'
 
-export const introTemplate = defineTemplate({
+export const introTemplate = defineScene({
   config: {
     fps: 30,
     durationSeconds: 4,

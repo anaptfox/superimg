@@ -11,6 +11,8 @@ import { resolve, dirname } from "node:path";
 import { bundleTemplateCode } from "@superimg/core/bundler";
 import { parseTemplate, resolveRenderConfig, resolvePresetConfig, resolveAllPresets } from "../utils/template-config.js";
 import { resolveTemplatePath } from "../utils/resolve-template.js";
+import { findProjectRoot } from "../utils/find-project-root.js";
+import { loadCascadingConfig } from "../utils/config-loader.js";
 import type { EncodingOptions } from "@superimg/types";
 
 interface RenderOptions {
@@ -187,9 +189,12 @@ export async function renderCommand(template: string, options: RenderOptions) {
     process.exit(1);
   }
 
+  const projectRoot = findProjectRoot();
+  const cascadingConfig = await loadCascadingConfig(resolvedTemplate, projectRoot);
+
   let templateData!: Awaited<ReturnType<typeof parseTemplate>>;
   try {
-    templateData = await parseTemplate(resolvedTemplate);
+    templateData = await parseTemplate(resolvedTemplate, { cascadingConfig });
   } catch (err) {
     console.error(`Error parsing template: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
@@ -208,6 +213,7 @@ export async function renderCommand(template: string, options: RenderOptions) {
       fps: options.fps,
     },
     templateConfig: templateData.templateConfig,
+    cascadingConfig,
   });
 
   const outputs = templateData.templateConfig?.outputs;

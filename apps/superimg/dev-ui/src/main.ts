@@ -15,6 +15,15 @@ interface DevConfig {
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
 }
 
+interface VideoItem {
+  name: string;
+  relativePath: string;
+  hasLocalConfig: boolean;
+}
+
+const homeView = document.getElementById("home-view") as HTMLDivElement;
+const playerView = document.getElementById("player-view") as HTMLDivElement;
+const videoGrid = document.getElementById("video-grid") as HTMLDivElement;
 const statusEl = document.getElementById("status") as HTMLDivElement;
 const playPauseBtn = document.getElementById("play-pause") as HTMLButtonElement;
 const exportBtn = document.getElementById("export") as HTMLButtonElement;
@@ -28,7 +37,8 @@ const totalTimeEl = document.getElementById("total-time") as HTMLSpanElement;
 
 let player: Player | null = null;
 let devConfig: DevConfig;
-let templatePath = "/template.js";
+let templatePath = "/api/template";
+let configPath = "/api/config";
 let exporting = false;
 
 function setStatus(message: string) {
@@ -82,17 +92,107 @@ function connectWebSocket() {
   };
 }
 
-async function init() {
+async function initHome() {
+  try {
+    const res = await fetch("/api/videos");
+    if (!res.ok) {
+      homeView.innerHTML = `<div style="padding: 2rem; text-align: center; color: #888;">No videos API. Run with a template: superimg dev intro</div>`;
+      homeView.classList.add("visible");
+      return;
+    }
+    const videos: VideoItem[] = await res.json();
+    if (videos.length === 0) {
+      homeView.innerHTML = `<div style="padding: 2rem; text-align: center; color: #888;">No videos found. Create a *.video.ts file or run superimg init.</div>`;
+      homeView.classList.add("visible");
+      return;
+    }
+
+    videoGrid.innerHTML = "";
+    for (const video of videos) {
+      const card = document.createElement("div");
+      card.className = "video-card";
+      card.innerHTML = `
+        <div class="video-card-preview"><span class="loading">Hover to preview</span></div>
+        <div class="video-card-info">
+          <div class="name">${escapeHtml(video.name)}</div>
+          <div class="path">${escapeHtml(video.relativePath)}</div>
+        </div>
+      `;
+      const previewEl = card.querySelector(".video-card-preview") as HTMLDivElement;
+      let hoverPlayer: Player | null = null;
+      let hoverTimeout: ReturnType<typeof setTimeout>;
+
+      card.addEventListener("mouseenter", () => {
+        hoverTimeout = setTimeout(async () => {
+          try {
+            previewEl.innerHTML = "";
+            const configRes = await fetch(`/api/videos/${encodeURIComponent(video.name)}/config`);
+            const config = await configRes.json();
+            const w = Math.min(config.width ?? 1920, 400);
+            const h = Math.round(w * ((config.height ?? 1080) / (config.width ?? 1920)));
+            hoverPlayer = new Player({
+              container: previewEl,
+              width: w,
+              height: h,
+              playbackMode: "loop",
+            });
+            const mod = await loadTemplate(`/api/videos/${encodeURIComponent(video.name)}/template`);
+            await hoverPlayer.load(mod.default ?? mod);
+            hoverPlayer.play();
+          } catch (e) {
+            previewEl.innerHTML = `<span class="loading">Error loading</span>`;
+          }
+        }, 300);
+      });
+
+      card.addEventListener("mouseleave", () => {
+        clearTimeout(hoverTimeout);
+        if (hoverPlayer) {
+          hoverPlayer.pause();
+          hoverPlayer = null;
+        }
+        previewEl.innerHTML = `<span class="loading">Hover to preview</span>`;
+      });
+
+      card.addEventListener("click", () => {
+        const url = new URL(location.href);
+        url.searchParams.set("template", `/api/videos/${encodeURIComponent(video.name)}/template`);
+        location.href = url.toString();
+      });
+
+      videoGrid.appendChild(card);
+    }
+    homeView.classList.add("visible");
+  } catch (e) {
+    homeView.innerHTML = `<div style="padding: 2rem; text-align: center; color: #e55;">Error: ${escapeHtml(String(e))}</div>`;
+    homeView.classList.add("visible");
+  }
+}
+
+function escapeHtml(s: string): string {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+async function initPlayer() {
   try {
     setStatus("Loading config...");
     const params = new URLSearchParams(location.search);
     templatePath = params.get("template") || "/api/template";
 
-    const configRes = await fetch("/api/config");
+    if (templatePath.startsWith("/api/videos/") && templatePath.endsWith("/template")) {
+      configPath = templatePath.replace("/template", "/config");
+    } else {
+      configPath = "/api/config";
+    }
+
+    const configRes = await fetch(configPath);
     if (!configRes.ok) throw new Error(`Failed to load config: ${configRes.statusText}`);
     devConfig = await configRes.json();
 
     if (devConfig.outputs) {
+      outputSelect.innerHTML = '<option value="">Default</option>';
       for (const [name, preset] of Object.entries(devConfig.outputs)) {
         const p = preset as { width?: number; height?: number };
         const opt = document.createElement("option");
@@ -169,9 +269,21 @@ async function init() {
     setStatus("Ready - Click Play to start preview");
     connectWebSocket();
     updateUI();
+    playerView.classList.add("visible");
   } catch (error) {
     setStatus(`Error: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error);
+  }
+}
+
+async function init() {
+  const params = new URLSearchParams(location.search);
+  const template = params.get("template");
+
+  if (!template) {
+    await initHome();
+  } else {
+    await initPlayer();
   }
 }
 

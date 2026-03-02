@@ -4,8 +4,8 @@ import { compileFromString, makeTestContext } from "./__test-utils__/index.js";
 describe("render pipeline integration", () => {
   it("renders template at keyframes with correct sceneProgress", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         config: { fps: 2, durationSeconds: 1, width: 640, height: 360 },
         render(ctx) {
           return '<div style="opacity: ' + ctx.sceneProgress + '">Frame</div>';
@@ -25,8 +25,8 @@ describe("render pipeline integration", () => {
 
   it("merges defaults with ctx.data", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         defaults: { title: 'Default' },
         render(ctx) { return '<div>' + ctx.data.title + '</div>'; }
       });
@@ -39,8 +39,8 @@ describe("render pipeline integration", () => {
 
   it("uses stdlib tween in output", async () => {
     const code = `
-      import { defineTemplate } from 'superimg';
-      export default defineTemplate({
+      import { defineScene } from 'superimg';
+      export default defineScene({
         render(ctx) {
           const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeOutCubic');
           return '<div data-eased="' + eased + '"></div>';

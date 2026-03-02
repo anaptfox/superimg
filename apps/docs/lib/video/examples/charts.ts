@@ -10,8 +10,8 @@ const STARS = [
 ];
 const REPO = "facebook/react";
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -78,8 +78,8 @@ const DOWNLOADS = [
 ];
 const PACKAGE = "lodash";
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -136,8 +136,8 @@ const BENCHMARKS = [
   { name: "Legacy", value: 23, color: "#64748b" },
 ];
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -198,8 +198,8 @@ const EVENTS = [
   { label: "Launch", title: "Public", icon: "🚀" },
 ];
 
-import { defineTemplate } from "superimg";
-export default defineTemplate({
+import { defineScene } from "superimg";
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 

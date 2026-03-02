@@ -1,6 +1,6 @@
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     label: "Conversion Rate",
     value: 94,

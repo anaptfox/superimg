@@ -9,6 +9,7 @@ import { initCommand } from "./commands/init.js";
 import { devCommand } from "./commands/dev.js";
 import { renderCommand } from "./commands/render.js";
 import { infoCommand } from "./commands/info.js";
+import { listCommand } from "./commands/list.js";
 import { setupCommand } from "./commands/setup.js";
 import { addCommand } from "./commands/add.js";
 
@@ -51,10 +52,10 @@ program
 program
   .command("dev")
   .description("Start development server with live preview")
-  .argument("<template>", "Path to template file")
+  .argument("[template]", "Video name or path (omit for home page with all videos)")
   .option("-p, --port <port>", "Port number", "3000")
   .option("--no-open", "Don't open browser automatically")
-  .action(devCommand);
+  .action((template: string | undefined, options: { port: string; open: boolean }) => devCommand(template, options));
 
 program
   .command("render")
@@ -80,6 +81,11 @@ program
   .description("Show template information")
   .argument("<template>", "Path to template file")
   .action(infoCommand);
+
+program
+  .command("list")
+  .description("List all discovered videos in the project")
+  .action(listCommand);
 
 program
   .command("setup")

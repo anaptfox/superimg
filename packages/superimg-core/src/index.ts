@@ -26,3 +26,4 @@ export * from "./wasm.js";
 export * from "./compiler.js";
 export * from "./assets.js";
 export * from "./checkpoint-resolver.js";
+export * from "./sanitize.js";

@@ -46,7 +46,7 @@ Title:      =====>                    <=====
 Edit the defaults in `template.js`:
 
 ```js
-export default defineTemplate({
+export default defineScene({
   defaults: {
     name: "Jane Doe",
     title: "Senior Engineer, Acme Corp",

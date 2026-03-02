@@ -57,6 +57,7 @@ export function PlayButton({ store, className, size = "md" }: PlayButtonProps) {
   return (
     <button
       onClick={() => store.getState().togglePlayPause()}
+      aria-label={state.isPlaying ? "Pause" : "Play"}
       className={className}
       style={{
         width: sizes[size],

@@ -28,6 +28,7 @@ export type {
   TemplateModule,
   TemplateConfig,
   OutputPreset,
+  ProjectConfig,
 
   RenderOptions,
 
@@ -55,7 +56,8 @@ export {
 } from "./types.js";
 
 // Template helpers
-export { defineTemplate } from "./types.js";
+export { defineScene, defineConfig } from "./types.js";
+export { ProjectConfigSchema } from "./project-config-schema.js";
 
 // =============================================================================
 // RESULT TYPES & ERRORS

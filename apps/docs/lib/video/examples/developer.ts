@@ -1,7 +1,7 @@
 export const CODE_TYPEWRITER = `// Code Typewriter
 // Syntax highlighted code typing animation
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
 const CODE = \`function fibonacci(n) {
   if (n <= 1) return n;
@@ -10,7 +10,7 @@ const CODE = \`function fibonacci(n) {
 
 console.log(fibonacci(10)); // 55\`;
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
 
@@ -62,7 +62,7 @@ export default defineTemplate({
 export const GIT_DIFF = `// Git Diff
 // Side-by-side diff animation
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
 const REMOVED = [
   "  const result = [];",
@@ -76,7 +76,7 @@ const ADDED = [
   "  return arr.map(x => x * 2);",
 ];
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -131,7 +131,7 @@ export default defineTemplate({
 export const TERMINAL = `// Terminal Session
 // CLI demo with command output
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
 const COMMANDS = [
   { cmd: "npm create superimg@latest", delay: 0 },
@@ -141,7 +141,7 @@ const COMMANDS = [
   { output: "Server running at http://localhost:3000", delay: 0.7 },
 ];
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
 
@@ -199,7 +199,7 @@ export default defineTemplate({
 export const GIT_BRANCH = `// Git Branch Animation
 // Visualizing git workflow with branches
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
 const COMMITS = {
   main: [
@@ -215,7 +215,7 @@ const COMMITS = {
   ],
 };
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
     const { width, height, sceneProgress } = ctx;
 
@@ -343,7 +343,7 @@ export default defineTemplate({
 export const GITHUB_README = `// GitHub README Animation
 // Animated stats badge for your README.md
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
 const STATS = {
   repo: "superimg/superimg",
@@ -353,7 +353,7 @@ const STATS = {
   version: "v2.1.0",
 };
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 
@@ -462,7 +462,7 @@ export default defineTemplate({
 export const CHANGELOG = `// Changelog / Release Notes
 // Animated release notes from version data
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
 const RELEASES = [
   {
@@ -502,7 +502,7 @@ const typeColors = {
   major: "#8957e5",
 };
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
   const { width, height, sceneProgress } = ctx;
 

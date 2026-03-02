@@ -41,9 +41,9 @@ export function timeSeconds(n: number): TimeSeconds { return n as TimeSeconds; }
  *
  * @example
  * ```typescript
- * import { defineTemplate } from 'superimg';
+ * import { defineScene } from 'superimg';
  *
- * export default defineTemplate({
+ * export default defineScene({
  *   defaults: { title: 'Hello', color: '#fff' },
  *   config: { width: 1920, height: 1080, fps: 30, durationSeconds: 5 },
  *   render(ctx) {
@@ -52,7 +52,7 @@ export function timeSeconds(n: number): TimeSeconds { return n as TimeSeconds; }
  * });
  * ```
  */
-export function defineTemplate<TData>(
+export function defineScene<TData>(
   module: TemplateModule<TData>
 ): TemplateModule<TData> {
   return module;
@@ -183,6 +183,37 @@ export interface OutputPreset {
   height?: number;
   /** FPS override for this output */
   fps?: number;
+}
+
+/**
+ * Project-level or folder-level config from _config.ts.
+ * Cascades from parent to child directories.
+ */
+export interface ProjectConfig {
+  /** Width in pixels */
+  width?: number;
+  /** Height in pixels */
+  height?: number;
+  /** Frames per second */
+  fps?: number;
+  /** Default duration in seconds */
+  durationSeconds?: number;
+  /** List of Google Fonts to load */
+  fonts?: string[];
+  /** Raw CSS strings to inject */
+  inlineCss?: string[];
+  /** Stylesheet URLs to load */
+  stylesheets?: string[];
+  /** Named output presets */
+  outputs?: Record<string, OutputPreset>;
+}
+
+/**
+ * Define a project/folder config for _config.ts files.
+ * Provides type inference and validation.
+ */
+export function defineConfig(config: ProjectConfig): ProjectConfig {
+  return config;
 }
 
 export interface TemplateConfig {

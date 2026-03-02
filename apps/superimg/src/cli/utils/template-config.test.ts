@@ -28,9 +28,9 @@ describe("parseTemplate", () => {
       writeFileSync(
         templatePath,
         `
-          import { defineTemplate } from 'superimg';
+          import { defineScene } from 'superimg';
           const sideEffect = (() => { throw new Error("should not execute"); })();
-          export default defineTemplate({
+          export default defineScene({
             config: { fps: 48 },
             render(ctx) { return "<div>safe</div>"; }
           });
@@ -49,8 +49,8 @@ describe("parseTemplate", () => {
       writeFileSync(
         templatePath,
         `
-          import { defineTemplate } from 'superimg';
-          export default defineTemplate({
+          import { defineScene } from 'superimg';
+          export default defineScene({
             config: { durationSeconds: 9 },
             render(ctx) { return "<div>ok</div>"; }
           });

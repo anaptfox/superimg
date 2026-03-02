@@ -27,6 +27,7 @@ export type {
   // Template types
   TemplateModule,
   TemplateConfig,
+  ProjectConfig,
 
   RenderOptions,
 
@@ -82,7 +83,7 @@ export {
 } from "@superimg/types";
 
 // Template helpers
-export { defineTemplate } from "@superimg/types";
+export { defineScene, defineConfig } from "@superimg/types";
 
 // Error classes
 export {

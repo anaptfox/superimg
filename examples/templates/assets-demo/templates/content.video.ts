@@ -1,6 +1,6 @@
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   config: {
     fonts: ["IBM+Plex+Sans:wght@400;700"],
     inlineCss: [`

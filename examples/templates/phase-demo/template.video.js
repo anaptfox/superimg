@@ -2,9 +2,9 @@
 // Demonstrates: std.timing.sequence() with render functions
 // Each phase owns its own visual logic, no conditional trees needed.
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     message: "Hello, Phases!",
     accentColor: "#8b5cf6",

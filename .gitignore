@@ -49,3 +49,5 @@ out/
 
 # WASM artifacts
 *.wasm
+
+.private/

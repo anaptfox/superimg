@@ -33,9 +33,9 @@ const INITIAL_FORM: FormState = {
   gradientKey: "Midnight",
 };
 
-const TEMPLATE_CODE = `import { defineTemplate } from "superimg";
+const TEMPLATE_CODE = `import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     name: "GO!",
     startFrom: 5,

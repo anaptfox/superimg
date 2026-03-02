@@ -1,6 +1,6 @@
-# defineTemplate Example
+# defineScene Example
 
-A minimal template using `defineTemplate` — the standard pattern for SuperImg templates.
+A minimal template using `defineScene` — the standard pattern for SuperImg templates.
 
 ## Quick Start
 
@@ -11,16 +11,16 @@ pnpm render     # Render to output.mp4
 
 ## Template Structure
 
-Templates use `defineTemplate` with a single default export:
+Templates use `defineScene` with a single default export:
 
 ```ts
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: { ... },
   config: { ... },
   render(ctx) { ... },
 });
 ```
 
-Use `defineTemplate` for TypeScript type inference on `ctx.data` from your defaults.
+Use `defineScene` for TypeScript type inference on `ctx.data` from your defaults.

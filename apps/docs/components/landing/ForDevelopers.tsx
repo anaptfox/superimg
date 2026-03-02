@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-const CODE_EXAMPLE = `import { defineTemplate } from "superimg";
+const CODE_EXAMPLE = `import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   render(ctx) {
     const { sceneFrame, width, height } = ctx;
     return \`

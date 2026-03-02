@@ -2,9 +2,9 @@
 // Demonstrates: std.css(), inlineCss, tween, math, color utilities, and defaults-driven data
 // Customize by passing data or editing the defaults!
 
-import { defineTemplate } from "superimg";
+import { defineScene } from "superimg";
 
-export default defineTemplate({
+export default defineScene({
   defaults: {
     title: "Hello, SuperImg!",
     subtitle: "Create stunning videos from code",

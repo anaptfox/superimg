@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, Github } from "lucide-react";
 
 export function TopNav() {
   return (
@@ -49,6 +49,14 @@ export function TopNav() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Button asChild variant="ghost" size="icon" aria-label="GitHub">
+            <a href="https://github.com/anaptfox/superimg" target="_blank" rel="noopener noreferrer">
+              <Github className="h-4 w-4" />
+            </a>
+          </Button>
+          <Button asChild size="sm" className="hidden sm:inline-flex">
+            <Link href="/docs/getting-started">Get Started</Link>
+          </Button>
           <ThemeToggle />
           <Sheet>
             <SheetTrigger asChild>
@@ -66,6 +74,24 @@ export function TopNav() {
                 <SheetTitle>Navigation</SheetTitle>
               </SheetHeader>
               <div className="mt-4 flex flex-col gap-1">
+                <SheetClose asChild>
+                  <Link
+                    href="/docs/getting-started"
+                    className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    Get Started
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a
+                    href="https://github.com/anaptfox/superimg"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    GitHub
+                  </a>
+                </SheetClose>
                 <SheetClose asChild>
                   <Link
                     href="/editor"
