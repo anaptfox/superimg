@@ -1,6 +1,6 @@
 {
   "name": "superimg-react",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "React hooks and components for SuperImg",
   "type": "module",
   "main": "./dist/index.js",
