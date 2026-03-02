@@ -136,6 +136,11 @@ bump:
         gum style --foreground 212 "✓ Both packages bumped to v$NEW_VERSION!"
         echo ""
         just versions
+        echo ""
+        # Commit the version bump so the working tree is clean for publish
+        cd "$ROOT" && git add apps/superimg/package.json apps/superimg-react/package.json
+        cd "$ROOT" && git commit -m "chore: bump to v$NEW_VERSION"
+        gum style --foreground 212 "✓ Committed version bump"
     else
         gum style --foreground 196 "Cancelled"
         exit 1
