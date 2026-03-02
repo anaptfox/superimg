@@ -173,10 +173,16 @@ export async function initCommand(
   let pm: PackageManager;
   let skipInstall: boolean;
   let skipBrowser: boolean;
-  let projectName = name === "." ? "my-superimg-project" : name;
+  let projectName: string;
 
   if (options.yes) {
     // Use defaults: TS, auto-detect pm, install + browser
+    if (!existingProject && (name === "." || !name?.trim())) {
+      projectName = "my-video";
+      targetDir = join(process.cwd(), "my-video");
+    } else {
+      projectName = name === "." ? "my-superimg-project" : name;
+    }
     const hasTs = existingProject && existsSync(join(targetDir, "tsconfig.json"));
     useJs = options.js ?? (existingProject ? !hasTs : false);
     pm = resolvePackageManager(options.pm);
@@ -185,8 +191,9 @@ export async function initCommand(
   } else {
     // Interactive mode
     p.intro("SuperImg  —  HTML/CSS → MP4");
+    projectName = name === "." ? "my-superimg-project" : name;
 
-    if (!existingProject && name === ".") {
+    if (!existingProject && (name === "." || !name?.trim())) {
       const dirName = await p.text({
         message: "Where should we create your project?",
         placeholder: "my-superimg-project",
@@ -285,7 +292,7 @@ export async function initCommand(
     const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
     pkg.scripts = pkg.scripts ?? {};
     pkg.scripts["superimg:dev"] = "superimg dev intro";
-    pkg.scripts["superimg:render"] = "superimg render intro -o output.mp4";
+    pkg.scripts["superimg:render"] = "superimg render intro";
     pkg.scripts["superimg:setup"] = "superimg setup";
     pkg.dependencies = pkg.dependencies ?? {};
     if (!pkg.dependencies.superimg) pkg.dependencies.superimg = versionRange;
@@ -363,7 +370,7 @@ export async function initCommand(
       scripts: {
         setup: "superimg setup",
         dev: "superimg dev intro",
-        render: "superimg render intro -o output.mp4",
+        render: "superimg render intro",
       },
       dependencies: {
         superimg: versionRange,
