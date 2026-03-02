@@ -291,7 +291,7 @@ export async function initCommand(
 
     const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf-8"));
     pkg.scripts = pkg.scripts ?? {};
-    pkg.scripts["superimg:dev"] = "superimg dev intro";
+    pkg.scripts["superimg:dev"] = "superimg dev";
     pkg.scripts["superimg:render"] = "superimg render intro";
     pkg.scripts["superimg:setup"] = "superimg setup";
     pkg.dependencies = pkg.dependencies ?? {};
@@ -369,7 +369,7 @@ export async function initCommand(
       type: "module",
       scripts: {
         setup: "superimg setup",
-        dev: "superimg dev intro",
+        dev: "superimg dev",
         render: "superimg render intro",
       },
       dependencies: {
