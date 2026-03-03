@@ -443,12 +443,6 @@ export default function Editor() {
                 <Repeat className="h-4 w-4" />
               </Button>
             </div>
-            <Button asChild variant="outline" size="sm" className="gap-1.5">
-              <a href="https://rexrender.dev" target="_blank" rel="noopener noreferrer">
-                Create with AI
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            </Button>
           </div>
 
           {/* Preview Container - stays dark for video contrast */}

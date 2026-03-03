@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, Github, ExternalLink } from "lucide-react";
+import { Menu, Github } from "lucide-react";
 
 export function TopNav() {
   return (
@@ -54,12 +54,6 @@ export function TopNav() {
               <Github className="h-4 w-4" />
             </a>
           </Button>
-          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex gap-1.5 text-muted-foreground">
-            <a href="https://rexrender.dev" target="_blank" rel="noopener noreferrer">
-              Create with AI
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </Button>
           <ThemeToggle />
           <Sheet>
             <SheetTrigger asChild>
@@ -85,17 +79,6 @@ export function TopNav() {
                     className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     GitHub
-                  </a>
-                </SheetClose>
-                <SheetClose asChild>
-                  <a
-                    href="https://rexrender.dev"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <span>Create with AI</span>
-                    <ExternalLink className="h-3 w-3 opacity-50" />
                   </a>
                 </SheetClose>
                 <SheetClose asChild>
