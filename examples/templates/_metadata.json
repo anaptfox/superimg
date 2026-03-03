@@ -1,0 +1,32 @@
+{
+  "hello-world": {
+    "title": "Hello World",
+    "category": "getting-started",
+    "description": "Animated title card with accent lines"
+  },
+  "countdown": {
+    "title": "Countdown Timer",
+    "category": "marketing",
+    "description": "Animated countdown to a target date"
+  },
+  "define-template": {
+    "title": "Complete Template",
+    "category": "getting-started",
+    "description": "Full template with config, defaults, and render"
+  },
+  "stats-card": {
+    "title": "Stats Card",
+    "category": "data",
+    "description": "Animated stat with progress bar"
+  },
+  "lower-thirds": {
+    "title": "Lower Thirds",
+    "category": "marketing",
+    "description": "Broadcast-style name/title overlay"
+  },
+  "phase-demo": {
+    "title": "Phase Animation",
+    "category": "developer",
+    "description": "Enter/hold/exit phase timing pattern"
+  }
+}

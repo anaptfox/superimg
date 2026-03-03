@@ -1,7 +1,6 @@
 //! ReelsPlayer - Instagram Reels / TikTok-style video player
 //! CSS scroll-snap, auto-play on visibility, keyboard navigation, overlays
-//! Desktop: horizontal scroll with left/right keys
-//! Mobile: vertical scroll with up/down swipe
+//! Horizontal scroll with left/right keys and swipe gestures
 
 "use client";
 
@@ -148,7 +147,8 @@ export const ReelsPlayer = forwardRef<ReelsPlayerRef, ReelsPlayerProps>(
 
     // Handle hydration: don't render until isMobile is determined
     const isHydrated = isMobile !== undefined;
-    const isHorizontal = !isMobile;
+    // Always use horizontal layout for consistent experience
+    const isHorizontal = true;
 
     // Check if an index is within preload window
     const isNearby = useCallback(
@@ -262,8 +262,8 @@ export const ReelsPlayer = forwardRef<ReelsPlayerRef, ReelsPlayerProps>(
 
     // Touch swipe gestures (supplements native scroll)
     useSwipeGesture(containerRef, {
-      onSwipeUp: isMobile ? next : undefined,
-      onSwipeDown: isMobile ? previous : undefined,
+      onSwipeLeft: next,
+      onSwipeRight: previous,
       threshold: 80,
       velocityThreshold: 0.4,
       enabled: !!isMobile, // Only enable on mobile (false when undefined)

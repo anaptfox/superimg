@@ -25,8 +25,13 @@ install:
 dev:
     cd "{{root}}" && pnpm run dev
 
+# Generate playground examples from examples/templates/
+generate-examples:
+    cd "{{root}}" && npx tsx scripts/generate-examples.ts
+
 # Start the docs site (port 3001) — builds workspace deps first
 docs:
+    cd "{{root}}" && npx tsx scripts/generate-examples.ts
     cd "{{root}}" && pnpm --filter 'superimg^...' --filter '!@superimg/playwright' run build
     cd "{{root}}" && pnpm --filter superimg run build:browser
     cd "{{root}}" && pnpm --filter superimg-react build

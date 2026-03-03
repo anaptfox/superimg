@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useVideoSession, DataForm, VideoControls, type ExportOptions } from "superimg-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Repeat, LayoutGrid, Copy, Check, ExternalLink } from "lucide-react";
+import { Repeat, LayoutGrid, Copy, Check, ExternalLink, ArrowLeft } from "lucide-react";
 import {
   OpenIn,
   OpenInTrigger,
@@ -182,10 +183,14 @@ export default defineScene({
 
 const DURATION_OPTIONS = [1, 3, 5, 10, 15, 30];
 
-export default function Editor() {
-  const searchParams = useSearchParams();
+interface EditorProps {
+  templateId?: string;
+}
+
+export default function Editor({ templateId }: EditorProps) {
+  const router = useRouter();
   const [code, setCode] = useState(DEFAULT_TEMPLATE);
-  const [activeExampleId, setActiveExampleId] = useState<string | undefined>();
+  const [activeExampleId, setActiveExampleId] = useState<string | undefined>(templateId);
   const [dataPanelOpen, setDataPanelOpen] = useState(true);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [duration, setDuration] = useState(5);
@@ -194,22 +199,20 @@ export default function Editor() {
   const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Load example from URL param on mount
+  // Load example from templateId prop on mount
   useEffect(() => {
-    const exampleId = searchParams.get("example");
-    if (exampleId) {
-      const example = getExampleById(exampleId);
+    if (templateId) {
+      const example = getExampleById(templateId);
       if (example) {
         setCode(example.code);
         setActiveExampleId(example.id);
       }
     }
-  }, [searchParams]);
+  }, [templateId]);
 
   const handleSelectExample = (example: EditorExample) => {
-    setCode(example.code);
-    setActiveExampleId(example.id);
-    setFormData({}); // Reset form data when switching examples
+    // Navigate to the example's URL (this updates the URL and triggers a re-render)
+    router.push(`/playground/${example.id}`);
     setExamplesOpen(false); // Auto-close sheet
   };
 
@@ -327,22 +330,17 @@ export default function Editor() {
           e.preventDefault();
           setLooping((prev) => !prev);
           break;
+        case "Escape":
+          e.preventDefault();
+          router.push("/playground");
+          break;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [session]);
+  }, [session, router]);
 
-  // Auto-open examples panel on first visit (no example in URL)
-  useEffect(() => {
-    const hasVisited = localStorage.getItem("superimg-playground-visited");
-    const exampleParam = searchParams.get("example");
-    if (!hasVisited && !exampleParam) {
-      setExamplesOpen(true);
-      localStorage.setItem("superimg-playground-visited", "true");
-    }
-  }, [searchParams]);
 
   const handleCopyCode = async () => {
     await navigator.clipboard.writeText(code);
@@ -366,10 +364,22 @@ export default function Editor() {
         <div className="flex min-w-0 flex-1 flex-col border-r border-border">
           <div className="flex items-center gap-2 border-b border-border bg-muted px-4 py-3 text-sm font-medium">
             <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="-ml-2 gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <Link href="/playground">
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Examples</span>
+              </Link>
+            </Button>
+            <span className="text-muted-foreground">|</span>
+            <Button
               variant="outline"
               size="sm"
               onClick={() => setExamplesOpen(true)}
-              className="-ml-1 gap-2"
+              className="gap-2"
               title="Browse examples (⌘⇧E)"
             >
               <LayoutGrid className="h-4 w-4" />

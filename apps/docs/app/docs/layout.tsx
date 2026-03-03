@@ -1,9 +1,12 @@
+import { TopNav } from '@/components/landing/TopNav'
 import { DocsSidebar } from './sidebar'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
+    <>
+      <TopNav />
+      <SidebarProvider>
       <DocsSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background px-4 md:hidden">
@@ -17,5 +20,6 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
         </main>
       </SidebarInset>
     </SidebarProvider>
+    </>
   )
 }

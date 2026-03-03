@@ -369,6 +369,16 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
     internalContainerRef.current = el;
   }, []);
 
+  // Inject template CSS when template changes
+  useEffect(() => {
+    if (template && preview.ready) {
+      preview.injectStyles(
+        template.config?.inlineCss,
+        template.config?.stylesheets
+      );
+    }
+  }, [template, preview.ready, preview.injectStyles]);
+
   // Re-render when preview becomes ready, template changes, or format (width/height) changes
   useEffect(() => {
     if (preview.ready && template) {

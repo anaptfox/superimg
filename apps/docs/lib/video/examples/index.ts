@@ -3,6 +3,7 @@ import { STAR_HISTORY, NPM_STATS, BENCHMARK, TIMELINE } from "./charts";
 import { TESTIMONIALS, MILESTONE, MRR, WEEKLY_SCHEDULE, TWITTER_POST } from "./social";
 import { CODE_TYPEWRITER, GIT_DIFF, TERMINAL, GIT_BRANCH, GITHUB_README, CHANGELOG } from "./developer";
 import { PRODUCT_HUNT, YEAR_IN_REVIEW, COUNTDOWN, LOGO_ANIMATION, PERSONALIZED_VIDEO } from "./marketing";
+import { TEMPLATE_EXAMPLES } from "./from-templates";
 
 export interface EditorExample {
   id: string;
@@ -19,7 +20,8 @@ export const EXAMPLE_CATEGORIES = [
   { id: "developer", title: "Developer" },
 ] as const;
 
-export const EDITOR_EXAMPLES: EditorExample[] = [
+// Existing examples (from string literals in this repo)
+const BUILTIN_EXAMPLES: EditorExample[] = [
   // Getting Started
   { id: "complete-template", title: "Complete Template (config + defaults)", category: "getting-started", code: COMPLETE_TEMPLATE },
   { id: "hello-world", title: "Hello World", category: "getting-started", code: HELLO_WORLD },
@@ -53,6 +55,15 @@ export const EDITOR_EXAMPLES: EditorExample[] = [
   { id: "git-branch", title: "Git Branch", category: "developer", code: GIT_BRANCH },
   { id: "github-readme", title: "GitHub README Animation", category: "developer", code: GITHUB_README },
   { id: "changelog", title: "Changelog/Release Notes", category: "developer", code: CHANGELOG },
+];
+
+// Merge: templates from examples/ folder take precedence over built-in
+const templateIds = new Set(TEMPLATE_EXAMPLES.map((t) => t.id));
+const filteredBuiltin = BUILTIN_EXAMPLES.filter((e) => !templateIds.has(e.id));
+
+export const EDITOR_EXAMPLES: EditorExample[] = [
+  ...TEMPLATE_EXAMPLES,
+  ...filteredBuiltin,
 ];
 
 export const getExamplesByCategory = (cat: string) =>

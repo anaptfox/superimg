@@ -14,6 +14,8 @@ export interface UsePreviewReturn {
   renderFrame: (render: RenderFn, ctx: RenderContext) => Promise<void>;
   /** Set the logical render size */
   setLogicalSize: (width: number, height: number) => void;
+  /** Inject CSS styles into the preview iframe */
+  injectStyles: (inlineCss?: string[], stylesheets?: string[]) => void;
 }
 
 /**
@@ -84,10 +86,20 @@ export function usePreview(
     [sink]
   );
 
+  const injectStyles = useCallback(
+    (inlineCss?: string[], stylesheets?: string[]) => {
+      if (sink?.injectStyles) {
+        sink.injectStyles(inlineCss, stylesheets);
+      }
+    },
+    [sink]
+  );
+
   return {
     sink,
     ready,
     renderFrame,
     setLogicalSize,
+    injectStyles,
   };
 }
