@@ -41,7 +41,7 @@ export function ForDevelopers() {
             <Link href="/docs">Read the Docs</Link>
           </Button>
           <Button asChild size="lg">
-            <Link href="/editor">Open Editor</Link>
+            <Link href="/playground">Open Playground</Link>
           </Button>
         </div>
       </div>

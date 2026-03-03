@@ -305,12 +305,8 @@ export function LiveExample() {
         </div>
 
         <div className="mt-8 flex justify-center">
-          <Button
-            asChild
-            size="lg"
-            className="dark:border dark:border-border/40 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
-          >
-            <Link href="/editor">Open Full Editor</Link>
+          <Button asChild size="lg">
+            <Link href="/playground">Open Full Playground</Link>
           </Button>
         </div>
       </div>

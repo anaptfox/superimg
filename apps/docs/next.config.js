@@ -13,6 +13,15 @@ const nextConfig = {
   pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
   serverExternalPackages: ['superimg', 'esbuild', 'esbuild-wasm'],
   assetPrefix: baseURL,
+  async redirects() {
+    return [
+      {
+        source: '/editor',
+        destination: '/playground',
+        permanent: true,
+      },
+    ]
+  },
 }
 
 const withMDX = createMDX({

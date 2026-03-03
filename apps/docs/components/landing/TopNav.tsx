@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, Github } from "lucide-react";
+import { Menu, Github, ExternalLink } from "lucide-react";
 
 export function TopNav() {
   return (
@@ -23,16 +23,16 @@ export function TopNav() {
           </Link>
           <div className="hidden items-center gap-6 sm:flex">
             <Link
-              href="/editor"
+              href="/playground"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Editor
+              Playground
             </Link>
             <Link
-              href="/templates"
+              href="/examples"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Templates
+              Examples
             </Link>
             <Link
               href="/docs"
@@ -54,8 +54,11 @@ export function TopNav() {
               <Github className="h-4 w-4" />
             </a>
           </Button>
-          <Button asChild size="sm" className="hidden sm:inline-flex">
-            <Link href="/docs/getting-started">Get Started</Link>
+          <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex gap-1.5 text-muted-foreground">
+            <a href="https://rexrender.dev" target="_blank" rel="noopener noreferrer">
+              Create with AI
+              <ExternalLink className="h-3 w-3" />
+            </a>
           </Button>
           <ThemeToggle />
           <Sheet>
@@ -75,14 +78,6 @@ export function TopNav() {
               </SheetHeader>
               <div className="mt-4 flex flex-col gap-1">
                 <SheetClose asChild>
-                  <Link
-                    href="/docs/getting-started"
-                    className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    Get Started
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
                   <a
                     href="https://github.com/anaptfox/superimg"
                     target="_blank"
@@ -93,19 +88,30 @@ export function TopNav() {
                   </a>
                 </SheetClose>
                 <SheetClose asChild>
+                  <a
+                    href="https://rexrender.dev"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <span>Create with AI</span>
+                    <ExternalLink className="h-3 w-3 opacity-50" />
+                  </a>
+                </SheetClose>
+                <SheetClose asChild>
                   <Link
-                    href="/editor"
+                    href="/playground"
                     className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
-                    Editor
+                    Playground
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>
                   <Link
-                    href="/templates"
+                    href="/examples"
                     className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
-                    Templates
+                    Examples
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>

@@ -105,7 +105,9 @@
     "@superimg/runtime": "workspace:*",
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
+    "@tailwindcss/vite": "^4.2.1",
     "@types/react": "catalog:",
-    "@types/ws": "^8.18.0"
+    "@types/ws": "^8.18.0",
+    "tailwindcss": "^4.2.1"
   }
 }

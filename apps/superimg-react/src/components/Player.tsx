@@ -192,6 +192,21 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   const [isPlaying, setIsPlaying] = useState(false);
   const [store, setStore] = useState<PlayerStore | null>(null);
 
+  // Store callbacks in refs to avoid recreation when they change
+  // This prevents the player/iframe from being destroyed and recreated on every parent render
+  const onLoadRef = useRef(onLoad);
+  const onPlayRef = useRef(onPlay);
+  const onPauseRef = useRef(onPause);
+  const onEndedRef = useRef(onEnded);
+  const onFrameRef = useRef(onFrame);
+
+  // Keep refs updated
+  onLoadRef.current = onLoad;
+  onPlayRef.current = onPlay;
+  onPauseRef.current = onPause;
+  onEndedRef.current = onEnded;
+  onFrameRef.current = onFrame;
+
   useEffect(() => {
     ensureShimmerStyle();
   }, []);
@@ -240,23 +255,23 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
 
     playerRef.current = player;
 
-    // Set up event listeners
+    // Set up event listeners (use refs to avoid recreation when callbacks change)
     player.on("play", () => {
       setIsPlaying(true);
-      onPlay?.();
+      onPlayRef.current?.();
     });
 
     player.on("pause", () => {
       setIsPlaying(false);
-      onPause?.();
+      onPauseRef.current?.();
     });
 
     player.on("ended", () => {
-      onEnded?.();
+      onEndedRef.current?.();
     });
 
     player.on("frame", (frame) => {
-      onFrame?.(frame);
+      onFrameRef.current?.(frame);
     });
 
     // Load template
@@ -269,7 +284,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
           player.play();
         }
       }
-      onLoad?.(result);
+      onLoadRef.current?.(result);
     };
 
     if (loadMode === "lazy") {
@@ -312,11 +327,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     hoverDelayMs,
     maxCacheFrames,
     autoPlay,
-    onLoad,
-    onPlay,
-    onPause,
-    onEnded,
-    onFrame,
+    // Callbacks removed - using refs instead to avoid iframe recreation
   ]);
 
   // Hover handlers for hoverBehavior="play"

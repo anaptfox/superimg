@@ -186,7 +186,7 @@ export class BrowserRenderer {
       scale: 1,
       dpr: 1,
       embedFonts: true,
-      backgroundColor: this.sessionOptions.backgroundColor ?? "transparent",
+      backgroundColor: this.sessionOptions.backgroundColor ?? "#000000",
       cache: "full",
     });
 

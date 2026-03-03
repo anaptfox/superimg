@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
 
 const PACKAGE_MANAGERS = [
   { id: "npx", label: "npx", command: "npx superimg init" },
@@ -92,10 +92,16 @@ export function Hero() {
 
       <div className="mt-6 flex items-center justify-center gap-3">
         <Button asChild variant="outline" size="sm">
-          <Link href="/docs/introduction">Read the docs</Link>
+          <Link href="/docs/introduction">Get started</Link>
         </Button>
         <Button asChild variant="ghost" size="sm">
-          <Link href="/templates">Browse templates →</Link>
+          <Link href="/examples">See examples</Link>
+        </Button>
+        <Button asChild variant="ghost" size="sm">
+          <a href="https://rexrender.dev" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5">
+            Create with AI
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
         </Button>
       </div>
     </section>

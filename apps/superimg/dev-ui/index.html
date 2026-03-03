@@ -7,214 +7,140 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'IBM Plex Sans', sans-serif;
-            background: #1a1a1a;
-            color: #e0e0e0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-        header {
-            background: #2a2a2a;
-            padding: 1rem 2rem;
-            border-bottom: 1px solid #3a3a3a;
-        }
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-        .controls {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            margin-top: 0.5rem;
-        }
-        .timeline-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-grow: 1;
-            margin-left: 2rem;
-        }
-        #timeline-container {
-            flex-grow: 1;
-            padding: 0.5rem 0;
-            cursor: pointer;
-        }
-        #timeline-track {
-            position: relative;
-            width: 100%;
-            height: 6px;
-            background: #4a4a4a;
-            border-radius: 3px;
-        }
-        #timeline-progress {
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            width: 0%; /* Updated by JS */
-            background: #00aaff;
-            border-radius: 3px;
-        }
-        #timeline-playhead {
-            position: absolute;
-            top: 50%;
-            left: 0%; /* Updated by JS */
-            width: 14px;
-            height: 14px;
-            background: #fff;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none; /* So it doesn't block clicks on the track */
-        }
-        #timeline-container:hover #timeline-playhead {
-            transform: translate(-50%, -50%) scale(1.2);
-        }
-        .time-display {
-            font-size: 0.875rem;
-            color: #a0a0a0;
-            user-select: none;
-        }
-        button {
-            background: #4a4a4a;
-            border: 1px solid #5a5a5a;
-            color: #e0e0e0;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.875rem;
-        }
-        button:hover {
-            background: #5a5a5a;
-        }
-        button:active {
-            background: #3a3a3a;
-        }
-        select {
-            background: #4a4a4a;
-            border: 1px solid #5a5a5a;
-            color: #e0e0e0;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.875rem;
-        }
-        select:hover {
-            background: #5a5a5a;
-        }
-        select:focus {
-            outline: none;
-            border-color: #6a6a6a;
-        }
-        .preview-container {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #0a0a0a;
-            overflow: auto;
-            padding: 2rem;
-        }
-        canvas {
-            max-width: 100%;
-            max-height: 100%;
-            border: 1px solid #3a3a3a;
-            background: #000;
-        }
-        .status {
-            padding: 0.5rem 2rem;
-            background: #2a2a2a;
-            border-top: 1px solid #3a3a3a;
-            font-size: 0.875rem;
-            color: #a0a0a0;
-        }
-        #home-view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
-        #home-view.visible { display: flex; }
-        #player-view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
-        #player-view.visible { display: flex; }
-        .video-grid {
-            flex: 1;
-            overflow-y: auto;
-            padding: 2rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1.5rem;
-        }
-        .video-card {
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
-            border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: border-color 0.2s;
-        }
-        .video-card:hover { border-color: #00aaff; }
-        .video-card-preview {
-            aspect-ratio: 16/9;
-            background: #0a0a0a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-        .video-card-preview canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-        .video-card-preview .loading { color: #666; font-size: 0.875rem; }
-        .video-card-info {
-            padding: 1rem;
-        }
-        .video-card-info .name { font-weight: 600; font-size: 1rem; }
-        .video-card-info .path { font-size: 0.75rem; color: #888; margin-top: 0.25rem; }
-    </style>
 </head>
-<body>
+<body class="font-sans bg-[#1a1a1a] text-[#e0e0e0] flex flex-col h-screen overflow-hidden" style="font-family: 'IBM Plex Sans', sans-serif">
     <div id="home-view">
-        <header>
-            <h1>SuperImg</h1>
-            <p style="margin-top: 0.25rem; font-size: 0.875rem; color: #888;">Select a video to preview</p>
+        <header class="bg-[#2a2a2a] px-8 py-4 border-b border-[#3a3a3a]">
+            <h1 class="text-xl font-semibold">SuperImg</h1>
+            <p class="mt-1 text-sm text-[#999]">Select a video to preview</p>
         </header>
-        <div id="video-grid" class="video-grid"></div>
+        <div id="video-grid" class="flex-1 overflow-y-auto p-8 grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-6"></div>
     </div>
     <div id="player-view">
-    <header>
-        <h1>SuperImg Dev Server</h1>
-        <div class="controls">
-            <button id="play-pause">Play</button>
-            <button id="export">Export MP4</button>
-            <button id="reload">Reload Template</button>
-            <select id="output-select">
-                <option value="">Default</option>
-            </select>
-            <div class="timeline-controls">
-                <div id="timeline-container">
-                    <div id="timeline-track">
+        <header class="bg-[#2a2a2a] px-8 py-4 border-b border-[#3a3a3a]">
+            <div class="flex items-center gap-4 mb-2">
+                <a href="/" id="back-btn" class="flex items-center gap-2 py-2 px-3 text-[#999] hover:text-[#e0e0e0] hover:bg-[#3a3a3a] rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2 transition-colors" aria-label="Back to all videos">← All Videos</a>
+                <span id="template-name" class="flex-1 text-sm text-[#999] overflow-hidden text-ellipsis whitespace-nowrap min-w-0" aria-hidden="true"></span>
+                <button id="reload" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-4 py-2 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] active:bg-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2 transition-colors" aria-label="Reload template (R)">Reload</button>
+                <button id="export" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-4 py-2 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] active:bg-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Export to MP4">Export</button>
+            </div>
+            <div class="flex items-center gap-3 flex-grow">
+                <div class="flex items-center gap-1">
+                    <button id="btn-first" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-2.5 py-1.5 min-w-8 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] active:bg-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2" aria-label="Jump to start (Home)">|&lt;</button>
+                    <button id="btn-prev" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-2.5 py-1.5 min-w-8 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] active:bg-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2" aria-label="Previous frame (←)">&lt;</button>
+                    <button id="play-pause" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-4 py-2 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] active:bg-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Play / Pause (Space)">Play</button>
+                    <button id="btn-next" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-2.5 py-1.5 min-w-8 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] active:bg-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2" aria-label="Next frame (→)">&gt;</button>
+                    <button id="btn-last" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-2.5 py-1.5 min-w-8 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] active:bg-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2" aria-label="Jump to end (End)">&gt;|</button>
+                </div>
+                <div id="timeline-container" class="flex-grow py-2 cursor-pointer">
+                    <div id="timeline-track" class="relative w-full h-2 bg-[#4a4a4a] rounded">
                         <div id="timeline-progress"></div>
                         <div id="timeline-playhead"></div>
                     </div>
                 </div>
-                <div class="time-display">
+                <div class="text-sm text-[#999] select-none">
                     <span id="current-time">00:00</span> / <span id="total-time">00:00</span>
+                </div>
+                <button id="loop-btn" aria-label="Toggle loop (L)" aria-pressed="true">Loop</button>
+                <select id="output-select" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-4 py-2 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2" aria-label="Output format">
+                    <option value="">1080p</option>
+                </select>
+                <button id="settings-btn" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-3 py-2 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] active:bg-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2" aria-label="Settings" aria-expanded="false">⚙</button>
+                <button id="help-btn" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-3 py-2 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] active:bg-[#3a3a3a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2" aria-label="Keyboard shortcuts" aria-expanded="false">?</button>
+            </div>
+        </header>
+        <div id="error-panel" class="hidden mx-8 my-4 p-4 px-5 bg-[#2a1a1a] border border-[#5a3030] rounded text-[#fecaca] text-sm" role="alert">
+            <div class="flex justify-between items-center mb-2">
+                <span class="font-semibold text-[#fca5a5]">Template Error</span>
+                <button class="error-panel-dismiss bg-transparent border-none text-[#999] cursor-pointer p-1 hover:text-[#e0e0e0] rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2" aria-label="Dismiss">×</button>
+            </div>
+            <div class="error-panel-message"></div>
+        </div>
+        <div id="settings-panel" class="hidden border-b border-[#3a3a3a] bg-[#252525] px-8 py-4">
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-[#999]">Preview background</span>
+                    <select id="bg-type" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-3 py-1.5 rounded text-sm cursor-pointer" aria-label="Background type">
+                        <option value="checkerboard">Checkerboard</option>
+                        <option value="solid">Solid color</option>
+                    </select>
+                </div>
+                <div id="bg-color-row" class="hidden flex items-center gap-2">
+                    <span class="text-sm text-[#999]">Color</span>
+                    <div class="flex gap-1">
+                        <button type="button" class="bg-preset w-8 h-8 rounded border-2 border-transparent hover:border-[#00aaff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-1" data-color="#2a2a2a" style="background-color:#2a2a2a" title="Dark gray" aria-label="Dark gray"></button>
+                        <button type="button" class="bg-preset w-8 h-8 rounded border-2 border-transparent hover:border-[#00aaff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-1" data-color="#404040" style="background-color:#404040" title="Mid gray" aria-label="Mid gray"></button>
+                        <button type="button" class="bg-preset w-8 h-8 rounded border-2 border-transparent hover:border-[#00aaff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-1" data-color="#0a0a0a" style="background-color:#0a0a0a" title="Black" aria-label="Black"></button>
+                        <button type="button" class="bg-preset w-8 h-8 rounded border-2 border-transparent hover:border-[#00aaff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-1" data-color="#ffffff" style="background-color:#ffffff" title="White" aria-label="White"></button>
+                    </div>
                 </div>
             </div>
         </div>
-    </header>
-    <div id="preview-container" class="preview-container"></div>
-    <div class="status" id="status">
-        Loading...
+        <div id="help-panel" class="hidden border-b border-[#3a3a3a] bg-[#252525] px-8 py-4">
+            <div class="text-sm font-semibold mb-3 text-[#e0e0e0]">Keyboard Shortcuts</div>
+            <div class="grid grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
+                <div class="flex justify-between"><span class="text-[#999]">Play / Pause</span><kbd class="kbd">Space</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Toggle loop</span><kbd class="kbd">L</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Previous frame</span><kbd class="kbd">←</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Next frame</span><kbd class="kbd">→</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Jump 10 frames</span><kbd class="kbd">Shift + ←/→</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Go to start</span><kbd class="kbd">Home</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Go to end</span><kbd class="kbd">End</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Reload template</span><kbd class="kbd">R</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Back to home</span><kbd class="kbd">Esc</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Export video</span><kbd class="kbd">E</kbd></div>
+                <div class="flex justify-between"><span class="text-[#999]">Show shortcuts</span><kbd class="kbd">?</kbd></div>
+            </div>
+        </div>
+        <div id="export-panel" class="hidden border-b border-[#3a3a3a] bg-[#252525] px-8 py-4" data-state="config">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-sm font-semibold text-[#e0e0e0]">Export Video</span>
+                <button id="export-panel-close" class="text-[#999] hover:text-[#e0e0e0] text-lg leading-none cursor-pointer">&times;</button>
+            </div>
+            <div class="export-config">
+                <div class="flex items-center gap-6 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-[#999]">Format</span>
+                        <div class="flex gap-1">
+                            <button class="export-fmt-btn active" data-format="mp4">MP4</button>
+                            <button class="export-fmt-btn" data-format="webm">WebM</button>
+                        </div>
+                    </div>
+                </div>
+                <button id="export-start" class="w-full bg-[#00aaff] text-white py-2.5 rounded text-sm font-medium cursor-pointer hover:bg-[#0099ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2">Export Video</button>
+            </div>
+            <div class="export-progress">
+                <div class="mb-3">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-[#999]">Rendering frames...</span>
+                        <span id="export-percent" class="text-[#e0e0e0]">0%</span>
+                    </div>
+                    <div class="h-2 bg-[#3a3a3a] rounded overflow-hidden">
+                        <div id="export-bar" class="h-full rounded export-bar-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                <button id="export-cancel" class="px-4 py-2 text-sm text-[#999] hover:text-[#e0e0e0] cursor-pointer">Cancel</button>
+            </div>
+            <div class="export-done">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-emerald-400">✓</span>
+                    <span class="text-sm text-[#e0e0e0]">Export complete</span>
+                    <span id="export-size" class="text-sm text-[#999]"></span>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button id="export-close" class="px-4 py-2 text-sm text-[#999] hover:text-[#e0e0e0] cursor-pointer">Close</button>
+                    <button id="export-download" class="px-4 py-2 text-sm bg-[#00aaff] text-white rounded cursor-pointer hover:bg-[#0099ee] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2">Download</button>
+                </div>
+            </div>
+        </div>
+        <div id="preview-container" class="relative flex-1 flex items-center justify-center overflow-auto p-8">
+            <div class="paused-overlay hidden">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+        </div>
+        <div id="status" class="py-2 px-8 bg-[#2a2a2a] border-t border-[#3a3a3a] text-sm text-[#999]" role="status">Loading...</div>
     </div>
-    </div>
+    <div id="toast-container" class="fixed bottom-12 left-1/2 -translate-x-1/2 z-[1000] flex flex-col gap-2 pointer-events-none [&>*]:pointer-events-auto"></div>
 
     <script type="module" src="./src/main.ts"></script>
 </body>

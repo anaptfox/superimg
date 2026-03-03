@@ -138,6 +138,7 @@ class PlayerNotReadyError extends SuperImgError {
   }
 }
 import { CheckpointResolver, createRenderContext } from "@superimg/core";
+import { buildCompositeHtml } from "@superimg/core/html";
 import { createPlayerStore, type PlayerStore, type PlayerConfig } from "./state.js";
 import { createPlaybackController, type PlaybackController } from "./playback.js";
 import { HtmlPresenter } from "./html-presenter.js";
@@ -380,8 +381,15 @@ export class Player {
     try {
       // Render HTML string
       const html = this.template.render(ctx);
+      // Compose with template's background (if any)
+      const compositeHtml = buildCompositeHtml(
+        html,
+        this.template.config?.background,
+        this._renderWidth,
+        this._renderHeight
+      );
       // Present frame
-      await this.presenter.present(html, ctx);
+      await this.presenter.present(compositeHtml, ctx);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       // Create enriched error with context
@@ -526,6 +534,20 @@ export class Player {
    */
   get format(): FormatOption | undefined {
     return this._format;
+  }
+
+  /**
+   * Get the current playback mode.
+   */
+  get playbackMode(): PlaybackMode {
+    return this.options.playbackMode;
+  }
+
+  /**
+   * Set the playback mode.
+   */
+  set playbackMode(mode: PlaybackMode) {
+    this.options.playbackMode = mode;
   }
 
   /**

@@ -34,7 +34,7 @@ export class HtmlPresenter implements FramePresenter {
       width: 100%;
       height: 100%;
       border: none;
-      background: transparent;
+      background: #000000;
       display: block;
     `;
 
@@ -97,7 +97,7 @@ export class HtmlPresenter implements FramePresenter {
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background: transparent;
+      background: #000000;
     `;
 
     // Scale wrapper at logical dimensions

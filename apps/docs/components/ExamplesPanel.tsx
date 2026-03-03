@@ -147,6 +147,14 @@ export function ExamplesPanel({
         )}
       </div>
 
+      <div className="border-t border-border p-4">
+        <p className="text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Get started locally:</span>
+          <code className="mt-1.5 block rounded bg-muted px-2 py-1.5 font-mono text-xs">
+            npx superimg init my-video
+          </code>
+        </p>
+      </div>
     </div>
   );
 }

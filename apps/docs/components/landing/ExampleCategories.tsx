@@ -21,7 +21,7 @@ export function ExampleCategories() {
             return (
               <Link
                 key={category.id}
-                href={`/editor?example=${firstExample?.id || ""}`}
+                href={`/playground?example=${firstExample?.id || ""}`}
               >
                 <Badge
                   variant="secondary"

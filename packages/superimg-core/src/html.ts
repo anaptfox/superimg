@@ -8,6 +8,9 @@ import { buildHeadStyles, type CssConfig } from "./css.js";
 /**
  * Build composite HTML from template output and background
  */
+/** Default background when none specified - industry standard black */
+const DEFAULT_BACKGROUND = "#000000";
+
 export function buildCompositeHtml(
   templateHtml: string,
   background: BackgroundValue | undefined,
@@ -16,21 +19,19 @@ export function buildCompositeHtml(
 ): string {
   const layers: string[] = [];
 
-  // Background layer
-  if (background) {
-    const resolved = resolveBackground(background);
-    if (resolved.type === "solid") {
-      const safeSrc = escapeHtmlAttr(resolved.src);
-      layers.push(
-        `<div style="position:absolute;inset:0;background:${safeSrc};opacity:${resolved.opacity}"></div>`
-      );
-    } else if (resolved.type === "image") {
-      const fit = resolved.fit === "cover" ? "cover" : resolved.fit === "contain" ? "contain" : "cover";
-      const safeSrc = escapeCssUrl(resolved.src);
-      layers.push(
-        `<div style="position:absolute;inset:0;background:url('${safeSrc}') center/${fit} no-repeat;opacity:${resolved.opacity}"></div>`
-      );
-    }
+  // Background layer - always render (default to black if not specified)
+  const resolved = resolveBackground(background ?? DEFAULT_BACKGROUND);
+  if (resolved.type === "solid") {
+    const safeSrc = escapeHtmlAttr(resolved.src);
+    layers.push(
+      `<div style="position:absolute;inset:0;background:${safeSrc};opacity:${resolved.opacity}"></div>`
+    );
+  } else if (resolved.type === "image") {
+    const fit = resolved.fit === "cover" ? "cover" : resolved.fit === "contain" ? "contain" : "cover";
+    const safeSrc = escapeCssUrl(resolved.src);
+    layers.push(
+      `<div style="position:absolute;inset:0;background:url('${safeSrc}') center/${fit} no-repeat;opacity:${resolved.opacity}"></div>`
+    );
   }
 
   // Template layer

@@ -67,7 +67,7 @@ export default function TemplatesPanel() {
       {CATEGORIES.map((category) => (
         <Link
           key={category.id}
-          href={`/editor?example=${category.exampleId}`}
+          href={`/playground?example=${category.exampleId}`}
           className="group"
         >
           <Card className="h-full transition-all duration-200 hover:ring-2 hover:ring-primary/50">

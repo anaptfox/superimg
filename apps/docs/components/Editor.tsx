@@ -2,13 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
 import { useVideoSession, DataForm, VideoControls, type ExportOptions } from "superimg-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 import posthog from "posthog-js";
-import { ThemeToggle } from "./ThemeToggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -25,12 +23,122 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Repeat, LayoutGrid } from "lucide-react";
+import { Repeat, LayoutGrid, Copy, Check, ExternalLink } from "lucide-react";
+import {
+  OpenIn,
+  OpenInTrigger,
+  OpenInContent,
+  OpenInClaude,
+  OpenInChatGPT,
+} from "@/components/ai-elements/open-in-chat";
 import { ExamplesPanel } from "./ExamplesPanel";
 import { getExampleById, type EditorExample } from "@/lib/video/examples/index";
 
+const SUPERIMG_CONTEXT = `## SuperImg - Programmatic Video Generation
+
+Video is a pure function of time. \`render(ctx)\` is called once per frame, returns HTML string.
+
+### Key Context Fields
+\`sceneProgress\` (0→1), \`sceneTimeSeconds\`, \`width\`, \`height\`, \`data\`, \`std\`
+
+### Stdlib
+- \`std.tween(from, to, progress, "easeOutCubic")\` — animation
+- \`std.math.clamp\`, \`std.math.map\`
+- \`std.color.alpha\`, \`std.color.mix\`
+- \`std.css(obj)\` — object → inline style
+- \`std.css.center()\`, \`std.css.fill()\`
+
+### Rules
+- Return template literal strings, NOT JSX
+- Keep render pure — no state mutation
+- Set root to \`width: \${width}px; height: \${height}px\`
+`;
+
+const TEMPLATE_EXAMPLE = `import { defineScene } from "superimg";
+
+export default defineScene({
+  defaults: { title: "Hello", color: "#667eea" },
+  config: { durationSeconds: 3 },
+  render(ctx) {
+    const { std, sceneProgress, width, height, data } = ctx;
+    const opacity = std.tween(0, 1, sceneProgress, "easeOutCubic");
+    return \\\`
+      <div style="\\\${std.css({ width, height, background: '#0f0f23' })};\\\${std.css.center()}">
+        <h1 style="\\\${std.css({ color: data.color, fontSize: 64, opacity })}">\\\${data.title}</h1>
+      </div>
+    \\\`;
+  }
+});`;
+
+const HTML_PAGE_EXAMPLE = `<!DOCTYPE html>
+<html>
+<head>
+  <title>My Video</title>
+  <script type="module">
+    import { Player, defineScene } from 'https://esm.sh/superimg';
+
+    const template = defineScene({
+      defaults: { title: "Hello", color: "#667eea" },
+      config: { durationSeconds: 3 },
+      render(ctx) {
+        const { std, sceneProgress, width, height, data } = ctx;
+        const opacity = std.tween(0, 1, sceneProgress, "easeOutCubic");
+        return \\\`
+          <div style="\\\${std.css({ width, height, background: '#0f0f23' })};\\\${std.css.center()}">
+            <h1 style="\\\${std.css({ color: data.color, fontSize: 64, opacity })}">\\\${data.title}</h1>
+          </div>
+        \\\`;
+      }
+    });
+
+    const player = new Player({ container: '#video', playbackMode: 'loop' });
+    await player.load(template);
+    player.play();
+  </script>
+</head>
+<body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh">
+  <div id="video" style="width:800px;aspect-ratio:16/9"></div>
+</body>
+</html>`;
+
+function buildAIPrompt(code: string): string {
+  return `${SUPERIMG_CONTEXT}
+
+## Output Options
+
+### Option 1: Template Code (for playground)
+Return defineScene code. User pastes into SuperImg playground.
+
+\`\`\`javascript
+${TEMPLATE_EXAMPLE}
+\`\`\`
+
+### Option 2: Complete HTML Page (standalone)
+Return full HTML. User saves as .html and opens in browser - video plays directly.
+
+\`\`\`html
+${HTML_PAGE_EXAMPLE}
+\`\`\`
+
+Choose based on context:
+- Iterate in playground → Option 1
+- Shareable standalone file → Option 2
+
+---
+
+Here's my current template:
+
+\`\`\`javascript
+${code}
+\`\`\`
+
+Help me modify this template.`;
+}
+
 const DEFAULT_TEMPLATE = `// SuperImg Template
-// Edit the defaults below and use ctx.data in render to drive the output.
+// 1. Define \`defaults\` below → they become editable fields in the Data panel
+// 2. Access values via \`ctx.data.title\`, \`ctx.data.accentColor\`, etc.
+// 3. Changes in the Data panel instantly update the preview
 
 import { defineScene } from "superimg";
 
@@ -76,7 +184,6 @@ const DURATION_OPTIONS = [1, 3, 5, 10, 15, 30];
 
 export default function Editor() {
   const searchParams = useSearchParams();
-  const { resolvedTheme } = useTheme();
   const [code, setCode] = useState(DEFAULT_TEMPLATE);
   const [activeExampleId, setActiveExampleId] = useState<string | undefined>();
   const [dataPanelOpen, setDataPanelOpen] = useState(true);
@@ -84,8 +191,8 @@ export default function Editor() {
   const [duration, setDuration] = useState(5);
   const [looping, setLooping] = useState(true);
   const [examplesOpen, setExamplesOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const isDark = resolvedTheme === "dark";
 
   // Load example from URL param on mount
   useEffect(() => {
@@ -227,6 +334,22 @@ export default function Editor() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [session]);
 
+  // Auto-open examples panel on first visit (no example in URL)
+  useEffect(() => {
+    const hasVisited = localStorage.getItem("superimg-playground-visited");
+    const exampleParam = searchParams.get("example");
+    if (!hasVisited && !exampleParam) {
+      setExamplesOpen(true);
+      localStorage.setItem("superimg-playground-visited", "true");
+    }
+  }, [searchParams]);
+
+  const handleCopyCode = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <>
       <Sheet open={examplesOpen} onOpenChange={setExamplesOpen}>
@@ -243,7 +366,7 @@ export default function Editor() {
         <div className="flex min-w-0 flex-1 flex-col border-r border-border">
           <div className="flex items-center gap-2 border-b border-border bg-muted px-4 py-3 text-sm font-medium">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setExamplesOpen(true)}
               className="-ml-1 gap-2"
@@ -251,7 +374,30 @@ export default function Editor() {
             >
               <LayoutGrid className="h-4 w-4" />
               <span className="hidden sm:inline">Examples</span>
+              <Badge variant="secondary" className="ml-1 hidden sm:flex text-xs">24</Badge>
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopyCode}
+              className="gap-1.5"
+              title="Copy template code"
+            >
+              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
+            </Button>
+            <OpenIn query={buildAIPrompt(code)}>
+              <OpenInTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1.5">
+                  <span className="hidden sm:inline">Open in AI Chat</span>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+              </OpenInTrigger>
+              <OpenInContent>
+                <OpenInClaude />
+                <OpenInChatGPT />
+              </OpenInContent>
+            </OpenIn>
             <span className="text-muted-foreground">|</span>
             <span>Template Code</span>
           </div>
@@ -259,7 +405,7 @@ export default function Editor() {
             <CodeMirror
               value={code}
               height="100%"
-              theme={isDark ? oneDark : "light"}
+              theme={oneDark}
               extensions={[javascript({ typescript: true })]}
               onChange={(value) => {
                 setCode(value);
@@ -297,12 +443,12 @@ export default function Editor() {
                 <Repeat className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <Badge variant={session.error ? "destructive" : "secondary"}>
-                {session.status}
-              </Badge>
-            </div>
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <a href="https://rexrender.dev" target="_blank" rel="noopener noreferrer">
+                Create with AI
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </Button>
           </div>
 
           {/* Preview Container - stays dark for video contrast */}
@@ -314,36 +460,45 @@ export default function Editor() {
             />
           </div>
 
-          {/* Data Panel */}
-          {session.template?.defaults && Object.keys(session.template.defaults).length > 0 && (
-            <Collapsible
-              open={dataPanelOpen}
-              onOpenChange={setDataPanelOpen}
-              className="border-t border-border bg-muted"
-            >
-              <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-2 text-sm font-medium hover:bg-accent">
+          {/* Data Panel - always visible */}
+          <Collapsible
+            open={dataPanelOpen}
+            onOpenChange={setDataPanelOpen}
+            className="border-t border-border bg-muted"
+          >
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-2 text-sm font-medium hover:bg-accent">
+              <div className="flex items-center gap-2">
                 <span>Data</span>
-                <svg
-                  className={`h-4 w-4 transition-transform ${dataPanelOpen ? "rotate-180" : ""}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="max-h-[200px] overflow-y-auto px-4 pb-4">
+                <span className="text-xs font-normal text-muted-foreground">
+                  from <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">defaults</code>
+                </span>
+              </div>
+              <svg
+                className={`h-4 w-4 transition-transform ${dataPanelOpen ? "rotate-180" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="max-h-[200px] overflow-y-auto px-4 pb-4">
+                {session.template?.defaults && Object.keys(session.template.defaults).length > 0 ? (
                   <DataForm
                     defaults={session.template.defaults}
                     data={formData}
                     onChange={handleDataChange}
-                    theme={isDark ? "dark" : "light"}
+                    theme="dark"
                   />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
+                ) : (
+                  <p className="py-2 text-sm text-muted-foreground">
+                    Add a <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">defaults</code> object to your template to generate form controls here.
+                  </p>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Controls */}
           <VideoControls

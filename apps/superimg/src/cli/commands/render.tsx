@@ -110,7 +110,6 @@ function buildEncodingOptions(opts: RenderOptions): EncodingOptions | undefined 
   if (format === "webm") {
     if (!encoding.video) encoding.video = {};
     if (!encoding.video.codec) encoding.video.codec = ["vp9", "av1"];
-    if (!encoding.video.alpha) encoding.video.alpha = "keep";
   }
 
   return encoding;

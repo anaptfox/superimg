@@ -21,8 +21,7 @@ export default function HomePage() {
             <div>
               <p className="mb-3 text-sm font-semibold">Product</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="/editor" className="hover:text-foreground transition-colors">Editor</a></li>
-                <li><a href="/templates" className="hover:text-foreground transition-colors">Templates</a></li>
+                <li><a href="/playground" className="hover:text-foreground transition-colors">Playground</a></li>
               </ul>
             </div>
             <div>

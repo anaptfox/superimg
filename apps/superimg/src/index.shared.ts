@@ -106,6 +106,7 @@ export {
   validateTemplate,
   CheckpointResolver,
 } from "@superimg/core";
+export { buildCompositeHtml } from "@superimg/core/html";
 
 // =============================================================================
 // PLAYER STATE (shared between browser and server for testing)

@@ -1,6 +1,6 @@
 //! Canvas renderer for HTML → ImageData → Canvas drawing
 
-import type { RenderContext } from "@superimg/types";
+import type { RenderContext, RenderOptions } from "@superimg/types";
 import { BrowserRenderer } from "./renderer.js";
 import { get2DContext } from "./utils.js";
 
@@ -17,12 +17,23 @@ export class CanvasRenderer {
   private tempCanvas: HTMLCanvasElement | null = null;
   private tempCtx: CanvasRenderingContext2D | null = null;
   private sessionInitialized = false;
-  private cachedOptions: { width: number; height: number } | null = null;
+  private cachedOptions: RenderOptions | null = null;
+  private renderOptions: Partial<RenderOptions> = {};
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = get2DContext(canvas);
     this.renderer = new BrowserRenderer();
+  }
+
+  /**
+   * Set render options (fonts, stylesheets, inlineCss). Call before warmup().
+   * Invalidates session if options change.
+   */
+  setOptions(options: Partial<RenderOptions>): void {
+    this.renderOptions = options;
+    this.sessionInitialized = false;
+    this.cachedOptions = null;
   }
 
   /**
@@ -36,16 +47,25 @@ export class CanvasRenderer {
   private async ensureSession(): Promise<void> {
     const width = this.canvas.width;
     const height = this.canvas.height;
+    const opts: RenderOptions = {
+      width,
+      height,
+      ...this.renderOptions,
+    };
     if (
       this.sessionInitialized &&
       this.cachedOptions &&
-      this.cachedOptions.width === width &&
-      this.cachedOptions.height === height
+      this.cachedOptions.width === opts.width &&
+      this.cachedOptions.height === opts.height &&
+      JSON.stringify(this.cachedOptions.fonts ?? []) === JSON.stringify(opts.fonts ?? []) &&
+      JSON.stringify(this.cachedOptions.stylesheets ?? []) ===
+        JSON.stringify(opts.stylesheets ?? []) &&
+      JSON.stringify(this.cachedOptions.inlineCss ?? []) === JSON.stringify(opts.inlineCss ?? [])
     ) {
       return;
     }
-    await this.renderer.init({ width, height });
-    this.cachedOptions = { width, height };
+    await this.renderer.init(opts);
+    this.cachedOptions = opts;
     this.sessionInitialized = true;
   }
 

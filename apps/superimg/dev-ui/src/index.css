@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    @apply m-0 p-0 box-border;
+  }
+}
+
+/* Timeline progress/playhead - width/left set by JS */
+#timeline-progress {
+  @apply absolute left-0 top-0 h-full rounded;
+  background: linear-gradient(90deg, #00aaff, #00ddff);
+  box-shadow: 0 0 8px rgba(0, 170, 255, 0.4);
+}
+
+#timeline-playhead {
+  @apply absolute top-1/2 w-4 h-4 bg-white rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none;
+  box-shadow: 0 0 8px rgba(0, 170, 255, 0.6);
+}
+
+#timeline-container:hover #timeline-playhead {
+  @apply scale-110;
+}
+
+/* Loading shimmer */
+#preview-container.loading::after {
+  content: "";
+  @apply absolute inset-0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Keyboard shortcut styling */
+.kbd {
+  @apply bg-[#3a3a3a] text-[#e0e0e0] px-2 py-0.5 rounded text-xs font-mono border border-[#4a4a4a];
+}
+
+/* Paused overlay */
+#preview-container .paused-overlay {
+  @apply absolute inset-0 flex items-center justify-center pointer-events-none z-10;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+#preview-container .paused-overlay svg {
+  @apply w-16 h-16 text-white opacity-80;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Toast entrance */
+.toast {
+  @apply px-5 py-3 rounded-md text-sm shadow-lg;
+  animation: toast-in 0.2s ease-out;
+}
+
+.toast.success {
+  @apply bg-emerald-900 text-emerald-200 border border-emerald-700;
+}
+
+.toast.error {
+  @apply bg-red-950 text-red-200 border border-red-800 cursor-pointer;
+}
+
+.toast.info {
+  @apply bg-sky-950 text-sky-200 border border-sky-800;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* View visibility - JS toggles .visible */
+#home-view,
+#player-view {
+  @apply hidden flex-col flex-1 overflow-hidden;
+}
+
+#home-view.visible,
+#player-view.visible {
+  @apply flex;
+}
+
+/* Preview canvas */
+#preview-container canvas {
+  @apply max-w-full max-h-full border border-[#3a3a3a] bg-black;
+}
+
+/* Checkerboard background (transparency indicator) */
+#preview-container.preview-bg-checkerboard {
+  background-color: #2a2a2a;
+  background-image:
+    linear-gradient(45deg, #333 25%, transparent 25%),
+    linear-gradient(-45deg, #333 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #333 75%),
+    linear-gradient(-45deg, transparent 75%, #333 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+}
+
+/* Loop button: active (pressed) vs inactive */
+#loop-btn[aria-pressed="true"] {
+  @apply bg-[#00aaff33] border-[#00aaff];
+}
+
+#loop-btn[aria-pressed="false"] {
+  @apply bg-[#4a4a4a] border-[#5a5a5a] hover:bg-[#5a5a5a] active:bg-[#3a3a3a];
+}
+
+#loop-btn {
+  @apply border px-4 py-2 rounded text-sm cursor-pointer text-[#e0e0e0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2;
+}
+
+/* Export panel states */
+#export-panel .export-config,
+#export-panel .export-progress,
+#export-panel .export-done { @apply hidden; }
+
+#export-panel[data-state="config"] .export-config { @apply block; }
+#export-panel[data-state="exporting"] .export-progress { @apply block; }
+#export-panel[data-state="done"] .export-done { @apply block; }
+
+/* Format pills */
+.export-fmt-btn {
+  @apply px-3 py-1.5 text-sm rounded border border-[#4a4a4a] text-[#999] bg-transparent cursor-pointer;
+  transition: all 0.15s;
+}
+.export-fmt-btn:hover { @apply border-[#5a5a5a] text-[#e0e0e0]; }
+.export-fmt-btn.active {
+  @apply bg-[#00aaff26] border-[#00aaff] text-[#93bbfc];
+}
+
+/* Progress bar gradient */
+.export-bar-fill {
+  background: linear-gradient(90deg, #00aaff, #00ddff);
+  box-shadow: 0 0 8px rgba(0, 170, 255, 0.4);
+  transition: width 0.15s ease-out;
+}

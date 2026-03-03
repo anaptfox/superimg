@@ -35,12 +35,9 @@ export function TemplatesPanelSection() {
 
         <TemplatesPanel />
 
-        <div className="mt-10 flex items-center justify-center gap-4">
+        <div className="mt-10 flex items-center justify-center">
           <Button asChild size="lg">
-            <Link href="/templates">Browse all templates →</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/editor">Open editor</Link>
+            <Link href="/playground">Start creating</Link>
           </Button>
         </div>
       </div>

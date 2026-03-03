@@ -247,6 +247,11 @@ export interface TemplateConfig {
    * Injected once per render session, not per frame.
    */
   stylesheets?: string[];
+  /**
+   * Background rendered into the video (solid color or image).
+   * Composed behind template content via buildCompositeHtml.
+   */
+  background?: BackgroundValue;
   /** Named output presets */
   outputs?: Record<string, OutputPreset>;
 }
