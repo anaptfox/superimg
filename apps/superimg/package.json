@@ -1,6 +1,6 @@
 {
   "name": "superimg",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "Programmatic video generation with HTML/CSS templates",
   "type": "module",
   "bin": {
