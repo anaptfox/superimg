@@ -1,6 +1,10 @@
 import * as acorn from "acorn";
 import * as esbuild from "esbuild";
 
+export interface TailwindMetadataConfig {
+  css?: string;
+}
+
 export interface TemplateMetadataConfig {
   width?: number;
   height?: number;
@@ -9,6 +13,7 @@ export interface TemplateMetadataConfig {
   fonts?: string[];
   inlineCss?: string[];
   stylesheets?: string[];
+  tailwind?: boolean | TailwindMetadataConfig;
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
 }
 
@@ -42,6 +47,30 @@ function readPositiveNumberLiteral(node: acorn.Expression | null | undefined): n
   return undefined;
 }
 
+function readTailwindConfig(node: acorn.Expression): boolean | TailwindMetadataConfig | undefined {
+  // tailwind: true
+  if (node.type === "Literal" && node.value === true) {
+    return true;
+  }
+  // tailwind: { css: "..." }
+  if (node.type === "ObjectExpression") {
+    const config: TailwindMetadataConfig = {};
+    for (const prop of node.properties) {
+      if (prop.type !== "Property" || prop.kind !== "init" || prop.computed) continue;
+      const key = prop.key.type === "Identifier" ? prop.key.name : undefined;
+      if (key === "css" && prop.value.type === "Literal" && typeof prop.value.value === "string") {
+        config.css = prop.value.value;
+      }
+      // Also handle template literals for css
+      if (key === "css" && prop.value.type === "TemplateLiteral" && prop.value.quasis.length === 1) {
+        config.css = prop.value.quasis[0].value.cooked ?? prop.value.quasis[0].value.raw;
+      }
+    }
+    return Object.keys(config).length > 0 ? config : true; // Empty object = just enable tailwind
+  }
+  return undefined;
+}
+
 function readConfigObject(expr: acorn.Expression): TemplateMetadataConfig | undefined {
   if (expr.type !== "ObjectExpression") return undefined;
 
@@ -56,6 +85,14 @@ function readConfigObject(expr: acorn.Expression): TemplateMetadataConfig | unde
       key = property.key.value;
     }
     if (!key) continue;
+
+    if (key === "tailwind") {
+      const tailwindValue = readTailwindConfig(property.value as acorn.Expression);
+      if (tailwindValue !== undefined) {
+        config.tailwind = tailwindValue;
+      }
+      continue;
+    }
 
     if (key === "outputs") {
       const outputsExpr = property.value as acorn.Expression;
@@ -111,6 +148,7 @@ function readConfigObject(expr: acorn.Expression): TemplateMetadataConfig | unde
     config.height === undefined &&
     config.fps === undefined &&
     config.durationSeconds === undefined &&
+    config.tailwind === undefined &&
     config.outputs === undefined
   ) {
     return undefined;

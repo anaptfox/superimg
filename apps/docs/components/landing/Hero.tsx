@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { Check, Copy } from "lucide-react";
 
@@ -28,6 +29,7 @@ export function Hero() {
   const selectPm = (id: PackageManager) => {
     setPm(id);
     localStorage.setItem("preferred-pm", id);
+    posthog.capture("hero_package_manager_selected", { package_manager: id });
   };
 
   const currentCommand =
@@ -37,6 +39,7 @@ export function Hero() {
     await navigator.clipboard.writeText(currentCommand);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    posthog.capture("hero_install_command_copied", { package_manager: pm, command: currentCommand });
   };
 
   return (
@@ -92,7 +95,7 @@ export function Hero() {
 
       <div className="mt-6 flex items-center justify-center gap-3">
         <Button asChild variant="outline" size="sm">
-          <Link href="/docs/introduction">Get started</Link>
+          <Link href="/docs/introduction" onClick={() => posthog.capture("docs_get_started_clicked")}>Get started</Link>
         </Button>
         <Button asChild variant="ghost" size="sm">
           <Link href="/examples">See examples</Link>

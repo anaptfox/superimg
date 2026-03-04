@@ -40,10 +40,20 @@ export type {
   QualityPreset,
 
   // Asset Types
+  AssetRef,
+  AssetDeclaration,
+  AssetMeta,
+  AssetMetaBase,
+  ImageAssetMeta,
+  VideoAssetMeta,
+  AudioAssetMeta,
   BackgroundValue,
   AudioValue,
   BackgroundOptions,
   AudioOptions,
+
+  // Tailwind
+  TailwindConfig,
 } from "./types.js";
 
 // Branded type helpers
@@ -131,4 +141,16 @@ export type {
   RenderEngine,
   RenderPlan,
   FramePresenter,
+  ResolvedAssetDeclaration,
 } from "./engine.js";
+
+// =============================================================================
+// VALIDATION TYPES (for AI-generated templates)
+// =============================================================================
+
+export type {
+  ValidationErrorCode,
+  ValidationIssue,
+  ValidationResult,
+  ValidationOptions,
+} from "./validation.js";

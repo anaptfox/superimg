@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import { Player, type PlayerRef } from "superimg-react";
 import type { EditorExample } from "@/lib/video/examples";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -46,6 +47,7 @@ export function TemplateCard({ example }: TemplateCardProps) {
       className="group block"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onClick={() => posthog.capture("template_card_clicked", { template_id: example.id, template_title: example.title, category: example.category })}
     >
       <div
         className={`

@@ -33,6 +33,10 @@
     "./bundler-plugin": {
       "import": "./dist/bundler-plugin.js",
       "types": "./dist/bundler-plugin.d.ts"
+    },
+    "./validation": {
+      "import": "./dist/validation.js",
+      "types": "./dist/validation.d.ts"
     }
   },
   "scripts": {

@@ -1,9 +1,10 @@
 ---
 name: superimg
 description: >
-  SuperImg programmatic video generation framework. Create HTML/CSS video
-  templates with defineScene(), animate with ctx.std (tween, math, color, css),
-  and render to MP4. Use when working with superimg templates or video rendering.
+  This skill should be used when the user asks to "create a video template",
+  "animate with SuperImg", "render HTML to MP4", "use defineScene", "work with
+  ctx.std", or mentions SuperImg, video generation, or programmatic video.
+  Provides the SuperImg framework for HTML/CSS templates rendered to video.
 ---
 
 # SuperImg Skill
@@ -105,6 +106,16 @@ const t = await loadTemplate("videos/intro.ts");
 await renderVideo("videos/intro.ts", { outputPath: "out.mp4", width: 1920, height: 1080 });
 ```
 
-## Examples
+## Additional Resources
 
-See `examples/templates/` for full templates: `lower-thirds`, `stats-card`, `phase-demo`, `countdown`.
+For detailed API documentation and working examples, consult:
+
+### Reference Files
+- **[references/api.md](references/api.md)** — Complete RenderContext interface, all std.tween easings, full std.math/color/css/timing APIs, config options
+
+### Example Files
+- **[examples/hello-world.ts](examples/hello-world.ts)** — Minimal template demonstrating core concepts
+- **[examples/stats-card.ts](examples/stats-card.ts)** — Advanced template with phase timing, animated counters, responsive sizing
+
+### Project Examples
+See `examples/templates/` in the SuperImg repo for full templates: `lower-thirds`, `stats-card`, `phase-demo`, `countdown`.

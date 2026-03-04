@@ -211,6 +211,7 @@ export default function Editor({ templateId }: EditorProps) {
   }, [templateId]);
 
   const handleSelectExample = (example: EditorExample) => {
+    posthog.capture("example_selected_in_editor", { example_id: example.id, example_title: example.title, category: example.category });
     // Navigate to the example's URL (this updates the URL and triggers a re-render)
     router.push(`/playground/${example.id}`);
     setExamplesOpen(false); // Auto-close sheet
@@ -346,6 +347,7 @@ export default function Editor({ templateId }: EditorProps) {
     await navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    posthog.capture("editor_code_copied", { code_length: code.length });
   };
 
   return (

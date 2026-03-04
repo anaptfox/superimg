@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { extractTemplateMetadata } from "@superimg/core/template-metadata";
-import type { ProjectConfig } from "@superimg/types";
+import type { ProjectConfig, TailwindConfig } from "@superimg/types";
 
 export interface ParsedTemplate {
   templateCode: string;
@@ -29,6 +29,7 @@ export interface RenderConfig {
   fonts?: string[];
   inlineCss?: string[];
   stylesheets?: string[];
+  tailwind?: boolean | TailwindConfig;
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
 }
 
@@ -110,7 +111,7 @@ export function resolveRenderConfig(input: ResolveRenderConfigInput): RenderConf
   return { width, height, fps, durationSeconds };
 }
 
-/** Merge fonts, inlineCss, stylesheets from cascading config into template config */
+/** Merge fonts, inlineCss, stylesheets, tailwind from cascading config into template config */
 export function mergeCascadingIntoRenderConfig(
   templateConfig: RenderConfig | undefined,
   cascadingConfig: ProjectConfig | undefined
@@ -127,6 +128,10 @@ export function mergeCascadingIntoRenderConfig(
   }
   if (cascadingConfig?.outputs && !merged.outputs) {
     merged.outputs = cascadingConfig.outputs;
+  }
+  // Tailwind: template config takes precedence over cascading config
+  if (merged.tailwind === undefined && cascadingConfig?.tailwind !== undefined) {
+    merged.tailwind = cascadingConfig.tailwind;
   }
   return merged;
 }

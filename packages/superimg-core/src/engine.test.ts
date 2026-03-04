@@ -64,6 +64,34 @@ describe("createRenderPlan", () => {
     expect(plan.fonts).toContain("TemplateFont");
   });
 
+  it("resolves config.assets for preloading", async () => {
+    const code = `
+      import { defineScene } from 'superimg';
+      export default defineScene({
+        config: {
+          assets: {
+            logo: '/images/logo.png',
+            hero: { src: '/videos/hero.mp4' },
+          },
+        },
+        render(ctx) { return '<div></div>'; }
+      });
+    `;
+    const job = await jobFromCode(code);
+    const plan = createRenderPlan(job);
+    expect(plan.resolvedAssets).toHaveLength(2);
+    expect(plan.resolvedAssets.find((a) => a.key === "logo")).toEqual({
+      key: "logo",
+      type: "image",
+      src: "/images/logo.png",
+    });
+    expect(plan.resolvedAssets.find((a) => a.key === "hero")).toEqual({
+      key: "hero",
+      type: "video",
+      src: "/videos/hero.mp4",
+    });
+  });
+
   it("collects inlineCss and stylesheets from template config", async () => {
     const code = `
       import { defineScene } from 'superimg';

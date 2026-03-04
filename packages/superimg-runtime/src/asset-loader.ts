@@ -1,5 +1,13 @@
 //! Asset loader for images and videos
 
+import type {
+  AssetMeta,
+  ImageAssetMeta,
+  VideoAssetMeta,
+  AudioAssetMeta,
+  ResolvedAssetDeclaration,
+} from "@superimg/types";
+
 export class VideoAsset {
   private video: HTMLVideoElement;
   private canvas: OffscreenCanvas;
@@ -139,4 +147,165 @@ export class AssetLoader {
     this.videoCache.forEach((video) => video.dispose());
     this.videoCache.clear();
   }
+}
+
+// =============================================================================
+// Asset Metadata Loading (for ctx.assets)
+// =============================================================================
+
+interface AssetHeaders {
+  size: number;
+  mimeType: string;
+}
+
+/** Fetch size and mimeType via HEAD request */
+async function getAssetHeaders(src: string): Promise<AssetHeaders> {
+  try {
+    const res = await fetch(src, { method: "HEAD" });
+    return {
+      size: parseInt(res.headers.get("content-length") ?? "0", 10) || 0,
+      mimeType: res.headers.get("content-type")?.split(";")[0]?.trim() || "",
+    };
+  } catch {
+    return { size: 0, mimeType: "" };
+  }
+}
+
+/** Load image and extract metadata */
+async function loadImageMetadata(
+  src: string,
+  headers: AssetHeaders
+): Promise<ImageAssetMeta> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () =>
+      resolve({
+        type: "image",
+        url: src,
+        mimeType: headers.mimeType || "image/png",
+        size: headers.size,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+    img.src = src;
+  });
+}
+
+/** Load video and extract metadata */
+async function loadVideoMetadata(
+  src: string,
+  headers: AssetHeaders
+): Promise<VideoAssetMeta> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.crossOrigin = "anonymous";
+    video.preload = "metadata";
+    video.addEventListener(
+      "loadedmetadata",
+      () => {
+        resolve({
+          type: "video",
+          url: src,
+          mimeType: headers.mimeType || "video/mp4",
+          size: headers.size,
+          width: video.videoWidth,
+          height: video.videoHeight,
+          duration: video.duration,
+        });
+      },
+      { once: true }
+    );
+    video.addEventListener("error", () => reject(video.error), { once: true });
+    video.src = src;
+  });
+}
+
+/** Load audio and extract metadata */
+async function loadAudioMetadata(
+  src: string,
+  headers: AssetHeaders
+): Promise<AudioAssetMeta> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio();
+    audio.crossOrigin = "anonymous";
+    audio.addEventListener(
+      "loadedmetadata",
+      () => {
+        resolve({
+          type: "audio",
+          url: src,
+          mimeType: headers.mimeType || "audio/mpeg",
+          size: headers.size,
+          duration: audio.duration,
+        });
+      },
+      { once: true }
+    );
+    audio.addEventListener("error", () => reject(audio.error), { once: true });
+    audio.src = src;
+  });
+}
+
+/**
+ * Load asset and extract full metadata in browser environment.
+ * Used by Player to populate ctx.assets.
+ */
+export async function loadAssetWithMetadata(
+  decl: ResolvedAssetDeclaration
+): Promise<AssetMeta> {
+  const headers = await getAssetHeaders(decl.src);
+
+  try {
+    switch (decl.type) {
+      case "image":
+        return await loadImageMetadata(decl.src, headers);
+      case "video":
+        return await loadVideoMetadata(decl.src, headers);
+      case "audio":
+        return await loadAudioMetadata(decl.src, headers);
+      default:
+        // Fallback to image
+        return await loadImageMetadata(decl.src, headers);
+    }
+  } catch (err) {
+    // Return fallback metadata on failure
+    console.warn(`[superimg] Failed to load asset ${decl.key}:`, err);
+    const base = {
+      url: decl.src,
+      mimeType:
+        decl.type === "image"
+          ? "image/png"
+          : decl.type === "video"
+            ? "video/mp4"
+            : "audio/mpeg",
+      size: headers.size,
+    };
+    if (decl.type === "video") {
+      return { type: "video", ...base, width: 0, height: 0, duration: 0 };
+    }
+    if (decl.type === "audio") {
+      return { type: "audio", ...base, duration: 0 };
+    }
+    return { type: "image", ...base, width: 0, height: 0 };
+  }
+}
+
+/**
+ * Load all assets in parallel. Returns metadata map for ctx.assets.
+ */
+export async function loadAllAssetsWithMetadata(
+  declarations: ResolvedAssetDeclaration[]
+): Promise<Record<string, AssetMeta>> {
+  if (declarations.length === 0) return {};
+
+  const results = await Promise.all(
+    declarations.map(async (decl) => ({
+      key: decl.key,
+      meta: await loadAssetWithMetadata(decl),
+    }))
+  );
+
+  return Object.fromEntries(results.map(({ key, meta }) => [key, meta]));
 }

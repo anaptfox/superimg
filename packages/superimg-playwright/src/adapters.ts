@@ -1,7 +1,14 @@
 //! Playwright adapters implementing FrameRenderer and VideoEncoder contracts
 
 import type { Page } from "playwright";
-import type { FrameRendererConfig, VideoEncoderConfig, FrameRenderer, VideoEncoder } from "@superimg/types";
+import type {
+  FrameRendererConfig,
+  VideoEncoderConfig,
+  FrameRenderer,
+  VideoEncoder,
+  ResolvedAssetDeclaration,
+  AssetMeta,
+} from "@superimg/types";
 import { buildPageShell } from "@superimg/core/html";
 import { resolveAudio } from "@superimg/core";
 
@@ -23,6 +30,7 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
       fonts: config.fonts ?? [],
       inlineCss: config.inlineCss ?? [],
       stylesheets: config.stylesheets ?? [],
+      tailwind: config.tailwind,
     });
     await this.page.setContent(shell, { waitUntil: "load" });
     await this.page.evaluate(() => document.fonts.ready);
@@ -49,6 +57,118 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
 
   async dispose(): Promise<void> {
     // No-op
+  }
+
+  async preloadAssets(
+    declarations: ResolvedAssetDeclaration[]
+  ): Promise<Record<string, AssetMeta>> {
+    if (declarations.length === 0) return {};
+
+    return this.page.evaluate(
+      async (decls: ResolvedAssetDeclaration[]) => {
+        const result: Record<string, AssetMeta> = {};
+
+        const getHeaders = async (src: string, type: string) => {
+          try {
+            const res = await fetch(src, { method: "HEAD" });
+            return {
+              size: parseInt(res.headers.get("content-length") ?? "0", 10) || 0,
+              mimeType:
+                res.headers.get("content-type")?.split(";")[0]?.trim() ||
+                (type === "image" ? "image/png" : type === "video" ? "video/mp4" : "audio/mpeg"),
+            };
+          } catch {
+            return {
+              size: 0,
+              mimeType: type === "image" ? "image/png" : type === "video" ? "video/mp4" : "audio/mpeg",
+            };
+          }
+        };
+
+        for (const d of decls) {
+          try {
+            const { size, mimeType } = await getHeaders(d.src, d.type);
+
+            if (d.type === "image") {
+              const meta = await new Promise<AssetMeta>((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () =>
+                  resolve({
+                    type: "image",
+                    url: d.src,
+                    mimeType,
+                    size,
+                    width: img.naturalWidth,
+                    height: img.naturalHeight,
+                  });
+                img.onerror = () => reject(new Error(`Failed to load image: ${d.src}`));
+                img.src = d.src;
+              });
+              result[d.key] = meta;
+            } else if (d.type === "video") {
+              const meta = await new Promise<AssetMeta>((resolve, reject) => {
+                const video = document.createElement("video");
+                video.crossOrigin = "anonymous";
+                video.preload = "metadata";
+                video.addEventListener(
+                  "loadedmetadata",
+                  () => {
+                    resolve({
+                      type: "video",
+                      url: d.src,
+                      mimeType,
+                      size,
+                      width: video.videoWidth,
+                      height: video.videoHeight,
+                      duration: video.duration,
+                    });
+                  },
+                  { once: true }
+                );
+                video.addEventListener("error", () => reject(video.error), { once: true });
+                video.src = d.src;
+              });
+              result[d.key] = meta;
+            } else {
+              const meta = await new Promise<AssetMeta>((resolve, reject) => {
+                const audio = new Audio();
+                audio.crossOrigin = "anonymous";
+                audio.addEventListener(
+                  "loadedmetadata",
+                  () => {
+                    resolve({
+                      type: "audio",
+                      url: d.src,
+                      mimeType,
+                      size,
+                      duration: audio.duration,
+                    });
+                  },
+                  { once: true }
+                );
+                audio.addEventListener("error", () => reject(audio.error), { once: true });
+                audio.src = d.src;
+              });
+              result[d.key] = meta;
+            }
+          } catch (err) {
+            console.warn(`[superimg] Failed to load asset ${d.key}:`, err);
+            result[d.key] = {
+              type: d.type,
+              url: d.src,
+              mimeType: d.type === "image" ? "image/png" : d.type === "video" ? "video/mp4" : "audio/mpeg",
+              size: 0,
+              ...(d.type === "image" ? { width: 0, height: 0 } : {}),
+              ...(d.type === "video" ? { width: 0, height: 0, duration: 0 } : {}),
+              ...(d.type === "audio" ? { duration: 0 } : {}),
+            } as AssetMeta;
+          }
+        }
+        return result;
+      },
+      declarations
+    );
   }
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import posthog from "posthog-js";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,7 +51,7 @@ export function TopNav() {
         </div>
         <div className="flex items-center gap-1">
           <Button asChild variant="ghost" size="icon" aria-label="GitHub">
-            <a href="https://github.com/anaptfox/superimg" target="_blank" rel="noopener noreferrer">
+            <a href="https://github.com/anaptfox/superimg" target="_blank" rel="noopener noreferrer" onClick={() => posthog.capture("github_link_clicked", { location: "topnav" })}>
               <Github className="h-4 w-4" />
             </a>
           </Button>
@@ -77,6 +78,7 @@ export function TopNav() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    onClick={() => posthog.capture("github_link_clicked", { location: "mobile_menu" })}
                   >
                     GitHub
                   </a>

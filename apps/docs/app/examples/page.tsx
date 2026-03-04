@@ -5,6 +5,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
+import posthog from "posthog-js";
 import {
   ReelsPlayer,
   type ReelsPlayerRef,
@@ -132,6 +133,7 @@ export default function ExamplesPage() {
                         onClick={(e) => {
                           e.stopPropagation();
                           setFormat(opt.id);
+                          posthog.capture("examples_format_changed", { format: opt.id });
                         }}
                         style={{
                           display: "flex",
@@ -207,7 +209,7 @@ export default function ExamplesPage() {
 
               <Link
                 href={`/playground?example=${item.id}`}
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); posthog.capture("example_opened_in_playground", { example_id: item.id as string, example_title: item.title as string }); }}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",

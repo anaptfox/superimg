@@ -6,7 +6,16 @@ import type {
   EncodingOptions,
   BackgroundValue,
   RenderContext,
+  TailwindConfig,
+  AssetMeta,
 } from "./types.js";
+
+/** Resolved asset declaration for preloading (from @superimg/core) */
+export interface ResolvedAssetDeclaration {
+  key: string;
+  type: "image" | "video" | "audio";
+  src: string;
+}
 
 export interface RenderJob {
   templateCode: string;
@@ -19,6 +28,8 @@ export interface RenderJob {
   inlineCss?: string[];
   /** Global stylesheet URLs to merge with template config */
   stylesheets?: string[];
+  /** Enable Tailwind v4 Play CDN */
+  tailwind?: boolean | TailwindConfig;
   audio?: AudioValue;
   outputName?: string;
   encoding?: EncodingOptions;
@@ -38,12 +49,20 @@ export interface FrameRendererConfig {
   fonts?: string[];
   inlineCss?: string[];
   stylesheets?: string[];
+  tailwind?: boolean | TailwindConfig;
 }
 
 export interface FrameRenderer<TFrame = unknown> {
   init(config: FrameRendererConfig): Promise<void>;
   captureFrame(html: string, options?: { alpha?: boolean }): Promise<TFrame>;
   dispose(): Promise<void>;
+  /**
+   * Optional: Preload config.assets and extract metadata.
+   * Called before the frame loop. If not implemented, ctx.assets will be empty.
+   */
+  preloadAssets?(
+    declarations: ResolvedAssetDeclaration[]
+  ): Promise<Record<string, AssetMeta>>;
 }
 
 export interface VideoEncoderConfig {
@@ -77,11 +96,14 @@ export interface RenderPlan {
   fonts: string[];
   inlineCss: string[];
   stylesheets: string[];
+  tailwind?: boolean | TailwindConfig;
   audio?: AudioValue;
   outputName: string;
   encoding?: EncodingOptions;
   data?: Record<string, unknown>;
   background?: BackgroundValue;
+  /** Resolved config.assets for preloading */
+  resolvedAssets: ResolvedAssetDeclaration[];
 }
 
 export interface FramePresenter {
@@ -92,7 +114,7 @@ export interface FramePresenter {
   /** Set the logical render size (triggers scale update for CSS-scaled presenters) */
   setLogicalSize?(width: number, height: number): void;
   /** Inject stylesheets and inline CSS (for config.inlineCss/config.stylesheets). Call before first present. */
-  injectStyles?(inlineCss?: string[], stylesheets?: string[]): void;
+  injectStyles?(inlineCss?: string[], stylesheets?: string[], tailwind?: boolean | TailwindConfig): void;
   /** Pre-cache fonts/images for faster first render */
   warmup?(): Promise<void>;
   /** Cleanup resources */

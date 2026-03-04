@@ -9,6 +9,7 @@ import type {
   RenderContext,
   TemplateModule,
 } from "@superimg/types";
+import { resolveConfigAssets } from "./assets.js";
 import { TemplateRuntimeError } from "@superimg/types";
 import { compileTemplate } from "./compiler.js";
 import { createRenderContext } from "./wasm.js";
@@ -81,6 +82,7 @@ export function createRenderPlan(job: RenderJob): RenderPlan {
     fonts: globalFonts,
     inlineCss: globalInlineCss,
     stylesheets: globalStylesheets,
+    tailwind: globalTailwind,
     audio,
     outputName = "default",
     encoding,
@@ -106,7 +108,12 @@ export function createRenderPlan(job: RenderJob): RenderPlan {
   const inlineCss = [...(globalInlineCss ?? []), ...(template.config?.inlineCss ?? [])];
   const stylesheets = [...(globalStylesheets ?? []), ...(template.config?.stylesheets ?? [])];
 
+  // Merge tailwind config (template takes precedence over global)
+  const templateTailwind = template.config?.tailwind;
+  const tailwind = templateTailwind ?? globalTailwind;
+
   const totalFrames = Math.ceil(durationSeconds * fps);
+  const resolvedAssets = resolveConfigAssets(template.config?.assets);
 
   return {
     template,
@@ -118,11 +125,13 @@ export function createRenderPlan(job: RenderJob): RenderPlan {
     fonts,
     inlineCss,
     stylesheets,
+    tailwind,
     audio,
     outputName,
     encoding,
     data,
     background,
+    resolvedAssets,
   };
 }
 
@@ -145,13 +154,20 @@ export async function executeRenderPlan<TFrame>(
     fonts,
     inlineCss,
     stylesheets,
+    tailwind,
     outputName,
     encoding,
     data,
     background,
+    resolvedAssets,
   } = plan;
 
-  await renderer.init({ width, height, fonts, inlineCss, stylesheets });
+  await renderer.init({ width, height, fonts, inlineCss, stylesheets, tailwind });
+
+  let assetsMap: Record<string, import("@superimg/types").AssetMeta> = {};
+  if (resolvedAssets.length > 0 && renderer.preloadAssets) {
+    assetsMap = await renderer.preloadAssets(resolvedAssets);
+  }
   await encoder.init({
     width,
     height,
@@ -170,7 +186,8 @@ export async function executeRenderPlan<TFrame>(
         width,
         height,
         mergedData,
-        outputName
+        outputName,
+        assetsMap
       );
 
       const html = safeRender(template, ctx, outputName);

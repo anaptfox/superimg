@@ -1,5 +1,32 @@
 import { describe, it, expect } from "vitest";
 import { buildPageShell } from "./html.js";
+import { buildTailwindScript, TAILWIND_CDN_URL } from "./css.js";
+
+describe("buildTailwindScript", () => {
+  it("returns empty string when tailwind is falsy", () => {
+    expect(buildTailwindScript(undefined)).toBe("");
+    expect(buildTailwindScript(false)).toBe("");
+  });
+
+  it("returns CDN script when tailwind is true", () => {
+    const result = buildTailwindScript(true);
+    expect(result).toBe(`<script src="${TAILWIND_CDN_URL}"></script>`);
+  });
+
+  it("returns CDN script with custom CSS when config has css", () => {
+    const result = buildTailwindScript({
+      css: `@theme { --color-brand: #ff6b35; }`,
+    });
+    expect(result).toContain(`<script src="${TAILWIND_CDN_URL}"></script>`);
+    expect(result).toContain('<style type="text/tailwindcss">');
+    expect(result).toContain("--color-brand: #ff6b35");
+  });
+
+  it("returns only CDN script when config has no css", () => {
+    const result = buildTailwindScript({});
+    expect(result).toBe(`<script src="${TAILWIND_CDN_URL}"></script>`);
+  });
+});
 
 describe("buildPageShell", () => {
   it("injects stylesheet links when stylesheets provided", () => {
@@ -33,5 +60,42 @@ describe("buildPageShell", () => {
     expect(shell).toContain("@layer user");
     // User CSS should be in the user layer
     expect(shell).toContain("background:");
+  });
+
+  it("injects Tailwind CDN script when tailwind is true", () => {
+    const shell = buildPageShell({
+      fonts: [],
+      tailwind: true,
+    });
+    expect(shell).toContain(`<script src="${TAILWIND_CDN_URL}"></script>`);
+  });
+
+  it("injects Tailwind CDN with custom theme CSS", () => {
+    const shell = buildPageShell({
+      fonts: [],
+      tailwind: {
+        css: `@theme { --color-brand: #ff6b35; }`,
+      },
+    });
+    expect(shell).toContain(`<script src="${TAILWIND_CDN_URL}"></script>`);
+    expect(shell).toContain('<style type="text/tailwindcss">');
+    expect(shell).toContain("--color-brand: #ff6b35");
+  });
+
+  it("places Tailwind script before other styles", () => {
+    const shell = buildPageShell({
+      fonts: ["Inter"],
+      stylesheets: ["https://example.com/custom.css"],
+      inlineCss: [".my-class { color: red; }"],
+      tailwind: true,
+    });
+    const tailwindIndex = shell.indexOf(TAILWIND_CDN_URL);
+    const fontIndex = shell.indexOf("fonts.googleapis.com");
+    const stylesheetIndex = shell.indexOf("example.com/custom.css");
+    const inlineIndex = shell.indexOf("@layer reset");
+    // Tailwind should come first
+    expect(tailwindIndex).toBeLessThan(fontIndex);
+    expect(tailwindIndex).toBeLessThan(stylesheetIndex);
+    expect(tailwindIndex).toBeLessThan(inlineIndex);
   });
 });

@@ -64,6 +64,7 @@ export async function renderVideo(
       fonts: templateData.templateConfig?.fonts,
       inlineCss: templateData.templateConfig?.inlineCss,
       stylesheets: templateData.templateConfig?.stylesheets,
+      tailwind: templateData.templateConfig?.tailwind,
       outputName: "default",
       encoding: options.encoding,
       data: options.data,

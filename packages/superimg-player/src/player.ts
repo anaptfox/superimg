@@ -10,6 +10,7 @@ import type {
   LoadMode,
   HoverBehavior,
   FramePresenter,
+  AssetMeta,
 } from "@superimg/types";
 import { SuperImgError } from "@superimg/types";
 import { getPreset } from "@superimg/stdlib";
@@ -137,8 +138,9 @@ class PlayerNotReadyError extends SuperImgError {
     this.name = "PlayerNotReadyError";
   }
 }
-import { CheckpointResolver, createRenderContext } from "@superimg/core";
+import { CheckpointResolver, createRenderContext, resolveConfigAssets } from "@superimg/core";
 import { buildCompositeHtml } from "@superimg/core/html";
+import { loadAllAssetsWithMetadata } from "@superimg/runtime";
 import { createPlayerStore, type PlayerStore, type PlayerConfig } from "./state.js";
 import { createPlaybackController, type PlaybackController } from "./playback.js";
 import { HtmlPresenter } from "./html-presenter.js";
@@ -187,6 +189,7 @@ export class Player {
   private events: Partial<PlayerEvents> = {};
   private _isReady = false;
   private _data: Record<string, unknown> = {};
+  private _assetsMap: Record<string, AssetMeta> = {};
 
   constructor(options: PlayerOptions) {
     // Resolve container
@@ -254,6 +257,14 @@ export class Player {
       const totalFrames = Math.ceil(durationSeconds * fps);
       this._totalFrames = totalFrames;
       this._fps = fps;
+
+      // Load assets with metadata for ctx.assets
+      const assetDeclarations = resolveConfigAssets(this.template.config?.assets);
+      if (assetDeclarations.length > 0) {
+        this._assetsMap = await loadAllAssetsWithMetadata(assetDeclarations);
+      } else {
+        this._assetsMap = {};
+      }
 
       // Create checkpoint resolver if markers provided
       if (loadOptions?.markers?.length) {
@@ -375,7 +386,9 @@ export class Player {
       this._totalFrames,
       this._renderWidth,
       this._renderHeight,
-      mergedData
+      mergedData,
+      "default",
+      this._assetsMap
     );
 
     try {
@@ -725,6 +738,7 @@ export class Player {
     this._store = null;
     this._checkpointResolver = null;
     this.template = null;
+    this._assetsMap = {};
     this.presenter.dispose();
     this.events = {};
     this._isReady = false;

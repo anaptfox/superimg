@@ -131,6 +131,9 @@ export interface RenderContext<
   /** Template data (merged from template defaults + incoming data) */
   data: TData;
 
+  /** Resolved static assets with full metadata (from config.assets) */
+  assets: Record<string, AssetMeta>;
+
   // === Output Info ===
   /** Output configuration */
   output: OutputInfo;
@@ -206,6 +209,12 @@ export interface ProjectConfig {
   stylesheets?: string[];
   /** Named output presets */
   outputs?: Record<string, OutputPreset>;
+  /**
+   * Enable Tailwind v4 Play CDN.
+   * - `true`: Enable with defaults
+   * - `TailwindConfig`: Enable with custom @theme CSS
+   */
+  tailwind?: boolean | TailwindConfig;
 }
 
 /**
@@ -254,6 +263,17 @@ export interface TemplateConfig {
   background?: BackgroundValue;
   /** Named output presets */
   outputs?: Record<string, OutputPreset>;
+  /**
+   * Enable Tailwind v4 Play CDN.
+   * - `true`: Enable with defaults
+   * - `TailwindConfig`: Enable with custom @theme CSS
+   */
+  tailwind?: boolean | TailwindConfig;
+  /**
+   * Static assets to preload before rendering.
+   * Keys become accessible via ctx.assets.{key}
+   */
+  assets?: Record<string, string | AssetDeclaration>;
 }
 
 // =============================================================================
@@ -273,6 +293,55 @@ export type HoverBehavior = "none" | "play" | "preview-scrub";
 // ASSET TYPES
 // =============================================================================
 
+/** Asset reference (URL string) - used in template data schemas for data-driven assets */
+export type AssetRef = string & { readonly __assetRef: true };
+
+/** Declaration for a static asset in config.assets */
+export interface AssetDeclaration {
+  src: string;
+  /** Auto-detected from extension if omitted */
+  type?: "image" | "video" | "audio";
+}
+
+/** Base metadata for all assets */
+export interface AssetMetaBase {
+  /** Resolved URL to the asset */
+  url: string;
+  /** MIME type (e.g., 'image/png', 'video/mp4') */
+  mimeType: string;
+  /** File size in bytes */
+  size: number;
+}
+
+/** Metadata for image assets */
+export interface ImageAssetMeta extends AssetMetaBase {
+  type: "image";
+  /** Width in pixels */
+  width: number;
+  /** Height in pixels */
+  height: number;
+}
+
+/** Metadata for video assets */
+export interface VideoAssetMeta extends AssetMetaBase {
+  type: "video";
+  /** Width in pixels */
+  width: number;
+  /** Height in pixels */
+  height: number;
+  /** Duration in seconds */
+  duration: number;
+}
+
+/** Metadata for audio assets */
+export interface AudioAssetMeta extends AssetMetaBase {
+  type: "audio";
+  /** Duration in seconds */
+  duration: number;
+}
+
+export type AssetMeta = ImageAssetMeta | VideoAssetMeta | AudioAssetMeta;
+
 export interface BackgroundOptions {
   src: string;
   fit?: FitMode;
@@ -290,6 +359,31 @@ export interface AudioOptions {
 
 export type BackgroundValue = string | BackgroundOptions;
 export type AudioValue = string | AudioOptions;
+
+// =============================================================================
+// TAILWIND CONFIG
+// =============================================================================
+
+/**
+ * Tailwind v4 Play CDN configuration.
+ * @see https://tailwindcss.com/docs/installation/play-cdn
+ */
+export interface TailwindConfig {
+  /**
+   * Custom Tailwind CSS (supports @theme, @layer, etc.)
+   * Injected as `<style type="text/tailwindcss">`.
+   *
+   * @example
+   * ```typescript
+   * css: `
+   *   @theme {
+   *     --color-brand: #ff6b35;
+   *   }
+   * `
+   * ```
+   */
+  css?: string;
+}
 
 // =============================================================================
 // RENDER OPTIONS (kept for internal use)

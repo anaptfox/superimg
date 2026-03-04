@@ -1,6 +1,6 @@
 //! Pure TypeScript implementations (no WASM)
 
-import type { RenderContext } from "@superimg/types";
+import type { RenderContext, AssetMeta } from "@superimg/types";
 import { stdlib } from "./stdlib.js";
 
 /**
@@ -24,7 +24,8 @@ export function createRenderContext(
   width: number,
   height: number,
   data: Record<string, unknown> = {},
-  outputName: string = "default"
+  outputName: string = "default",
+  assets: Record<string, AssetMeta> = {}
 ): RenderContext {
   const timeSeconds = frame / fps;
   const progress =
@@ -81,6 +82,9 @@ export function createRenderContext(
 
     // Data
     data,
+
+    // Assets
+    assets,
 
     // CSS viewport
     cssViewport: {

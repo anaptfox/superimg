@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import posthog from "posthog-js";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TemplateCard } from "./TemplateCard";
 import {
@@ -13,6 +14,11 @@ const ALL_CATEGORY = { id: "all", title: "All" } as const;
 
 export function TemplateGrid() {
   const [activeCategory, setActiveCategory] = useState("all");
+
+  const handleCategoryChange = (category: string) => {
+    setActiveCategory(category);
+    posthog.capture("playground_category_filtered", { category });
+  };
 
   const filteredExamples =
     activeCategory === "all"
@@ -36,7 +42,7 @@ export function TemplateGrid() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Tabs
             value={activeCategory}
-            onValueChange={setActiveCategory}
+            onValueChange={handleCategoryChange}
             className="w-full"
           >
             <TabsList variant="line" className="h-12 gap-0">

@@ -4,9 +4,13 @@ import type {
   BackgroundValue,
   AudioValue,
   FitMode,
+  AssetDeclaration,
+  ResolvedAssetDeclaration,
 } from "@superimg/types";
 
 export type AssetType = "solid" | "image" | "video" | "audio";
+
+export type { ResolvedAssetDeclaration };
 
 export interface ResolvedBackground {
   type: AssetType;
@@ -23,6 +27,15 @@ export interface ResolvedAudio {
   volume: number;
   fadeIn?: number;
   fadeOut?: number;
+}
+
+/**
+ * Detect config asset type from file extension (image, video, audio only)
+ */
+function detectConfigAssetType(src: string): "image" | "video" | "audio" {
+  if (/\.(mp4|webm|mov|avi|mkv|flv|wmv)$/i.test(src)) return "video";
+  if (/\.(mp3|wav|ogg|aac|m4a|flac|opus)$/i.test(src)) return "audio";
+  return "image";
 }
 
 /**
@@ -92,4 +105,30 @@ export function resolveAudio(value: AudioValue): ResolvedAudio {
     fadeIn: value.fadeIn,
     fadeOut: value.fadeOut,
   };
+}
+
+/**
+ * Resolve config.assets to normalized declarations for loading.
+ * Supports shorthand (string) and explicit (AssetDeclaration) forms.
+ */
+export function resolveConfigAssets(
+  assets: Record<string, string | AssetDeclaration> | undefined
+): ResolvedAssetDeclaration[] {
+  if (!assets || Object.keys(assets).length === 0) return [];
+
+  return Object.entries(assets).map(([key, value]) => {
+    if (typeof value === "string") {
+      return {
+        key,
+        type: detectConfigAssetType(value),
+        src: value,
+      };
+    }
+    const type = value.type ?? detectConfigAssetType(value.src);
+    return {
+      key,
+      type,
+      src: value.src,
+    };
+  });
 }

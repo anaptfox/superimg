@@ -1,5 +1,5 @@
 import morphdom from "morphdom";
-import type { FramePresenter, RenderContext } from "@superimg/types";
+import type { FramePresenter, RenderContext, TailwindConfig } from "@superimg/types";
 
 /**
  * HtmlPresenter renders templates in an iframe with CSS transform scaling.
@@ -23,6 +23,7 @@ export class HtmlPresenter implements FramePresenter {
   private pendingCtx: RenderContext | null = null;
   private pendingInlineCss: string[] = [];
   private pendingStylesheets: string[] = [];
+  private pendingTailwind: boolean | TailwindConfig | undefined = undefined;
   private stylesInjected = false;
 
   constructor(container: HTMLElement) {
@@ -56,7 +57,24 @@ export class HtmlPresenter implements FramePresenter {
 
   private injectStylesIntoDoc(doc: Document): void {
     if (this.stylesInjected) return;
-    if (this.pendingStylesheets.length === 0 && this.pendingInlineCss.length === 0) return;
+    const hasTailwind = !!this.pendingTailwind;
+    const hasStyles = this.pendingStylesheets.length > 0 || this.pendingInlineCss.length > 0;
+    if (!hasTailwind && !hasStyles) return;
+
+    // Inject Tailwind CDN script first (must be before styles)
+    if (this.pendingTailwind) {
+      const script = doc.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4";
+      doc.head.appendChild(script);
+
+      // Inject custom Tailwind CSS if provided
+      if (typeof this.pendingTailwind === "object" && this.pendingTailwind.css) {
+        const tailwindStyle = doc.createElement("style");
+        tailwindStyle.setAttribute("type", "text/tailwindcss");
+        tailwindStyle.textContent = this.pendingTailwind.css;
+        doc.head.appendChild(tailwindStyle);
+      }
+    }
 
     for (const url of this.pendingStylesheets) {
       const link = doc.createElement("link");
@@ -72,9 +90,10 @@ export class HtmlPresenter implements FramePresenter {
     this.stylesInjected = true;
   }
 
-  injectStyles(inlineCss?: string[], stylesheets?: string[]): void {
+  injectStyles(inlineCss?: string[], stylesheets?: string[], tailwind?: boolean | TailwindConfig): void {
     this.pendingInlineCss = inlineCss ?? [];
     this.pendingStylesheets = stylesheets ?? [];
+    this.pendingTailwind = tailwind;
     this.stylesInjected = false;
     const doc = this.iframe.contentDocument;
     if (doc && doc.head) {
