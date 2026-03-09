@@ -496,12 +496,6 @@ importers:
         specifier: workspace:*
         version: link:../../../apps/superimg
 
-  examples/templates/vumbnail-explainer:
-    dependencies:
-      superimg:
-        specifier: workspace:*
-        version: link:../../../apps/superimg
-
   packages/superimg-core:
     dependencies:
       '@superimg/stdlib':
