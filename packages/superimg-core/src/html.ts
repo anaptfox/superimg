@@ -42,13 +42,11 @@ export function buildCompositeHtml(
   return layers.join("\n");
 }
 
-export interface PageShellConfig extends CssConfig {}
-
 /**
  * Build page shell HTML with font links, stylesheets, and inline CSS.
  * Injected once per render session, not per frame.
  */
-export function buildPageShell(config: PageShellConfig): string {
+export function buildPageShell(config: CssConfig): string {
   const headStyles = buildHeadStyles(config);
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">${headStyles}</head><body><div id="frame" style="position:relative;width:100%;height:100%;"></div></body></html>`;

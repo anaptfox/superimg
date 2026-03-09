@@ -64,19 +64,31 @@ export function resolveTemplatePath(input: string, cwd = process.cwd()): string 
   // 2. Project-wide fallback
   const videos = discoverVideos(projectRoot);
 
-  // Warn on duplicate names
+  // Warn on duplicate short names
   const dupWarning = checkDuplicateVideoNames(videos);
   if (dupWarning) {
     console.warn(`Warning: ${dupWarning}`);
   }
 
-  const matches = videos.filter((v) => v.name === baseName);
-  if (matches.length > 1) {
+  // Try short name match first (e.g. "hello-world" matches hello-world/hello-world.video.ts)
+  const shortMatches = videos.filter((v) => v.shortName === baseName);
+  if (shortMatches.length === 1) {
+    return shortMatches[0].entrypoint;
+  }
+  if (shortMatches.length > 1) {
     throw new Error(
-      `Video name "${baseName}" is ambiguous. Found:\n${matches.map((v) => `  - ${v.relativePath}`).join("\n")}\nUse an explicit path to disambiguate (e.g. ./${matches[0].relativePath}).`
+      `Video name "${baseName}" is ambiguous. Found:\n${shortMatches.map((v) => `  - ${v.relativePath}`).join("\n")}\nUse an explicit path to disambiguate (e.g. ./${shortMatches[0].relativePath}).`
     );
   }
-  const match = matches[0];
+
+  // Fallback to full name match
+  const fullMatches = videos.filter((v) => v.name === baseName);
+  if (fullMatches.length > 1) {
+    throw new Error(
+      `Video name "${baseName}" is ambiguous. Found:\n${fullMatches.map((v) => `  - ${v.relativePath}`).join("\n")}\nUse an explicit path to disambiguate (e.g. ./${fullMatches[0].relativePath}).`
+    );
+  }
+  const match = fullMatches[0];
   if (match) {
     return match.entrypoint;
   }

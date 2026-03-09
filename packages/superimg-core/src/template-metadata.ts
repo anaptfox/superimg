@@ -243,6 +243,20 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
           }
         }
       }
+      // compose([...]) returns a TemplateModule with render
+      if (expr && expr.type === "CallExpression") {
+        const callee = expr.callee;
+        const calleeName =
+          callee.type === "Identifier"
+            ? callee.name
+            : callee.type === "MemberExpression" &&
+                callee.property.type === "Identifier"
+              ? callee.property.name
+              : undefined;
+        if (calleeName === "compose") {
+          hasRenderExport = true;
+        }
+      }
     }
   }
 

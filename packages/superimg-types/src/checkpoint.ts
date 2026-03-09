@@ -24,7 +24,8 @@ export interface Checkpoint {
  */
 export type CheckpointSource =
   | { type: "marker"; markerId: string }
-  | { type: "runtime" };
+  | { type: "runtime" }
+  | { type: "scene"; sceneId: string };
 
 /**
  * A marker defines a checkpoint at authoring time.

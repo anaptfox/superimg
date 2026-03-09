@@ -202,8 +202,17 @@ async function checkPlaywrightAvailable(): Promise<{ available: boolean; message
   // Local environment - check for regular Playwright
   try {
     const { chromium } = await import("playwright");
-    // Try to get executable path - this throws if browsers not installed
-    chromium.executablePath();
+    const execPath = chromium.executablePath();
+
+    // executablePath() returns a path even if browser isn't installed
+    // We need to verify the file actually exists
+    const fs = await import("node:fs");
+    if (!execPath || !fs.existsSync(execPath)) {
+      return {
+        available: false,
+        message: "Playwright browsers not installed. Run 'superimg setup' first.",
+      };
+    }
     return { available: true };
   } catch {
     return {

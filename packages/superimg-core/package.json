@@ -40,10 +40,11 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "generate": "tsx scripts/generate-runtime.ts",
+    "build": "pnpm run generate && tsup",
     "dev": "tsup --watch",
     "test": "vitest --run",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist src/generated"
   },
   "files": [
     "dist"

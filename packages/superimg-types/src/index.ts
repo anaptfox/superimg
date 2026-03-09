@@ -30,6 +30,16 @@ export type {
   OutputPreset,
   ProjectConfig,
 
+  // Scene Composition
+  Duration,
+  TransitionType,
+  EasingName,
+  Transition,
+  SceneDefinition,
+  ResolvedTransition,
+  ResolvedScene,
+  ComposedTemplate,
+
   RenderOptions,
 
   // Encoding Options
@@ -95,11 +105,8 @@ export {
 // Implementation types (PlayerState, PlayerStore, etc.) are in @superimg/player
 // =============================================================================
 
-export type {
-  PlayerOptions,
-  PlayerEvents,
-  PlayerInput,
-} from "./player.js";
+export type { PlayerOptions, PlayerEvents, PlayerInput } from "./player.js";
+export { isComposedTemplate } from "./player.js";
 
 // =============================================================================
 // STDLIB TYPES

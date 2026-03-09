@@ -1,5 +1,11 @@
 //! Shared esbuild plugin for superimg template bundling
 //! Used by both server (esbuild) and browser (esbuild-wasm) bundlers
+//!
+//! This plugin handles:
+//! 1. "superimg" - provides defineScene, defineConfig, compose, scene
+//! 2. "@superimg/stdlib/*" - stripped (accessed via ctx.std at runtime)
+
+import { RUNTIME_CODE } from "./generated/runtime-code.js";
 
 interface EsbuildPlugin {
   name: string;
@@ -7,27 +13,31 @@ interface EsbuildPlugin {
 }
 
 /**
- * Creates the esbuild plugin that shims `superimg` imports (defineScene)
+ * Creates the esbuild plugin that provides the `superimg` virtual module
  * and strips `@superimg/stdlib` imports (accessed via ctx.std at runtime).
  */
 export function createSuperimgPlugin(namespace = "superimg-virtual"): EsbuildPlugin {
   return {
     name: "superimg-resolve",
     setup(build) {
-      // Shim defineScene
+      // Resolve "superimg" to virtual module
       build.onResolve({ filter: /^superimg$/ }, () => ({
         path: "superimg",
         namespace,
       }));
+
+      // Load the virtual "superimg" module (generated from compose, scene, etc.)
       build.onLoad({ filter: /^superimg$/, namespace }, () => ({
-        contents: 'export function defineScene(m) { return m; }\nexport function defineConfig(c) { return c; }',
+        contents: RUNTIME_CODE,
         loader: "js",
       }));
+
       // Strip stdlib imports (accessed via ctx.std at runtime)
       build.onResolve({ filter: /^@superimg\/stdlib/ }, () => ({
         path: "stdlib-noop",
         namespace,
       }));
+
       build.onLoad({ filter: /^stdlib-noop$/, namespace }, () => ({
         contents: "export {}",
         loader: "js",

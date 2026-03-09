@@ -2,6 +2,7 @@
 //! Explicit, typed, self-documenting interfaces for templates, rendering, and playback
 
 import type { Stdlib } from "./stdlib.js";
+import type { Checkpoint } from "./checkpoint.js";
 
 // =============================================================================
 // BRANDED TYPES - Prevent mixing structurally identical but semantically different values
@@ -70,9 +71,7 @@ export function defineScene<TData>(
  * - `scene*` - Position within current template (equals global* in single-template mode)
  * - Explicit units in names (Seconds, Frames)
  */
-export interface RenderContext<
-  TData = Record<string, unknown>,
-> {
+export interface RenderContext<TData = Record<string, unknown>> {
   // === Stdlib (explicit, no ambient global) ===
   /** Standard library utilities (easing, math, color, etc.) */
   std: Stdlib;
@@ -242,10 +241,17 @@ export interface TemplateConfig {
    *
    * Duration precedence (highest wins):
    * 1. CLI flags (`--duration`)
-   * 2. This `config.durationSeconds` value
+   * 2. This `config.durationSeconds` or `config.duration` value
    * 3. Built-in default (5 s)
    */
   durationSeconds?: number;
+  /**
+   * Frame to use for thumbnail/preview image.
+   * - Integer >= 1: specific frame number
+   * - Decimal 0-1: progress through video (e.g., 0.25 = 25%)
+   * - Omit: auto-select (scene boundary or 25% fallback)
+   */
+  thumbnailAt?: number;
   /**
    * Raw CSS strings to inject into the page (e.g. utility classes, Tailwind precompiled output).
    * Injected once per render session, not per frame.
@@ -274,6 +280,86 @@ export interface TemplateConfig {
    * Keys become accessible via ctx.assets.{key}
    */
   assets?: Record<string, string | AssetDeclaration>;
+}
+
+// =============================================================================
+// SCENE COMPOSITION TYPES
+// =============================================================================
+
+/** Duration: number (seconds), string ('5s', '500ms', '30f'), or undefined */
+export type Duration = number | `${number}s` | `${number}ms` | `${number}f`;
+
+/** Transition type for scene enter/exit */
+export type TransitionType =
+  | "none"
+  | "fade"
+  | "slide-left"
+  | "slide-right"
+  | "slide-up"
+  | "slide-down";
+
+/** Easing name for transitions (matches stdlib EasingName) */
+export type EasingName = string;
+
+/** Transition definition for scene enter/exit */
+export interface Transition {
+  type: TransitionType;
+  duration: Duration;
+  easing?: EasingName;
+}
+
+/** Input definition for a scene in compose() */
+export interface SceneDefinition<TData = Record<string, unknown>> {
+  template: TemplateModule<TData>;
+  duration?: Duration;
+  id?: string;
+  label?: string;
+  data?: Partial<TData>;
+  enter?: Transition;
+  exit?: Transition;
+}
+
+/** Resolved transition with numeric duration in seconds */
+export interface ResolvedTransition {
+  type: TransitionType;
+  durationSeconds: number;
+  easing?: EasingName;
+}
+
+/** Resolved scene with frame boundaries (internal) */
+export interface ResolvedScene {
+  id: string;
+  label?: string;
+  index: number;
+  template: TemplateModule;
+  startFrame: number;
+  endFrame: number;
+  totalFrames: number;
+  durationSeconds: number;
+  data: Record<string, unknown>;
+  enterTransition?: ResolvedTransition;
+  exitTransition?: ResolvedTransition;
+}
+
+/** Output of compose() - first-class composed video with scene access */
+export interface ComposedTemplate<TShared = Record<string, unknown>> {
+  readonly type: "composed";
+  readonly scenes: readonly ResolvedScene[];
+  readonly totalFrames: number;
+  readonly durationSeconds: number;
+  readonly fps: number;
+  readonly config: TemplateConfig;
+
+  /** Get scene by index */
+  getScene(index: number): ResolvedScene | undefined;
+  /** Get scene by id */
+  getSceneById(id: string): ResolvedScene | undefined;
+  /** Get scene at given frame */
+  getSceneAtFrame(frame: number): ResolvedScene;
+  /** Render HTML for given frame */
+  render(ctx: RenderContext): string;
+  /** Get checkpoints from scene boundaries */
+  getCheckpoints(): Checkpoint[];
 }
 
 // =============================================================================
@@ -399,6 +485,8 @@ export interface RenderOptions {
   inlineCss?: string[];
   /** Stylesheet URLs to load */
   stylesheets?: string[];
+  /** Tailwind v4 Play CDN config */
+  tailwind?: boolean | TailwindConfig;
 }
 
 // =============================================================================

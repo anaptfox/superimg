@@ -9,6 +9,8 @@ export type {
   LoadOptions,
   LoadResult,
   FormatOption,
+  CaptureOptions,
+  CapturedFrame,
 } from "./player.js";
 
 // Re-export player components for advanced usage
@@ -27,7 +29,6 @@ export type { PlayerState } from "./state.js";
 
 // Re-export checkpoint types for convenience
 export type { Checkpoint, CheckpointSource, Marker, MarkerPosition } from "@superimg/types";
-export { CheckpointResolver } from "@superimg/core";
 
 export { createPlaybackController } from "./playback.js";
 export type { PlaybackController, PlaybackCallbacks } from "./playback.js";
@@ -37,9 +38,6 @@ export type { TimelineController, TimelineElements, CheckpointMarkerOptions } fr
 
 export { createCheckpointControls } from "./controls.js";
 export type { CheckpointControls, CheckpointControlsOptions } from "./controls.js";
-
-// Re-export CanvasRenderer from runtime for convenience
-export { CanvasRenderer } from "@superimg/runtime";
 
 export { HtmlPresenter } from "./html-presenter.js";
 export { CanvasPresenter } from "./canvas-presenter.js";

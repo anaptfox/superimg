@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useVideoSession, DataForm, VideoControls, type ExportOptions } from "superimg-react";
+import { useVideoSession, DataForm, VideoControls, isComposedTemplate, type ExportOptions } from "superimg-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
@@ -490,7 +490,7 @@ export default function Editor({ templateId }: EditorProps) {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="max-h-[200px] overflow-y-auto px-4 pb-4">
-                {session.template?.defaults && Object.keys(session.template.defaults).length > 0 ? (
+                {session.template && !isComposedTemplate(session.template) && session.template.defaults && Object.keys(session.template.defaults).length > 0 ? (
                   <DataForm
                     defaults={session.template.defaults}
                     data={formData}

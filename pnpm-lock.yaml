@@ -442,6 +442,66 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0)
 
+  examples/templates/assets-demo:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
+  examples/templates/compose-demo:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
+  examples/templates/countdown:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
+  examples/templates/define-template:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
+  examples/templates/hello-world:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
+  examples/templates/lower-thirds:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
+  examples/templates/phase-demo:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
+  examples/templates/stats-card:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
+  examples/templates/tailwind-test:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
+  examples/templates/vumbnail-explainer:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
   packages/superimg-core:
     dependencies:
       '@superimg/stdlib':

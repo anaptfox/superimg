@@ -53,7 +53,7 @@ program
   .command("dev")
   .description("Start development server with live preview")
   .argument("[template]", "Video name or path (omit for home page with all videos)")
-  .option("-p, --port <port>", "Port number", "3000")
+  .option("-p, --port <port>", "Port number", "8080")
   .option("--no-open", "Don't open browser automatically")
   .action(async (template: string | undefined, options: { port: string; open: boolean }) => {
     const { devCommand } = await import("./commands/dev.js");

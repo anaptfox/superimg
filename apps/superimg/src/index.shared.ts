@@ -29,6 +29,15 @@ export type {
   TemplateConfig,
   ProjectConfig,
 
+  // Scene composition
+  Duration,
+  Transition,
+  TransitionType,
+  SceneDefinition,
+  ResolvedScene,
+  ResolvedTransition,
+  ComposedTemplate,
+
   RenderOptions,
 
   // Encoding options
@@ -105,6 +114,10 @@ export {
   compileTemplate,
   validateTemplate,
   CheckpointResolver,
+  compose,
+  scene,
+  transitions,
+  parseDuration,
 } from "@superimg/core";
 export { buildCompositeHtml } from "@superimg/core/html";
 
@@ -126,8 +139,5 @@ export type {
 } from "@superimg/player";
 
 // User-facing interface types from types package
-export type {
-  PlayerOptions,
-  PlayerEvents,
-  PlayerInput,
-} from "@superimg/types";
+export type { PlayerOptions, PlayerEvents, PlayerInput } from "@superimg/types";
+export { isComposedTemplate } from "@superimg/types";

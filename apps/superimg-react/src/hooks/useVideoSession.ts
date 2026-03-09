@@ -11,8 +11,11 @@ import {
 import {
   createRenderContext,
   resolveFormat,
+  isComposedTemplate,
   type PlayerStore,
   type TemplateModule,
+  type ComposedTemplate,
+  type ResolvedScene,
   type EncodingOptions,
   type FormatOption,
 } from "superimg/browser";
@@ -72,11 +75,19 @@ export interface VideoSessionReturn {
   /** Compile code string into a template (async) */
   compile: (code: string) => Promise<void>;
   /** Set a pre-compiled template directly */
-  setTemplate: (template: TemplateModule) => void;
+  setTemplate: (template: TemplateModule | ComposedTemplate) => void;
   /** Set template data (merged with template.defaults, overrides on conflict) */
   setData: (data: Record<string, unknown>) => void;
   /** Current compiled template (null if not compiled) */
-  template: TemplateModule | null;
+  template: TemplateModule | ComposedTemplate | null;
+
+  // Scene navigation (composed templates only)
+  /** Resolved scenes (empty for single templates) */
+  scenes: ResolvedScene[];
+  /** Current scene at current frame (null for single templates) */
+  currentScene: ResolvedScene | null;
+  /** Seek to scene by index or id */
+  goToScene: (indexOrId: number | string) => void;
 
   // Rendering
   /** Render a specific frame */
@@ -169,7 +180,9 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
   const [error, setError] = useState<Error | null>(null);
 
   // Template state (for setTemplate)
-  const [directTemplate, setDirectTemplate] = useState<TemplateModule | null>(null);
+  const [directTemplate, setDirectTemplate] = useState<
+    TemplateModule | ComposedTemplate | null
+  >(null);
 
   // External data (ref to avoid stale closures in frame callback)
   const dataRef = useRef<Record<string, unknown>>({});
@@ -196,14 +209,19 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
       if (!template || !preview.ready) return;
 
       try {
+        const defaults =
+          "defaults" in template ? template.defaults : undefined;
         const mergedData = {
-          ...(template.defaults ?? {}),
+          ...(defaults ?? {}),
           ...dataRef.current,
         };
+        const totalFrames =
+          isComposedTemplate(template) ? template.totalFrames : player.state.totalFrames;
+        const ctxFps = isComposedTemplate(template) ? template.fps : fps;
         const ctx = createRenderContext(
           frame,
-          fps,
-          player.state.totalFrames,
+          ctxFps,
+          totalFrames,
           width,
           height,
           mergedData
@@ -216,7 +234,15 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
         setStatus("Render error");
       }
     },
-    [template, preview.ready, fps, width, height, player.state.totalFrames, preview]
+    [
+      template,
+      preview.ready,
+      fps,
+      width,
+      height,
+      player.state.totalFrames,
+      preview,
+    ]
   );
 
   // Public render frame function
@@ -246,7 +272,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
 
   // Set template directly
   const setTemplate = useCallback(
-    (tmpl: TemplateModule) => {
+    (tmpl: TemplateModule | ComposedTemplate) => {
       setError(null);
       compiler.clear();
       setDirectTemplate(tmpl);
@@ -304,18 +330,25 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
       const exportRenderer = new CanvasRenderer(exportCanvas);
       await exportRenderer.warmup();
 
+      const totalFrames = isComposedTemplate(template)
+        ? template.totalFrames
+        : player.state.totalFrames;
+      const ctxFps = isComposedTemplate(template) ? template.fps : fps;
+
       // Create a render function that renders at export resolution
       const renderAtExportSize = async (frame: number) => {
         if (!template) return;
 
+        const defaults =
+          "defaults" in template ? template.defaults : undefined;
         const mergedData = {
-          ...(template.defaults ?? {}),
+          ...(defaults ?? {}),
           ...dataRef.current,
         };
         const ctx = createRenderContext(
           frame,
-          fps,
-          player.state.totalFrames,
+          ctxFps,
+          totalFrames,
           exportWidth,
           exportHeight,
           mergedData
@@ -329,8 +362,8 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
         return await exportHook.exportMp4(
           exportCanvas,
           {
-            fps,
-            durationSeconds: config.duration,
+            fps: ctxFps,
+            durationSeconds: totalFrames / ctxFps,
             width: exportWidth,
             height: exportHeight,
             encoding,
@@ -341,7 +374,15 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
         await exportRenderer.dispose();
       }
     },
-    [template, exportHook, fps, format, config.duration, player.state.totalFrames, config.encoding]
+    [
+      template,
+      exportHook,
+      fps,
+      format,
+      config.duration,
+      player.state.totalFrames,
+      config.encoding,
+    ]
   );
 
   // Export multiple formats sequentially
@@ -387,10 +428,40 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
     }
   }, [preview.ready, template, width, height, renderFrameInternal]);
 
-  // Update player config when duration changes
+  // Update player config when duration changes or when ComposedTemplate is set
+  const effectiveDuration =
+    template && isComposedTemplate(template)
+      ? template.durationSeconds
+      : config.duration;
+  const effectiveFps =
+    template && isComposedTemplate(template) ? template.fps : fps;
+
   useEffect(() => {
-    player.updateConfig({ durationSeconds: config.duration });
-  }, [config.duration, player.updateConfig]);
+    player.updateConfig({
+      durationSeconds: effectiveDuration,
+      fps: effectiveFps,
+    });
+  }, [effectiveDuration, effectiveFps, player.updateConfig]);
+
+  // Scene navigation (composed templates only)
+  const scenes = template && isComposedTemplate(template) ? [...template.scenes] : [];
+  const currentScene =
+    template && isComposedTemplate(template)
+      ? template.getSceneAtFrame(player.state.currentFrame)
+      : null;
+  const goToScene = useCallback(
+    (indexOrId: number | string) => {
+      if (!template || !isComposedTemplate(template)) return;
+      const scene =
+        typeof indexOrId === "number"
+          ? template.getScene(indexOrId)
+          : template.getSceneById(indexOrId);
+      if (scene) {
+        player.seek(scene.startFrame);
+      }
+    },
+    [template, player.seek]
+  );
 
   // Compute derived state
   const ready = preview.ready && template !== null;
@@ -420,6 +491,11 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
     setTemplate,
     setData,
     template,
+
+    // Scene navigation
+    scenes,
+    currentScene,
+    goToScene,
 
     // Rendering
     renderFrame,

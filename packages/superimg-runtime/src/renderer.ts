@@ -125,6 +125,7 @@ export class BrowserRenderer {
       fonts: options.fonts,
       stylesheets: options.stylesheets,
       inlineCss: options.inlineCss,
+      tailwind: options.tailwind,
     });
     const urls = collectStylesheetUrls(options);
     const frameDiv = `<div id="frame" style="position:relative;width:100%;height:100%;"></div>`;

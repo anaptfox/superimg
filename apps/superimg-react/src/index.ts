@@ -79,7 +79,7 @@ export type {
   RenderContext,
   TemplateModule,
   TemplateConfig,
-  
+
   // Player types
   PlayerConfig,
   PlayerState,
@@ -87,21 +87,28 @@ export type {
   PlayerOptions,
   PlayerInput,
   LoadResult,
-  
+
   // Mode types
   PlaybackMode,
   LoadMode,
   HoverBehavior,
-  
+
   // Checkpoint types
   Checkpoint,
   Marker,
   MarkerPosition,
-  
+
   // Compiler types
   CompileError,
   CompileResult,
-  
+
+  // Composition types
+  ComposedTemplate,
+  ResolvedScene,
+
   // Stdlib
   Stdlib,
 } from "superimg/browser";
+
+// Type guards
+export { isComposedTemplate } from "superimg/browser";

@@ -10,7 +10,8 @@
     "test": "pnpm -r test",
     "test:coverage": "pnpm -r test -- --coverage",
     "clean": "pnpm -r clean",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "videos": "node ./apps/superimg/dist/cli.js dev"
   },
   "keywords": [],
   "author": "",

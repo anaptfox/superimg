@@ -12,6 +12,7 @@ import {
   buildCompositeHtml,
   type BackgroundValue,
 } from "superimg";
+import { escapeHtml } from "superimg/stdlib";
 
 interface DevConfig {
   width: number;
@@ -23,6 +24,7 @@ interface DevConfig {
 
 interface VideoItem {
   name: string;
+  shortName: string;
   relativePath: string;
   hasLocalConfig: boolean;
 }
@@ -375,28 +377,55 @@ async function initHome() {
         "bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg overflow-hidden cursor-pointer transition-colors hover:border-[#00aaff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2";
       card.tabIndex = 0;
       card.innerHTML = `
-        <div class="aspect-video bg-[#0a0a0a] flex items-center justify-center">
-          <span class="text-[#999] text-sm">Hover to preview</span>
+        <div class="preview-container aspect-video bg-[#0a0a0a] relative overflow-hidden">
+          <div class="thumbnail-placeholder absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]">
+            <div class="loading-spinner w-6 h-6 border-2 border-[#444] border-t-[#888] rounded-full"></div>
+          </div>
+          <img class="thumbnail-img absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-200" alt="" />
         </div>
-        <div class="p-4">
-          <div class="font-semibold text-base">${escapeHtml(video.name)}</div>
-          <div class="text-xs text-[#999] mt-1">${escapeHtml(video.relativePath)}</div>
+        <div class="p-3">
+          <div class="font-medium text-sm">${escapeHtml(formatDisplayName(video.shortName))}</div>
+          <div class="text-xs text-[#888] mt-1 truncate">${escapeHtml(formatCategory(video.relativePath))}</div>
         </div>
       `;
-      const previewEl = card.querySelector(".aspect-video") as HTMLDivElement;
+      const previewContainer = card.querySelector(".preview-container") as HTMLDivElement;
+      const thumbnailImg = card.querySelector(".thumbnail-img") as HTMLImageElement;
+      const placeholder = card.querySelector(".thumbnail-placeholder") as HTMLDivElement;
       let hoverPlayer: Player | null = null;
       let hoverTimeout: ReturnType<typeof setTimeout>;
+      let thumbnailGenerated = false;
+
+      // IntersectionObserver for lazy thumbnail generation
+      const observer = new IntersectionObserver(
+        async (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting && !thumbnailGenerated) {
+              thumbnailGenerated = true;
+              observer.disconnect();
+              try {
+                await generateThumbnail(video, thumbnailImg, placeholder);
+              } catch {
+                // Show play icon as fallback
+                placeholder.innerHTML = `<svg width="40" height="40" viewBox="0 0 24 24" fill="rgba(255,255,255,0.25)"><path d="M8 5v14l11-7z"/></svg>`;
+              }
+            }
+          }
+        },
+        { threshold: 0.1 }
+      );
+      observer.observe(card);
 
       card.addEventListener("mouseenter", () => {
         hoverTimeout = setTimeout(async () => {
           try {
-            previewEl.innerHTML = "";
+            // Hide thumbnail, show player
+            thumbnailImg.style.opacity = "0";
             const configRes = await fetch(`/api/videos/${encodeURIComponent(video.name)}/config`);
             const config = await configRes.json();
             const w = Math.min(config.width ?? 1920, 400);
             const h = Math.round(w * ((config.height ?? 1080) / (config.width ?? 1920)));
             hoverPlayer = new Player({
-              container: previewEl,
+              container: previewContainer,
               format: { width: w, height: h },
               playbackMode: "loop",
             });
@@ -404,7 +433,8 @@ async function initHome() {
             await hoverPlayer.load(mod.default ?? mod);
             hoverPlayer.play();
           } catch {
-            previewEl.innerHTML = `<span class="text-[#999] text-sm">Error loading</span>`;
+            // Restore thumbnail on error
+            thumbnailImg.style.opacity = "1";
           }
         }, 300);
       });
@@ -415,7 +445,8 @@ async function initHome() {
           hoverPlayer.destroy();
           hoverPlayer = null;
         }
-        previewEl.innerHTML = `<span class="text-[#999] text-sm">Hover to preview</span>`;
+        // Restore thumbnail
+        thumbnailImg.style.opacity = "1";
       });
 
       card.addEventListener("click", () => {
@@ -440,10 +471,58 @@ async function initHome() {
   }
 }
 
-function escapeHtml(s: string): string {
-  const div = document.createElement("div");
-  div.textContent = s;
-  return div.innerHTML;
+
+function formatDisplayName(shortName: string): string {
+  return shortName
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function formatCategory(relativePath: string): string {
+  const parts = relativePath.split("/");
+  return parts.length > 1 ? parts.slice(0, -1).join("/") : "";
+}
+
+async function generateThumbnail(
+  video: VideoItem,
+  thumbnailImg: HTMLImageElement,
+  placeholder: HTMLDivElement
+): Promise<void> {
+  // Create offscreen container for player
+  const tempContainer = document.createElement("div");
+  tempContainer.style.cssText = "position:absolute;left:-9999px;top:-9999px;width:400px;height:225px;";
+  document.body.appendChild(tempContainer);
+
+  try {
+    const configRes = await fetch(`/api/videos/${encodeURIComponent(video.name)}/config`);
+    const config = await configRes.json();
+    const w = 400;
+    const h = Math.round(w * ((config.height ?? 1080) / (config.width ?? 1920)));
+
+    const player = new Player({
+      container: tempContainer,
+      format: { width: w, height: h },
+      playbackMode: "paused",
+    });
+
+    const mod = await loadTemplate(`/api/videos/${encodeURIComponent(video.name)}/template`);
+    await player.load(mod.default ?? mod);
+
+    // Capture thumbnail using smart frame selection
+    const { dataUrl } = await player.captureFrame({ format: "dataUrl" });
+
+    player.destroy();
+
+    // Set thumbnail
+    thumbnailImg.src = dataUrl!;
+    thumbnailImg.onload = () => {
+      thumbnailImg.style.opacity = "1";
+      placeholder.style.opacity = "0";
+    };
+  } finally {
+    document.body.removeChild(tempContainer);
+  }
 }
 
 function getTemplateDisplayName(path: string): string {

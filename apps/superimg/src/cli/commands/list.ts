@@ -27,7 +27,7 @@ export async function listCommand() {
   console.log("\n  Videos found:\n");
 
   // Build table rows with config info
-  const rows: { name: string; config: string; path: string }[] = [];
+  const rows: { shortName: string; config: string; path: string }[] = [];
 
   for (const video of videos) {
     let configStr = "—";
@@ -44,13 +44,13 @@ export async function listCommand() {
       // Ignore - show dash
     }
     rows.push({
-      name: video.name,
+      shortName: video.shortName,
       config: configStr,
       path: video.relativePath,
     });
   }
 
-  const maxName = Math.max(4, ...rows.map((r) => r.name.length));
+  const maxName = Math.max(4, ...rows.map((r) => r.shortName.length));
   const maxConfig = Math.max(6, ...rows.map((r) => r.config.length));
 
   const pad = (s: string, n: number) => s.padEnd(n);
@@ -59,7 +59,7 @@ export async function listCommand() {
   console.log(`  ${"-".repeat(maxName)}  ${"-".repeat(maxConfig)}  ${"-".repeat(40)}`);
 
   for (const row of rows) {
-    console.log(`  ${pad(row.name, maxName)}  ${pad(row.config, maxConfig)}  ${row.path}`);
+    console.log(`  ${pad(row.shortName, maxName)}  ${pad(row.config, maxConfig)}  ${row.path}`);
   }
 
   console.log("\n");

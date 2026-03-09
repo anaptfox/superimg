@@ -59,6 +59,7 @@ async function runHomeMode(port: number, devRoot: string, open: boolean) {
       res.setHeader("Cache-Control", "no-cache");
       const list = videos.map((v) => ({
         name: v.name,
+        shortName: v.shortName,
         relativePath: v.relativePath,
         hasLocalConfig: v.hasLocalConfig,
       }));

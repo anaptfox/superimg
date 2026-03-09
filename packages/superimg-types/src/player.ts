@@ -2,7 +2,13 @@
 //! Implementation types (PlayerState, PlayerStore, etc.) live in @superimg/player
 
 import type { Checkpoint } from "./checkpoint.js";
-import type { TemplateModule, PlaybackMode, LoadMode, HoverBehavior } from "./types.js";
+import type {
+  TemplateModule,
+  ComposedTemplate,
+  PlaybackMode,
+  LoadMode,
+  HoverBehavior,
+} from "./types.js";
 
 // =============================================================================
 // PLAYER OPTIONS - User-facing configuration
@@ -58,4 +64,11 @@ export interface PlayerEvents {
 // =============================================================================
 
 /** What can be passed to player.load() */
-export type PlayerInput = TemplateModule;
+export type PlayerInput = TemplateModule | ComposedTemplate;
+
+/** Type guard for ComposedTemplate */
+export function isComposedTemplate(
+  input: PlayerInput
+): input is ComposedTemplate {
+  return "type" in input && input.type === "composed";
+}
