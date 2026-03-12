@@ -48,6 +48,9 @@ export type {
   VideoCodecPreference,
   AudioCodecPreference,
   QualityPreset,
+  BitrateMode,
+  LatencyMode,
+  HardwareAcceleration,
 
   // Asset Types
   AssetRef,

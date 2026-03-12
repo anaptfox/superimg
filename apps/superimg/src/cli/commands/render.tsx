@@ -15,6 +15,7 @@ import { findProjectRoot } from "../utils/find-project-root.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";
 import { discoverVideos } from "../utils/discover-videos.js";
 import type { EncodingOptions } from "@superimg/types";
+import { mergeEncoding } from "../utils/merge-encoding.js";
 
 interface RenderOptions {
   output?: string;
@@ -31,6 +32,12 @@ interface RenderOptions {
   audioCodec?: string;
   audioBitrate?: string;
   keyframeInterval?: string;
+  bitrateMode?: string;
+  latencyMode?: string;
+  hardwareAccel?: string;
+  audioBitrateMode?: string;
+  fastStart?: string;
+  clusterDuration?: string;
 }
 
 function resolveFormat(opts: RenderOptions): "mp4" | "webm" | undefined {
@@ -54,7 +61,13 @@ function buildEncodingOptions(opts: RenderOptions): EncodingOptions | undefined 
     opts.videoBitrate ||
     opts.audioCodec ||
     opts.audioBitrate ||
-    opts.keyframeInterval;
+    opts.keyframeInterval ||
+    opts.bitrateMode ||
+    opts.latencyMode ||
+    opts.hardwareAccel ||
+    opts.audioBitrateMode ||
+    opts.fastStart ||
+    opts.clusterDuration;
 
   if (!hasEncoding) return undefined;
 
@@ -63,8 +76,12 @@ function buildEncodingOptions(opts: RenderOptions): EncodingOptions | undefined 
   const validVideoCodecs = ["avc", "vp9", "av1"];
   const validAudioCodecs = ["aac", "opus"];
   const validQuality = ["very-low", "low", "medium", "high", "very-high"];
+  const validBitrateModes = ["constant", "variable"];
+  const validLatencyModes = ["quality", "realtime"];
+  const validHwAccel = ["no-preference", "prefer-hardware", "prefer-software"];
+  const validFastStart = ["false", "in-memory", "fragmented"];
 
-  if (opts.quality || opts.videoCodec || opts.videoBitrate || opts.keyframeInterval) {
+  if (opts.quality || opts.videoCodec || opts.videoBitrate || opts.keyframeInterval || opts.bitrateMode || opts.latencyMode || opts.hardwareAccel) {
     encoding.video = {};
     if (opts.videoCodec) {
       const codec = opts.videoCodec.toLowerCase();
@@ -88,9 +105,33 @@ function buildEncodingOptions(opts: RenderOptions): EncodingOptions | undefined 
       const sec = parseFloat(opts.keyframeInterval);
       if (!isNaN(sec)) encoding.video.keyFrameInterval = sec;
     }
+    if (opts.bitrateMode) {
+      const mode = opts.bitrateMode.toLowerCase();
+      if (validBitrateModes.includes(mode)) {
+        encoding.video.bitrateMode = mode as "constant" | "variable";
+      } else {
+        console.warn(`Warning: Unknown bitrate mode "${opts.bitrateMode}". Valid: ${validBitrateModes.join(", ")}. Using default.`);
+      }
+    }
+    if (opts.latencyMode) {
+      const mode = opts.latencyMode.toLowerCase();
+      if (validLatencyModes.includes(mode)) {
+        encoding.video.latencyMode = mode as "quality" | "realtime";
+      } else {
+        console.warn(`Warning: Unknown latency mode "${opts.latencyMode}". Valid: ${validLatencyModes.join(", ")}. Using default.`);
+      }
+    }
+    if (opts.hardwareAccel) {
+      const hint = opts.hardwareAccel.toLowerCase();
+      if (validHwAccel.includes(hint)) {
+        encoding.video.hardwareAcceleration = hint as "no-preference" | "prefer-hardware" | "prefer-software";
+      } else {
+        console.warn(`Warning: Unknown hardware acceleration "${opts.hardwareAccel}". Valid: ${validHwAccel.join(", ")}. Using default.`);
+      }
+    }
   }
 
-  if (opts.audioCodec || opts.audioBitrate) {
+  if (opts.audioCodec || opts.audioBitrate || opts.audioBitrateMode) {
     encoding.audio = {};
     if (opts.audioCodec) {
       const codec = opts.audioCodec.toLowerCase();
@@ -104,6 +145,32 @@ function buildEncodingOptions(opts: RenderOptions): EncodingOptions | undefined 
       const bps = parseInt(opts.audioBitrate, 10);
       if (!isNaN(bps)) encoding.audio.bitrate = bps;
     }
+    if (opts.audioBitrateMode) {
+      const mode = opts.audioBitrateMode.toLowerCase();
+      if (validBitrateModes.includes(mode)) {
+        encoding.audio.bitrateMode = mode as "constant" | "variable";
+      } else {
+        console.warn(`Warning: Unknown audio bitrate mode "${opts.audioBitrateMode}". Valid: ${validBitrateModes.join(", ")}. Using default.`);
+      }
+    }
+  }
+
+  if (opts.fastStart) {
+    const mode = opts.fastStart.toLowerCase();
+    if (validFastStart.includes(mode)) {
+      encoding.mp4 = {
+        fastStart: mode === "false" ? false : mode as "in-memory" | "fragmented",
+      };
+    } else {
+      console.warn(`Warning: Unknown fast start mode "${opts.fastStart}". Valid: ${validFastStart.join(", ")}. Using default.`);
+    }
+  }
+
+  if (opts.clusterDuration) {
+    const sec = parseFloat(opts.clusterDuration);
+    if (!isNaN(sec)) {
+      encoding.webm = { minimumClusterDuration: sec };
+    }
   }
 
   // Apply WebM smart defaults when no explicit video options were set
@@ -114,6 +181,7 @@ function buildEncodingOptions(opts: RenderOptions): EncodingOptions | undefined 
 
   return encoding;
 }
+
 
 interface RenderTarget {
   name: string;
@@ -396,7 +464,7 @@ export async function renderCommand(template: string, options: RenderOptions) {
               inlineCss: templateData.templateConfig?.inlineCss,
               stylesheets: templateData.templateConfig?.stylesheets,
               outputName: target.outputName,
-              encoding: buildEncodingOptions(options),
+              encoding: mergeEncoding(templateData.templateConfig?.encoding, buildEncodingOptions(options)),
             };
 
             const plan = createRenderPlan(job);

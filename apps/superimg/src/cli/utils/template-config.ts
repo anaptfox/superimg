@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { extractTemplateMetadata } from "@superimg/core/template-metadata";
-import type { ProjectConfig, TailwindConfig } from "@superimg/types";
+import type { ProjectConfig, TailwindConfig, EncodingOptions } from "@superimg/types";
 
 export interface ParsedTemplate {
   templateCode: string;
@@ -31,6 +31,7 @@ export interface RenderConfig {
   stylesheets?: string[];
   tailwind?: boolean | TailwindConfig;
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
+  encoding?: EncodingOptions;
 }
 
 export interface RenderConfigDefaults {
