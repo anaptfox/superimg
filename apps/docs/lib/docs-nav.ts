@@ -14,6 +14,20 @@ export const docsNav: NavSection[] = [
     items: [
       { title: 'Introduction', slug: 'introduction' },
       { title: 'Getting Started', slug: 'getting-started' },
+      { title: 'How It Works', slug: 'how-it-works' },
+    ],
+  },
+  {
+    title: 'Guides',
+    items: [
+      { title: 'Animation Basics', slug: 'animation' },
+    ],
+  },
+  {
+    title: 'Reference',
+    items: [
+      { title: 'CLI', slug: 'cli' },
+      { title: 'Player', slug: 'player' },
     ],
   },
 ]

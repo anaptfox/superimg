@@ -1,6 +1,6 @@
 import { TopNav } from "@/components/landing/TopNav";
 import { Button } from "@/components/ui/button";
-import { Heart, Sparkles, Zap, Video, Layout, Palette } from "lucide-react";
+import { Heart, Zap, Video, Layout, Palette } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -24,46 +24,6 @@ export default function SupportPage() {
             <p className="mt-4 text-lg text-muted-foreground">
               SuperImg is free and open source, MIT licensed. Here's how you can support development.
             </p>
-          </div>
-
-          {/* Pro Templates */}
-          <div className="mb-16 rounded-xl border border-border bg-card p-8">
-            <div className="flex items-start gap-4">
-              <div className="rounded-lg bg-purple-500/10 p-3">
-                <Sparkles className="h-6 w-6 text-purple-500" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-2xl font-semibold">Pro Templates</h2>
-                <p className="mt-2 text-muted-foreground">
-                  Access premium, production-ready templates via our private GitHub repository.
-                </p>
-                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
-                    Professionally designed templates
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
-                    Regular updates with new designs
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
-                    Private GitHub repo access
-                  </li>
-                </ul>
-                <div className="mt-6">
-                  <Button asChild>
-                    <a
-                      href="https://polar.sh/superimg"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Subscribe via Polar.sh
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* RexRender */}
