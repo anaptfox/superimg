@@ -499,6 +499,12 @@ importers:
         specifier: workspace:*
         version: link:../../../apps/superimg
 
+  examples/templates/watermark-demo:
+    dependencies:
+      superimg:
+        specifier: workspace:*
+        version: link:../../../apps/superimg
+
   packages/superimg-core:
     dependencies:
       '@superimg/stdlib':
@@ -544,10 +550,6 @@ importers:
       zustand:
         specifier: ^5.0.0
         version: 5.0.10(@types/react@19.2.14)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3))
-    devDependencies:
-      '@types/morphdom':
-        specifier: ^2.4.2
-        version: 2.4.2
 
   packages/superimg-playwright:
     dependencies:
@@ -2784,10 +2786,6 @@ packages:
 
   '@types/mdx@2.0.13':
     resolution: {integrity: sha512-+OWZQfAYyio6YkJb3HLxDrvnx6SWWDbC0zVPfBRzUk0/nqoDyf6dNxQi3eArPe8rJ473nobTMQ/8Zk+LxJ+Yuw==}
-
-  '@types/morphdom@2.4.2':
-    resolution: {integrity: sha512-tKZZkqBzRJ1ucthVqr41rW2yvTO5ItYTp5I1vc30t06OsRmZTP+TprYa5S6VHdQEuMbnAxR5WXtFmOZ2FIhc/g==}
-    deprecated: This is a stub types definition. morphdom provides its own type definitions, so you do not need this installed.
 
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
@@ -7772,10 +7770,6 @@ snapshots:
       '@types/unist': 3.0.3
 
   '@types/mdx@2.0.13': {}
-
-  '@types/morphdom@2.4.2':
-    dependencies:
-      morphdom: 2.7.8
 
   '@types/ms@2.1.0': {}
 
