@@ -2,24 +2,24 @@ import { Check } from "lucide-react";
 
 const VALUE_PROPS = [
   {
-    title: "Built for AI",
+    title: "LLMs can write it",
     description:
-      "Write a render() function that returns HTML. Any LLM can write, debug, and iterate on that — no special training required.",
+      "Your render function is just HTML. Any LLM can write, debug, and iterate on it — no special training, no proprietary syntax.",
   },
   {
-    title: "Batch render from data",
+    title: "One template, 1,000 videos",
     description:
-      "Pass a JSON array, get 1,000 personalized videos. One template, any volume.",
+      "Pass a JSON array. Get a personalized video for each row. Same template, any volume.",
   },
   {
-    title: "Live preview",
+    title: "Hot reload at 60fps",
     description:
-      "Save the file. The video updates in your browser — no refresh, no rebuild. Full 60fps.",
+      "Save the file. See the video update instantly in your browser. No refresh, no rebuild.",
   },
   {
-    title: "One template, every format",
+    title: "YouTube, Reels, TikTok — same code",
     description:
-      "YouTube, Reels, TikTok, Square — same code, different canvas dimensions.",
+      "One template renders to any canvas size. Change dimensions, not your code.",
   },
 ];
 

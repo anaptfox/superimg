@@ -1,0 +1,245 @@
+# Player
+
+Embed SuperImg templates directly in web apps. The Player renders your templates in the browser at 60fps—no video file needed.
+
+## Installation
+
+```bash
+npm install superimg
+```
+
+For React projects:
+
+```bash
+npm install superimg superimg-react
+```
+
+## Basic Usage
+
+### Vanilla JavaScript
+
+```typescript
+import { Player } from 'superimg/player';
+import template from './my-video.video';
+
+// Create player
+const player = new Player({ container: '#video' });
+
+// Load and play
+await player.load(template);
+player.play();
+```
+
+### React
+
+```tsx
+import { Player } from 'superimg-react/player';
+import template from './my-video.video';
+
+function App() {
+  return (
+    <Player
+      template={template}
+      format="horizontal"
+      playbackMode="loop"
+      style={{ width: '100%', maxWidth: 640, aspectRatio: '16/9' }}
+    />
+  );
+}
+```
+
+## Playback Controls
+
+```typescript
+// Basic controls
+player.play();
+player.pause();
+player.stop();
+
+// Check state
+player.isPlaying;      // true/false
+player.isReady;        // true after load completes
+player.currentFrame;   // Current frame number
+player.totalFrames;    // Total frames in video
+player.fps;            // Frames per second
+```
+
+## Seeking
+
+Jump to any point in the video:
+
+```typescript
+// By frame number
+player.seekToFrame(50);
+
+// By time in seconds
+player.seekToTimeSeconds(2.5);
+
+// By progress (0 to 1)
+player.seekToProgress(0.5);  // Jump to 50%
+```
+
+## Dynamic Data
+
+Update the video content at runtime:
+
+```typescript
+// Initial load with data
+await player.load(template);
+player.setData({ title: "Hello" });
+
+// Update data later
+player.setData({ title: "Updated Title" });
+
+// Data is merged with template defaults
+// Changes trigger immediate re-render
+```
+
+## Format Options
+
+Control the canvas dimensions:
+
+```typescript
+// Simple presets
+player.setFormat('horizontal');  // 1920x1080
+player.setFormat('vertical');    // 1080x1920
+player.setFormat('square');      // 1080x1080
+
+// Platform-specific
+player.setFormat('youtube.video.short');
+player.setFormat('instagram.video.reel');
+player.setFormat('instagram.video.feed');
+
+// Custom dimensions
+player.setFormat({ width: 800, height: 600 });
+```
+
+## Playback Modes
+
+```typescript
+const player = new Player({
+  container: '#video',
+  playbackMode: 'loop',      // Repeat forever
+  // playbackMode: 'once',   // Play once and stop
+  // playbackMode: 'ping-pong', // Play forward, then reverse
+});
+```
+
+## Events
+
+Listen for playback events:
+
+```typescript
+player.on('play', () => console.log('Playing'));
+player.on('pause', () => console.log('Paused'));
+player.on('ended', () => console.log('Finished'));
+player.on('ready', () => console.log('Loaded'));
+player.on('error', (err) => console.error(err));
+
+// Frame updates
+player.on('frame', (frameNum) => {
+  console.log(`Frame: ${frameNum}`);
+});
+
+// Scene changes (for composed templates)
+player.on('scenechange', (scene) => {
+  console.log(`Now playing: ${scene.label}`);
+});
+
+// Remove listener
+player.off('play');
+```
+
+## Frame Capture
+
+Export individual frames as images:
+
+```typescript
+// Capture current frame
+const { dataUrl, width, height } = await player.captureFrame();
+img.src = dataUrl;
+
+// Capture specific frame
+const { blob } = await player.captureFrame({
+  frame: 30,
+  format: 'blob',
+  mimeType: 'image/webp',
+  quality: 0.92,
+});
+
+// Download the image
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = 'frame.webp';
+a.click();
+```
+
+## Composed Templates
+
+For multi-scene videos, the Player provides scene navigation:
+
+```typescript
+import { compose } from 'superimg';
+
+const composed = compose([intro, content, outro]);
+await player.load(composed);
+
+// Scene navigation
+const scenes = player.getScenes();
+const current = player.getCurrentScene();
+
+player.seekToScene('intro');    // By ID
+player.seekToScene(0);          // By index
+player.nextScene();
+player.previousScene();
+```
+
+## Player Options
+
+Full configuration:
+
+```typescript
+const player = new Player({
+  container: '#video',           // CSS selector or HTMLElement
+  format: 'horizontal',          // Dimensions preset
+  playbackMode: 'loop',          // 'once', 'loop', 'ping-pong'
+  loadMode: 'eager',             // 'eager' or 'lazy'
+  showControls: true,            // Show playback controls
+  maxCacheFrames: 30,            // Frame cache size
+});
+```
+
+## React Props
+
+```tsx
+<Player
+  template={template}
+  data={{ title: "Dynamic" }}    // Data passed to template
+  format="horizontal"
+  playbackMode="loop"
+  autoplay                       // Start playing on load
+  showControls={false}
+  onPlay={() => {}}
+  onPause={() => {}}
+  onEnded={() => {}}
+  onFrame={(frame) => {}}
+  style={{ width: '100%' }}
+/>
+```
+
+## Cleanup
+
+When you're done with a player:
+
+```typescript
+player.destroy();
+```
+
+This removes event listeners and frees resources.
+
+## Next Steps
+
+- [How It Works](/docs/how-it-works) — Understand the rendering pipeline
+- [CLI Reference](/docs/cli) — Commands for rendering to MP4
+- [Animation Basics](/docs/animation) — Timing and easing patterns

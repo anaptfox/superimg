@@ -1,7 +1,5 @@
 import { TopNav } from "@/components/landing/TopNav";
 import { Hero } from "@/components/landing/Hero";
-import { ValueProps } from "@/components/landing/ValueProps";
-import { LiveExampleLoader } from "@/components/landing/LiveExampleLoader";
 import { HowItWorksLoader } from "@/components/landing/HowItWorksLoader";
 import { TemplatesPanelSection } from "@/components/landing/TemplatesPanelLoader";
 
@@ -10,8 +8,6 @@ export default function HomePage() {
     <main className="min-h-screen bg-background text-foreground">
       <TopNav />
       <Hero />
-      <ValueProps />
-      <LiveExampleLoader />
       <HowItWorksLoader />
       <TemplatesPanelSection />
 
@@ -35,12 +31,14 @@ export default function HomePage() {
               <p className="mb-3 text-sm font-semibold">More</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="/blog" className="hover:text-foreground transition-colors">Blog</a></li>
+                <li><a href="/showcase" className="hover:text-foreground transition-colors">Showcase</a></li>
+                <li><a href="/support" className="hover:text-foreground transition-colors">Support</a></li>
                 <li><a href="https://github.com/anaptfox/superimg" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a></li>
               </ul>
             </div>
             <div className="col-span-2 sm:col-span-1">
               <p className="mb-1 text-sm font-semibold">SuperImg</p>
-              <p className="text-sm text-muted-foreground">Programmatic video generation for developers and AI agents.</p>
+              <p className="text-sm text-muted-foreground">Open-source framework for programmatic video. MIT licensed.</p>
             </div>
           </div>
         </div>

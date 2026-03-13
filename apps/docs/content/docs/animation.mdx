@@ -1,0 +1,240 @@
+# Animation Basics
+
+In traditional video editors, you set keyframes and the software interpolates between them. In SuperImg, you write the interpolation logic directly.
+
+## The Mental Model
+
+Instead of thinking "animate opacity from 0 to 1 over 1 second," think: **"What is the opacity right now?"**
+
+```typescript
+render(ctx) {
+  const { sceneTimeSeconds: time, std } = ctx;
+
+  // If we're in the first second, fade in
+  // Otherwise, stay fully visible
+  const opacity = time < 1
+    ? std.tween(0, 1, time / 1)
+    : 1;
+
+  return `<div style="opacity: ${opacity}">Hello</div>`;
+}
+```
+
+Your `render` function is called 30 times per second (or whatever your fps is). Each call, you calculate what values should be **at that exact moment**.
+
+## Key Timing Properties
+
+The `ctx` object gives you timing information:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `ctx.frame` | `number` | Current frame (0, 1, 2, ...) |
+| `ctx.sceneTimeSeconds` | `number` | Time in seconds (0.0, 0.033, 0.066, ...) |
+| `ctx.sceneProgress` | `number` | Progress from 0 to 1 over the scene |
+
+Use `sceneProgress` when you want animations relative to the scene duration. Use `sceneTimeSeconds` when you want precise timing in seconds.
+
+## The Tween Function
+
+`std.tween` smoothly interpolates between two values:
+
+```typescript
+std.tween(from, to, progress, easing?)
+```
+
+- `from` — Starting value
+- `to` — Ending value
+- `progress` — Current progress (0 to 1)
+- `easing` — Optional easing function name
+
+```typescript
+// Fade from 0 to 1 over the scene duration
+const opacity = std.tween(0, 1, ctx.sceneProgress);
+
+// Move from x=0 to x=500
+const x = std.tween(0, 500, ctx.sceneProgress);
+```
+
+## Easing Functions
+
+Easing controls the feel of motion. Without easing (linear), animations feel robotic.
+
+```typescript
+// Linear - constant speed (robotic)
+std.tween(0, 100, progress, "linear");
+
+// Ease out - starts fast, slows down (natural deceleration)
+std.tween(0, 100, progress, "easeOutCubic");
+
+// Ease in - starts slow, speeds up
+std.tween(0, 100, progress, "easeInCubic");
+
+// Ease in-out - slow start and end
+std.tween(0, 100, progress, "easeInOutQuad");
+
+// Bounce - playful, bouncy feel
+std.tween(0, 100, progress, "easeOutBounce");
+
+// Elastic - overshoot and settle
+std.tween(0, 100, progress, "easeOutElastic");
+
+// Back - slight overshoot
+std.tween(0, 100, progress, "easeOutBack");
+```
+
+### Available Easings
+
+| Family | In | Out | In-Out |
+|--------|----|----|--------|
+| Quad | `easeInQuad` | `easeOutQuad` | `easeInOutQuad` |
+| Cubic | `easeInCubic` | `easeOutCubic` | `easeInOutCubic` |
+| Quart | `easeInQuart` | `easeOutQuart` | `easeInOutQuart` |
+| Quint | `easeInQuint` | `easeOutQuint` | `easeInOutQuint` |
+| Sine | `easeInSine` | `easeOutSine` | `easeInOutSine` |
+| Expo | `easeInExpo` | `easeOutExpo` | `easeInOutExpo` |
+| Circ | `easeInCirc` | `easeOutCirc` | `easeInOutCirc` |
+| Elastic | `easeInElastic` | `easeOutElastic` | `easeInOutElastic` |
+| Back | `easeInBack` | `easeOutBack` | `easeInOutBack` |
+| Bounce | `easeInBounce` | `easeOutBounce` | `easeInOutBounce` |
+
+**Rule of thumb:** Use `easeOut` variants for most UI animations. They feel responsive because they start fast.
+
+## Common Patterns
+
+### Fade In
+
+```typescript
+const opacity = std.tween(0, 1, ctx.sceneProgress, "easeOutCubic");
+return `<div style="opacity: ${opacity}">Hello</div>`;
+```
+
+### Slide In From Left
+
+```typescript
+const x = std.tween(-100, 0, ctx.sceneProgress, "easeOutCubic");
+return `<div style="transform: translateX(${x}px)">Hello</div>`;
+```
+
+### Scale Up
+
+```typescript
+const scale = std.tween(0.5, 1, ctx.sceneProgress, "easeOutBack");
+return `<div style="transform: scale(${scale})">Hello</div>`;
+```
+
+### Rotate In
+
+```typescript
+const rotation = std.tween(-90, 0, ctx.sceneProgress, "easeOutCubic");
+return `<div style="transform: rotate(${rotation}deg)">Hello</div>`;
+```
+
+### Combined Transform
+
+```typescript
+const opacity = std.tween(0, 1, ctx.sceneProgress);
+const y = std.tween(20, 0, ctx.sceneProgress, "easeOutCubic");
+const scale = std.tween(0.95, 1, ctx.sceneProgress, "easeOutCubic");
+
+return `
+  <div style="
+    opacity: ${opacity};
+    transform: translateY(${y}px) scale(${scale});
+  ">
+    Hello
+  </div>
+`;
+```
+
+## Staggered Animations
+
+Animate multiple elements with delays between them:
+
+```typescript
+render(ctx) {
+  const { sceneTimeSeconds: time, std } = ctx;
+  const items = ["First", "Second", "Third"];
+
+  return items.map((item, i) => {
+    const delay = i * 0.2;  // 200ms between each item
+    const duration = 0.5;   // Each animation takes 500ms
+
+    // Calculate progress for this item
+    const itemProgress = std.math.clamp((time - delay) / duration, 0, 1);
+
+    const opacity = std.tween(0, 1, itemProgress, "easeOutCubic");
+    const y = std.tween(20, 0, itemProgress, "easeOutCubic");
+
+    return `<div style="opacity: ${opacity}; transform: translateY(${y}px)">${item}</div>`;
+  }).join("");
+}
+```
+
+## Sequenced Animations
+
+Run animations one after another:
+
+```typescript
+render(ctx) {
+  const { sceneTimeSeconds: time, std } = ctx;
+
+  // Phase 1: Fade in title (0s - 1s)
+  const titleProgress = std.math.clamp(time / 1, 0, 1);
+  const titleOpacity = std.tween(0, 1, titleProgress);
+
+  // Phase 2: Slide in subtitle (1s - 2s)
+  const subtitleProgress = std.math.clamp((time - 1) / 1, 0, 1);
+  const subtitleX = std.tween(-50, 0, subtitleProgress, "easeOutCubic");
+  const subtitleOpacity = std.tween(0, 1, subtitleProgress);
+
+  return `
+    <h1 style="opacity: ${titleOpacity}">Title</h1>
+    <p style="opacity: ${subtitleOpacity}; transform: translateX(${subtitleX}px)">Subtitle</p>
+  `;
+}
+```
+
+## Looping Animations
+
+For animations that repeat:
+
+```typescript
+render(ctx) {
+  const { sceneTimeSeconds: time, std } = ctx;
+
+  // Pulse every 2 seconds
+  const cycleProgress = (time % 2) / 2;  // 0 to 1, repeating
+  const scale = std.tween(1, 1.1, cycleProgress, "easeInOutSine");
+
+  return `<div style="transform: scale(${scale})">Pulse</div>`;
+}
+```
+
+## Math Helpers
+
+The standard library includes useful math functions:
+
+```typescript
+// Clamp a value to a range
+std.math.clamp(value, min, max);
+
+// Map a value from one range to another
+std.math.map(value, inMin, inMax, outMin, outMax);
+
+// Map and clamp combined
+std.math.mapClamp(value, inMin, inMax, outMin, outMax);
+```
+
+Example:
+
+```typescript
+// Animate only during seconds 1-3 of the video
+const animationProgress = std.math.mapClamp(time, 1, 3, 0, 1);
+const x = std.tween(0, 100, animationProgress);
+```
+
+## Next Steps
+
+- [How It Works](/docs/how-it-works) — Understand the rendering pipeline
+- [CLI Reference](/docs/cli) — Commands for rendering to MP4
+- [Player](/docs/player) — Embed videos in web apps

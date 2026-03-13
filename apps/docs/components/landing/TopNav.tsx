@@ -30,12 +30,6 @@ export function TopNav() {
               Playground
             </Link>
             <Link
-              href="/examples"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Examples
-            </Link>
-            <Link
               href="/docs"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
@@ -46,6 +40,12 @@ export function TopNav() {
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               Blog
+            </Link>
+            <Link
+              href="/support"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Support
             </Link>
           </div>
         </div>
@@ -93,14 +93,6 @@ export function TopNav() {
                 </SheetClose>
                 <SheetClose asChild>
                   <Link
-                    href="/examples"
-                    className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    Examples
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link
                     href="/docs"
                     className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
@@ -113,6 +105,14 @@ export function TopNav() {
                     className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     Blog
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link
+                    href="/support"
+                    className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    Support
                   </Link>
                 </SheetClose>
               </div>

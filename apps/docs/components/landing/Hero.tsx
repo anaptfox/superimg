@@ -1,106 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
 import posthog from "posthog-js";
-import { Button } from "@/components/ui/button";
-import { Check, Copy } from "lucide-react";
-
-const PACKAGE_MANAGERS = [
-  { id: "npx", label: "npx", command: "npx superimg init" },
-  { id: "pnpm", label: "pnpm", command: "pnpm dlx superimg init" },
-  { id: "bun", label: "bun", command: "bunx superimg init" },
-  { id: "deno", label: "deno", command: "deno run npm:superimg init" },
-] as const;
-
-type PackageManager = (typeof PACKAGE_MANAGERS)[number]["id"];
+import { Star } from "lucide-react";
+import { LiveExampleLoader } from "@/components/landing/LiveExampleLoader";
 
 export function Hero() {
-  const [copied, setCopied] = useState(false);
-  const [pm, setPm] = useState<PackageManager>("npx");
-
-  useEffect(() => {
-    const saved = localStorage.getItem("preferred-pm") as PackageManager | null;
-    if (saved && PACKAGE_MANAGERS.some((p) => p.id === saved)) {
-      setPm(saved);
-    }
-  }, []);
-
-  const selectPm = (id: PackageManager) => {
-    setPm(id);
-    localStorage.setItem("preferred-pm", id);
-    posthog.capture("hero_package_manager_selected", { package_manager: id });
-  };
-
-  const currentCommand =
-    PACKAGE_MANAGERS.find((p) => p.id === pm)?.command ?? PACKAGE_MANAGERS[0].command;
-
-  const copyCommand = async () => {
-    await navigator.clipboard.writeText(currentCommand);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    posthog.capture("hero_install_command_copied", { package_manager: pm, command: currentCommand });
-  };
-
   return (
-    <section className="relative flex flex-col items-center justify-center px-6 py-16 text-center">
+    <section className="relative flex flex-col items-center justify-center py-16 text-center">
+      {/* OSS Badge */}
+      <a
+        href="https://github.com/anaptfox/superimg"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mb-6 inline-flex items-center gap-4 rounded-full border border-border/50 bg-muted/50 px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+        onClick={() => posthog.capture("oss_badge_clicked")}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <Star className="h-3.5 w-3.5 fill-yellow-500 text-yellow-500" />
+          Star on GitHub
+        </span>
+        <span className="border-l border-border/50 pl-4">Open Source</span>
+        <span className="border-l border-border/50 pl-4">MIT License</span>
+      </a>
+
       <h1 className="max-w-4xl text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-        Video generation for{" "}
+        Programmatic video,{" "}
         <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-          developers and AI agents
+          open source
         </span>
       </h1>
 
       <p className="mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-        Write a function that returns HTML. SuperImg renders every frame to MP4. Use it from the CLI, embed it in React, or call it from an AI agent.
+        Write a TypeScript function that returns HTML. SuperImg renders every frame to MP4.
       </p>
 
-      {/* Install Command */}
-      <div className="mt-10 w-full max-w-xl">
-        {/* Package Manager Tabs */}
-        <div className="mb-2 flex justify-center gap-1">
-          {PACKAGE_MANAGERS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => selectPm(p.id)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                pm === p.id
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-        {/* Command Box */}
-        <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-[var(--code-bg)] shadow-lg">
-          <code className="flex-1 px-4 py-3 text-left font-mono text-sm text-[var(--code-foreground)] sm:text-base">
-            {currentCommand}
-          </code>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={copyCommand}
-            className="h-auto rounded-none border-l border-border px-4 hover:bg-muted"
-          >
-            {copied ? (
-              <Check className="h-4 w-4 text-green-500" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-6 flex items-center justify-center gap-3">
-        <Button asChild variant="outline" size="sm">
-          <Link href="/docs/introduction" onClick={() => posthog.capture("docs_get_started_clicked")}>Get started</Link>
-        </Button>
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/examples">See examples</Link>
-        </Button>
-      </div>
+      <LiveExampleLoader />
     </section>
   );
 }

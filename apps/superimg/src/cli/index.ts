@@ -50,6 +50,19 @@ program
   });
 
 program
+  .command("new")
+  .description("Create a new video in the current project")
+  .argument("[name]", "Video name (e.g. my-promo)")
+  .option("-y, --yes", "Skip prompts and use defaults")
+  .option("--js", "Use JavaScript instead of TypeScript")
+  .option("--compose", "Scaffold a multi-scene composition")
+  .option("--tailwind", "Enable Tailwind CSS")
+  .action(async (name: string | undefined, options: { yes?: boolean; js?: boolean; compose?: boolean; tailwind?: boolean }) => {
+    const { newCommand } = await import("./commands/new.js");
+    await newCommand(name, options);
+  });
+
+program
   .command("dev")
   .description("Start development server with live preview")
   .argument("[template]", "Video name or path (omit for home page with all videos)")

@@ -1,0 +1,206 @@
+# CLI Reference
+
+The SuperImg CLI handles everything from scaffolding projects to rendering final videos.
+
+## Installation
+
+```bash
+npm install -g superimg
+```
+
+Or use via npx without installing:
+
+```bash
+npx superimg <command>
+```
+
+## Commands
+
+### `superimg new`
+
+Create a new video template.
+
+```bash
+superimg new my-video
+```
+
+This creates:
+```
+my-video/
+├── my-video.video.ts    # Your template
+└── _config.ts           # Video settings (dimensions, fps, duration)
+```
+
+Options:
+```bash
+superimg new my-video --compose     # Multi-scene template (intro/content/outro)
+superimg new my-video --tailwind    # Include Tailwind CSS
+superimg new my-video --yes         # Skip prompts, use defaults
+```
+
+### `superimg dev`
+
+Start a live preview server with hot reload.
+
+```bash
+superimg dev my-video
+```
+
+Opens your browser to a local preview. Edit your template, and the video updates instantly.
+
+Options:
+```bash
+superimg dev my-video --port 3000   # Custom port
+superimg dev my-video --no-open     # Don't auto-open browser
+superimg dev                        # Home mode (lists all videos)
+```
+
+### `superimg render`
+
+Export your template to an MP4 file.
+
+```bash
+superimg render my-video.video.ts
+```
+
+Output goes to `output/my-video.mp4` by default.
+
+Options:
+```bash
+# Custom output path
+superimg render template.video.ts -o my-video.mp4
+superimg render template.video.ts -o ./videos/  # Directory
+
+# Quality and format
+superimg render template.video.ts --quality high
+superimg render template.video.ts --format webm
+superimg render template.video.ts --fps 60
+
+# Dimensions (override template config)
+superimg render template.video.ts --width 1080 --height 1920
+
+# Pass data
+superimg render template.video.ts --data '{"title": "Custom Title"}'
+
+# Render all videos in project
+superimg render --all
+```
+
+### `superimg list`
+
+Show all video templates in your project.
+
+```bash
+superimg list
+```
+
+Output:
+```
+Name          Config           Path
+────────────  ───────────────  ─────────────────────────
+my-video      1920x1080 30fps  videos/my-video/my-video.video.ts
+intro         1920x1080 30fps  videos/intro/intro.video.ts
+```
+
+### `superimg init`
+
+Scaffold a new SuperImg project.
+
+```bash
+superimg init my-project
+cd my-project
+```
+
+Options:
+```bash
+superimg init my-project --yes      # Skip prompts
+superimg init my-project --pm pnpm  # Use pnpm instead of npm
+```
+
+### `superimg setup`
+
+Download required browser binaries (Playwright/Chromium).
+
+```bash
+superimg setup
+```
+
+Run this once after installing SuperImg, or if rendering fails with browser errors.
+
+## Render Options Reference
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-o, --output` | Output file or directory | `output/<name>.mp4` |
+| `--format` | Output format (`mp4`, `webm`) | `mp4` |
+| `--quality` | Quality preset (`low`, `medium`, `high`, `very-high`) | `medium` |
+| `--fps` | Frames per second | Template config |
+| `--width` | Video width in pixels | Template config |
+| `--height` | Video height in pixels | Template config |
+| `--data` | JSON data to pass to template | `{}` |
+| `--preset` | Use a named output preset from template config | — |
+| `--presets` | Render all presets defined in template | — |
+| `--debug-html` | Save frame HTML for debugging | — |
+
+## Video Codec Options
+
+For fine-grained control over encoding:
+
+```bash
+# Video codec
+superimg render template.video.ts --video-codec av1
+superimg render template.video.ts --video-codec vp9
+
+# Bitrate
+superimg render template.video.ts --video-bitrate 2000000
+
+# Audio (if your template has audio)
+superimg render template.video.ts --audio-codec opus
+superimg render template.video.ts --audio-bitrate 128000
+```
+
+## Output Presets
+
+Define reusable output configurations in your template:
+
+```typescript
+export default defineScene({
+  config: {
+    width: 1920,
+    height: 1080,
+    outputs: {
+      "instagram-story": { width: 1080, height: 1920 },
+      "youtube-short": { width: 1080, height: 1920, fps: 60 },
+      "square": { width: 1080, height: 1080 },
+    }
+  },
+  // ...
+})
+```
+
+Then render with:
+
+```bash
+superimg render template.video.ts --preset instagram-story
+superimg render template.video.ts --presets  # Render all presets
+```
+
+## File Discovery
+
+SuperImg automatically finds all `*.video.ts` files anywhere in your project:
+
+```
+project/
+├── videos/intro/intro.video.ts      ✓ Found
+├── src/templates/promo.video.ts     ✓ Found
+├── examples/demo.video.ts           ✓ Found
+└── random/nested/thing.video.ts     ✓ Found
+```
+
+No configuration needed.
+
+## Next Steps
+
+- [How It Works](/docs/how-it-works) — Understand the rendering pipeline
+- [Animation Basics](/docs/animation) — Timing and easing patterns
+- [Player](/docs/player) — Embed videos in web apps

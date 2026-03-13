@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import posthog from "posthog-js";
 import { Player, type PlayerRef } from "superimg-react";
 import type { EditorExample } from "@/lib/video/examples";
@@ -9,9 +8,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TemplateCardProps {
   example: EditorExample;
+  onSelect?: (example: EditorExample) => void;
 }
 
-export function TemplateCard({ example }: TemplateCardProps) {
+export function TemplateCard({ example, onSelect }: TemplateCardProps) {
   const playerRef = useRef<PlayerRef>(null);
   const hoverTimeoutRef = useRef<number | undefined>(undefined);
   const [isHovering, setIsHovering] = useState(false);
@@ -35,6 +35,15 @@ export function TemplateCard({ example }: TemplateCardProps) {
     playerRef.current?.stop();
   };
 
+  const handleClick = () => {
+    posthog.capture("template_card_clicked", {
+      template_id: example.id,
+      template_title: example.title,
+      category: example.category,
+    });
+    onSelect?.(example);
+  };
+
   // Format category for display
   const categoryLabel = example.category
     .split("-")
@@ -42,12 +51,12 @@ export function TemplateCard({ example }: TemplateCardProps) {
     .join(" ");
 
   return (
-    <Link
-      href={`/playground/${example.id}`}
-      className="group block"
+    <button
+      type="button"
+      className="group block w-full text-left"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onClick={() => posthog.capture("template_card_clicked", { template_id: example.id, template_title: example.title, category: example.category })}
+      onClick={handleClick}
     >
       <div
         className={`
@@ -105,6 +114,6 @@ export function TemplateCard({ example }: TemplateCardProps) {
           </p>
         </div>
       </div>
-    </Link>
+    </button>
   );
 }

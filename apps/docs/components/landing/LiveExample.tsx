@@ -43,6 +43,7 @@ export default defineScene({
     fontSize: 180,
     gradient: "linear-gradient(135deg, #1e1e2e, #2d2d44)",
   },
+
   render(ctx) {
     const { sceneFrame, fps, width, height, std, data } = ctx;
     const second = Math.floor(sceneFrame / fps);
@@ -50,7 +51,8 @@ export default defineScene({
     const showGo = second >= data.startFrom;
 
     const bg = std.css({
-      width, height,
+      width,
+      height,
       background: data.gradient,
       fontFamily: "system-ui, sans-serif",
     }) + ";" + std.css.center();
@@ -64,9 +66,7 @@ export default defineScene({
 
     return \`
       <div style="\${bg}">
-        <div style="\${num}">
-          \${showGo ? data.name : count}
-        </div>
+        <div style="\${num}">\${showGo ? data.name : count}</div>
       </div>
     \`;
   },
@@ -112,18 +112,9 @@ export function LiveExample() {
   );
 
   return (
-    <section className="px-6 py-12">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-8 text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Try it now
-          </h2>
-          <p className="mt-3 text-lg text-muted-foreground">
-            Edit the code below and see your changes instantly
-          </p>
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-border/50 bg-[#1a1a1a] shadow-2xl">
+    <section className="py-12">
+      <div className="w-full">
+        <div className="overflow-hidden rounded-xl border border-border/50 bg-[#1a1a1a] shadow-2xl text-left">
           <div className="grid md:grid-cols-2">
             {/* Editable Code - col-1 on desktop, pushed below video on mobile via row/col */}
             <div className="md:col-start-1 md:row-start-1 border-t border-border/50 md:border-t-0 md:border-r">
@@ -304,9 +295,12 @@ export function LiveExample() {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex justify-center gap-4">
           <Button asChild size="lg">
             <Link href="/playground">Open Full Playground</Link>
+          </Button>
+          <Button asChild variant="outline" size="lg">
+            <Link href="/docs/introduction">Read the docs</Link>
           </Button>
         </div>
       </div>

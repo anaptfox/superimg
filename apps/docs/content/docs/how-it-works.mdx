@@ -1,0 +1,117 @@
+# How It Works
+
+SuperImg turns your HTML/CSS into MP4 video. Here's exactly what happens under the hood.
+
+## The Pipeline
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Template   │     │  Playwright │     │   FFmpeg    │
+│  (HTML/CSS) │ ──▶ │  screenshots│ ──▶ │  encodes    │
+│             │     │  30x/second │     │  to MP4     │
+└─────────────┘     └─────────────┘     └─────────────┘
+    You write         Browser            Final video
+```
+
+That's the entire system. No magic.
+
+## Step 1: You Write a Template
+
+A template is a TypeScript file that exports a `render` function. This function receives timing information and returns an HTML string.
+
+```typescript
+export default defineScene({
+  config: {
+    width: 1920,
+    height: 1080,
+    fps: 30,
+    duration: "3s"
+  },
+  defaults: {
+    title: "Hello World"
+  },
+  render(ctx) {
+    const opacity = ctx.std.tween(0, 1, ctx.sceneProgress);
+    return `<div style="opacity: ${opacity}">${ctx.data.title}</div>`;
+  }
+})
+```
+
+The key insight: you're not "animating" anything. You're answering the question: **"What should be on screen at this exact moment?"**
+
+## Step 2: SuperImg Calls Your Function
+
+For a 3-second video at 30fps, SuperImg calls your `render` function 90 times—once per frame.
+
+Each call receives a `ctx` object with timing info:
+
+| Property | Frame 0 | Frame 45 | Frame 89 |
+|----------|---------|----------|----------|
+| `ctx.frame` | 0 | 45 | 89 |
+| `ctx.sceneTimeSeconds` | 0.0 | 1.5 | 2.97 |
+| `ctx.sceneProgress` | 0.0 | 0.5 | 0.99 |
+
+Your function uses these values to calculate positions, colors, and opacities—then returns the HTML for that specific frame.
+
+## Step 3: Browser Screenshots Each Frame
+
+SuperImg runs a headless Chromium browser (via Playwright). For each frame:
+
+1. Injects your HTML into the page
+2. Takes a screenshot at the exact canvas dimensions
+3. Saves the image
+
+This is why CSS works perfectly—it's a real browser rendering your styles.
+
+## Step 4: FFmpeg Encodes to Video
+
+Once all frames are captured, FFmpeg stitches them into an MP4 (or WebM, or other formats). The video codec, bitrate, and quality are all configurable.
+
+## Why This Architecture?
+
+### CSS Just Works
+
+Any CSS property animates correctly because it's rendered in a real browser. Flexbox, grid, transforms, filters, blend modes—all work exactly as you'd expect.
+
+### No Learning Curve
+
+You already know HTML and CSS. There's no new animation language to learn. If you can build a website, you can build a video.
+
+### Deterministic Output
+
+The same template + data = the same video. Every time. This makes videos testable, reproducible, and safe to generate in CI/CD pipelines.
+
+### Batch Rendering
+
+Pass different data to the same template, get different videos. Render 1,000 personalized videos from a CSV without changing any code.
+
+## What's in the Context?
+
+The `ctx` object your render function receives:
+
+```typescript
+render(ctx) {
+  // Timing
+  ctx.frame              // Current frame number (0, 1, 2, ...)
+  ctx.sceneTimeSeconds   // Time in seconds (0.0, 0.033, 0.066, ...)
+  ctx.sceneProgress      // Progress from 0 to 1
+
+  // Dimensions
+  ctx.width              // Video width in pixels
+  ctx.height             // Video height in pixels
+
+  // Data (merged from defaults + runtime data)
+  ctx.data.title         // Your custom data
+
+  // Standard library
+  ctx.std.tween(...)     // Smooth interpolation
+  ctx.std.math.clamp(...) // Constrain values
+  ctx.std.css(...)       // Generate CSS strings
+}
+```
+
+## Next Steps
+
+- [CLI Reference](/docs/cli) — Commands for creating and rendering videos
+- [Animation Basics](/docs/animation) — How to think about timing and motion
+- [Player](/docs/player) — Embed videos in web apps
