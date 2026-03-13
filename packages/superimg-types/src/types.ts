@@ -185,6 +185,10 @@ export interface OutputPreset {
   height?: number;
   /** FPS override for this output */
   fps?: number;
+  /** Directory relative to project root to save the file */
+  outDir?: string;
+  /** Exact filename or path override to save the file (e.g. "final.mp4") */
+  outFile?: string;
 }
 
 /**
@@ -206,6 +210,8 @@ export interface ProjectConfig {
   inlineCss?: string[];
   /** Stylesheet URLs to load */
   stylesheets?: string[];
+  /** Default output directory for all templates relative to project root */
+  outDir?: string;
   /** Named output presets */
   outputs?: Record<string, OutputPreset>;
   /**
@@ -214,6 +220,16 @@ export interface ProjectConfig {
    * - `TailwindConfig`: Enable with custom @theme CSS
    */
   tailwind?: boolean | TailwindConfig;
+  /**
+   * Optional watermark rendered over the video.
+   * Can be an image URL, text string, or configuration object.
+   */
+  watermark?: WatermarkValue;
+  /**
+   * Background rendered into the video (solid color or image).
+   * Composed behind template content via buildCompositeHtml.
+   */
+  background?: BackgroundValue;
 }
 
 /**
@@ -275,6 +291,11 @@ export interface TemplateConfig {
    * - `TailwindConfig`: Enable with custom @theme CSS
    */
   tailwind?: boolean | TailwindConfig;
+  /**
+   * Optional watermark rendered over the video.
+   * Can be an image URL, text string, or configuration object.
+   */
+  watermark?: WatermarkValue;
   /**
    * Static assets to preload before rendering.
    * Keys become accessible via ctx.assets.{key}
@@ -450,6 +471,29 @@ export interface AudioOptions {
 
 export type BackgroundValue = string | BackgroundOptions;
 export type AudioValue = string | AudioOptions;
+
+export interface WatermarkOptions {
+  /** The type of watermark to render */
+  type?: "image" | "text" | "html";
+  /** The content of the watermark (image URL, text string, or raw HTML) */
+  content: string;
+  /** Optional URL to link the watermark to (makes it clickable in the player) */
+  href?: string;
+  /** Position of the watermark on the screen */
+  position?: "bottom-right" | "bottom-left" | "top-right" | "top-left" | "center";
+  /** Opacity of the watermark (0 to 1) */
+  opacity?: number;
+  /** Width of the watermark (typically for images) */
+  width?: number | string;
+  /** Height of the watermark (typically for images) */
+  height?: number | string;
+  /** Additional CSS styles to apply to the watermark container */
+  style?: Record<string, string>;
+  /** Provide CSS classes to apply to the watermark container */
+  className?: string;
+}
+
+export type WatermarkValue = string | WatermarkOptions;
 
 // =============================================================================
 // TAILWIND CONFIG

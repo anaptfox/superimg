@@ -17,7 +17,7 @@ export interface ParsedTemplate {
     height?: number;
     fps?: number;
     durationSeconds?: number;
-    outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
+    outputs?: Record<string, { width?: number; height?: number; fps?: number; outDir?: string; outFile?: string }>;
   };
 }
 
@@ -30,8 +30,10 @@ export interface RenderConfig {
   inlineCss?: string[];
   stylesheets?: string[];
   tailwind?: boolean | TailwindConfig;
-  outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
+  outputs?: Record<string, { width?: number; height?: number; fps?: number; outDir?: string; outFile?: string }>;
   encoding?: EncodingOptions;
+  watermark?: import("@superimg/types").WatermarkValue;
+  background?: import("@superimg/types").BackgroundValue;
 }
 
 export interface RenderConfigDefaults {
@@ -130,6 +132,12 @@ export function mergeCascadingIntoRenderConfig(
   if (cascadingConfig?.outputs && !merged.outputs) {
     merged.outputs = cascadingConfig.outputs;
   }
+  if (cascadingConfig?.watermark !== undefined && merged.watermark === undefined) {
+    merged.watermark = cascadingConfig.watermark;
+  }
+  if (cascadingConfig?.background !== undefined && merged.background === undefined) {
+    merged.background = cascadingConfig.background;
+  }
   // Tailwind: template config takes precedence over cascading config
   if (merged.tailwind === undefined && cascadingConfig?.tailwind !== undefined) {
     merged.tailwind = cascadingConfig.tailwind;
@@ -181,9 +189,9 @@ export async function parseTemplate(
  */
 export function resolvePresetConfig(
   presetName: string,
-  outputs: Record<string, { width?: number; height?: number; fps?: number }>,
+  outputs: Record<string, { width?: number; height?: number; fps?: number; outDir?: string; outFile?: string }>,
   baseConfig: RenderConfigDefaults
-): { name: string; width: number; height: number; fps: number } {
+): { name: string; width: number; height: number; fps: number; outDir?: string; outFile?: string } {
   const preset = outputs[presetName];
   if (!preset) {
     const available = Object.keys(outputs).join(", ");
@@ -194,6 +202,8 @@ export function resolvePresetConfig(
     width: preset.width ?? baseConfig.width,
     height: preset.height ?? baseConfig.height,
     fps: preset.fps ?? baseConfig.fps,
+    outDir: preset.outDir,
+    outFile: preset.outFile,
   };
 }
 
@@ -201,8 +211,8 @@ export function resolvePresetConfig(
  * Resolve all output presets defined in `outputs` against base config defaults.
  */
 export function resolveAllPresets(
-  outputs: Record<string, { width?: number; height?: number; fps?: number }>,
+  outputs: Record<string, { width?: number; height?: number; fps?: number; outDir?: string; outFile?: string }>,
   baseConfig: RenderConfigDefaults
-): Array<{ name: string; width: number; height: number; fps: number }> {
+): Array<{ name: string; width: number; height: number; fps: number; outDir?: string; outFile?: string }> {
   return Object.keys(outputs).map((name) => resolvePresetConfig(name, outputs, baseConfig));
 }

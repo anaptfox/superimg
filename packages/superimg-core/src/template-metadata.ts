@@ -15,6 +15,8 @@ export interface TemplateMetadataConfig {
   stylesheets?: string[];
   tailwind?: boolean | TailwindMetadataConfig;
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
+  watermark?: import("@superimg/types").WatermarkValue;
+  background?: import("@superimg/types").BackgroundValue;
 }
 
 export interface TemplateMetadata {
@@ -134,6 +136,19 @@ function readConfigObject(expr: acorn.Expression): TemplateMetadataConfig | unde
       continue;
     }
 
+    if (key === "watermark") {
+      // Just extract a dummy value to indicate it exists in config
+      // The actual watermark data gets evaluated during template bundling and rendering.
+      // This is just to satisfy the CLI static parser that checks if a watermark is present in the file export.
+      config.watermark = "extracted-by-bundler" as any;
+      continue;
+    }
+
+    if (key === "background") {
+      config.background = "extracted-by-bundler" as any;
+      continue;
+    }
+
     const numericValue = readPositiveNumberLiteral(property.value as acorn.Expression);
     if (numericValue === undefined) continue;
 
@@ -149,7 +164,9 @@ function readConfigObject(expr: acorn.Expression): TemplateMetadataConfig | unde
     config.fps === undefined &&
     config.durationSeconds === undefined &&
     config.tailwind === undefined &&
-    config.outputs === undefined
+    config.outputs === undefined &&
+    config.watermark === undefined &&
+    config.background === undefined
   ) {
     return undefined;
   }

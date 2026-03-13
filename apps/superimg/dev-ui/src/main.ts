@@ -5,11 +5,6 @@ import "./index.css";
 import {
   Player,
   createTimelineController,
-  exportToVideo,
-  downloadBlob,
-  CanvasRenderer,
-  createRenderContext,
-  buildCompositeHtml,
   type BackgroundValue,
 } from "superimg";
 import { escapeHtml } from "superimg/stdlib";
@@ -31,157 +26,56 @@ interface VideoItem {
 
 type ToastType = "success" | "error" | "info";
 
-const homeView = document.getElementById("home-view") as HTMLDivElement;
-const playerView = document.getElementById("player-view") as HTMLDivElement;
-const videoGrid = document.getElementById("video-grid") as HTMLDivElement;
-const statusEl = document.getElementById("status") as HTMLDivElement;
-const playPauseBtn = document.getElementById("play-pause") as HTMLButtonElement;
-const exportBtn = document.getElementById("export") as HTMLButtonElement;
-const reloadBtn = document.getElementById("reload") as HTMLButtonElement;
-const outputSelect = document.getElementById("output-select") as HTMLSelectElement;
-const timelineContainer = document.getElementById("timeline-container") as HTMLDivElement;
-const timelineProgress = document.getElementById("timeline-progress") as HTMLDivElement;
-const timelinePlayhead = document.getElementById("timeline-playhead") as HTMLDivElement;
-const currentTimeEl = document.getElementById("current-time") as HTMLSpanElement;
-const totalTimeEl = document.getElementById("total-time") as HTMLSpanElement;
-const templateNameEl = document.getElementById("template-name") as HTMLSpanElement;
-const loopBtn = document.getElementById("loop-btn") as HTMLButtonElement;
-const errorPanel = document.getElementById("error-panel") as HTMLDivElement;
-const errorPanelMessage = errorPanel?.querySelector(".error-panel-message") as HTMLDivElement;
-const errorPanelDismiss = errorPanel?.querySelector(".error-panel-dismiss") as HTMLButtonElement;
-const toastContainer = document.getElementById("toast-container") as HTMLDivElement;
-const btnFirst = document.getElementById("btn-first") as HTMLButtonElement;
-const btnPrev = document.getElementById("btn-prev") as HTMLButtonElement;
-const btnNext = document.getElementById("btn-next") as HTMLButtonElement;
-const btnLast = document.getElementById("btn-last") as HTMLButtonElement;
-const previewContainer = document.getElementById("preview-container") as HTMLDivElement;
-const settingsBtn = document.getElementById("settings-btn") as HTMLButtonElement;
-const settingsPanel = document.getElementById("settings-panel") as HTMLDivElement;
-const bgTypeSelect = document.getElementById("bg-type") as HTMLSelectElement;
-const bgColorRow = document.getElementById("bg-color-row") as HTMLDivElement;
-const helpBtn = document.getElementById("help-btn") as HTMLButtonElement;
-const helpPanel = document.getElementById("help-panel") as HTMLDivElement;
-const pausedOverlay = previewContainer?.querySelector(".paused-overlay") as HTMLDivElement;
-const exportPanel = document.getElementById("export-panel") as HTMLDivElement;
-const exportPanelClose = document.getElementById("export-panel-close") as HTMLButtonElement;
-const exportStart = document.getElementById("export-start") as HTMLButtonElement;
-const exportCancel = document.getElementById("export-cancel") as HTMLButtonElement;
-const exportCloseBtn = document.getElementById("export-close") as HTMLButtonElement;
-const exportDownload = document.getElementById("export-download") as HTMLButtonElement;
-const exportBar = document.getElementById("export-bar") as HTMLDivElement;
-const exportPercent = document.getElementById("export-percent") as HTMLSpanElement;
-const exportSize = document.getElementById("export-size") as HTMLSpanElement;
+import {
+  homeView,
+  playerView,
+  videoGrid,
+  playPauseBtn,
+  exportBtn,
+  reloadBtn,
+  outputSelect,
+  timelineContainer,
+  timelineProgress,
+  timelinePlayhead,
+  currentTimeEl,
+  totalTimeEl,
+  templateNameEl,
+  loopBtn,
+  btnFirst,
+  btnPrev,
+  btnNext,
+  btnLast,
+  previewContainer,
+  settingsBtn,
+  settingsPanel,
+  inspectorBtn,
+  inspectorPanel,
+  inspectorPanelClose,
+  inspectorCode,
+  helpBtn,
+  helpPanel,
+  pausedOverlay,
+  errorPanelDismiss,
+} from "./dom";
 
-const PREVIEW_BG_KEY = "superimg-dev-preview-bg";
-
-type BgType = "checkerboard" | "solid";
-
-interface PreviewBgSettings {
-  type: BgType;
-  color: string;
-}
-
-const DEFAULT_BG: PreviewBgSettings = { type: "checkerboard", color: "#2a2a2a" };
-
-function loadPreviewBgSettings(): PreviewBgSettings {
-  try {
-    const s = localStorage.getItem(PREVIEW_BG_KEY);
-    if (s) {
-      const parsed = JSON.parse(s) as Partial<PreviewBgSettings>;
-      return { type: parsed.type ?? DEFAULT_BG.type, color: parsed.color ?? DEFAULT_BG.color };
-    }
-  } catch {}
-  return { ...DEFAULT_BG };
-}
-
-function savePreviewBgSettings(settings: PreviewBgSettings) {
-  try {
-    localStorage.setItem(PREVIEW_BG_KEY, JSON.stringify(settings));
-  } catch {}
-}
-
-function applyPreviewBackground(settings: PreviewBgSettings) {
-  if (!previewContainer) return;
-  previewContainer.classList.remove("preview-bg-checkerboard");
-  previewContainer.style.backgroundImage = "";
-  previewContainer.style.backgroundColor = "";
-
-  if (settings.type === "checkerboard") {
-    previewContainer.classList.add("preview-bg-checkerboard");
-  } else {
-    previewContainer.style.backgroundColor = settings.color;
-  }
-}
-
-function setupPreviewBackgroundSettings() {
-  const settings = loadPreviewBgSettings();
-  applyPreviewBackground(settings);
-
-  bgTypeSelect.value = settings.type;
-  bgColorRow.classList.toggle("hidden", settings.type !== "solid");
-
-  settingsBtn.addEventListener("click", () => {
-    const open = settingsPanel.classList.toggle("hidden");
-    settingsBtn.setAttribute("aria-expanded", String(!open));
-  });
-
-  bgTypeSelect.addEventListener("change", () => {
-    const type = bgTypeSelect.value as BgType;
-    bgColorRow.classList.toggle("hidden", type !== "solid");
-    const newSettings: PreviewBgSettings = { ...loadPreviewBgSettings(), type };
-    if (type === "solid") newSettings.color = loadPreviewBgSettings().color;
-    savePreviewBgSettings(newSettings);
-    applyPreviewBackground(newSettings);
-  });
-
-  bgColorRow.querySelectorAll(".bg-preset").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const color = (btn as HTMLButtonElement).dataset.color ?? DEFAULT_BG.color;
-      const newSettings: PreviewBgSettings = { type: "solid", color };
-      savePreviewBgSettings(newSettings);
-      applyPreviewBackground(newSettings);
-      bgTypeSelect.value = "solid";
-      bgColorRow.classList.remove("hidden");
-    });
-  });
-}
+import { initShortcuts } from "./shortcuts";
+import { connectWebSocket } from "./server-sync";
+import { exporting, initExportHandlers, openExportPanel } from "./export";
+import { setupPreviewBackgroundSettings } from "./settings";
 
 let player: Player | null = null;
 let loadedTemplate: { render: (ctx: unknown) => string; defaults?: Record<string, unknown>; config?: { fonts?: string[]; inlineCss?: string[]; stylesheets?: string[]; background?: BackgroundValue } } | null = null;
 let devConfig: DevConfig;
 let templatePath = "/api/template";
 let configPath = "/api/config";
-let exporting = false;
-
-function setStatus(message: string) {
-  statusEl.textContent = message;
-}
-
-function showToast(message: string, type: ToastType = "info") {
-  const el = document.createElement("div");
-  el.className = `toast ${type}`;
-  el.textContent = message;
-  toastContainer.appendChild(el);
-
-  const dismiss = () => {
-    el.remove();
-  };
-
-  if (type === "error") {
-    el.addEventListener("click", dismiss);
-  } else if (type === "success" || type === "info") {
-    setTimeout(dismiss, 3000);
-  }
-}
-
-function showError(message: string) {
-  errorPanel.classList.remove("hidden");
-  errorPanelMessage.textContent = message;
-}
-
-function hideError() {
-  errorPanel.classList.add("hidden");
-}
+import {
+  setStatus,
+  showToast,
+  showError,
+  hideError,
+  showLoading,
+  hideLoading
+} from "./ui-feedback";
 
 function updateUI() {
   if (!player) return;
@@ -201,13 +95,13 @@ function updateUI() {
   }
 }
 
-async function loadTemplate(path: string) {
+export async function loadTemplate(path: string) {
   const url = `${path}?t=${Date.now()}`;
   const mod = await import(/* @vite-ignore */ url);
   return mod.default ?? mod;
 }
 
-function reloadTemplate() {
+export function reloadTemplate() {
   if (!player) return;
   hideError();
   showLoading();
@@ -234,126 +128,9 @@ function reloadTemplate() {
     });
 }
 
-function connectWebSocket() {
-  const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  const ws = new WebSocket(`${proto}//${location.host}/ws`);
-  ws.onopen = () => {
-    showToast("Connected for auto-reloading", "info");
-    setStatus("Connected for auto-reloading");
-  };
-  ws.onmessage = (e) => {
-    try {
-      const msg = JSON.parse(e.data);
-      if (msg.type === "reload") reloadTemplate();
-    } catch {}
-  };
-  ws.onclose = () => {
-    setStatus("Disconnected. Retrying...");
-    setTimeout(connectWebSocket, 2000);
-  };
-}
 
-function setupKeyboardShortcuts() {
-  document.addEventListener("keydown", (e) => {
-    // Escape: back to home when in player view
-    if (e.key === "Escape") {
-      if (playerView.classList.contains("visible")) {
-        location.href = "/";
-      }
-      return;
-    }
 
-    if (!player?.store) return;
 
-    const store = player.store.getState();
-    const target = e.target as HTMLElement;
-    if (target.closest("input") || target.closest("textarea") || target.closest("select")) return;
-
-    switch (e.key) {
-      case " ":
-        e.preventDefault();
-        store.togglePlayPause();
-        break;
-      case "r":
-      case "R":
-        e.preventDefault();
-        reloadTemplate();
-        break;
-      case "l":
-      case "L":
-        e.preventDefault();
-        toggleLoop();
-        break;
-      case "ArrowLeft":
-        e.preventDefault();
-        if (store.isPlaying) return;
-        store.setFrame(Math.max(0, store.currentFrame - (e.shiftKey ? 10 : 1)));
-        break;
-      case "ArrowRight":
-        e.preventDefault();
-        if (store.isPlaying) return;
-        store.setFrame(Math.min(store.totalFrames - 1, store.currentFrame + (e.shiftKey ? 10 : 1)));
-        break;
-      case "Home":
-        e.preventDefault();
-        store.setFrame(0);
-        break;
-      case "End":
-        e.preventDefault();
-        store.setFrame(store.totalFrames - 1);
-        break;
-      case "?":
-        e.preventDefault();
-        helpBtn?.click();
-        break;
-      case "e":
-      case "E":
-        e.preventDefault();
-        openExportPanel();
-        break;
-    }
-  });
-}
-
-function toggleLoop() {
-  if (!player) return;
-  const next = player.playbackMode === "loop" ? "once" : "loop";
-  player.playbackMode = next;
-  loopBtn.setAttribute("aria-pressed", String(next === "loop"));
-}
-
-function showLoading() {
-  previewContainer.classList.add("loading");
-}
-
-function hideLoading() {
-  previewContainer.classList.remove("loading");
-}
-
-// Export panel state
-let exportFormat: "mp4" | "webm" = "mp4";
-let exportAbortController: AbortController | null = null;
-let exportedBlob: Blob | null = null;
-
-function setExportState(state: "config" | "exporting" | "done") {
-  exportPanel.dataset.state = state;
-}
-
-function openExportPanel() {
-  setExportState("config");
-  exportPanel.classList.remove("hidden");
-  // Close other panels
-  settingsPanel.classList.add("hidden");
-  settingsBtn.setAttribute("aria-expanded", "false");
-  helpPanel.classList.add("hidden");
-  helpBtn.setAttribute("aria-expanded", "false");
-}
-
-function closeExportPanel() {
-  exportPanel.classList.add("hidden");
-  exportAbortController?.abort();
-  exportAbortController = null;
-}
 
 async function initHome() {
   try {
@@ -484,46 +261,7 @@ function formatCategory(relativePath: string): string {
   return parts.length > 1 ? parts.slice(0, -1).join("/") : "";
 }
 
-async function generateThumbnail(
-  video: VideoItem,
-  thumbnailImg: HTMLImageElement,
-  placeholder: HTMLDivElement
-): Promise<void> {
-  // Create offscreen container for player
-  const tempContainer = document.createElement("div");
-  tempContainer.style.cssText = "position:absolute;left:-9999px;top:-9999px;width:400px;height:225px;";
-  document.body.appendChild(tempContainer);
-
-  try {
-    const configRes = await fetch(`/api/videos/${encodeURIComponent(video.name)}/config`);
-    const config = await configRes.json();
-    const w = 400;
-    const h = Math.round(w * ((config.height ?? 1080) / (config.width ?? 1920)));
-
-    const player = new Player({
-      container: tempContainer,
-      format: { width: w, height: h },
-      playbackMode: "paused",
-    });
-
-    const mod = await loadTemplate(`/api/videos/${encodeURIComponent(video.name)}/template`);
-    await player.load(mod.default ?? mod);
-
-    // Capture thumbnail using smart frame selection
-    const { dataUrl } = await player.captureFrame({ format: "dataUrl" });
-
-    player.destroy();
-
-    // Set thumbnail
-    thumbnailImg.src = dataUrl!;
-    thumbnailImg.onload = () => {
-      thumbnailImg.style.opacity = "1";
-      placeholder.style.opacity = "0";
-    };
-  } finally {
-    document.body.removeChild(tempContainer);
-  }
-}
+import { generateThumbnail } from "./thumbnails";
 
 function getTemplateDisplayName(path: string): string {
   if (path.startsWith("/api/videos/") && path.endsWith("/template")) {
@@ -536,6 +274,7 @@ function getTemplateDisplayName(path: string): string {
 async function initPlayer() {
   try {
     setupPreviewBackgroundSettings();
+    errorPanelDismiss?.addEventListener("click", hideError);
     setStatus("Loading config...");
     const params = new URLSearchParams(location.search);
     templatePath = params.get("template") || "/api/template";
@@ -574,6 +313,11 @@ async function initPlayer() {
     player.on("play", updateUI);
     player.on("pause", updateUI);
     player.on("frame", (f) => setStatus(`Playing frame ${f}/${player!.totalFrames}`));
+    player.on("frameRendered", (f, html, compositeHtml) => {
+      if (inspectorPanel.classList.contains("open")) {
+        inspectorCode.textContent = compositeHtml;
+      }
+    });
 
     setStatus("Loading template...");
     const template = await loadTemplate(templatePath);
@@ -585,6 +329,7 @@ async function initPlayer() {
 
     const store = player.store!;
     store.subscribe(updateUI);
+    updateUI(); // Sync initial state so that the play overlay appears
 
     const timelineController = createTimelineController(
       { progress: timelineProgress, playhead: timelinePlayhead, currentTime: currentTimeEl, totalTime: totalTimeEl },
@@ -604,13 +349,23 @@ async function initPlayer() {
     });
     btnLast.addEventListener("click", () => store.getState().setFrame(store.getState().totalFrames - 1));
 
-    // Loop toggle
-    loopBtn.addEventListener("click", toggleLoop);
 
-    playPauseBtn.addEventListener("click", () => store.getState().togglePlayPause());
-    reloadBtn.addEventListener("click", reloadTemplate);
 
-    errorPanelDismiss?.addEventListener("click", hideError);
+    // Inspector panel toggle
+    inspectorBtn?.addEventListener("click", () => {
+      const expanded = inspectorBtn.getAttribute("aria-expanded") === "true";
+      inspectorBtn.setAttribute("aria-expanded", String(!expanded));
+      inspectorPanel?.classList.toggle("open");
+
+      // Update code right away if opening
+      if (!expanded && player && player.store) {
+        player.renderFrame(player.currentFrame);
+      }
+    });
+    inspectorPanelClose?.addEventListener("click", () => {
+      inspectorBtn.setAttribute("aria-expanded", "false");
+      inspectorPanel?.classList.remove("open");
+    });
 
     // Help panel toggle
     helpBtn?.addEventListener("click", () => {
@@ -631,110 +386,13 @@ async function initPlayer() {
       store.getState().togglePlayPause();
     });
 
-    // Export button opens panel
-    exportBtn.addEventListener("click", openExportPanel);
-
-    // Export panel close buttons
-    exportPanelClose.addEventListener("click", closeExportPanel);
-    exportCloseBtn.addEventListener("click", closeExportPanel);
-
-    // Format pills
-    document.querySelectorAll(".export-fmt-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".export-fmt-btn").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        exportFormat = (btn as HTMLButtonElement).dataset.format as "mp4" | "webm";
-      });
-    });
-
-    // Start export
-    exportStart.addEventListener("click", async () => {
-      if (!player || exporting || !loadedTemplate) return;
-      exporting = true;
-      exportAbortController = new AbortController();
-      setExportState("exporting");
-      exportBar.style.width = "0%";
-      exportPercent.textContent = "0%";
-      updateUI();
-
-      try {
-        const w = player.renderWidth;
-        const h = player.renderHeight;
-        const exportCanvas = document.createElement("canvas");
-        exportCanvas.width = w;
-        exportCanvas.height = h;
-
-        const exportRenderer = new CanvasRenderer(exportCanvas);
-        exportRenderer.setOptions({
-          fonts: loadedTemplate?.config?.fonts,
-          inlineCss: loadedTemplate?.config?.inlineCss,
-          stylesheets: loadedTemplate?.config?.stylesheets,
-        });
-        await exportRenderer.warmup();
-
-        const template = loadedTemplate;
-        const fps = player.fps;
-        const totalFrames = player.totalFrames;
-
-        const renderAtExportSize = async (frame: number) => {
-          if (exportAbortController?.signal.aborted) throw new DOMException("Aborted", "AbortError");
-          const mergedData = template.defaults ?? {};
-          const ctx = createRenderContext(frame, fps, totalFrames, w, h, mergedData);
-          const html = template.render(ctx);
-          const compositeHtml = buildCompositeHtml(html, template.config?.background, w, h);
-          await exportRenderer.renderFrame(() => compositeHtml, ctx);
-        };
-
-        const blob = await exportToVideo(
-          exportCanvas,
-          { fps: devConfig.fps, width: w, height: h, durationSeconds: devConfig.durationSeconds, format: exportFormat },
-          renderAtExportSize,
-          {
-            onProgress: (f, t) => {
-              if (exportAbortController?.signal.aborted) return;
-              const pct = Math.round((f / t) * 100);
-              exportBar.style.width = `${pct}%`;
-              exportPercent.textContent = `${pct}%`;
-              setStatus(`Exporting frame ${f}/${t}`);
-            },
-            onStatusChange: setStatus,
-            signal: exportAbortController.signal,
-          }
-        );
-        await exportRenderer.dispose();
-        exportedBlob = blob;
-        exportSize.textContent = `— ${(blob.size / 1024 / 1024).toFixed(1)} MB`;
-        setExportState("done");
-        showToast("Export complete!", "success");
-        setStatus("Export complete!");
-      } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") {
-          setStatus("Export cancelled");
-        } else {
-          const msg = e instanceof Error ? e.message : "Unknown";
-          showToast(`Export failed: ${msg}`, "error");
-          setStatus(`Export failed: ${msg}`);
-        }
-        setExportState("config");
-      } finally {
-        exporting = false;
-        exportAbortController = null;
-        updateUI();
-      }
-    });
-
-    // Cancel export
-    exportCancel.addEventListener("click", () => {
-      exportAbortController?.abort();
-      setExportState("config");
-    });
-
-    // Download exported video
-    exportDownload.addEventListener("click", () => {
-      if (exportedBlob) {
-        downloadBlob(exportedBlob, `export.${exportFormat}`);
-      }
-    });
+    // Export handlers
+    initExportHandlers(
+      () => player,
+      () => loadedTemplate,
+      () => devConfig,
+      updateUI
+    );
 
     outputSelect.addEventListener("change", (e) => {
       if (!devConfig) return;
@@ -750,7 +408,11 @@ async function initPlayer() {
     });
 
     setStatus("Ready - Click Play to start preview");
-    setupKeyboardShortcuts();
+    initShortcuts(
+      () => player,
+      reloadTemplate,
+      openExportPanel
+    );
     connectWebSocket();
     updateUI();
     playerView.classList.add("visible");

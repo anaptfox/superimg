@@ -65,6 +65,10 @@ export type {
   BackgroundOptions,
   AudioOptions,
 
+  // Watermarks
+  WatermarkOptions,
+  WatermarkValue,
+
   // Tailwind
   TailwindConfig,
 } from "./types.js";

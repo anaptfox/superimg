@@ -9,11 +9,12 @@ import { PlaywrightEngine } from "@superimg/playwright";
 import { writeFileSync, existsSync, mkdirSync, statSync } from "node:fs";
 import { resolve, dirname, basename, join } from "node:path";
 import { bundleTemplateCode } from "@superimg/core/bundler";
-import { parseTemplate, resolveRenderConfig, resolvePresetConfig, resolveAllPresets } from "../utils/template-config.js";
 import { resolveTemplatePath } from "../utils/resolve-template.js";
 import { findProjectRoot } from "../utils/find-project-root.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";
 import { discoverVideos } from "../utils/discover-videos.js";
+import { parseTemplate, resolveRenderConfig, resolvePresetConfig, resolveAllPresets } from "../utils/template-config.js";
+import { resolveOutputPath } from "../utils/resolve-output-path.js";
 import type { EncodingOptions } from "@superimg/types";
 import { mergeEncoding } from "../utils/merge-encoding.js";
 
@@ -38,6 +39,7 @@ interface RenderOptions {
   audioBitrateMode?: string;
   fastStart?: string;
   clusterDuration?: string;
+  debugHtml?: boolean;
 }
 
 function resolveFormat(opts: RenderOptions): "mp4" | "webm" | undefined {
@@ -192,18 +194,6 @@ interface RenderTarget {
   outputName: string;
 }
 
-function splitFilename(filepath: string): { base: string; ext: string } {
-  const dot = filepath.lastIndexOf(".");
-  if (dot <= 0) return { base: filepath, ext: "" };
-  return { base: filepath.slice(0, dot), ext: filepath.slice(dot) };
-}
-
-/** Extract video name from template path (e.g., "intro.video.ts" -> "intro") */
-function deriveVideoName(templatePath: string): string {
-  const base = basename(templatePath);
-  return base.replace(/\.video\.(ts|js)$/, "");
-}
-
 /** Check if path is a directory (exists and is dir, or ends with /) */
 function isDirectory(path: string): boolean {
   if (path.endsWith("/")) return true;
@@ -214,37 +204,7 @@ function isDirectory(path: string): boolean {
   }
 }
 
-/** Resolve output path with smart defaults */
-function resolveOutputPath(
-  outputArg: string | undefined,
-  templatePath: string,
-  presetSuffix?: string
-): string {
-  const videoName = deriveVideoName(templatePath);
-  const suffix = presetSuffix ? `-${presetSuffix}` : "";
-  const defaultFilename = `${videoName}${suffix}.mp4`;
 
-  // No -o provided: use output/ folder
-  if (!outputArg) {
-    const outputDir = resolve("output");
-    if (!existsSync(outputDir)) {
-      mkdirSync(outputDir, { recursive: true });
-    }
-    return join(outputDir, defaultFilename);
-  }
-
-  // -o is a directory: auto-derive filename
-  if (isDirectory(outputArg)) {
-    const outputDir = resolve(outputArg.replace(/\/$/, ""));
-    if (!existsSync(outputDir)) {
-      mkdirSync(outputDir, { recursive: true });
-    }
-    return join(outputDir, defaultFilename);
-  }
-
-  // -o is explicit filename
-  return resolve(outputArg);
-}
 
 async function checkPlaywrightAvailable(): Promise<{ available: boolean; message?: string; isServerless?: boolean }> {
   // Check for serverless environment
@@ -329,7 +289,11 @@ export async function renderCommand(template: string, options: RenderOptions) {
       const outputDir = options.output
         ? (isDirectory(options.output) ? options.output : dirname(options.output))
         : "output";
-      const videoOutput = resolveOutputPath(outputDir + "/", video.entrypoint);
+      const videoOutput = resolveOutputPath({
+        outputArg: outputDir + "/",
+        templatePath: video.entrypoint,
+        projectRoot
+      });
       // Recursively call without --all
       await renderCommand(video.entrypoint, { ...options, all: false, output: videoOutput });
     }
@@ -387,7 +351,15 @@ export async function renderCommand(template: string, options: RenderOptions) {
       width: p.width,
       height: p.height,
       fps: p.fps,
-      outputPath: resolveOutputPath(options.output, resolvedTemplate, p.name),
+      outputPath: resolveOutputPath({
+        outputArg: options.output,
+        templatePath: resolvedTemplate,
+        projectRoot,
+        cascadingConfig,
+        presetSuffix: p.name,
+        presetOutFile: p.outFile,
+        presetOutDir: p.outDir
+      }),
       outputName: p.name,
     }));
   } else if (options.preset) {
@@ -402,7 +374,15 @@ export async function renderCommand(template: string, options: RenderOptions) {
         width: preset.width,
         height: preset.height,
         fps: preset.fps,
-        outputPath: resolveOutputPath(options.output, resolvedTemplate, preset.name),
+        outputPath: resolveOutputPath({
+          outputArg: options.output,
+          templatePath: resolvedTemplate,
+          projectRoot,
+          cascadingConfig,
+          presetSuffix: preset.name,
+          presetOutFile: preset.outFile,
+          presetOutDir: preset.outDir
+        }),
         outputName: preset.name,
       }];
     } catch (err) {
@@ -416,7 +396,12 @@ export async function renderCommand(template: string, options: RenderOptions) {
       width: resolvedConfig.width,
       height: resolvedConfig.height,
       fps: resolvedConfig.fps,
-      outputPath: resolveOutputPath(options.output, resolvedTemplate),
+      outputPath: resolveOutputPath({
+        outputArg: options.output,
+        templatePath: resolvedTemplate,
+        projectRoot,
+        cascadingConfig
+      }),
       outputName: "default",
     }];
   }
@@ -465,6 +450,8 @@ export async function renderCommand(template: string, options: RenderOptions) {
               stylesheets: templateData.templateConfig?.stylesheets,
               outputName: target.outputName,
               encoding: mergeEncoding(templateData.templateConfig?.encoding, buildEncodingOptions(options)),
+              watermark: templateData.templateConfig?.watermark,
+              background: templateData.templateConfig?.background,
             };
 
             const plan = createRenderPlan(job);
@@ -473,6 +460,16 @@ export async function renderCommand(template: string, options: RenderOptions) {
               onProgress: (p) => {
                 if (mounted) setProgress(p);
               },
+              onFrameRendered: (frame, _html, compositeHtml) => {
+                if (options.debugHtml) {
+                  const debugDir = join(projectRoot, ".superimg", "debug", target.outputName);
+                  if (!existsSync(debugDir)) {
+                    mkdirSync(debugDir, { recursive: true });
+                  }
+                  const frameStr = String(frame).padStart(5, "0");
+                  writeFileSync(join(debugDir, `frame_${frameStr}.html`), compositeHtml);
+                }
+              }
             });
 
             writeFileSync(target.outputPath, result);

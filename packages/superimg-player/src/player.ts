@@ -112,6 +112,8 @@ export type PlayerInput = TemplateModule | ComposedTemplate;
 export interface PlayerEvents {
   /** Fired on each frame render */
   frame: (frame: number) => void;
+  /** Fired on each frame render with the raw HTML payload for debugging */
+  frameRendered: (frame: number, html: string, compositeHtml: string) => void;
   /** Fired when playback starts */
   play: () => void;
   /** Fired when playback pauses */
@@ -477,11 +479,14 @@ export class Player {
       const compositeHtml = buildCompositeHtml(
         html,
         templateConfig?.background,
+        templateConfig?.watermark,
         this._renderWidth,
         this._renderHeight
       );
       // Present frame
       await this.presenter.present(compositeHtml, ctx);
+      // Fire debugging event
+      this.events.frameRendered?.(frame, html, compositeHtml);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       // Create enriched error with context
@@ -936,6 +941,7 @@ export class Player {
     const compositeHtml = buildCompositeHtml(
       html,
       templateConfig?.background,
+      templateConfig?.watermark,
       this._renderWidth,
       this._renderHeight
     );

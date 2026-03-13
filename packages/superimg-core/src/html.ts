@@ -14,6 +14,7 @@ const DEFAULT_BACKGROUND = "#000000";
 export function buildCompositeHtml(
   templateHtml: string,
   background: BackgroundValue | undefined,
+  watermark: import("@superimg/types").WatermarkValue | undefined,
   width: number,
   height: number
 ): string {
@@ -39,7 +40,75 @@ export function buildCompositeHtml(
     `<div style="position:absolute;inset:0;overflow:hidden">${templateHtml}</div>`
   );
 
+  // Watermark layer
+  if (watermark) {
+    layers.push(buildWatermarkHtml(watermark));
+  }
+
   return layers.join("\n");
+}
+
+function buildWatermarkHtml(watermark: import("@superimg/types").WatermarkValue): string {
+  const options = typeof watermark === "string" 
+    ? { content: watermark, type: "image", position: "bottom-right", opacity: 0.8, width: undefined, height: undefined, style: undefined, className: undefined, href: undefined } 
+    : { ...watermark, opacity: watermark.opacity ?? 0.8, position: watermark.position ?? "bottom-right" };
+
+  let contentHtml = "";
+
+  // Infer type if not provided
+  let type = options.type;
+  if (!type) {
+    if (options.content.startsWith("<")) {
+      type = "html";
+    } else if (options.content.match(/\.(png|jpe?g|gif|webp|svg)$/i) || options.content.startsWith("data:image")) {
+      type = "image";
+    } else {
+      type = "text";
+    }
+  }
+
+  const safeContent = type === "html" ? options.content : escapeHtmlAttr(options.content);
+
+  if (type === "image") {
+    const widthStyle = options.width ? `width:${options.width}${typeof options.width === "number" ? "px" : ""};` : "";
+    const heightStyle = options.height ? `height:${options.height}${typeof options.height === "number" ? "px" : ""};` : "";
+    contentHtml = `<img src="${safeContent}" style="${widthStyle}${heightStyle}" alt="Watermark" />`;
+  } else if (type === "text") {
+    contentHtml = `<span>${options.content}</span>`; // Not escaped so HTML entities work, but user must be careful. For safety: escapeHtmlAttr
+  } else {
+    contentHtml = options.content;
+  }
+
+  // Handle position
+  const positions: Record<string, string> = {
+    "bottom-right": "bottom: 20px; right: 20px;",
+    "bottom-left": "bottom: 20px; left: 20px;",
+    "top-right": "top: 20px; right: 20px;",
+    "top-left": "top: 20px; left: 20px;",
+    "center": "top: 50%; left: 50%; transform: translate(-50%, -50%);",
+  };
+  
+  const positionStyle = positions[options.position as string] || positions["bottom-right"];
+  
+  // Custom styles
+  let customStyle = "";
+  if (options.style) {
+    customStyle = Object.entries(options.style)
+      .map(([k, v]) => `${k}:${v}`)
+      .join(";");
+  }
+
+  const containerStyle = `position: absolute; z-index: 9999; opacity: ${options.opacity}; ${positionStyle} ${customStyle}`;
+  const containerClass = options.className ? ` class="${escapeHtmlAttr(options.className)}"` : "";
+
+  let html = `<div style="${containerStyle}"${containerClass}>${contentHtml}</div>`;
+
+  if (options.href) {
+    const safeHref = escapeHtmlAttr(options.href);
+    html = `<a href="${safeHref}" target="_blank" style="all: unset; cursor: pointer;">${html}</a>`;
+  }
+
+  return html;
 }
 
 /**

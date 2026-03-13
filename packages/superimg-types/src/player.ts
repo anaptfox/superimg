@@ -8,6 +8,7 @@ import type {
   PlaybackMode,
   LoadMode,
   HoverBehavior,
+  ResolvedScene,
 } from "./types.js";
 
 // =============================================================================
@@ -45,6 +46,8 @@ export interface PlayerOptions {
 export interface PlayerEvents {
   /** Fired on each frame render */
   frame: (frame: number) => void;
+  /** Fired on each frame render with the raw HTML payload for debugging */
+  frameRendered: (frame: number, html: string, compositeHtml: string) => void;
   /** Fired when playback starts */
   play: () => void;
   /** Fired when playback pauses */
@@ -57,6 +60,8 @@ export interface PlayerEvents {
   error: (error: Error) => void;
   /** Fired when passing a checkpoint */
   checkpoint: (checkpoint: Checkpoint) => void;
+  /** Fired when the active scene changes (composed templates only) */
+  scenechange: (scene: ResolvedScene) => void;
 }
 
 // =============================================================================

@@ -66,6 +66,7 @@ function safeRender(
 
 export interface ExecuteRenderPlanCallbacks {
   onProgress?: (progress: RenderProgress) => void;
+  onFrameRendered?: (frame: number, html: string, compositeHtml: string) => void;
 }
 
 /**
@@ -88,6 +89,7 @@ export function createRenderPlan(job: RenderJob): RenderPlan {
     encoding,
     data,
     background,
+    watermark,
   } = job;
 
   // Compile template
@@ -115,6 +117,16 @@ export function createRenderPlan(job: RenderJob): RenderPlan {
   const totalFrames = Math.ceil(durationSeconds * fps);
   const resolvedAssets = resolveConfigAssets(template.config?.assets);
 
+  let finalWatermark = watermark;
+  if (!finalWatermark || finalWatermark === "extracted-by-bundler") {
+    finalWatermark = template.config?.watermark;
+  }
+
+  let finalBackground = background;
+  if (!finalBackground || finalBackground === "extracted-by-bundler") {
+    finalBackground = template.config?.background;
+  }
+
   return {
     template,
     durationSeconds,
@@ -130,7 +142,8 @@ export function createRenderPlan(job: RenderJob): RenderPlan {
     outputName,
     encoding,
     data,
-    background,
+    background: finalBackground,
+    watermark: finalWatermark,
     resolvedAssets,
   };
 }
@@ -159,6 +172,7 @@ export async function executeRenderPlan<TFrame>(
     encoding,
     data,
     background,
+    watermark,
     resolvedAssets,
   } = plan;
 
@@ -191,7 +205,9 @@ export async function executeRenderPlan<TFrame>(
       );
 
       const html = safeRender(template, ctx, outputName);
-      const compositeHtml = buildCompositeHtml(html, background, width, height);
+      const compositeHtml = buildCompositeHtml(html, background, watermark, width, height);
+
+      callbacks?.onFrameRendered?.(frame, html, compositeHtml);
 
       const capturedFrame = await renderer.captureFrame(compositeHtml, {
         alpha: encoding?.video?.alpha === "keep",

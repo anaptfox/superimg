@@ -84,6 +84,7 @@ program
   .option("--audio-bitrate-mode <mode>", "Audio bitrate mode: constant, variable")
   .option("--fast-start <mode>", "MP4 fast start: false, in-memory, fragmented")
   .option("--cluster-duration <seconds>", "WebM minimum cluster duration in seconds")
+  .option("--debug-html", "Save the underlying HTML of each frame to .superimg/debug/")
   .action(async (template: string | undefined, options) => {
     const mod = await import("./commands/render.js");
     // Require template unless --all is used
