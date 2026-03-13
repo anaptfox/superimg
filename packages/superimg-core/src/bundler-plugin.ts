@@ -32,11 +32,18 @@ export function createSuperimgPlugin(namespace = "superimg-virtual"): EsbuildPlu
         loader: "js",
       }));
 
-      // Strip stdlib imports (accessed via ctx.std at runtime)
-      build.onResolve({ filter: /^@superimg\/stdlib/ }, () => ({
-        path: "stdlib-noop",
-        namespace,
-      }));
+      // Strip most stdlib imports (accessed via ctx.std at runtime)
+      // EXCEPT @superimg/stdlib/code - that one needs to be bundled for static highlighting
+      build.onResolve({ filter: /^@superimg\/stdlib/ }, (args: { path: string }) => {
+        // Don't strip the code module - it needs to be bundled for static highlighting
+        if (args.path === "@superimg/stdlib/code") {
+          return null; // Let esbuild handle it normally
+        }
+        return {
+          path: "stdlib-noop",
+          namespace,
+        };
+      });
 
       build.onLoad({ filter: /^stdlib-noop$/, namespace }, () => ({
         contents: "export {}",

@@ -10,6 +10,7 @@ import type { tween } from "@superimg/stdlib/tween";
 import type * as responsive from "@superimg/stdlib/responsive";
 import type * as subtitle from "@superimg/stdlib/subtitle";
 import type * as presets from "@superimg/stdlib/presets";
+import type * as code from "@superimg/stdlib/code";
 
 /**
  * Standard library available via `ctx.std` in render functions.
@@ -53,5 +54,7 @@ export interface Stdlib {
   subtitle: typeof subtitle;
   /** @extended Platform presets for social media dimensions (instagram, youtube, tiktok, etc.) */
   presets: typeof presets;
+  /** @extended Syntax highlighting for code blocks (Shiki-powered) */
+  code: typeof code;
 }
 

@@ -53,6 +53,10 @@
     "./tween": {
       "import": "./dist/tween.js",
       "types": "./dist/tween.d.ts"
+    },
+    "./code": {
+      "import": "./dist/code.js",
+      "types": "./dist/code.d.ts"
     }
   },
   "scripts": {
@@ -74,8 +78,11 @@
   "license": "MIT",
   "dependencies": {
     "@emotion/unitless": "^0.10.0",
+    "@shikijs/langs": "^4.0.2",
+    "@shikijs/themes": "^4.0.2",
     "colord": "^2.9.3",
     "date-fns": "^4.1.0",
+    "shiki": "^3.0.0",
     "simplex-noise": "^4.0.3"
   },
   "devDependencies": {

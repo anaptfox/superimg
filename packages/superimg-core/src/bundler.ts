@@ -1,7 +1,16 @@
 //! Server-side template bundling with esbuild (Node/Bun/Deno)
 
 import * as esbuild from "esbuild";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createSuperimgPlugin } from "./bundler-plugin.js";
+
+// Find the stdlib package location for resolution
+// This file is at packages/superimg-core/dist/bundler.js
+// The stdlib is at packages/superimg-stdlib (symlinked in node_modules)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+// Go from dist/ to packages/superimg-core/node_modules
+const stdlibNodePath = resolve(__dirname, "../node_modules");
 
 /** Bundle a template file, resolving all imports. Server-side only (Node/Bun/Deno). */
 export async function bundleTemplate(entryPoint: string): Promise<string> {
@@ -11,8 +20,9 @@ export async function bundleTemplate(entryPoint: string): Promise<string> {
     write: false,
     format: "iife",
     globalName: "__template",
-    platform: "neutral",
+    platform: "node",
     target: "es2020",
+    nodePaths: stdlibNodePath ? [stdlibNodePath] : [],
     plugins: [createSuperimgPlugin()],
   });
   return result.outputFiles[0]!.text;
@@ -25,8 +35,9 @@ export async function bundleTemplateESM(entryPoint: string): Promise<string> {
     bundle: true,
     write: false,
     format: "esm",
-    platform: "neutral",
+    platform: "node",
     target: "es2020",
+    nodePaths: stdlibNodePath ? [stdlibNodePath] : [],
     plugins: [createSuperimgPlugin()],
   });
   return result.outputFiles[0]!.text;
@@ -47,8 +58,9 @@ export async function bundleTemplateCode(
     write: false,
     format: "iife",
     globalName: "__template",
-    platform: "neutral",
+    platform: "node",
     target: "es2020",
+    nodePaths: stdlibNodePath ? [stdlibNodePath] : [],
     plugins: [createSuperimgPlugin()],
   });
   return result.outputFiles[0]!.text;

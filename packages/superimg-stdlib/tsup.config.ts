@@ -14,6 +14,7 @@ export default defineConfig({
     "src/alea.ts",
     "src/subtitle.ts",
     "src/presets.ts",
+    "src/code.ts",
     "src/index.ts",
   ],
   format: ["esm"],
@@ -25,5 +26,5 @@ export default defineConfig({
   // Bundle everything into each file (including dependencies)
   bundle: true,
   // Don't mark dependencies as external - we want them bundled
-  noExternal: ["date-fns", "colord", "simplex-noise"],
+  noExternal: ["date-fns", "colord", "simplex-noise", "shiki", "@shikijs/themes", "@shikijs/langs"],
 });

@@ -20,3 +20,4 @@ export * from "./css";
 export * from "./responsive";
 export * from "./subtitle";
 export * from "./presets";
+export * from "./code";

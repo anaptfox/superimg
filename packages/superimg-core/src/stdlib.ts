@@ -11,6 +11,7 @@ import { tween } from "@superimg/stdlib/tween";
 import * as responsive from "@superimg/stdlib/responsive";
 import * as subtitle from "@superimg/stdlib/subtitle";
 import * as presets from "@superimg/stdlib/presets";
+import * as code from "@superimg/stdlib/code";
 
 const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
@@ -27,4 +28,5 @@ export const stdlib: Stdlib = {
   responsive,
   subtitle,
   presets,
+  code,
 };
