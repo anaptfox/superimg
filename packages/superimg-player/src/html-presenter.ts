@@ -35,6 +35,7 @@ export class HtmlPresenter implements FramePresenter {
       width: 100%;
       height: 100%;
       border: none;
+      pointer-events: none;
       background: #000000;
       display: block;
     `;

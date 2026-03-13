@@ -42,6 +42,10 @@
   background: rgba(0, 0, 0, 0.3);
 }
 
+#preview-container .paused-overlay.hidden {
+  display: none;
+}
+
 #preview-container .paused-overlay svg {
   @apply w-16 h-16 text-white opacity-80;
 }
@@ -153,6 +157,16 @@
 .export-fmt-btn:hover { @apply border-[#5a5a5a] text-[#e0e0e0]; }
 .export-fmt-btn.active {
   @apply bg-[#00aaff26] border-[#00aaff] text-[#93bbfc];
+}
+
+/* Inspector panel slide animation */
+#inspector-panel {
+  transform: translateX(100%);
+}
+
+#inspector-panel.open {
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 /* Progress bar gradient */

@@ -83,8 +83,9 @@ test-coverage:
 lint:
     cd "{{root}}" && pnpm run lint
 
-# Type-check (docs app)
+# Type-check (builds deps first, then checks docs app)
 typecheck:
+    @just build
     cd "{{root}}/apps/docs" && pnpm run check-types
 
 # Clean all build artifacts

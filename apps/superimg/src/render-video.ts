@@ -7,6 +7,7 @@ import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 import { PlaywrightEngine } from "@superimg/playwright";
 import { parseTemplate, resolveRenderConfig } from "./cli/utils/template-config.js";
 import type { EncodingOptions } from "@superimg/types";
+import { mergeEncoding } from "./cli/utils/merge-encoding.js";
 
 export interface RenderVideoOptions {
   /** Output file path (writes to disk when provided) */
@@ -66,7 +67,7 @@ export async function renderVideo(
       stylesheets: templateData.templateConfig?.stylesheets,
       tailwind: templateData.templateConfig?.tailwind,
       outputName: "default",
-      encoding: options.encoding,
+      encoding: mergeEncoding(templateData.templateConfig?.encoding, options.encoding),
       data: options.data,
     };
 

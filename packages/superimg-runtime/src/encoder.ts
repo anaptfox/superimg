@@ -133,8 +133,15 @@ export class BrowserEncoder {
     }
 
     const outputTarget = new BufferTarget();
+    const outputFormat = isWebM
+      ? new WebMOutputFormat({
+          minimumClusterDuration: this.encoding?.webm?.minimumClusterDuration,
+        })
+      : new Mp4OutputFormat({
+          fastStart: this.encoding?.mp4?.fastStart ?? undefined,
+        });
     this.output = new Output({
-      format: isWebM ? new WebMOutputFormat() : new Mp4OutputFormat(),
+      format: outputFormat,
       target: outputTarget,
     });
 
@@ -144,6 +151,9 @@ export class BrowserEncoder {
       keyFrameInterval: this.encoding?.video?.keyFrameInterval ?? 5,
       sizeChangeBehavior: "deny",
       alpha: this.encoding?.video?.alpha,
+      bitrateMode: this.encoding?.video?.bitrateMode,
+      latencyMode: this.encoding?.video?.latencyMode,
+      hardwareAcceleration: this.encoding?.video?.hardwareAcceleration,
     });
 
     this.output.addVideoTrack(this.canvasSource, { frameRate: this.fps });
@@ -193,6 +203,7 @@ export class BrowserEncoder {
     this.audioSource = new AudioBufferSource({
       codec: audioCodec,
       bitrate: resolveAudioBitrate(this.encoding?.audio?.bitrate),
+      bitrateMode: this.encoding?.audio?.bitrateMode,
     });
   }
 

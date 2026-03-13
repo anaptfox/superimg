@@ -78,6 +78,13 @@ program
   .option("--audio-codec <codec>", "Audio codec: aac, opus")
   .option("--audio-bitrate <bps>", "Audio bitrate in bits/second")
   .option("--keyframe-interval <seconds>", "Keyframe interval in seconds")
+  .option("--bitrate-mode <mode>", "Bitrate mode: constant, variable")
+  .option("--latency-mode <mode>", "Latency mode: quality, realtime")
+  .option("--hardware-accel <hint>", "Hardware acceleration: no-preference, prefer-hardware, prefer-software")
+  .option("--audio-bitrate-mode <mode>", "Audio bitrate mode: constant, variable")
+  .option("--fast-start <mode>", "MP4 fast start: false, in-memory, fragmented")
+  .option("--cluster-duration <seconds>", "WebM minimum cluster duration in seconds")
+  .option("--debug-html", "Save the underlying HTML of each frame to .superimg/debug/")
   .action(async (template: string | undefined, options) => {
     const mod = await import("./commands/render.js");
     // Require template unless --all is used

@@ -48,6 +48,9 @@ export type {
   VideoCodecPreference,
   AudioCodecPreference,
   QualityPreset,
+  BitrateMode,
+  LatencyMode,
+  HardwareAcceleration,
 
   // Asset Types
   AssetRef,
@@ -61,6 +64,10 @@ export type {
   AudioValue,
   BackgroundOptions,
   AudioOptions,
+
+  // Watermarks
+  WatermarkOptions,
+  WatermarkValue,
 
   // Tailwind
   TailwindConfig,

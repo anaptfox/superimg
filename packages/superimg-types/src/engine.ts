@@ -8,6 +8,7 @@ import type {
   RenderContext,
   TailwindConfig,
   AssetMeta,
+  WatermarkValue,
 } from "./types.js";
 
 /** Resolved asset declaration for preloading (from @superimg/core) */
@@ -35,6 +36,7 @@ export interface RenderJob {
   encoding?: EncodingOptions;
   data?: Record<string, unknown>;
   background?: BackgroundValue;
+  watermark?: WatermarkValue;
 }
 
 export interface RenderProgress {
@@ -102,6 +104,7 @@ export interface RenderPlan {
   encoding?: EncodingOptions;
   data?: Record<string, unknown>;
   background?: BackgroundValue;
+  watermark?: WatermarkValue;
   /** Resolved config.assets for preloading */
   resolvedAssets: ResolvedAssetDeclaration[];
 }
