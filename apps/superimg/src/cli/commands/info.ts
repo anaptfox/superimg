@@ -30,8 +30,8 @@ export async function infoCommand(template: string) {
     cascadingConfig,
   });
   const { fps } = resolvedConfig;
-  const totalFrames = Math.ceil(resolvedConfig.durationSeconds * fps);
-  const durationSeconds = resolvedConfig.durationSeconds;
+  const totalFrames = Math.ceil(resolvedConfig.duration * fps);
+  const duration = resolvedConfig.duration;
 
   console.log("\n  Template Information");
   console.log("  ===================\n");
@@ -43,13 +43,13 @@ export async function infoCommand(template: string) {
     if (resolvedConfig.width) console.log(`    Width: ${resolvedConfig.width}px`);
     if (resolvedConfig.height) console.log(`    Height: ${resolvedConfig.height}px`);
     if (resolvedConfig.fps) console.log(`    FPS: ${resolvedConfig.fps}`);
-    if (resolvedConfig.durationSeconds) console.log(`    Duration: ${resolvedConfig.durationSeconds}s`);
+    if (resolvedConfig.duration) console.log(`    Duration: ${resolvedConfig.duration}s`);
     console.log();
   }
 
   console.log("  Video:");
   console.log(`    Total frames: ${totalFrames}`);
-  console.log(`    Duration: ${durationSeconds.toFixed(2)}s (at ${fps} fps)`);
+  console.log(`    Duration: ${duration.toFixed(2)}s (at ${fps} fps)`);
 
   console.log("\n");
 }

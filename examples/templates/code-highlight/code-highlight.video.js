@@ -26,7 +26,7 @@ console.log(result); // 5`,
 
   config: {
     fps: 30,
-    durationSeconds: 5,
+    duration: 5,
     width: 1920,
     height: 1080,
     fonts: ["Fira+Code:wght@400;500", "Inter:wght@400;600"],

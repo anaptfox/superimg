@@ -45,6 +45,9 @@ export default defineConfig({
     "react",
     "vite",
     "ws",
+    // Native binding packages must be external
+    "oxc-parser",
+    /^@oxc-parser\//,
   ],
   ...(browserOnly ? {} : { onSuccess: "cd dev-ui && vite build" }),
 });

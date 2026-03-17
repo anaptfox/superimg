@@ -9,19 +9,19 @@ import { BrowserEncoder } from "./encoder.js";
  * Browser scheduler for timeline-based rendering
  */
 export class BrowserScheduler {
-  private durationSeconds: number;
+  private duration: number;
   private fps: number;
   private width: number;
   private height: number;
   private renderer: BrowserRenderer;
 
   constructor(
-    durationSeconds: number,
+    duration: number,
     fps: number,
     width: number,
     height: number
   ) {
-    this.durationSeconds = durationSeconds;
+    this.duration = duration;
     this.fps = fps;
     this.width = width;
     this.height = height;
@@ -38,7 +38,7 @@ export class BrowserScheduler {
     encoding?: EncodingOptions,
     data?: Record<string, unknown>
   ): Promise<Blob> {
-    const totalFrames = Math.ceil(this.durationSeconds * this.fps);
+    const totalFrames = Math.ceil(this.duration * this.fps);
     const encoder = new BrowserEncoder(
       this.width,
       this.height,

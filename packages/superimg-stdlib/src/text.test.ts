@@ -7,6 +7,9 @@ import {
   escapeHtml,
   slugify,
   pad,
+  type,
+  typeDuration,
+  cursor,
 } from './text';
 
 describe('truncate', () => {
@@ -127,3 +130,167 @@ describe('pad', () => {
     expect(pad('hello', 3)).toBe('hello');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Typing primitives
+// ---------------------------------------------------------------------------
+
+describe('type', () => {
+  describe('char granularity (default)', () => {
+    it('returns empty at progress 0', () => {
+      const result = type('Hello', 0);
+      expect(result.visible).toBe('');
+      expect(result.typing).toBe(false);
+      expect(result.done).toBe(false);
+      expect(result.index).toBe(0);
+      expect(result.total).toBe(5);
+    });
+
+    it('returns full text at progress 1', () => {
+      const result = type('Hello', 1);
+      expect(result.visible).toBe('Hello');
+      expect(result.typing).toBe(false);
+      expect(result.done).toBe(true);
+    });
+
+    it('reveals characters progressively', () => {
+      const result = type('Hello', 0.5);
+      expect(result.visible).toBe('He');
+      expect(result.typing).toBe(true);
+      expect(result.done).toBe(false);
+      expect(result.index).toBe(2);
+    });
+
+    it('clamps progress above 1', () => {
+      const result = type('Hi', 1.5);
+      expect(result.visible).toBe('Hi');
+      expect(result.done).toBe(true);
+    });
+
+    it('clamps progress below 0', () => {
+      const result = type('Hi', -0.5);
+      expect(result.visible).toBe('');
+      expect(result.done).toBe(false);
+    });
+
+    it('handles empty string', () => {
+      const result = type('', 0.5);
+      expect(result.visible).toBe('');
+      expect(result.total).toBe(0);
+    });
+  });
+
+  describe('word granularity', () => {
+    it('reveals word by word', () => {
+      const text = 'Hello World Foo';
+      // 3 words, progress 0.5 => floor(1.5) = 1 word visible
+      const result = type(text, 0.5, { by: 'word' });
+      expect(result.visible).toBe('Hello');
+      expect(result.total).toBe(3);
+      expect(result.index).toBe(1);
+    });
+
+    it('returns full text at progress 1', () => {
+      const result = type('Hello World', 1, { by: 'word' });
+      expect(result.visible).toBe('Hello World');
+      expect(result.done).toBe(true);
+    });
+
+    it('returns empty at progress 0', () => {
+      const result = type('Hello World', 0, { by: 'word' });
+      expect(result.visible).toBe('');
+    });
+
+    it('shows two of three words at 2/3 progress', () => {
+      // 3 words, progress ~0.7 => floor(2.1) = 2 words
+      const result = type('one two three', 0.7, { by: 'word' });
+      expect(result.visible).toBe('one two');
+    });
+  });
+
+  describe('line granularity', () => {
+    const code = 'line1\nline2\nline3';
+
+    it('reveals line by line', () => {
+      // 3 lines, progress 0.5 => floor(1.5) = 1 line
+      const result = type(code, 0.5, { by: 'line' });
+      expect(result.visible).toBe('line1');
+      expect(result.total).toBe(3);
+    });
+
+    it('returns full text at progress 1', () => {
+      const result = type(code, 1, { by: 'line' });
+      expect(result.visible).toBe(code);
+    });
+
+    it('returns empty at progress 0', () => {
+      const result = type(code, 0, { by: 'line' });
+      expect(result.visible).toBe('');
+    });
+
+    it('shows two of three lines at 2/3 progress', () => {
+      const result = type(code, 0.7, { by: 'line' });
+      expect(result.visible).toBe('line1\nline2');
+    });
+  });
+});
+
+describe('typeDuration', () => {
+  it('uses default char speed (30 chars/sec)', () => {
+    // 30 chars at 30 chars/sec = 1 second
+    const text = 'a'.repeat(30);
+    expect(typeDuration(text)).toBe(1);
+  });
+
+  it('uses default word speed (5 words/sec)', () => {
+    // 5 words at 5 words/sec = 1 second
+    expect(typeDuration('one two three four five', { by: 'word' })).toBe(1);
+  });
+
+  it('uses default line speed (2 lines/sec)', () => {
+    // 4 lines at 2 lines/sec = 2 seconds
+    expect(typeDuration('a\nb\nc\nd', { by: 'line' })).toBe(2);
+  });
+
+  it('accepts custom speed', () => {
+    // 10 chars at 10 chars/sec = 1 second
+    const text = 'a'.repeat(10);
+    expect(typeDuration(text, { speed: 10 })).toBe(1);
+  });
+
+  it('returns 0 for speed <= 0', () => {
+    expect(typeDuration('hello', { speed: 0 })).toBe(0);
+    expect(typeDuration('hello', { speed: -1 })).toBe(0);
+  });
+
+  it('handles empty string', () => {
+    expect(typeDuration('')).toBe(0);
+  });
+});
+
+describe('cursor', () => {
+  it('returns true at time 0', () => {
+    expect(cursor(0)).toBe(true);
+  });
+
+  it('blinks at default rate', () => {
+    // rate=3: toggles every 1/3 second
+    // time=0 => floor(0)=0 => even => true
+    expect(cursor(0)).toBe(true);
+    // time=0.17 => floor(0.51)=0 => even => true
+    expect(cursor(0.17)).toBe(true);
+    // time=0.34 => floor(1.02)=1 => odd => false
+    expect(cursor(0.34)).toBe(false);
+    // time=0.67 => floor(2.01)=2 => even => true
+    expect(cursor(0.67)).toBe(true);
+  });
+
+  it('accepts custom rate', () => {
+    // rate=1: toggles every second
+    expect(cursor(0, 1)).toBe(true);
+    expect(cursor(0.5, 1)).toBe(true);
+    expect(cursor(1.0, 1)).toBe(false);
+    expect(cursor(2.0, 1)).toBe(true);
+  });
+});
+

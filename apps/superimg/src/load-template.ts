@@ -7,13 +7,13 @@ import { compileTemplate } from "@superimg/core";
 import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 import { PlaywrightEngine } from "@superimg/playwright";
 import { parseTemplate, resolveRenderConfig } from "./cli/utils/template-config.js";
-import type { EncodingOptions, TemplateModule } from "@superimg/types";
+import type { Duration, EncodingOptions, TemplateModule } from "@superimg/types";
 
 export interface LoadedTemplateRenderOptions {
   width?: number;
   height?: number;
   fps?: number;
-  durationSeconds?: number;
+  duration?: Duration;
   data?: Record<string, unknown>;
   encoding?: EncodingOptions;
   onProgress?: (frame: number, totalFrames: number) => void;
@@ -22,8 +22,8 @@ export interface LoadedTemplateRenderOptions {
 export interface LoadedTemplate {
   /** Template defaults (from defineScene) */
   readonly defaults: Record<string, unknown> | undefined;
-  /** Template config (width, height, fps, durationSeconds, etc.) */
-  readonly config: { width?: number; height?: number; fps?: number; durationSeconds?: number; fonts?: string[]; inlineCss?: string[]; stylesheets?: string[] } | undefined;
+  /** Template config (width, height, fps, duration, etc.) */
+  readonly config: { width?: number; height?: number; fps?: number; duration?: Duration; fonts?: string[]; inlineCss?: string[]; stylesheets?: string[] } | undefined;
   /** Render to Uint8Array. Playwright is lazy-initialized on first call. */
   render(options?: LoadedTemplateRenderOptions): Promise<Uint8Array>;
   /** Render and write to file. */
@@ -64,7 +64,7 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
         width: options.width != null ? String(options.width) : undefined,
         height: options.height != null ? String(options.height) : undefined,
         fps: options.fps != null ? String(options.fps) : undefined,
-        durationSeconds: options.durationSeconds != null ? String(options.durationSeconds) : undefined,
+        duration: options.duration != null ? String(options.duration) : undefined,
       },
       templateConfig: templateData.templateConfig,
     });
@@ -74,7 +74,7 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
 
     const job = {
       templateCode: bundledCode,
-      durationSeconds: options.durationSeconds ?? resolvedConfig.durationSeconds,
+      duration: options.duration ?? resolvedConfig.duration,
       width: options.width ?? resolvedConfig.width,
       height: options.height ?? resolvedConfig.height,
       fps: options.fps ?? resolvedConfig.fps,

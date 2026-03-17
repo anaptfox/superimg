@@ -93,7 +93,7 @@ export type LoadResult =
   | {
       status: "success";
       totalFrames: number;
-      durationSeconds: number;
+      duration: number;
       width: number;
       height: number;
       fps: number;
@@ -145,7 +145,7 @@ class PlayerNotReadyError extends SuperImgError {
     this.name = "PlayerNotReadyError";
   }
 }
-import { CheckpointResolver, createRenderContext, resolveConfigAssets } from "@superimg/core";
+import { CheckpointResolver, createRenderContext, resolveConfigAssets, parseDuration } from "@superimg/core";
 import { BrowserRenderer } from "@superimg/runtime";
 import { buildCompositeHtml } from "@superimg/core/html";
 import { loadAllAssetsWithMetadata } from "@superimg/runtime";
@@ -289,12 +289,12 @@ export class Player {
       const fps = this._composedTemplate
         ? this._composedTemplate.fps
         : (this.template.config?.fps ?? 30);
-      const durationSeconds = this._composedTemplate
-        ? this._composedTemplate.durationSeconds
-        : (this.template.config?.durationSeconds ?? 5);
+      const duration = this._composedTemplate
+        ? this._composedTemplate.duration
+        : parseDuration(this.template.config?.duration, "duration", fps);
       const totalFrames = this._composedTemplate
         ? this._composedTemplate.totalFrames
-        : Math.ceil(durationSeconds * fps);
+        : Math.ceil(duration * fps);
 
       // Resolve dimensions with precedence: format > template config > default
       const { width, height } = this.resolveDimensions(this.template);
@@ -342,7 +342,7 @@ export class Player {
       // Create player store
       const config: PlayerConfig = {
         fps,
-        durationSeconds,
+        duration,
       };
 
       this._store = createPlayerStore(
@@ -426,7 +426,7 @@ export class Player {
       return {
         status: "success",
         totalFrames,
-        durationSeconds,
+        duration,
         width,
         height,
         fps,
@@ -702,7 +702,7 @@ export class Player {
 
   /** Total duration in seconds */
   get totalDurationSeconds(): number {
-    return this._store?.getState().durationSeconds ?? 0;
+    return this._store?.getState().duration ?? 0;
   }
 
   /** Whether currently playing */

@@ -1,8 +1,9 @@
-// Phase Demo — Render-Carrying Phases
-// Demonstrates: std.timing.sequence() with render functions
-// Each phase owns its own visual logic, no conditional trees needed.
+// Phase Demo — Timeline API
+// Demonstrates: timeline() with scoped phases
+// Each phase has its own progress, cleanly separated.
 
 import { defineScene } from "superimg";
+import { timeline } from "@superimg/stdlib/timeline";
 
 export default defineScene({
   defaults: {
@@ -12,7 +13,7 @@ export default defineScene({
 
   config: {
     fps: 30,
-    durationSeconds: 4,
+    duration: 4,
     fonts: ["Inter:wght@600"],
     outputs: {
       landscape: { width: 1920, height: 1080 },
@@ -29,32 +30,14 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
+    const { std, sceneTimeSeconds: time, sceneDurationSeconds: duration, width, height, data } = ctx;
     const { message, accentColor } = data;
 
-    // Each phase owns its render logic
-    const phases = std.timing.sequence({
-      enter: {
-        duration: 0.8,
-        render: (p) => {
-          const scale = std.tween(0.8, 1, p, "easeOutBack");
-          const opacity = std.tween(0, 1, p, "easeOutCubic");
-          return card({ scale, opacity, y: 0 });
-        },
-      },
-      hold: {
-        duration: 2.4,
-        render: () => card({ scale: 1, opacity: 1, y: 0 }),
-      },
-      exit: {
-        duration: 0.8,
-        render: (p) => {
-          const y = std.tween(0, -60, p, "easeInCubic");
-          const opacity = std.tween(1, 0, p, "easeInCubic");
-          return card({ scale: 1, opacity, y });
-        },
-      },
-    });
+    // Timeline: enter (0.8s) → hold (2.4s) → exit (0.8s)
+    const tl = timeline(time, duration);
+    const enter = tl.at("enter", 0, 0.8);
+    const hold = tl.at("hold", 0.8, 2.4);
+    const exit = tl.at("exit", 3.2, 0.8);
 
     // Helper renders the card with given animation state
     function card({ scale, opacity, y }) {
@@ -72,8 +55,27 @@ export default defineScene({
       return `<div style="${style}">${message}</div>`;
     }
 
+    // Determine current phase and render accordingly
+    let content;
+    if (enter.active || (enter.progress < 1 && hold.progress === 0)) {
+      // Enter phase
+      const p = enter.progress;
+      const scale = std.tween(0.8, 1, p, "easeOutBack");
+      const opacity = std.tween(0, 1, p, "easeOutCubic");
+      content = card({ scale, opacity, y: 0 });
+    } else if (exit.active || exit.progress > 0) {
+      // Exit phase
+      const p = exit.progress;
+      const y = std.tween(0, -60, p, "easeInCubic");
+      const opacity = std.tween(1, 0, p, "easeInCubic");
+      content = card({ scale: 1, opacity, y });
+    } else {
+      // Hold phase (default)
+      content = card({ scale: 1, opacity: 1, y: 0 });
+    }
+
     const wrapperStyle = std.css({ width, height }) + ";" + std.css.center();
 
-    return `<div style="${wrapperStyle}">${phases.render(time)}</div>`;
+    return `<div style="${wrapperStyle}">${content}</div>`;
   },
 });

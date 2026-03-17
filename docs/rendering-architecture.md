@@ -384,7 +384,7 @@ try {
 │                           ▼                                     │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │  CALCULATE FRAMES                                        │   │
-│  │  totalFrames = Math.ceil(durationSeconds * fps)          │   │
+│  │  totalFrames = Math.ceil(duration * fps)          │   │
 │  └────────────────────────┬────────────────────────────────┘   │
 │                           │                                     │
 │                           ▼                                     │

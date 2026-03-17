@@ -6,7 +6,7 @@ describe("render pipeline integration", () => {
     const code = `
       import { defineScene } from 'superimg';
       export default defineScene({
-        config: { fps: 2, durationSeconds: 1, width: 640, height: 360 },
+        config: { fps: 2, duration: 1, width: 640, height: 360 },
         render(ctx) {
           return '<div style="opacity: ' + ctx.sceneProgress + '">Frame</div>';
         }

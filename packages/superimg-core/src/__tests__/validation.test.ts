@@ -3,7 +3,7 @@ import {
   validateAITemplate,
   formatValidationForAI,
   detectUndeclaredAssets,
-} from "./validation.js";
+} from "../validation/validation.js";
 
 function wrapDefineTemplate(code: string) {
   return `import { defineScene } from 'superimg';\n${code}`;
@@ -197,7 +197,7 @@ describe("validateAITemplate", () => {
         width: 800,
         height: 600,
         fps: 24,
-        durationSeconds: 2,
+        duration: 2,
         data: { title: "Custom" },
       }
     );

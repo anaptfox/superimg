@@ -14,7 +14,7 @@ import { ProjectConfigSchema } from "@superimg/types";
  * collecting and merging _config.ts files.
  *
  * Merge strategy:
- * - Scalar fields (width, height, fps, durationSeconds): nearest wins
+ * - Scalar fields (width, height, fps, duration): nearest wins
  * - Arrays (fonts, inlineCss, stylesheets): concatenate root first, then more specific
  * - outputs: nearest wins (object merge could be complex, keep simple)
  */
@@ -104,7 +104,7 @@ function mergeConfigs(configs: ProjectConfig[]): ProjectConfig {
     if (config.width !== undefined) merged.width = config.width;
     if (config.height !== undefined) merged.height = config.height;
     if (config.fps !== undefined) merged.fps = config.fps;
-    if (config.durationSeconds !== undefined) merged.durationSeconds = config.durationSeconds;
+    if (config.duration !== undefined) merged.duration = config.duration;
     if (config.outputs !== undefined) merged.outputs = config.outputs;
 
     // Arrays: concatenate (parent first, then child)

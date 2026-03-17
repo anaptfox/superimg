@@ -57,6 +57,10 @@
     "./code": {
       "import": "./dist/code.js",
       "types": "./dist/code.d.ts"
+    },
+    "./timeline": {
+      "import": "./dist/timeline/index.js",
+      "types": "./dist/timeline/index.d.ts"
     }
   },
   "scripts": {

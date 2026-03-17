@@ -4,13 +4,20 @@ import type * as math from "@superimg/stdlib/math";
 import type * as color from "@superimg/stdlib/color";
 import type * as text from "@superimg/stdlib/text";
 import type * as date from "@superimg/stdlib/date";
-import type * as timing from "@superimg/stdlib/timing";
 import type { css, fill, center, stack } from "@superimg/stdlib/css";
 import type { tween } from "@superimg/stdlib/tween";
 import type * as responsive from "@superimg/stdlib/responsive";
 import type * as subtitle from "@superimg/stdlib/subtitle";
 import type * as presets from "@superimg/stdlib/presets";
 import type * as code from "@superimg/stdlib/code";
+import type {
+  timeline,
+  transcript,
+  fromElevenLabs,
+  fromWhisper,
+  markers,
+  script,
+} from "@superimg/stdlib/timeline";
 
 /**
  * Standard library available via `ctx.std` in render functions.
@@ -38,8 +45,6 @@ export interface Stdlib {
   text: typeof text;
   /** @extended Date formatting and manipulation (formatDate, relativeTime, parseISO) */
   date: typeof date;
-  /** @extended Timing/phase management (createPhaseManager, getPhase, phaseProgress) */
-  timing: typeof timing;
   /** @core CSS style helpers. Callable: std.css({ width: 100 }). Presets: std.css.fill(), std.css.center(), std.css.stack() */
   css: typeof css & {
     fill: typeof fill;
@@ -56,5 +61,13 @@ export interface Stdlib {
   presets: typeof presets;
   /** @extended Syntax highlighting for code blocks (Shiki-powered) */
   code: typeof code;
+  /** @core Declarative timing: std.timeline(time, duration), transcript(), markers(), script() */
+  timeline: typeof timeline & {
+    transcript: typeof transcript;
+    fromElevenLabs: typeof fromElevenLabs;
+    fromWhisper: typeof fromWhisper;
+    markers: typeof markers;
+    script: typeof script;
+  };
 }
 

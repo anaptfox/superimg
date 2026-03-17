@@ -25,7 +25,7 @@ function isWorkspaceRoot(dir: string): boolean {
 
 /**
  * Finds the project root by walking up from cwd.
- * Prefers workspace roots over nearest package.json for monorepo support.
+ * Prefers the nearest package.json over workspace roots.
  *
  * @param cwd - Starting directory (defaults to process.cwd())
  * @returns The project root directory
@@ -33,25 +33,25 @@ function isWorkspaceRoot(dir: string): boolean {
  */
 export function findProjectRoot(cwd = process.cwd()): string {
   let dir = resolve(cwd);
-  let nearestPkgJson: string | null = null;
+  let workspaceRoot: string | null = null;
 
   while (true) {
-    // Check for workspace root first (takes priority)
-    if (isWorkspaceRoot(dir)) {
+    // Prefer the nearest package.json we encounter
+    if (existsSync(join(dir, "package.json"))) {
       return dir;
     }
-    // Track nearest package.json as fallback
-    if (existsSync(join(dir, "package.json"))) {
-      nearestPkgJson ??= dir;
+    // Track workspace root as a fallback just in case
+    if (isWorkspaceRoot(dir)) {
+      workspaceRoot ??= dir;
     }
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;
   }
 
-  // Fallback to nearest package.json
-  if (nearestPkgJson) {
-    return nearestPkgJson;
+  // Fallback to workspace root
+  if (workspaceRoot) {
+    return workspaceRoot;
   }
 
   throw new Error(

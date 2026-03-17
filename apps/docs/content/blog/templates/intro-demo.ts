@@ -3,7 +3,7 @@ import { defineScene, type RenderContext } from 'superimg'
 export const introTemplate = defineScene({
   config: {
     fps: 30,
-    durationSeconds: 4,
+    duration: 4,
     width: 640,
     height: 360,
   },

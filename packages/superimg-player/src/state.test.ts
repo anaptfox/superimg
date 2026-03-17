@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { createPlayerStore } from "./state.js";
 
 describe("createPlayerStore", () => {
-  const config = { fps: 30, durationSeconds: 5 };
+  const config = { fps: 30, duration: 5 };
 
   it("initializes with correct state", () => {
     const store = createPlayerStore(config);
@@ -13,7 +13,7 @@ describe("createPlayerStore", () => {
     expect(state.currentFrame).toBe(0);
     expect(state.totalFrames).toBe(150); // 30 * 5
     expect(state.fps).toBe(30);
-    expect(state.durationSeconds).toBe(5);
+    expect(state.duration).toBe(5);
   });
 
   it("play sets isPlaying to true", () => {
@@ -111,9 +111,9 @@ describe("createPlayerStore", () => {
 
   it("updateConfig updates fps and totalFrames", () => {
     const store = createPlayerStore(config);
-    store.getState().updateConfig({ fps: 60, durationSeconds: 10 });
+    store.getState().updateConfig({ fps: 60, duration: 10 });
     expect(store.getState().fps).toBe(60);
-    expect(store.getState().durationSeconds).toBe(10);
+    expect(store.getState().duration).toBe(10);
     expect(store.getState().totalFrames).toBe(600);
   });
 

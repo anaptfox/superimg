@@ -439,9 +439,21 @@ export async function renderCommand(template: string, options: RenderOptions) {
               ? `Rendering "${target.name}" (${i + 1}/${targets.length})...`
               : "Rendering...");
 
+            // Resolve audio path to URL served by engine's internal server
+            let resolvedAudio = templateData.templateConfig?.audio;
+            if (resolvedAudio) {
+              const audioConfig = typeof resolvedAudio === 'string'
+                ? { src: resolvedAudio }
+                : resolvedAudio;
+              const templateDir = dirname(resolvedTemplate);
+              const absolutePath = resolve(templateDir, audioConfig.src);
+              const baseUrl = engine.getBaseUrl();
+              resolvedAudio = { ...audioConfig, src: `${baseUrl}/assets?path=${encodeURIComponent(absolutePath)}` };
+            }
+
             const job: RenderJob = {
               templateCode: bundledTemplateCode,
-              durationSeconds: resolvedConfig.durationSeconds,
+              duration: resolvedConfig.duration,
               width: target.width,
               height: target.height,
               fps: target.fps,
@@ -452,6 +464,7 @@ export async function renderCommand(template: string, options: RenderOptions) {
               encoding: mergeEncoding(templateData.templateConfig?.encoding, buildEncodingOptions(options)),
               watermark: templateData.templateConfig?.watermark,
               background: templateData.templateConfig?.background,
+              audio: resolvedAudio,
             };
 
             const plan = createRenderPlan(job);
@@ -472,6 +485,11 @@ export async function renderCommand(template: string, options: RenderOptions) {
               }
             });
 
+            // Ensure output directory exists
+            const outputDir = dirname(target.outputPath);
+            if (!existsSync(outputDir)) {
+              mkdirSync(outputDir, { recursive: true });
+            }
             writeFileSync(target.outputPath, result);
           }
 

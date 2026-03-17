@@ -60,12 +60,11 @@
   "dependencies": {
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
-    "acorn": "^8.14.0",
+    "oxc-parser": "^0.119.0",
     "zod": "^4.3.5",
     "zustand": "^5.0.0"
   },
   "peerDependencies": {
-    "esbuild": "^0.27.0",
     "esbuild-wasm": "^0.27.0"
   },
   "peerDependenciesMeta": {
@@ -77,7 +76,16 @@
     }
   },
   "devDependencies": {
-    "esbuild": "^0.27.0",
     "esbuild-wasm": "^0.27.3"
+  },
+  "optionalDependencies": {
+    "@oxc-parser/binding-darwin-arm64": "^0.119.0",
+    "@oxc-parser/binding-darwin-x64": "^0.119.0",
+    "@oxc-parser/binding-linux-arm64-gnu": "^0.119.0",
+    "@oxc-parser/binding-linux-arm64-musl": "^0.119.0",
+    "@oxc-parser/binding-linux-x64-gnu": "^0.119.0",
+    "@oxc-parser/binding-linux-x64-musl": "^0.119.0",
+    "@oxc-parser/binding-win32-arm64-msvc": "^0.119.0",
+    "@oxc-parser/binding-win32-x64-msvc": "^0.119.0"
   }
 }

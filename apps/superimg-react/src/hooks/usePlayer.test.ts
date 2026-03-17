@@ -5,7 +5,7 @@ import { usePlayer } from "./usePlayer.js";
 describe("usePlayer", () => {
   it("returns initial state", () => {
     const { result } = renderHook(() =>
-      usePlayer({ fps: 30, durationSeconds: 5 })
+      usePlayer({ fps: 30, duration: 5 })
     );
     expect(result.current.state.currentFrame).toBe(0);
     expect(result.current.state.totalFrames).toBe(150);
@@ -14,7 +14,7 @@ describe("usePlayer", () => {
 
   it("play sets isPlaying to true", () => {
     const { result } = renderHook(() =>
-      usePlayer({ fps: 30, durationSeconds: 5 })
+      usePlayer({ fps: 30, duration: 5 })
     );
     act(() => result.current.play());
     expect(result.current.state.isPlaying).toBe(true);
@@ -22,7 +22,7 @@ describe("usePlayer", () => {
 
   it("pause sets isPlaying to false", () => {
     const { result } = renderHook(() =>
-      usePlayer({ fps: 30, durationSeconds: 5 })
+      usePlayer({ fps: 30, duration: 5 })
     );
     act(() => result.current.play());
     act(() => result.current.pause());
@@ -31,7 +31,7 @@ describe("usePlayer", () => {
 
   it("togglePlayPause toggles isPlaying", () => {
     const { result } = renderHook(() =>
-      usePlayer({ fps: 30, durationSeconds: 5 })
+      usePlayer({ fps: 30, duration: 5 })
     );
     act(() => result.current.togglePlayPause());
     expect(result.current.state.isPlaying).toBe(true);
@@ -41,7 +41,7 @@ describe("usePlayer", () => {
 
   it("seek updates currentFrame", () => {
     const { result } = renderHook(() =>
-      usePlayer({ fps: 30, durationSeconds: 5 })
+      usePlayer({ fps: 30, duration: 5 })
     );
     act(() => result.current.seek(50));
     expect(result.current.state.currentFrame).toBe(50);
@@ -49,9 +49,9 @@ describe("usePlayer", () => {
 
   it("updateConfig updates totalFrames", () => {
     const { result } = renderHook(() =>
-      usePlayer({ fps: 30, durationSeconds: 5 })
+      usePlayer({ fps: 30, duration: 5 })
     );
-    act(() => result.current.updateConfig({ fps: 60, durationSeconds: 10 }));
+    act(() => result.current.updateConfig({ fps: 60, duration: 10 }));
     expect(result.current.state.totalFrames).toBe(600);
   });
 });

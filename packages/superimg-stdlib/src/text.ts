@@ -165,3 +165,196 @@ export function wrap(text: string, maxCharsPerLine: number): string[] {
 
   return lines.length > 0 ? lines : [""];
 }
+
+// ---------------------------------------------------------------------------
+// Typing primitives
+// ---------------------------------------------------------------------------
+
+/** Granularity for text reveal */
+export type TypeGranularity = "char" | "word" | "line";
+
+/** Options for type() */
+export interface TypeOptions {
+  /** Reveal granularity: 'char' (default), 'word', or 'line' */
+  by?: TypeGranularity;
+}
+
+/** Result of type() */
+export interface TypeResult {
+  /** The visible portion of text */
+  visible: string;
+  /** True while typing is in progress (0 < progress < 1) */
+  typing: boolean;
+  /** True when typing is complete (progress >= 1) */
+  done: boolean;
+  /** Number of visible units (chars, words, or lines depending on granularity) */
+  index: number;
+  /** Total number of units */
+  total: number;
+}
+
+/**
+ * Progress-driven text reveal.
+ *
+ * Takes a string and a progress value (0–1) and returns the visible portion.
+ * Compose with `std.code.highlight()` for syntax-highlighted code typing,
+ * or with `std.timeline` to sequence multiple typing events.
+ *
+ * @param text - Full text to reveal
+ * @param progress - Progress value, typically 0–1 (clamped internally)
+ * @param options - Options for granularity
+ * @returns TypeResult with visible text and state
+ *
+ * @example
+ * ```ts
+ * // Character-by-character (default)
+ * const { visible, typing } = std.text.type("Hello!", progress);
+ *
+ * // Word-by-word
+ * const { visible } = std.text.type("Hello World", progress, { by: 'word' });
+ *
+ * // Line-by-line (great for code)
+ * const { visible } = std.text.type(CODE, progress, { by: 'line' });
+ * const highlighted = std.code.highlight(visible, { lang: 'typescript' });
+ * ```
+ */
+export function type(
+  text: string,
+  progress: number,
+  options?: TypeOptions
+): TypeResult {
+  const clamped = Math.max(0, Math.min(1, progress));
+  const by = options?.by ?? "char";
+
+  let total: number;
+  let index: number;
+  let visible: string;
+
+  switch (by) {
+    case "word": {
+      // Split preserving whitespace structure
+      const words = text.split(/(\s+)/);
+      // Count only actual words (non-whitespace tokens)
+      const wordTokens: number[] = [];
+      for (let i = 0; i < words.length; i++) {
+        if (words[i].trim().length > 0) {
+          wordTokens.push(i);
+        }
+      }
+      total = wordTokens.length;
+      index = Math.floor(clamped * total);
+      if (index >= total) {
+        visible = text;
+      } else if (index <= 0) {
+        visible = "";
+      } else {
+        // Include everything up to and including the last visible word
+        const lastWordIdx = wordTokens[index - 1];
+        visible = words.slice(0, lastWordIdx + 1).join("");
+      }
+      break;
+    }
+    case "line": {
+      const lines = text.split("\n");
+      total = lines.length;
+      index = Math.floor(clamped * total);
+      if (index >= total) {
+        visible = text;
+      } else if (index <= 0) {
+        visible = "";
+      } else {
+        visible = lines.slice(0, index).join("\n");
+      }
+      break;
+    }
+    case "char":
+    default: {
+      total = text.length;
+      index = Math.floor(clamped * total);
+      visible = text.slice(0, Math.min(index, total));
+      break;
+    }
+  }
+
+  return {
+    visible,
+    typing: clamped > 0 && clamped < 1,
+    done: clamped >= 1,
+    index,
+    total,
+  };
+}
+
+/** Options for typeDuration() */
+export interface TypeDurationOptions {
+  /** Reveal granularity: 'char' (default), 'word', or 'line' */
+  by?: TypeGranularity;
+  /** Units per second — chars/sec, words/sec, or lines/sec (default: 30 for char, 5 for word, 2 for line) */
+  speed?: number;
+}
+
+/**
+ * Calculate how many seconds a typing animation should take.
+ *
+ * Use the returned duration to derive progress:
+ * ```ts
+ * const dur = std.text.typeDuration(text, { speed: 40 });
+ * const progress = std.math.clamp(time / dur, 0, 1);
+ * const { visible } = std.text.type(text, progress);
+ * ```
+ *
+ * @param text - The text that will be typed
+ * @param options - Speed and granularity options
+ * @returns Duration in seconds
+ */
+export function typeDuration(
+  text: string,
+  options?: TypeDurationOptions
+): number {
+  const by = options?.by ?? "char";
+
+  const defaultSpeeds: Record<TypeGranularity, number> = {
+    char: 30,
+    word: 5,
+    line: 2,
+  };
+  const speed = options?.speed ?? defaultSpeeds[by];
+
+  if (speed <= 0) return 0;
+
+  let unitCount: number;
+  switch (by) {
+    case "word":
+      unitCount = text.split(/\s+/).filter((w) => w.length > 0).length;
+      break;
+    case "line":
+      unitCount = text.split("\n").length;
+      break;
+    case "char":
+    default:
+      unitCount = text.length;
+      break;
+  }
+
+  return unitCount / speed;
+}
+
+/**
+ * Blinking cursor helper.
+ *
+ * Returns true when cursor should be visible, false when hidden.
+ * Toggles at the given rate (blinks per second).
+ *
+ * @param time - Current time in seconds (e.g., ctx.sceneTimeSeconds)
+ * @param rate - Blinks per second (default: 3)
+ * @returns Whether the cursor should be visible
+ *
+ * @example
+ * ```ts
+ * const show = std.text.cursor(time);
+ * return `${visible}${show ? '▋' : ''}`;
+ * ```
+ */
+export function cursor(time: number, rate = 3): boolean {
+  return Math.floor(time * rate) % 2 === 0;
+}

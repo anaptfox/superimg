@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractTemplateMetadata } from "./template-metadata.js";
+import { extractTemplateMetadata } from "../shared/template-metadata.js";
 
 describe("extractTemplateMetadata", () => {
   it("extracts render and config from default export object", async () => {
@@ -83,5 +83,44 @@ describe("extractTemplateMetadata", () => {
     const metadata = await extractTemplateMetadata(code);
     expect(metadata.hasRenderExport).toBe(true);
     expect(metadata.config).toEqual({ fps: 30 });
+  });
+  it("extracts render from compose call array", async () => {
+    const code = `
+      import { compose } from "superimg";
+      import intro from "./intro.video.js";
+      import content from "./content.video.js";
+      import outro from "./outro.video.js";
+      export default compose([intro, content, outro]);
+    `;
+
+    const metadata = await extractTemplateMetadata(code);
+    expect(metadata.hasDefaultExport).toBe(true);
+    expect(metadata.hasRenderExport).toBe(true);
+  });
+
+  it("extracts metadata from late re-export", async () => {
+    const code = `
+      const myTemplate = defineScene({
+        render(ctx) { return "ok"; },
+        config: { width: 1080, height: 1080 }
+      });
+      export { myTemplate as default };
+    `;
+
+    const metadata = await extractTemplateMetadata(code);
+    expect(metadata.hasDefaultExport).toBe(true);
+    expect(metadata.hasRenderExport).toBe(true);
+    expect(metadata.config).toEqual({ width: 1080, height: 1080 });
+  });
+
+  it("extracts render from variable-referenced compose", async () => {
+    const code = `
+      const scene = compose([intro, outro]);
+      export default scene;
+    `;
+
+    const metadata = await extractTemplateMetadata(code);
+    expect(metadata.hasDefaultExport).toBe(true);
+    expect(metadata.hasRenderExport).toBe(true);
   });
 });

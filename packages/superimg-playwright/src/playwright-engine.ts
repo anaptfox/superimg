@@ -3,6 +3,8 @@
 import type { Browser, Page } from "playwright-core";
 import { Hono } from "hono";
 import { serve, type ServerType } from "@hono/node-server";
+import { readFileSync, existsSync } from "node:fs";
+import { extname } from "node:path";
 import type { RenderEngine } from "@superimg/types";
 import {
   checkBrowserStatus,
@@ -15,6 +17,22 @@ import {
 } from "./browser-utils.js";
 import { PlaywrightFrameRenderer, PlaywrightVideoEncoder } from "./adapters.js";
 import { HARNESS_HTML, HARNESS_JS } from "./harness-assets.js";
+
+const MIME_TYPES: Record<string, string> = {
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
+  ".m4a": "audio/mp4",
+  ".aac": "audio/aac",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+};
 
 function wrapInASCIIBox(text: string, padding = 1): string {
   const lines = text.split("\n");
@@ -66,8 +84,20 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
   private browser: Browser | null = null;
   private page: Page | null = null;
   private server: ServerType | null = null;
+  private serverPort: number = 0;
 
-  constructor(private readonly options: PlaywrightEngineOptions = {}) {}
+  constructor(private readonly options: PlaywrightEngineOptions = {})  {}
+
+  /**
+   * Get the base URL for the internal server.
+   * Can be used to construct URLs for assets that need to be fetched from the browser.
+   */
+  getBaseUrl(): string {
+    if (!this.serverPort) {
+      throw new Error("PlaywrightEngine not initialized. Call init() first.");
+    }
+    return `http://localhost:${this.serverPort}`;
+  }
 
   /**
    * Check if the Playwright browser is installed.
@@ -124,11 +154,28 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
       return c.body(HARNESS_JS);
     });
 
+    // Serve local files for audio/assets
+    app.get("/assets", (c) => {
+      const filePath = c.req.query("path");
+      if (!filePath) {
+        return c.text("Missing path parameter", 400);
+      }
+      if (!existsSync(filePath)) {
+        return c.text(`File not found: ${filePath}`, 404);
+      }
+      const ext = extname(filePath).toLowerCase();
+      const mimeType = MIME_TYPES[ext] || "application/octet-stream";
+      const data = readFileSync(filePath);
+      c.header("Content-Type", mimeType);
+      c.header("Content-Length", String(data.length));
+      return c.body(data);
+    });
+
     this.server = serve({ fetch: app.fetch, port: 0 });
     const address = this.server.address();
-    const port = typeof address === "object" && address ? address.port : 0;
+    this.serverPort = typeof address === "object" && address ? address.port : 0;
 
-    await this.page.goto(`http://localhost:${port}/index.html`);
+    await this.page.goto(`http://localhost:${this.serverPort}/index.html`);
 
     await this.page.waitForFunction(() => typeof (window as unknown as { __superimg?: unknown }).__superimg !== "undefined", {
       timeout: 5000,

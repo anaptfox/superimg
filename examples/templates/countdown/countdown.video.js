@@ -32,7 +32,7 @@ function generateParticles(std, time, count) {
 export default defineScene({
   config: {
     fps: 30,
-    durationSeconds: 5,
+    duration: 5,
     width: 1080,
     height: 1920,
     inlineCss: [`

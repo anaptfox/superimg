@@ -8,7 +8,7 @@ import { defineScene } from "superimg";
 
 // Gradient rotation template
 const gradientTemplate = defineScene({
-  config: { fps: 24, durationSeconds: 2 },
+  config: { fps: 24, duration: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
     const hue = Math.floor(progress * 360);
@@ -18,7 +18,7 @@ const gradientTemplate = defineScene({
 
 // Pulse animation template
 const pulseTemplate = defineScene({
-  config: { fps: 24, durationSeconds: 2 },
+  config: { fps: 24, duration: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
     const scale = 0.8 + Math.sin(progress * Math.PI * 4) * 0.2;
@@ -28,7 +28,7 @@ const pulseTemplate = defineScene({
 
 // Color bars template
 const barsTemplate = defineScene({
-  config: { fps: 24, durationSeconds: 2 },
+  config: { fps: 24, duration: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
     const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
@@ -44,7 +44,7 @@ const barsTemplate = defineScene({
 
 // Spinning squares template
 const spinTemplate = defineScene({
-  config: { fps: 24, durationSeconds: 2 },
+  config: { fps: 24, duration: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
     const rotate = progress * 360;
@@ -54,7 +54,7 @@ const spinTemplate = defineScene({
 
 // Wave pattern template
 const waveTemplate = defineScene({
-  config: { fps: 24, durationSeconds: 2 },
+  config: { fps: 24, duration: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
     return `<div style="width:100%;height:100%;background:#0a0e27;display:flex;align-items:center;justify-content:center;font-size:24px;color:#64ffda">◆ ◇ ◆ ◇<br>Wave ${Math.floor(progress * 100)}%</div>`;
@@ -63,7 +63,7 @@ const waveTemplate = defineScene({
 
 // Gradient sweep template
 const sweepTemplate = defineScene({
-  config: { fps: 24, durationSeconds: 2 },
+  config: { fps: 24, duration: 2 },
   render(ctx) {
     const { sceneProgress: progress } = ctx;
     const angle = progress * 360;

@@ -98,7 +98,7 @@ async function runHomeMode(port: number, devRoot: string, open: boolean) {
               width: resolved.width,
               height: resolved.height,
               fps: resolved.fps,
-              durationSeconds: resolved.durationSeconds,
+              duration: resolved.duration,
               outputs: parsed.templateConfig?.outputs,
             })
           );
@@ -191,12 +191,15 @@ async function runSingleVideoMode(
     const parsed = await parseTemplate(templatePath, { cascadingConfig });
     const resolved = parsed.config;
     const outputs = parsed.templateConfig?.outputs;
+    const audio = parsed.templateConfig?.audio;
     return {
       width: resolved.width,
       height: resolved.height,
       fps: resolved.fps,
-      durationSeconds: resolved.durationSeconds,
+      duration: resolved.duration,
       outputs,
+      audio,
+      templateDir: dirname(templatePath),
     };
   }
 
@@ -243,6 +246,46 @@ async function runSingleVideoMode(
         res.setHeader("Content-Type", "text/plain");
         res.end(String(err));
       }
+      return;
+    }
+
+    // Serve assets (audio, images) relative to template directory
+    if (pathname === "/api/assets") {
+      const url = new URL(reqUrl, `http://localhost:${port}`);
+      const relativePath = url.searchParams.get("path");
+      if (!relativePath) {
+        res.statusCode = 400;
+        res.end("Missing path parameter");
+        return;
+      }
+      const templateDir = dirname(templatePath);
+      const assetPath = join(templateDir, relativePath);
+
+      if (!existsSync(assetPath)) {
+        res.statusCode = 404;
+        res.end("Asset not found");
+        return;
+      }
+
+      const content = readFileSync(assetPath);
+      const ext = assetPath.split(".").pop()?.toLowerCase();
+      const mimeTypes: Record<string, string> = {
+        mp3: "audio/mpeg",
+        wav: "audio/wav",
+        ogg: "audio/ogg",
+        m4a: "audio/mp4",
+        aac: "audio/aac",
+        flac: "audio/flac",
+        png: "image/png",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        gif: "image/gif",
+        webp: "image/webp",
+        svg: "image/svg+xml",
+      };
+      res.setHeader("Content-Type", mimeTypes[ext ?? ""] ?? "application/octet-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.end(content);
       return;
     }
 

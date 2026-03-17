@@ -25,7 +25,7 @@ export default defineScene({
   config: {                          // all optional
     width: 1920, height: 1080,       // canvas dimensions
     fps: 30,                         // frames per second
-    durationSeconds: 5,              // video length
+    duration: 5,              // video length
   },
   render(ctx) {
     const { std, sceneProgress, sceneTimeSeconds, width, height, data } = ctx;
@@ -69,27 +69,32 @@ export default defineScene({
   std.css.fill()   → "position:absolute;top:0;left:0;width:100%;height:100%"
   std.css.stack()  → "display:flex;flex-direction:column"
 
-### std.timing — phase management
-  const phases = std.timing.sequence({ intro: 1.0, main: 3.0, outro: 1.0 });
-  phases.getPhaseProgress(time, 'intro') → 0-1
+### std.timeline — declarative timing
+  const tl = std.timeline(time, duration);
+  const enter = tl.at("enter", 0, 1.0);
+  const hold = tl.at("hold", 1.0, 2.0);
+  enter.progress  // 0-1 during the event
+  enter.active    // true when 0 < progress < 1
 
-## Phase Timing Pattern (recommended for multi-stage animations)
+## Timeline Pattern (recommended for multi-stage animations)
 
 \`\`\`
-const { std, sceneTimeSeconds: time } = ctx;
-const enterProgress = std.math.clamp(time / 1.0, 0, 1);
-const exitProgress = std.math.clamp((time - 3.0) / 1.0, 0, 1);
-const opacity = std.tween(0, 1, enterProgress, "easeOutCubic") * (1 - exitProgress);
-const y = std.tween(40, 0, enterProgress, "easeOutCubic");
+const { std, sceneTimeSeconds: time, sceneDurationSeconds: duration } = ctx;
+const tl = std.timeline(time, duration);
+const enter = tl.at("enter", 0, 1.0);
+const hold = tl.at("hold", 1.0, 2.0);
+const exit = tl.at("exit", 3.0, 1.0);
+const opacity = enter.active ? std.tween(0, 1, enter.progress, "easeOutCubic") : 1;
+const y = std.tween(40, 0, enter.progress, "easeOutCubic");
 \`\`\`
 
 ## Staggered Elements
 
-Delay each element by offsetting time:
+Use timeline stagger for automatic offsets:
 \`\`\`
-const item1Enter = std.math.clamp(time / 1.0, 0, 1);
-const item2Enter = std.math.clamp((time - 0.2) / 1.0, 0, 1);
-const item3Enter = std.math.clamp((time - 0.4) / 1.0, 0, 1);
+const items = tl.stagger(["a", "b", "c"], { each: 0.2, duration: 0.5 });
+items.get(0).progress  // First item's progress
+items.get(1).progress  // Second item's progress
 \`\`\`
 
 ## Complete Example

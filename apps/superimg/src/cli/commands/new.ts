@@ -18,7 +18,7 @@ export default defineScene({
   },
 
   config: {
-    durationSeconds: 5,
+    duration: 5,
     tailwind: true,
   },
 
@@ -54,7 +54,7 @@ export default defineScene({
   },
 
   config: {
-    durationSeconds: 5,
+    duration: 5,
     fonts: ["Inter:wght@400;700"],
     inlineCss: [\`
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -272,7 +272,7 @@ export default defineConfig({
   width: 1920,
   height: 1080,
   fps: 30,
-  durationSeconds: ${duration},${comment}${tailwindLine}
+  duration: ${duration},${comment}${tailwindLine}
 });
 `;
 }

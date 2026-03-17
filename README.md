@@ -34,7 +34,7 @@ npm install superimg
 import { defineScene } from 'superimg'
 
 export default defineScene({
-  config: { width: 1920, height: 1080, fps: 30, durationSeconds: 5 },
+  config: { width: 1920, height: 1080, fps: 30, duration: 5 },
   render(ctx) {
     const { std, sceneProgress, width, height } = ctx
 
@@ -132,7 +132,7 @@ Everything you need for animation, available on `ctx.std`:
 | `std.math` | `clamp`, `map`, `inverseLerp`, `mapClamp` |
 | `std.color` | `hexToRgb`, `rgbToHsl`, `mix`, `alpha` |
 | `std.tween` | `tween(from, to, progress, easing?)` — canonical animation primitive |
-| `std.timing` | `createPhaseManager`, `sequence` — segment helpers for multi-scene |
+| `std.timeline` | `timeline`, `markers`, `script`, `transcript` — declarative timing |
 | `std.css` | `css`, `fill`, `center`, `stack` — style helpers |
 | `std.presets` | Platform dimensions: YouTube, Instagram, TikTok |
 

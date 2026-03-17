@@ -4,7 +4,7 @@ import { compileFromString, makeTestContext } from "./__test-utils__/index.js";
 const REFERENCE_TEMPLATE = `
   import { defineScene } from 'superimg';
   export default defineScene({
-    config: { fps: 30, durationSeconds: 2, width: 640, height: 360 },
+    config: { fps: 30, duration: 2, width: 640, height: 360 },
     defaults: { title: 'Snapshot Test' },
     render(ctx) {
       const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeOutCubic');

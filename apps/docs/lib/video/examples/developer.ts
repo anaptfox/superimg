@@ -12,18 +12,14 @@ console.log(fibonacci(10)); // 55\`;
 
 export default defineScene({
   render(ctx) {
-  const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
+  const { std, width, height, sceneTimeSeconds } = ctx;
 
-  const visibleChars = Math.floor(CODE.length * sceneProgress * 1.2);
-  const displayCode = CODE.slice(0, Math.min(visibleChars, CODE.length));
-  const showCursor = Math.floor(sceneTimeSeconds * 3) % 2 === 0;
+  const dur = std.text.typeDuration(CODE, { speed: 40 });
+  const progress = std.math.clamp(sceneTimeSeconds / dur, 0, 1);
+  const { visible, typing } = std.text.type(CODE, progress);
+  const showCursor = std.text.cursor(sceneTimeSeconds);
 
-  // Simple syntax highlighting
-  const highlighted = displayCode
-    .replace(/(function|return|if|const|let|var)/g, '<span style="color: #c678dd;">$1</span>')
-    .replace(/(fibonacci|console|log)/g, '<span style="color: #61afef;">$1</span>')
-    .replace(/(\\d+)/g, '<span style="color: #d19a66;">$1</span>')
-    .replace(/(\\/\\/.*)/g, '<span style="color: #5c6370;">$1</span>');
+  const highlighted = std.code.highlight(visible, { lang: 'javascript' });
 
   return \`
     <div style="
@@ -46,13 +42,9 @@ export default defineScene({
           <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
           <div style="width: 12px; height: 12px; border-radius: 50%; background: #27ca40;"></div>
         </div>
-        <pre style="
-          color: #abb2bf;
-          font-size: 20px;
-          line-height: 1.6;
-          margin: 0;
-          white-space: pre-wrap;
-        ">\${highlighted}<span style="opacity: \${showCursor ? 1 : 0}; color: #528bff;">|</span></pre>
+        <div style="font-size: 20px; line-height: 1.6;">
+          \${highlighted}<span style="opacity: \${typing && showCursor ? 1 : 0}; color: #528bff;">|</span>
+        </div>
       </div>
     </div>
   \`;
@@ -143,9 +135,9 @@ const COMMANDS = [
 
 export default defineScene({
   render(ctx) {
-  const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
+  const { std, width, height, sceneProgress, sceneTimeSeconds } = ctx;
 
-  const showCursor = Math.floor(sceneTimeSeconds * 3) % 2 === 0;
+  const showCursor = std.text.cursor(sceneTimeSeconds);
 
   return \`
     <div style="
@@ -173,7 +165,8 @@ export default defineScene({
           const visible = sceneProgress > item.delay;
           if (!visible) return '';
           if (item.cmd) {
-            const typed = item.cmd.slice(0, Math.floor((sceneProgress - item.delay) * item.cmd.length * 5));
+            const cmdProgress = std.math.clamp((sceneProgress - item.delay) * 5, 0, 1);
+            const { visible: typed } = std.text.type(item.cmd, cmdProgress);
             return \`
               <div style="color: #7aa2f7; font-size: 18px; margin: 8px 0;">
                 <span style="color: #9ece6a;">❯</span> \${typed}

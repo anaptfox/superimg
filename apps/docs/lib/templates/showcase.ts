@@ -4,7 +4,7 @@ import { defineScene, type RenderContext } from "superimg";
 export const helloWorldTemplate = defineScene({
   config: {
     fps: 30,
-    durationSeconds: 3,
+    duration: 3,
     width: 320,
     height: 180,
   },
@@ -43,7 +43,7 @@ export const helloWorldTemplate = defineScene({
 export const countdownTemplate = defineScene({
   config: {
     fps: 30,
-    durationSeconds: 3,
+    duration: 3,
     width: 320,
     height: 180,
   },
@@ -109,7 +109,7 @@ export const countdownTemplate = defineScene({
 export const testimonialTemplate = defineScene({
   config: {
     fps: 30,
-    durationSeconds: 3,
+    duration: 3,
     width: 320,
     height: 180,
   },
@@ -159,7 +159,7 @@ export const testimonialTemplate = defineScene({
 export const chartTemplate = defineScene({
   config: {
     fps: 30,
-    durationSeconds: 3,
+    duration: 3,
     width: 320,
     height: 180,
   },
@@ -232,7 +232,7 @@ export const chartTemplate = defineScene({
 export const terminalTemplate = defineScene({
   config: {
     fps: 30,
-    durationSeconds: 3,
+    duration: 3,
     width: 320,
     height: 180,
   },
@@ -242,9 +242,9 @@ export const terminalTemplate = defineScene({
     const command = "npm create superimg@latest";
     const output = "✓ Project created successfully!";
 
-    const cmdChars = Math.floor(std.math.clamp(p * 2.5, 0, 1) * command.length);
-    const displayCmd = command.slice(0, cmdChars);
-    const showCursor = Math.floor(sceneTimeSeconds * 3) % 2 === 0;
+    const cmdProgress = std.math.clamp(p * 2.5, 0, 1);
+    const { visible: displayCmd, typing: cmdTyping } = std.text.type(command, cmdProgress);
+    const showCursor = std.text.cursor(sceneTimeSeconds);
     const outputOpacity = std.math.clamp((p - 0.5) * 3, 0, 1);
 
     return `
@@ -268,7 +268,7 @@ export const terminalTemplate = defineScene({
             <div style="width:10px;height:10px;border-radius:50%;background:#27ca40;"></div>
           </div>
           <div style="color:#7aa2f7;font-size:12px;margin:6px 0;">
-            <span style="color:#9ece6a;">❯</span> ${displayCmd}<span style="opacity:${showCursor && cmdChars < command.length ? 1 : 0};color:#7aa2f7;">▋</span>
+            <span style="color:#9ece6a;">❯</span> ${displayCmd}<span style="opacity:${cmdTyping && showCursor ? 1 : 0};color:#7aa2f7;">▋</span>
           </div>
           <div style="color:#9ece6a;font-size:11px;opacity:${outputOpacity};">
             ${output}

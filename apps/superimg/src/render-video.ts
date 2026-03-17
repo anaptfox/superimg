@@ -19,7 +19,7 @@ export interface RenderVideoOptions {
   /** Override fps */
   fps?: number;
   /** Override duration in seconds */
-  durationSeconds?: number;
+  duration?: number;
   /** Template data (merged with defaults) */
   data?: Record<string, unknown>;
   /** Encoding options */
@@ -44,7 +44,7 @@ export async function renderVideo(
       width: options.width != null ? String(options.width) : undefined,
       height: options.height != null ? String(options.height) : undefined,
       fps: options.fps != null ? String(options.fps) : undefined,
-      durationSeconds: options.durationSeconds != null ? String(options.durationSeconds) : undefined,
+      duration: options.duration != null ? String(options.duration) : undefined,
     },
     templateConfig: templateData.templateConfig,
   });
@@ -58,7 +58,7 @@ export async function renderVideo(
 
     const job = {
       templateCode: bundledCode,
-      durationSeconds: resolvedConfig.durationSeconds,
+      duration: resolvedConfig.duration,
       width: options.width ?? resolvedConfig.width,
       height: options.height ?? resolvedConfig.height,
       fps: options.fps ?? resolvedConfig.fps,

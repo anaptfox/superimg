@@ -15,7 +15,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
     fps: 30,
-    durationSeconds: 4,
+    duration: 4,
     fonts: ["JetBrains+Mono:wght@400;600", "Inter:wght@400;600"],
     inlineCss: [`
       * { margin: 0; padding: 0; box-sizing: border-box; }

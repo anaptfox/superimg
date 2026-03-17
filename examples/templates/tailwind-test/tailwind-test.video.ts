@@ -1,4 +1,5 @@
 import { defineScene } from "superimg";
+import { timeline } from "@superimg/stdlib/timeline";
 
 export default defineScene({
   defaults: {
@@ -10,29 +11,27 @@ export default defineScene({
     width: 1920,
     height: 1080,
     fps: 30,
-    durationSeconds: 8,
+    duration: 8,
     tailwind: true,
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, data } = ctx;
+    const { std, sceneTimeSeconds: time, sceneDurationSeconds: duration, data } = ctx;
     const { title, features } = data;
 
-    // Phase timeline: intro (2s) → features grid (4s) → outro (2s)
-    const phases = std.timing.sequence({
-      intro: 2,
-      features: 4,
-      outro: 2,
-    });
-    const { name: phase, progress } = phases.get(time);
+    // Timeline: intro (0-2s) → features (2-6s) → outro (6-8s)
+    const tl = timeline(time, duration);
+    const intro = tl.at("intro", 0, 2);
+    const featuresPhase = tl.at("features", 2, 4);
+    const outro = tl.at("outro", 6, 2);
 
-    // Phase-specific rendering
-    if (phase === "intro") {
-      return renderIntro(std, progress, title);
-    } else if (phase === "features") {
-      return renderFeatures(std, progress, features);
+    // Phase-specific rendering based on which is active
+    if (intro.active || intro.progress < 1 && featuresPhase.progress === 0) {
+      return renderIntro(std, intro.progress, title);
+    } else if (featuresPhase.active || (featuresPhase.progress === 1 && outro.progress === 0)) {
+      return renderFeatures(std, tl, featuresPhase, features);
     } else {
-      return renderOutro(std, progress);
+      return renderOutro(std, outro.progress);
     }
   },
 });
@@ -60,14 +59,23 @@ function renderIntro(std: any, progress: number, title: string) {
   `;
 }
 
-function renderFeatures(std: any, progress: number, features: string[]) {
-  // Grid of feature cards with staggered animation
-  const cards = features
+function renderFeatures(std: any, tl: any, featuresPhase: any, features: string[]) {
+  // Create scoped timeline for features phase (re-zeroed to 0-4s)
+  const scoped = tl.scope(featuresPhase.start, featuresPhase.end);
+
+  // Stagger cards within the features phase
+  const cardIds = features.map((_, i) => `card-${i}`);
+  const cards = scoped.stagger(cardIds, {
+    start: 0,
+    each: 0.15,
+    duration: 0.4,
+  });
+
+  const cardHtml = features
     .map((feature, i) => {
-      const delay = i * 0.15;
-      const cardProgress = std.math.clamp((progress - delay) / 0.4, 0, 1);
-      const y = std.tween(40, 0, cardProgress, "easeOutCubic");
-      const opacity = std.tween(0, 1, cardProgress, "easeOutCubic");
+      const cardEvent = cards.get(i);
+      const y = std.tween(40, 0, cardEvent.progress, "easeOutCubic");
+      const opacity = std.tween(0, 1, cardEvent.progress, "easeOutCubic");
       const cardStyle = std.css({ transform: `translateY(${y}px)`, opacity });
 
       return `
@@ -86,7 +94,7 @@ function renderFeatures(std: any, progress: number, features: string[]) {
     <div class="w-full h-full bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-20">
       <h2 class="text-5xl font-bold text-white mb-12 text-center">Key Features</h2>
       <div class="grid grid-cols-4 gap-8 max-w-6xl mx-auto">
-        ${cards}
+        ${cardHtml}
       </div>
     </div>
   `;

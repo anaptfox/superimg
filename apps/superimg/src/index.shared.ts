@@ -14,7 +14,6 @@ export type {
   // Branded types
   FrameNumber,
   Progress,
-  DurationSeconds,
   DurationFrames,
   TimeSeconds,
 
@@ -86,7 +85,6 @@ export type {
 export {
   frame,
   progress,
-  durationSeconds,
   durationFrames,
   timeSeconds,
 } from "@superimg/types";

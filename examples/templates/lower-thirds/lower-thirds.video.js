@@ -13,7 +13,7 @@ export default defineScene({
 
   config: {
     fps: 30,
-    durationSeconds: 4,
+    duration: 4,
     fonts: ["Inter:wght@400;600;700"],
     outputs: {
       youtube: { width: 1920, height: 1080 },

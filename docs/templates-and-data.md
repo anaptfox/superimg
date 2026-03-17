@@ -29,7 +29,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
     fps: 30,
-    durationSeconds: 5,
+    duration: 5,
   },
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
@@ -59,7 +59,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
     fps: 30,
-    durationSeconds: 5,
+    duration: 5,
     outputs: {
       youtube: { width: 1920, height: 1080 },
       reels: { width: 1080, height: 1920 },
@@ -91,7 +91,7 @@ Duration can be set in several places. The highest-priority source wins:
 | Priority | Source | Used by |
 |----------|--------|---------|
 | 1 (highest) | CLI flags (`--duration`) | CLI rendering |
-| 2 | `config.durationSeconds` in template | CLI rendering (fallback) |
+| 2 | `config.duration` in template | CLI rendering (fallback) |
 | 3 (lowest) | Built-in default (5 s) | Everything |
 
 ### The `std` Standard Library
@@ -185,7 +185,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
     fps: 30,
-    durationSeconds: 5,
+    duration: 5,
   },
   render(ctx) {
     const { std, sceneProgress, data } = ctx;
@@ -339,6 +339,6 @@ export default defineScene({
 
 ```typescript
 config: {
-  durationSeconds: 5,
+  duration: 5,
 }
 ```

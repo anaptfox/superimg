@@ -5,7 +5,7 @@ import type { RenderContext, TemplateModule } from "superimg";
 const templates: TemplateModule[] = [
   // Gradient rotation
   {
-    config: { fps: 24, durationSeconds: 2 },
+    config: { fps: 24, duration: 2 },
     render: (ctx: RenderContext) => {
       const hue = Math.floor(ctx.sceneProgress * 360);
       return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:system-ui;font-size:32px;color:white;background:linear-gradient(120deg, hsl(${hue}, 80%, 40%), #0f0f0f)">Gradient ${(ctx.sceneProgress * 100).toFixed(0)}%</div>`;
@@ -13,7 +13,7 @@ const templates: TemplateModule[] = [
   },
   // Pulse animation
   {
-    config: { fps: 24, durationSeconds: 2 },
+    config: { fps: 24, duration: 2 },
     render: (ctx: RenderContext) => {
       const scale = 0.8 + Math.sin(ctx.sceneProgress * Math.PI * 4) * 0.2;
       return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1a1a2e"><div style="width:80px;height:80px;border-radius:50%;background:#16213e;transform:scale(${scale});box-shadow:0 0 40px rgba(0,149,255,0.8)"></div></div>`;
@@ -21,7 +21,7 @@ const templates: TemplateModule[] = [
   },
   // Color bars
   {
-    config: { fps: 24, durationSeconds: 2 },
+    config: { fps: 24, duration: 2 },
     render: (ctx: RenderContext) => {
       const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
       const bars = colors
@@ -35,7 +35,7 @@ const templates: TemplateModule[] = [
   },
   // Spinning squares
   {
-    config: { fps: 24, durationSeconds: 2 },
+    config: { fps: 24, duration: 2 },
     render: (ctx: RenderContext) => {
       const rotate = ctx.sceneProgress * 360;
       return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%)"><div style="width:60px;height:60px;background:white;transform:rotate(${rotate}deg)"></div></div>`;
@@ -43,14 +43,14 @@ const templates: TemplateModule[] = [
   },
   // Wave pattern
   {
-    config: { fps: 24, durationSeconds: 2 },
+    config: { fps: 24, duration: 2 },
     render: (ctx: RenderContext) => {
       return `<div style="width:100%;height:100%;background:#0a0e27;display:flex;align-items:center;justify-content:center;font-size:24px;color:#64ffda">◆ ◇ ◆ ◇<br>Wave ${Math.floor(ctx.sceneProgress * 100)}%</div>`;
     },
   },
   // Gradient sweep
   {
-    config: { fps: 24, durationSeconds: 2 },
+    config: { fps: 24, duration: 2 },
     render: (ctx: RenderContext) => {
       const angle = ctx.sceneProgress * 360;
       return `<div style="width:100%;height:100%;background:linear-gradient(${angle}deg, #ee0979 0%, #ff6a00 100%);display:flex;align-items:center;justify-content:center;font-size:28px;color:white;font-weight:bold">SWEEP</div>`;

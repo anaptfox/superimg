@@ -12,7 +12,7 @@ export const ProjectConfigSchema = z.object({
   width: z.number().positive().optional(),
   height: z.number().positive().optional(),
   fps: z.number().positive().optional(),
-  durationSeconds: z.number().positive().optional(),
+  duration: z.union([z.number().positive(), z.string()]).optional(),
   fonts: z.array(z.string()).optional(),
   inlineCss: z.array(z.string()).optional(),
   stylesheets: z.array(z.string()).optional(),

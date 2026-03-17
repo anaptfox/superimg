@@ -32,7 +32,7 @@ Instead of one global config file, SuperImg uses **cascading configuration**. Pl
 
 | Field type | Behavior |
 |------------|----------|
-| **Scalars** (width, height, fps, durationSeconds) | Nearest to the video wins |
+| **Scalars** (width, height, fps, duration) | Nearest to the video wins |
 | **Arrays** (fonts, inlineCss, stylesheets) | Concatenated: root first, then child folders |
 | **outputs** (named presets) | Nearest wins (overwrites parent) |
 
@@ -45,7 +45,7 @@ export default defineConfig({
   width: 1920,
   height: 1080,
   fps: 30,
-  durationSeconds: 5,
+  duration: 5,
   fonts: ["Roboto:wght@400;700"],           // Google Fonts
   inlineCss: ["* { box-sizing: border-box; }"],
   stylesheets: ["https://cdn.example.com/styles.css"],

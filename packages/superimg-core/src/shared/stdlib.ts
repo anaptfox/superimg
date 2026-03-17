@@ -5,13 +5,20 @@ import * as math from "@superimg/stdlib/math";
 import * as color from "@superimg/stdlib/color";
 import * as text from "@superimg/stdlib/text";
 import * as date from "@superimg/stdlib/date";
-import * as timing from "@superimg/stdlib/timing";
 import { css, fill, center, stack } from "@superimg/stdlib/css";
 import { tween } from "@superimg/stdlib/tween";
 import * as responsive from "@superimg/stdlib/responsive";
 import * as subtitle from "@superimg/stdlib/subtitle";
 import * as presets from "@superimg/stdlib/presets";
 import * as code from "@superimg/stdlib/code";
+import {
+  timeline,
+  transcript,
+  fromElevenLabs,
+  fromWhisper,
+  markers,
+  script,
+} from "@superimg/stdlib/timeline";
 
 const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
@@ -22,11 +29,17 @@ export const stdlib: Stdlib = {
   color,
   text,
   date,
-  timing,
   css: Object.assign(css, { fill, center, stack }),
   tween,
   responsive,
   subtitle,
   presets,
   code,
+  timeline: Object.assign(timeline, {
+    transcript,
+    fromElevenLabs,
+    fromWhisper,
+    markers,
+    script,
+  }),
 };

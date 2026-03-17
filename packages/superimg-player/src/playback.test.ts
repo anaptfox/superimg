@@ -32,7 +32,7 @@ describe("createPlaybackController", () => {
   });
 
   it("play starts animation loop", () => {
-    const store = createPlayerStore({ fps: 30, durationSeconds: 5 });
+    const store = createPlayerStore({ fps: 30, duration: 5 });
     store.getState().play();
     const onFrame = vi.fn();
     const onEnd = vi.fn();
@@ -44,7 +44,7 @@ describe("createPlaybackController", () => {
   });
 
   it("pause stops animation loop", () => {
-    const store = createPlayerStore({ fps: 30, durationSeconds: 5 });
+    const store = createPlayerStore({ fps: 30, duration: 5 });
     store.getState().play();
     const ctrl = createPlaybackController(store, {
       onFrame: () => {},
@@ -57,7 +57,7 @@ describe("createPlaybackController", () => {
   });
 
   it("calls onFrame as time advances", () => {
-    const store = createPlayerStore({ fps: 30, durationSeconds: 5 });
+    const store = createPlayerStore({ fps: 30, duration: 5 });
     store.getState().play();
     const onFrame = vi.fn();
     const onEnd = vi.fn();
@@ -72,7 +72,7 @@ describe("createPlaybackController", () => {
   });
 
   it("calls onEnd when reaching totalFrames", () => {
-    const store = createPlayerStore({ fps: 30, durationSeconds: 1 });
+    const store = createPlayerStore({ fps: 30, duration: 1 });
     store.getState().play();
     const onFrame = vi.fn();
     const onEnd = vi.fn();
@@ -86,7 +86,7 @@ describe("createPlaybackController", () => {
   });
 
   it("destroy cancels animation", () => {
-    const store = createPlayerStore({ fps: 30, durationSeconds: 5 });
+    const store = createPlayerStore({ fps: 30, duration: 5 });
     store.getState().play();
     const ctrl = createPlaybackController(store, {
       onFrame: () => {},

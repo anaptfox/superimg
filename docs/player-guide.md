@@ -38,7 +38,7 @@ const template = {
     width: 640,
     height: 360,
     fps: 30,
-    durationSeconds: 5,
+    duration: 5,
   },
   render: (ctx: RenderContext) => {
     const { sceneProgress, sceneFrame, sceneTotalFrames } = ctx;
@@ -221,7 +221,7 @@ import { Player } from "superimg-react";
 import type { RenderContext } from "superimg";
 
 const template = {
-  config: { width: 640, height: 360, fps: 30, durationSeconds: 5 },
+  config: { width: 640, height: 360, fps: 30, duration: 5 },
   render: (ctx: RenderContext) => {
     const { sceneProgress, sceneFrame } = ctx;
     return `
@@ -476,7 +476,7 @@ pnpm dev
 
 If players are using too much memory:
 1. Reduce `maxCacheFrames` (default: 30)
-2. Reduce `durationSeconds` in templates
+2. Reduce `duration` in templates
 3. Enable lazy loading with `loadMode: "lazy"`
 4. Use lower resolution (`width`/`height`)
 

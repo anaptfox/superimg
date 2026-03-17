@@ -8,7 +8,7 @@ export interface ExportConfig {
   fps: number;
   width: number;
   height: number;
-  durationSeconds: number;
+  duration: number;
   audio?: AudioOptions;
   encoding?: EncodingOptions;
 }
@@ -28,7 +28,7 @@ export async function exportToVideo(
   options?: ExportOptions
 ): Promise<Blob> {
   const ctx = get2DContext(canvas);
-  const totalFrames = Math.floor(config.durationSeconds * config.fps);
+  const totalFrames = Math.floor(config.duration * config.fps);
 
   if (totalFrames <= 0) {
     throw new Error("Export duration is too short to generate frames");

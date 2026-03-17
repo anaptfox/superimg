@@ -11,7 +11,7 @@ import type { CheckpointResolver } from "@superimg/core";
 
 export interface PlayerConfig {
   fps: number;
-  durationSeconds: number;
+  duration: number;
 }
 
 // =============================================================================
@@ -26,7 +26,7 @@ export interface PlayerState {
   currentFrame: number;
   totalFrames: number;
   fps: number;
-  durationSeconds: number;
+  duration: number;
   
   // Actions
   play: () => void;
@@ -73,11 +73,11 @@ export function createPlayerStore(
     isScrubbing: false,
     isReady: false,
     currentFrame: 0,
-    totalFrames: Math.floor(config.fps * config.durationSeconds),
+    totalFrames: Math.floor(config.fps * config.duration),
 
     // Config
     fps: config.fps,
-    durationSeconds: config.durationSeconds,
+    duration: config.duration,
 
     // Actions
     play: () => {
@@ -129,12 +129,12 @@ export function createPlayerStore(
     updateConfig: (newConfig: Partial<PlayerConfig>) => {
       const current = get();
       const fps = newConfig.fps ?? current.fps;
-      const durationSeconds = newConfig.durationSeconds ?? current.durationSeconds;
+      const duration = newConfig.duration ?? current.duration;
 
       set({
         fps,
-        durationSeconds,
-        totalFrames: Math.floor(fps * durationSeconds),
+        duration,
+        totalFrames: Math.floor(fps * duration),
       });
     },
 

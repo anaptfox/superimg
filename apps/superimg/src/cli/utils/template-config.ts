@@ -16,16 +16,24 @@ export interface ParsedTemplate {
     width?: number;
     height?: number;
     fps?: number;
-    durationSeconds?: number;
+    duration?: number;
     outputs?: Record<string, { width?: number; height?: number; fps?: number; outDir?: string; outFile?: string }>;
   };
+}
+
+export interface AudioConfig {
+  src: string;
+  loop?: boolean;
+  volume?: number;
+  fadeIn?: number;
+  fadeOut?: number;
 }
 
 export interface RenderConfig {
   width?: number;
   height?: number;
   fps?: number;
-  durationSeconds?: number;
+  duration?: number;
   fonts?: string[];
   inlineCss?: string[];
   stylesheets?: string[];
@@ -34,20 +42,21 @@ export interface RenderConfig {
   encoding?: EncodingOptions;
   watermark?: import("@superimg/types").WatermarkValue;
   background?: import("@superimg/types").BackgroundValue;
+  audio?: string | AudioConfig;
 }
 
 export interface RenderConfigDefaults {
   width: number;
   height: number;
   fps: number;
-  durationSeconds: number;
+  duration: number;
 }
 
 export const DEFAULT_RENDER_CONFIG: RenderConfigDefaults = {
   width: 1920,
   height: 1080,
   fps: 30,
-  durationSeconds: 5,
+  duration: 5,
 };
 
 function positiveNumberOrUndefined(value: unknown): number | undefined {
@@ -68,7 +77,7 @@ export interface ResolveRenderConfigInput {
     width?: string;
     height?: string;
     fps?: string;
-    durationSeconds?: string;
+    duration?: string;
   };
   templateConfig?: RenderConfig;
   cascadingConfig?: ProjectConfig;
@@ -88,7 +97,7 @@ export function resolveRenderConfig(input: ResolveRenderConfigInput): RenderConf
   const cliWidth = parsePositiveIntOrUndefined(input.cli?.width);
   const cliHeight = parsePositiveIntOrUndefined(input.cli?.height);
   const cliFps = parsePositiveIntOrUndefined(input.cli?.fps);
-  const cliDuration = parsePositiveIntOrUndefined(input.cli?.durationSeconds);
+  const cliDuration = parsePositiveIntOrUndefined(input.cli?.duration);
 
   const width =
     cliWidth ??
@@ -105,13 +114,13 @@ export function resolveRenderConfig(input: ResolveRenderConfigInput): RenderConf
     positiveNumberOrUndefined(input.templateConfig?.fps) ??
     positiveNumberOrUndefined(input.cascadingConfig?.fps) ??
     defaults.fps;
-  const durationSeconds =
+  const duration =
     cliDuration ??
-    positiveNumberOrUndefined(input.templateConfig?.durationSeconds) ??
-    positiveNumberOrUndefined(input.cascadingConfig?.durationSeconds) ??
-    defaults.durationSeconds;
+    positiveNumberOrUndefined(input.templateConfig?.duration) ??
+    positiveNumberOrUndefined(input.cascadingConfig?.duration) ??
+    defaults.duration;
 
-  return { width, height, fps, durationSeconds };
+  return { width, height, fps, duration };
 }
 
 /** Merge fonts, inlineCss, stylesheets, tailwind from cascading config into template config */

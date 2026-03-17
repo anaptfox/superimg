@@ -14,7 +14,6 @@ export type {
   // Branded Types
   FrameNumber,
   Progress,
-  DurationSeconds,
   DurationFrames,
   TimeSeconds,
 
@@ -77,7 +76,6 @@ export type {
 export {
   frame,
   progress,
-  durationSeconds,
   durationFrames,
   timeSeconds,
 } from "./types.js";

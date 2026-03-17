@@ -35,7 +35,7 @@ describe("useExport", () => {
     await act(async () => {
       await result.current.exportMp4(
         canvas,
-        { width: 640, height: 360, fps: 30, durationSeconds: 5 },
+        { width: 640, height: 360, fps: 30, duration: 5 },
         renderFrame
       );
     });

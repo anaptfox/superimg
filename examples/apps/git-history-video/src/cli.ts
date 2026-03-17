@@ -166,7 +166,7 @@ async function main() {
     output: outputPath,
     width,
     height,
-    durationSeconds: 12,
+    duration: 12,
     onProgress: (frame, total) => {
       const pct = Math.round((frame / total) * 100);
       process.stdout.write(`\r  [${progressBar(frame / total)}] ${pct}%`);

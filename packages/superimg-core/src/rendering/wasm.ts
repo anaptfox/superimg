@@ -1,7 +1,7 @@
 //! Pure TypeScript implementations (no WASM)
 
 import type { RenderContext, AssetMeta } from "@superimg/types";
-import { stdlib } from "./stdlib.js";
+import { stdlib } from "../shared/stdlib.js";
 
 /**
  * Compute orientation flags from dimensions

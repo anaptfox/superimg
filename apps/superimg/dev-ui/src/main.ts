@@ -9,12 +9,22 @@ import {
 } from "superimg";
 import { escapeHtml } from "superimg/stdlib";
 
+interface AudioConfig {
+  src: string;
+  loop?: boolean;
+  volume?: number;
+  fadeIn?: number;
+  fadeOut?: number;
+}
+
 interface DevConfig {
   width: number;
   height: number;
   fps: number;
-  durationSeconds: number;
+  duration: number;
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
+  audio?: string | AudioConfig;
+  templateDir?: string;
 }
 
 interface VideoItem {
@@ -41,6 +51,9 @@ import {
   totalTimeEl,
   templateNameEl,
   loopBtn,
+  volumeControl,
+  volumeBtn,
+  volumeSlider,
   btnFirst,
   btnPrev,
   btnNext,
@@ -68,6 +81,7 @@ let loadedTemplate: { render: (ctx: unknown) => string; defaults?: Record<string
 let devConfig: DevConfig;
 let templatePath = "/api/template";
 let configPath = "/api/config";
+let audioElement: HTMLAudioElement | null = null;
 import {
   setStatus,
   showToast,
@@ -330,6 +344,99 @@ async function initPlayer() {
     const store = player.store!;
     store.subscribe(updateUI);
     updateUI(); // Sync initial state so that the play overlay appears
+
+    // Initialize audio playback if configured
+    if (devConfig.audio) {
+      const audioConfig = typeof devConfig.audio === "string"
+        ? { src: devConfig.audio }
+        : devConfig.audio;
+
+      audioElement = new Audio();
+      // Resolve audio path relative to template directory
+      // Encode the path to preserve .. segments
+      audioElement.src = `/api/assets?path=${encodeURIComponent(audioConfig.src)}`;
+      audioElement.volume = audioConfig.volume ?? 1;
+      audioElement.loop = audioConfig.loop ?? false;
+      audioElement.preload = "auto";
+
+      // Sync audio with player state
+      let wasPlaying = false;
+      let lastSeekFrame = -1;
+      let prevFrame = 0;
+
+      store.subscribe((state) => {
+        if (!audioElement) return;
+        const videoTime = state.currentFrame / state.fps;
+
+        // Detect video loop (frame jumped backwards significantly)
+        const looped = state.isPlaying && prevFrame > state.currentFrame + 5;
+
+        if (state.isPlaying) {
+          if (!wasPlaying || looped) {
+            // Just started playing OR video looped - sync time and start audio
+            audioElement.currentTime = videoTime;
+            audioElement.play().catch(() => {});
+          }
+          // While playing, let audio run naturally (don't constantly reset)
+        } else {
+          // Paused or scrubbing
+          if (!audioElement.paused) {
+            audioElement.pause();
+          }
+          // Sync time when scrubbing (frame changed while paused)
+          if (state.currentFrame !== lastSeekFrame) {
+            audioElement.currentTime = videoTime;
+            lastSeekFrame = state.currentFrame;
+          }
+        }
+        wasPlaying = state.isPlaying;
+        prevFrame = state.currentFrame;
+      });
+
+      console.log(`Audio loaded: ${audioConfig.src} (volume: ${audioConfig.volume ?? 1}, loop: ${audioConfig.loop ?? false})`);
+
+      // Show volume control and wire it up
+      volumeControl.classList.remove("hidden");
+      const initialVolume = 0.25;
+      audioElement.volume = initialVolume;
+      volumeSlider.value = "25";
+      let lastVolume = initialVolume;
+
+      const updateVolumeIcon = () => {
+        if (!audioElement) return;
+        if (audioElement.muted || audioElement.volume === 0) {
+          volumeBtn.textContent = "🔇";
+        } else if (audioElement.volume < 0.5) {
+          volumeBtn.textContent = "🔉";
+        } else {
+          volumeBtn.textContent = "🔊";
+        }
+      };
+
+      volumeSlider.addEventListener("input", () => {
+        if (!audioElement) return;
+        const vol = parseInt(volumeSlider.value, 10) / 100;
+        audioElement.volume = vol;
+        audioElement.muted = false;
+        lastVolume = vol > 0 ? vol : lastVolume;
+        updateVolumeIcon();
+      });
+
+      volumeBtn.addEventListener("click", () => {
+        if (!audioElement) return;
+        if (audioElement.muted || audioElement.volume === 0) {
+          audioElement.muted = false;
+          audioElement.volume = lastVolume > 0 ? lastVolume : 0.5;
+          volumeSlider.value = String(Math.round(audioElement.volume * 100));
+        } else {
+          lastVolume = audioElement.volume;
+          audioElement.muted = true;
+        }
+        updateVolumeIcon();
+      });
+
+      updateVolumeIcon();
+    }
 
     const timelineController = createTimelineController(
       { progress: timelineProgress, playhead: timelinePlayhead, currentTime: currentTimeEl, totalTime: totalTimeEl },

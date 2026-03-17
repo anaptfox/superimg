@@ -35,7 +35,7 @@ export default defineScene({
 export const BLOG_EASING_TEMPLATE = `import { defineScene } from "superimg";
 
 export default defineScene({
-  config: { durationSeconds: 3 },
+  config: { duration: 3 },
   render(ctx) {
     const { std, sceneTimeSeconds: time, width, height } = ctx;
 
@@ -124,7 +124,7 @@ export interface TemplateData {
 export default defineScene<TemplateData>({
   config: {
     fps: 30,
-    durationSeconds: 4,
+    duration: 4,
     width: 1920,
     height: 1080,
     inlineCss: [\`

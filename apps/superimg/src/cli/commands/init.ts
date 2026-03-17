@@ -55,7 +55,7 @@ export default defineConfig({
   width: 1920,
   height: 1080,
   fps: 30,
-  durationSeconds: 5,
+  duration: 5,
 });
 `;
 
@@ -67,7 +67,7 @@ export default defineScene({
   },
 
   config: {
-    durationSeconds: 3,
+    duration: 3,
     inlineCss: [\`
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: #0f0f23; font-family: system-ui, sans-serif; }
@@ -100,7 +100,7 @@ export default defineScene({
   },
 
   config: {
-    durationSeconds: 3,
+    duration: 3,
     inlineCss: [\`
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: #0f0f23; font-family: system-ui, sans-serif; }

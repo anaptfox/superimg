@@ -84,11 +84,22 @@
     "esbuild-wasm": "^0.27.0",
     "hono": "^4.7.7",
     "ink": "^6.6.0",
+    "oxc-parser": "^0.119.0",
     "react": "catalog:",
     "simplex-noise": "^4.0.3",
     "vite": "^7.3.1",
     "ws": "^8.18.0",
     "zustand": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "@oxc-parser/binding-darwin-arm64": "^0.119.0",
+    "@oxc-parser/binding-darwin-x64": "^0.119.0",
+    "@oxc-parser/binding-linux-arm64-gnu": "^0.119.0",
+    "@oxc-parser/binding-linux-arm64-musl": "^0.119.0",
+    "@oxc-parser/binding-linux-x64-gnu": "^0.119.0",
+    "@oxc-parser/binding-linux-x64-musl": "^0.119.0",
+    "@oxc-parser/binding-win32-arm64-msvc": "^0.119.0",
+    "@oxc-parser/binding-win32-x64-msvc": "^0.119.0"
   },
   "peerDependencies": {
     "playwright": "^1.57.0"

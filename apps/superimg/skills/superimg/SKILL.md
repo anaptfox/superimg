@@ -21,7 +21,7 @@ import { defineScene } from "superimg";
 export default defineScene({
   defaults: { message: "Hello!", accentColor: "#667eea" },
   config: {
-    durationSeconds: 3,
+    duration: 3,
     inlineCss: ["* { margin: 0; box-sizing: border-box; } body { background: #0f0f23; font-family: system-ui; }"],
   },
   render(ctx) {
@@ -44,21 +44,21 @@ Use these from `ctx`: `sceneProgress`, `sceneTimeSeconds`, `sceneDurationSeconds
 
 ## Core Patterns
 
-**Phase timing (enter/hold/exit):**
+**Timeline API (recommended for multi-phase animations):**
 ```typescript
-const enterProgress = std.math.clamp(time / 1.0, 0, 1);
-const exitProgress = std.math.clamp((time - 3.0) / 1.0, 0, 1);
-const opacity = std.tween(0, 1, enterProgress, "easeOutCubic") * (1 - exitProgress);
+const tl = std.timeline(time, duration);
+const enter = tl.at("enter", 0, 0.8);
+const hold = tl.at("hold", 0.8, 2);
+const exit = tl.at("exit", 2.8, 0.8);
+
+const scale = enter.active ? std.tween(0.8, 1, enter.progress, "easeOutBack") : 1;
+const opacity = exit.active ? std.tween(1, 0, exit.progress, "easeInCubic") : 1;
 ```
 
-**Phase sequence (no manual clamp):**
+**Simple single-phase fade-in:**
 ```typescript
-const phases = std.timing.sequence({
-  enter: { duration: 0.8, render: (p) => card(std.tween(0, 1, p, "easeOutCubic")) },
-  hold: { duration: 2, render: () => card(1) },
-  exit: { duration: 0.8, render: (p) => card(std.tween(1, 0, p, "easeInCubic")) },
-});
-return phases.render(time);
+const progress = std.math.clamp(time / 1.0, 0, 1);
+const opacity = std.tween(0, 1, progress, "easeOutCubic");
 ```
 
 **Animated counter:** `Math.floor(std.tween(0, value, progress, "easeOutCubic"))`
@@ -73,25 +73,28 @@ return phases.render(time);
 - `std.math.clamp`, `std.math.map`
 - `std.color.alpha`, `std.color.mix`, `std.color.lighten`, `std.color.darken`
 - `std.css(obj)` — object → inline style string
-- `std.timing.sequence({ enter, hold, exit })` — phase manager
+- `std.timeline(time, duration)` — declarative timing
 
 ## Do / Don't
 
 **DO:** Use `sceneProgress` or `sceneTimeSeconds` for animation. Put shared CSS in `config.inlineCss`. Use `config.fonts` for Google Fonts. Set root element to `width: ${width}px; height: ${height}px`. Use `std.css()` for inline styles. Import from `"superimg"` in templates.
 
-**DON'T:** Return JSX — return template literal strings. Mutate state in render — keep it pure. Use `globalProgress` for scene animation. Import from `"superimg/server"` in templates. Use `@import url()` for fonts — use `config.fonts`.
+**DON'T:** Return JSX — return template literal strings. Mutate state in render — keep it pure. Use `globalProgress` for scene animation. Import from `"superimg/server"` in templates. Use `@import url()` for fonts — use `config.fonts`. Override CLI output paths (e.g. using `-o`) when rendering unless explicitly instructed by the user.
 
 ## Config
 
-`defineScene` config: `width`, `height`, `fps`, `durationSeconds`, `fonts`, `inlineCss`, `stylesheets`, `outputs`. Precedence: CLI flags > template config > `_config.ts` (cascading) > built-in defaults. Use `defineConfig` in `_config.ts` for project-wide settings.
+`defineScene` config: `width`, `height`, `fps`, `duration`, `fonts`, `inlineCss`, `stylesheets`, `outputs`. Precedence: CLI flags > template config > `_config.ts` (cascading) > built-in defaults. Use `defineConfig` in `_config.ts` for project-wide settings.
 
 ## CLI
+
+> **Note for AI Agents:** Do **not** use the `-o` or `--output` flag when rendering unless the user explicitly requests a custom path. Rely on the framework to determine the output location automatically.
 
 ```bash
 superimg init my-project
 superimg init .                    # Add to existing project
 superimg dev intro
-superimg render videos/intro.ts -o output.mp4
+superimg render videos/intro.ts    # Outputs natively to nearest package's output/intro.mp4
+superimg render videos/intro.ts -o custom.mp4
 superimg list
 superimg info videos/intro.ts
 superimg setup

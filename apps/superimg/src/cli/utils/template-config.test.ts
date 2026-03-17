@@ -8,15 +8,15 @@ describe("resolveRenderConfig", () => {
   it("applies precedence: cli > template > defaults", () => {
     const resolved = resolveRenderConfig({
       cli: { width: "3840", fps: "60" },
-      templateConfig: { width: 1280, height: 720, fps: 24, durationSeconds: 4 },
-      defaults: { width: 640, height: 360, fps: 12, durationSeconds: 2 },
+      templateConfig: { width: 1280, height: 720, fps: 24, duration: 4 },
+      defaults: { width: 640, height: 360, fps: 12, duration: 2 },
     });
 
     expect(resolved).toEqual({
       width: 3840,
       height: 720,
       fps: 60,
-      durationSeconds: 4,
+      duration: 4,
     });
   });
 });
@@ -51,14 +51,14 @@ describe("parseTemplate", () => {
         `
           import { defineScene } from 'superimg';
           export default defineScene({
-            config: { durationSeconds: 9 },
+            config: { duration: 9 },
             render(ctx) { return "<div>ok</div>"; }
           });
         `
       );
 
       const parsed = await parseTemplate(templatePath);
-      expect(parsed.config?.durationSeconds).toBe(9);
+      expect(parsed.config?.duration).toBe(9);
     });
   });
 });

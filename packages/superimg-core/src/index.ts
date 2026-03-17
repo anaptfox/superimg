@@ -28,17 +28,17 @@ export type {
 } from "@superimg/types";
 
 // Core functionality (browser-safe only)
-export * from "./constants.js";
-export * from "./wasm.js";
-export * from "./compiler.js";
-export * from "./assets.js";
-export * from "./asset-metadata.js";
-export * from "./checkpoint-resolver.js";
-export * from "./sanitize.js";
-export * from "./css.js";
+export * from "./shared/constants.js";
+export * from "./rendering/wasm.js";
+export * from "./rendering/compiler.js";
+export * from "./shared/assets.js";
+export * from "./shared/asset-metadata.js";
+export * from "./rendering/checkpoint-resolver.js";
+export * from "./html/sanitize.js";
+export * from "./html/css.js";
 
 // Scene composition
-export { compose } from "./compose.js";
-export { scene } from "./scene.js";
-export { transitions, renderWithTransition } from "./transitions.js";
-export { parseDuration } from "./utils.js";
+export { compose } from "./composition/compose.js";
+export { scene } from "./composition/scene.js";
+export { transitions, renderWithTransition } from "./composition/transitions.js";
+export { parseDuration } from "./shared/utils.js";

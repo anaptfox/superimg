@@ -42,6 +42,10 @@
                     <span id="current-time">00:00</span> / <span id="total-time">00:00</span>
                 </div>
                 <button id="loop-btn" aria-label="Toggle loop (L)" aria-pressed="true">Loop</button>
+                <div id="volume-control" class="hidden flex items-center gap-2">
+                    <button id="volume-btn" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-2 py-1.5 rounded text-sm cursor-pointer hover:bg-[#5a5a5a]" aria-label="Mute/Unmute">🔊</button>
+                    <input id="volume-slider" type="range" min="0" max="100" value="60" class="w-20 h-1.5 bg-[#4a4a4a] rounded appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-[#00aaff] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer" aria-label="Volume">
+                </div>
                 <select id="output-select" class="bg-[#4a4a4a] border border-[#5a5a5a] text-[#e0e0e0] px-4 py-2 rounded text-sm cursor-pointer hover:bg-[#5a5a5a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#00aaff] focus-visible:outline-offset-2" aria-label="Output format">
                     <option value="">1080p</option>
                 </select>

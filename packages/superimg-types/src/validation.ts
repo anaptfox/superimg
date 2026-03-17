@@ -72,8 +72,8 @@ export interface ValidationOptions {
   height?: number;
   /** Frames per second (default: 30) */
   fps?: number;
-  /** Video duration in seconds (default: 3) */
-  durationSeconds?: number;
+  /** Video duration (default: 3). Accepts number (seconds), "5s", "500ms", or "30f". */
+  duration?: number | string;
   /** Optional data to merge with template defaults */
   data?: Record<string, unknown>;
   /** Check for NaN/undefined in output (default: true) */

@@ -1,0 +1,8 @@
+{
+  "name": "karaoke-example",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "superimg": "workspace:*"
+  }
+}

@@ -3,7 +3,7 @@ import type { RenderContext, TemplateModule } from "superimg";
 
 // Template module for demo
 const template: TemplateModule = {
-  config: { width: 640, height: 360, fps: 30, durationSeconds: 5 },
+  config: { width: 640, height: 360, fps: 30, duration: 5 },
   render: (ctx: RenderContext) => {
     const { sceneProgress: progress, sceneFrame: frame, sceneTotalFrames } = ctx;
     const hue = Math.floor(progress * 360);

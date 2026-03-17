@@ -59,7 +59,7 @@ const TEMPLATE_EXAMPLE = `import { defineScene } from "superimg";
 
 export default defineScene({
   defaults: { title: "Hello", color: "#667eea" },
-  config: { durationSeconds: 3 },
+  config: { duration: 3 },
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
     const opacity = std.tween(0, 1, sceneProgress, "easeOutCubic");
@@ -80,7 +80,7 @@ const HTML_PAGE_EXAMPLE = `<!DOCTYPE html>
 
     const template = defineScene({
       defaults: { title: "Hello", color: "#667eea" },
-      config: { durationSeconds: 3 },
+      config: { duration: 3 },
       render(ctx) {
         const { std, sceneProgress, width, height, data } = ctx;
         const opacity = std.tween(0, 1, sceneProgress, "easeOutCubic");

@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { createRenderPlan, executeRenderPlan } from "./engine.js";
-import { bundleTemplateCode } from "./bundler.js";
+import { createRenderPlan, executeRenderPlan } from "../rendering/engine.js";
+import { bundleTemplateCode } from "../bundler/bundler.js";
 import { TemplateRuntimeError } from "@superimg/types";
 
 async function jobFromCode(code: string) {
   const bundled = await bundleTemplateCode(code);
   return {
     templateCode: bundled,
-    durationSeconds: 2,
+    duration: 2,
     width: 640,
     height: 360,
     fps: 30,
@@ -180,7 +180,7 @@ describe("executeRenderPlan", () => {
       });
     `;
     const job = await jobFromCode(code);
-    job.durationSeconds = 0.1;
+    job.duration = 0.1;
     job.fps = 10;
     const plan = createRenderPlan(job);
 
@@ -218,7 +218,7 @@ describe("executeRenderPlan", () => {
       });
     `;
     const job = await jobFromCode(code);
-    job.durationSeconds = 1;
+    job.duration = 1;
     job.fps = 10;
     const plan = createRenderPlan(job);
 

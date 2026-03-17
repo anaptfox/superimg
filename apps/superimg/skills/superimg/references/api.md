@@ -222,45 +222,99 @@ return `<div style="${containerStyle}">
 </div>`;
 ```
 
-## std.timing
+## std.timeline
 
-Phase and sequence management.
+Declarative timeline for animation phases.
 
 ```typescript
-// Create phase sequence
-std.timing.sequence(phases: Record<string, PhaseConfig>): PhaseSequence
+// Create a timeline
+const tl = std.timeline(time, duration);
 
-interface PhaseConfig {
-  duration: number;
-  render: (progress: number) => string;
-}
+// Define events at absolute positions
+const enter = tl.at("enter", 0, 0.8);      // start=0, duration=0.8
+const hold = tl.at("hold", 0.8, 2.0);      // start=0.8, duration=2.0
+const exit = tl.at("exit", 2.8, 0.8);      // start=2.8, duration=0.8
 
-interface PhaseSequence {
-  render(time: number): string;
-  currentPhase: string;
-  phaseProgress: number;
-}
+// TimelineEvent properties
+enter.progress   // 0-1 (clamped)
+enter.active     // true when 0 < progress < 1
+enter.start      // 0
+enter.end        // 0.8
+enter.duration   // 0.8
+
+// Stagger multiple elements
+const items = tl.stagger(["a", "b", "c"], { each: 0.2, duration: 0.5 });
+items.get(0).progress  // First item's progress
+items.get("b").progress  // Get by ID
+
+// Relative positioning
+const fadeIn = tl.follow("enter", { id: "fadeIn", gap: 0.1, duration: 0.5 });
+
+// Scoped timeline (re-zeroed)
+const scoped = tl.scope(2, 5);  // time re-zeroed to 0-3
+scoped.at("title", 0, 1);  // 0-1 within scope
+
+// Get currently active event
+const current = tl.current();  // TimelineEvent | null
 ```
 
 **Example:**
 ```typescript
-const phases = std.timing.sequence({
-  enter: {
-    duration: 0.8,
-    render: (p) => renderCard(std.tween(0, 1, p, "easeOutCubic"))
-  },
-  hold: {
-    duration: 2,
-    render: () => renderCard(1)
-  },
-  exit: {
-    duration: 0.8,
-    render: (p) => renderCard(std.tween(1, 0, p, "easeInCubic"))
-  },
-});
+const tl = std.timeline(time, duration);
+const enter = tl.at("enter", 0, 0.8);
+const hold = tl.at("hold", 0.8, 2.0);
+const exit = tl.at("exit", 2.8, 0.8);
 
-return phases.render(time);
+const scale = enter.active ? std.tween(0.8, 1, enter.progress, "easeOutBack") : 1;
+const opacity = exit.active ? std.tween(1, 0, exit.progress, "easeInCubic") : 1;
+return renderCard({ scale, opacity });
 ```
+
+## std.text
+
+Text manipulation and typing animation primitives.
+
+```typescript
+// Progress-driven text reveal (char, word, or line granularity)
+std.text.type(text: string, progress: number, options?: { by?: 'char' | 'word' | 'line' }): TypeResult
+
+interface TypeResult {
+  visible: string;   // The revealed portion
+  typing: boolean;   // True while 0 < progress < 1
+  done: boolean;     // True when progress >= 1
+  index: number;     // Visible unit count
+  total: number;     // Total unit count
+}
+
+// Calculate typing duration from speed
+std.text.typeDuration(text: string, options?: { by?: 'char' | 'word' | 'line', speed?: number }): number
+
+// Blinking cursor helper
+std.text.cursor(time: number, rate?: number): boolean
+```
+
+**Default speeds for `typeDuration`:** char: 30/sec, word: 5/sec, line: 2/sec
+
+**Examples:**
+```typescript
+// Basic typewriter
+const dur = std.text.typeDuration("Hello, World!", { speed: 40 });
+const progress = std.math.clamp(time / dur, 0, 1);
+const { visible, typing } = std.text.type("Hello, World!", progress);
+const show = std.text.cursor(time);
+return `<div>${visible}${typing && show ? '▋' : ''}</div>`;
+
+// Code typing with Shiki highlighting
+const { visible } = std.text.type(CODE, progress, { by: 'line' });
+const highlighted = std.code.highlight(visible, { lang: 'typescript' });
+
+// Terminal commands with timeline
+const tl = std.timeline(time, duration);
+const cmd = tl.at("cmd", 0, 1.0);
+const { visible } = std.text.type("npm run dev", cmd.progress);
+```
+
+**Other text utilities:** `truncate`, `pluralize`, `formatNumber`, `formatCurrency`, `escapeHtml`, `slugify`, `pad`, `wrap`
 
 ## Config Options
 

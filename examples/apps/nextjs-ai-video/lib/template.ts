@@ -9,7 +9,7 @@ export interface TimelineData extends Record<string, unknown> {
 export const timelineTemplate = defineScene<TimelineData>({
   config: {
     fps: 30,
-    durationSeconds: 7,
+    duration: 7,
     width: 1920,
     height: 1080,
   },

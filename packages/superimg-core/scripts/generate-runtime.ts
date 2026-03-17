@@ -21,8 +21,8 @@ export function defineScene(m) { return m; }
 export function defineConfig(c) { return c; }
 
 // Real implementations from source
-export { compose } from "./compose.js";
-export { scene } from "./scene.js";
+export { compose } from "./composition/compose.js";
+export { scene } from "./composition/scene.js";
 `;
 
 async function main() {

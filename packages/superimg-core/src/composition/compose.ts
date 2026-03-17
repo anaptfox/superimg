@@ -11,7 +11,7 @@ import type {
   Duration,
 } from "@superimg/types";
 import type { Checkpoint } from "@superimg/types";
-import { parseDuration } from "./utils.js";
+import { parseDuration } from "../shared/utils.js";
 import { renderWithTransition } from "./transitions.js";
 
 function isSceneDefinition(
@@ -42,7 +42,7 @@ function resolveTransition(
   );
   return {
     type: t.type as ResolvedTransition["type"],
-    durationSeconds,
+    duration: durationSeconds,
     easing: t.easing,
   };
 }
@@ -78,7 +78,7 @@ export function compose<
     const cfg = template.config;
 
     // Duration: scene def > template config > default
-    const durationSource = def.duration ?? cfg?.durationSeconds;
+    const durationSource = def.duration ?? cfg?.duration;
     const durationSeconds = parseDuration(
       durationSource,
       `scene[${i}].duration`,
@@ -98,7 +98,7 @@ export function compose<
       startFrame: currentFrame,
       endFrame: currentFrame + totalFrames,
       totalFrames,
-      durationSeconds,
+      duration: durationSeconds,
       data: { ...template.defaults, ...shared, ...def.data } as Record<
         string,
         unknown
@@ -121,14 +121,14 @@ export function compose<
 
   const config: TemplateConfig = {
     ...mergedConfig,
-    durationSeconds: totalDurationSeconds,
+    duration: totalDurationSeconds,
   };
 
   const result: ComposedTemplate<TShared> = {
     type: "composed",
     scenes: resolvedScenes,
     totalFrames,
-    durationSeconds: totalDurationSeconds,
+    duration: totalDurationSeconds,
     fps,
     config,
 
@@ -164,7 +164,7 @@ export function compose<
         sceneTimeSeconds,
         sceneProgress,
         sceneTotalFrames: scene.totalFrames,
-        sceneDurationSeconds: scene.durationSeconds,
+        sceneDurationSeconds: scene.duration,
         // scene.data already has: defaults + shared + def.data
         // Only merge runtime ctx.data on top
         data: { ...scene.data, ...ctx.data } as RenderContext["data"],
@@ -173,9 +173,9 @@ export function compose<
       let html = scene.template.render(sceneCtx);
 
       // Apply enter transition at scene start
-      if (scene.enterTransition && scene.enterTransition.durationSeconds > 0) {
+      if (scene.enterTransition && scene.enterTransition.duration > 0) {
         const enterFrames = Math.round(
-          scene.enterTransition.durationSeconds * fps
+          scene.enterTransition.duration * fps
         );
         if (sceneFrame < enterFrames) {
           const progress = sceneFrame / enterFrames;
@@ -184,9 +184,9 @@ export function compose<
       }
 
       // Apply exit transition at scene end
-      if (scene.exitTransition && scene.exitTransition.durationSeconds > 0) {
+      if (scene.exitTransition && scene.exitTransition.duration > 0) {
         const exitFrames = Math.round(
-          scene.exitTransition.durationSeconds * fps
+          scene.exitTransition.duration * fps
         );
         const exitStartFrame = scene.totalFrames - exitFrames;
         if (sceneFrame >= exitStartFrame) {

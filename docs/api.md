@@ -263,35 +263,40 @@ std.date.diffSeconds(d1, d2)          // Difference in seconds (absolute)
 
 Date inputs accept `Date`, `string`, or `number` (timestamp).
 
-#### `std.timing`
+#### `std.timeline`
 
-Timing and phase management for animations:
+Declarative timeline for animation phases:
 
 ```typescript
-// Sequential phases (durations only — boundaries computed automatically)
-const phases = std.timing.sequence({
-  intro: 1.0,
-  main: 3.0,
-  outro: 1.0,
-});
-// intro: 0-1s, main: 1-4s, outro: 4-5s
+// Create a timeline
+const tl = std.timeline(time, duration);
 
-// Or explicit boundaries
-const phases = std.timing.createPhaseManager({
-  intro: { start: 0, end: 1.0 },
-  bars: { start: 1.0, end: 5.5 },
-  highlight: { start: 5.5, end: 7.0 },
-});
+// Define events at absolute positions
+const enter = tl.at("enter", 0, 0.8);      // start=0, duration=0.8
+const hold = tl.at("hold", 0.8, 2.0);      // start=0.8, duration=2.0
+const exit = tl.at("exit", 2.8, 0.8);      // start=2.8, duration=0.8
 
-const { name, progress } = phases.get(2.0);       // Get current phase at time
-const p = phases.getPhaseProgress(2.0, 'bars');  // Get progress within a specific phase
+// TimelineEvent properties
+enter.progress   // 0-1 (clamped)
+enter.active     // true when 0 < progress < 1
+enter.start      // 0
+enter.end        // 0.8
+enter.duration   // 0.8
 
-// Convenience functions (no manager needed)
-std.timing.getPhase(time, phases)                  // Get phase at time
-std.timing.phaseProgress(time, phaseName, phases)  // Get progress within a phase
+// Stagger multiple elements
+const items = tl.stagger(["a", "b", "c"], { each: 0.2, duration: 0.5 });
+items.get(0).progress  // First item's progress
+
+// Relative positioning
+const fadeIn = tl.follow("enter", { id: "fadeIn", gap: 0.1, duration: 0.5 });
+
+// Scoped timeline (re-zeroed)
+const scoped = tl.scope(2, 5);
+scoped.at("title", 0, 1);  // 0-1 within scope
+
+// Get currently active event
+const current = tl.current();  // TimelineEvent | null
 ```
-
-The `PhaseManager` class provides `get(time)` and `getPhaseProgress(time, phaseName)` methods.
 
 #### `std.responsive`
 
@@ -369,7 +374,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
     fps: 30,
-    durationSeconds: 5,
+    duration: 5,
   },
   render(ctx) {
     const { std, sceneProgress, data } = ctx;
@@ -402,7 +407,7 @@ interface TemplateConfig {
   width?: number;           // Canvas width (default: 1920)
   height?: number;          // Canvas height (default: 1080)
   fps?: number;             // Frames per second (default: 30)
-  durationSeconds?: number; // Duration in seconds (see Duration Precedence)
+  duration?: number; // Duration in seconds (see Duration Precedence)
   fonts?: string[];        // Google Fonts to load
   inlineCss?: string[];    // Raw CSS strings (e.g. utility classes, precompiled Tailwind)
   stylesheets?: string[];  // Stylesheet URLs to load
@@ -422,7 +427,7 @@ Returned by `Player.load()`:
 
 ```typescript
 type LoadResult =
-  | { status: 'success'; totalFrames: number; durationSeconds: number;
+  | { status: 'success'; totalFrames: number; duration: number;
       width: number; height: number; fps: number }
   | { status: 'error'; errorType: 'compilation' | 'validation' | 'network';
       message: string; suggestion: string; details?: Record<string, unknown> };
@@ -435,7 +440,7 @@ Returned by render operations:
 ```typescript
 type RenderResult =
   | { status: 'success'; outputPath: string; totalFrames: number;
-      durationSeconds: number; fileSizeBytes: number; renderTimeMs: number }
+      duration: number; fileSizeBytes: number; renderTimeMs: number }
   | { status: 'error'; errorType: 'template' | 'encoding' | 'io' | 'validation';
       failedAtFrame: number; message: string; suggestion: string;
       details?: Record<string, unknown> };

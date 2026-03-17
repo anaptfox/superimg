@@ -10,7 +10,6 @@ import type { Checkpoint } from "./checkpoint.js";
 
 declare const FrameBrand: unique symbol;
 declare const ProgressBrand: unique symbol;
-declare const DurationSecondsBrand: unique symbol;
 declare const DurationFramesBrand: unique symbol;
 declare const TimeSecondsBrand: unique symbol;
 
@@ -19,9 +18,6 @@ export type FrameNumber = number & { readonly [FrameBrand]: typeof FrameBrand };
 
 /** Progress value (0-1) */
 export type Progress = number & { readonly [ProgressBrand]: typeof ProgressBrand };
-
-/** Duration in seconds */
-export type DurationSeconds = number & { readonly [DurationSecondsBrand]: typeof DurationSecondsBrand };
 
 /** Duration in frames */
 export type DurationFrames = number & { readonly [DurationFramesBrand]: typeof DurationFramesBrand };
@@ -32,7 +28,6 @@ export type TimeSeconds = number & { readonly [TimeSecondsBrand]: typeof TimeSec
 // Helper functions to create branded values (for internal use)
 export function frame(n: number): FrameNumber { return n as FrameNumber; }
 export function progress(n: number): Progress { return n as Progress; }
-export function durationSeconds(n: number): DurationSeconds { return n as DurationSeconds; }
 export function durationFrames(n: number): DurationFrames { return n as DurationFrames; }
 export function timeSeconds(n: number): TimeSeconds { return n as TimeSeconds; }
 
@@ -46,7 +41,7 @@ export function timeSeconds(n: number): TimeSeconds { return n as TimeSeconds; }
  *
  * export default defineScene({
  *   defaults: { title: 'Hello', color: '#fff' },
- *   config: { width: 1920, height: 1080, fps: 30, durationSeconds: 5 },
+ *   config: { width: 1920, height: 1080, fps: 30, duration: 5 },
  *   render(ctx) {
  *     return `<div style="color: ${ctx.data.color}">${ctx.data.title}</div>`;
  *   },
@@ -202,8 +197,8 @@ export interface ProjectConfig {
   height?: number;
   /** Frames per second */
   fps?: number;
-  /** Default duration in seconds */
-  durationSeconds?: number;
+  /** Default duration. Accepts number (seconds), "5s", "500ms", or "30f". */
+  duration?: Duration;
   /** List of Google Fonts to load */
   fonts?: string[];
   /** Raw CSS strings to inject */
@@ -253,14 +248,14 @@ export interface TemplateConfig {
    */
   fonts?: string[];
   /**
-   * Default duration in seconds.
+   * Default duration. Accepts number (seconds), "5s", "500ms", or "30f".
    *
    * Duration precedence (highest wins):
    * 1. CLI flags (`--duration`)
-   * 2. This `config.durationSeconds` or `config.duration` value
+   * 2. This `config.duration` value
    * 3. Built-in default (5 s)
    */
-  durationSeconds?: number;
+  duration?: Duration;
   /**
    * Frame to use for thumbnail/preview image.
    * - Integer >= 1: specific frame number
@@ -348,7 +343,7 @@ export interface SceneDefinition<TData = Record<string, unknown>> {
 /** Resolved transition with numeric duration in seconds */
 export interface ResolvedTransition {
   type: TransitionType;
-  durationSeconds: number;
+  duration: number;
   easing?: EasingName;
 }
 
@@ -361,7 +356,7 @@ export interface ResolvedScene {
   startFrame: number;
   endFrame: number;
   totalFrames: number;
-  durationSeconds: number;
+  duration: number;
   data: Record<string, unknown>;
   enterTransition?: ResolvedTransition;
   exitTransition?: ResolvedTransition;
@@ -372,7 +367,7 @@ export interface ComposedTemplate<TShared = Record<string, unknown>> {
   readonly type: "composed";
   readonly scenes: readonly ResolvedScene[];
   readonly totalFrames: number;
-  readonly durationSeconds: number;
+  readonly duration: number;
   readonly fps: number;
   readonly config: TemplateConfig;
 

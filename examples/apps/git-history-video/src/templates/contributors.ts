@@ -3,7 +3,7 @@ import { defineScene } from "superimg";
 export default defineScene({
   config: {
     fps: 30,
-    durationSeconds: 12,
+    duration: 12,
     width: 1920,
     height: 1080,
   },

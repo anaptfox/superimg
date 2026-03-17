@@ -190,7 +190,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
   // Internal hooks
   const player = usePlayer({
     fps,
-    durationSeconds: config.duration,
+    duration: config.duration,
     onFrameChange: (frame) => {
       renderFrameInternal(frame);
     },
@@ -363,7 +363,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
           exportCanvas,
           {
             fps: ctxFps,
-            durationSeconds: totalFrames / ctxFps,
+            duration: totalFrames / ctxFps,
             width: exportWidth,
             height: exportHeight,
             encoding,
@@ -431,14 +431,14 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
   // Update player config when duration changes or when ComposedTemplate is set
   const effectiveDuration =
     template && isComposedTemplate(template)
-      ? template.durationSeconds
+      ? template.duration
       : config.duration;
   const effectiveFps =
     template && isComposedTemplate(template) ? template.fps : fps;
 
   useEffect(() => {
     player.updateConfig({
-      durationSeconds: effectiveDuration,
+      duration: effectiveDuration,
       fps: effectiveFps,
     });
   }, [effectiveDuration, effectiveFps, player.updateConfig]);

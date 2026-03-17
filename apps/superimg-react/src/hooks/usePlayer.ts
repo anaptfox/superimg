@@ -13,7 +13,7 @@ export interface UsePlayerConfig {
   /** Frames per second */
   fps: number;
   /** Duration in seconds */
-  durationSeconds: number;
+  duration: number;
   /** Called when frame changes during playback or scrubbing */
   onFrameChange?: (frame: number) => void;
 }
@@ -44,7 +44,7 @@ export interface UsePlayerReturn {
  * ```tsx
  * const { state, play, pause, seek } = usePlayer({
  *   fps: 30,
- *   durationSeconds: 10,
+ *   duration: 10,
  *   onFrameChange: (frame) => renderFrame(frame),
  * });
  * ```
@@ -75,7 +75,7 @@ export function usePlayer(config: UsePlayerConfig): UsePlayerReturn {
     };
 
     storeRef.current = createPlayerStore(
-      { fps: config.fps, durationSeconds: config.durationSeconds },
+      { fps: config.fps, duration: config.duration },
       callbacks
     );
 

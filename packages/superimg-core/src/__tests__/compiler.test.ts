@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { compileTemplate, validateTemplate } from "./compiler.js";
-import { bundleTemplateCode } from "./bundler.js";
+import { compileTemplate, validateTemplate } from "../rendering/compiler.js";
+import { bundleTemplateCode } from "../bundler/bundler.js";
 import { makeTestContext, compileFromString } from "./__test-utils__/index.js";
 
 function wrapDefineTemplate(code: string) {

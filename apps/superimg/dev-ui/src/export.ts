@@ -97,7 +97,7 @@ export function initExportHandlers(
 
       const blob = await exportToVideo(
         exportCanvas,
-        { fps: devConfig.fps, width: w, height: h, durationSeconds: devConfig.durationSeconds } as any, // Cast to any to bypass the missing format type
+        { fps: devConfig.fps, width: w, height: h, duration: devConfig.duration } as any, // Cast to any to bypass the missing format type
         renderAtExportSize,
         {
           onProgress: (f, t) => {

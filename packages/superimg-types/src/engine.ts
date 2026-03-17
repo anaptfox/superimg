@@ -3,6 +3,7 @@
 import type {
   TemplateModule,
   AudioValue,
+  Duration,
   EncodingOptions,
   BackgroundValue,
   RenderContext,
@@ -20,7 +21,7 @@ export interface ResolvedAssetDeclaration {
 
 export interface RenderJob {
   templateCode: string;
-  durationSeconds: number;
+  duration: Duration;
   width: number;
   height: number;
   fps: number;
@@ -90,7 +91,7 @@ export interface RenderEngine<TFrame = unknown> {
 
 export interface RenderPlan {
   template: TemplateModule;
-  durationSeconds: number;
+  durationSeconds: number; // resolved from Duration via parseDuration
   width: number;
   height: number;
   fps: number;
