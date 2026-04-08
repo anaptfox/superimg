@@ -167,7 +167,11 @@ export class HtmlPresenter implements FramePresenter {
     if (!this.scaleWrapper) return;
 
     const rect = this.container.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
+    // Skip if container has no size yet (not laid out) - retry on next frame
+    if (rect.width === 0 || rect.height === 0) {
+      requestAnimationFrame(() => this.updateScale());
+      return;
+    }
 
     const scaleX = rect.width / this.logicalWidth;
     const scaleY = rect.height / this.logicalHeight;

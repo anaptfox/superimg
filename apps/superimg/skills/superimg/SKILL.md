@@ -25,13 +25,11 @@ export default defineScene({
     inlineCss: ["* { margin: 0; box-sizing: border-box; } body { background: #0f0f23; font-family: system-ui; }"],
   },
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
-    const progress = std.math.clamp(time / 1.0, 0, 1);
-    const opacity = std.tween(0, 1, progress, "easeOutCubic");
-    const y = std.tween(30, 0, progress, "easeOutCubic");
+    const { std, sceneProgress, width, height, data } = ctx;
+    const { style } = std.motion.enter(sceneProgress, { y: 30 });
     return `
       <div style="${std.css({ width, height })};${std.css.center()}">
-        <div style="${std.css({ opacity, transform: "translateY(" + y + "px)", color: data.accentColor, fontSize: 64 })}">${data.message}</div>
+        <div style="${style};${std.css({ color: data.accentColor, fontSize: 64 })}">${data.message}</div>
       </div>
     `;
   },
@@ -40,25 +38,38 @@ export default defineScene({
 
 ## Key Context Fields
 
-Use these from `ctx`: `sceneProgress`, `sceneTimeSeconds`, `sceneDurationSeconds`, `width`, `height`, `isPortrait`, `data`, `std`. Ignore `globalProgress` for scene animation — use `sceneProgress` or `sceneTimeSeconds` instead.
+Use these from `ctx`: `sceneProgress`, `sceneTimeSeconds`, `sceneDurationSeconds`, `width`, `height`, `isPortrait`, `data`, `std`, `asset()`. Ignore `globalProgress` for scene animation — use `sceneProgress` or `sceneTimeSeconds` instead.
+
+**Co-located assets (zero config):** `ctx.asset('logo.png')` returns a URL for `assets/logo.png` next to your `.video.ts` file. For named assets with preloaded metadata, use `config.assets` + `ctx.assets`.
 
 ## Core Patterns
 
-**Timeline API (recommended for multi-phase animations):**
+**Motion helpers (recommended for fade+slide animations):**
+```typescript
+// Single-phase enter animation
+const { style } = std.motion.enter(sceneProgress, { y: 30 });
+
+// Enter-hold-exit animation
+const { style } = std.motion.enterExit(sceneProgress, { y: 40, enterEnd: 0.2, exitStart: 0.8 });
+```
+
+**Phase splitting (for multi-phase timing):**
+```typescript
+const { enter, hold, exit } = std.phases(sceneProgress, { enter: 1, hold: 2, exit: 1 });
+const { style } = std.motion.enter(enter.progress, { y: 30 });
+```
+
+**Responsive sizing:**
+```typescript
+const r = std.createResponsive(ctx);
+const fontSize = r({ portrait: 48, square: 32, default: 40 });
+```
+
+**Timeline API (for complex choreography):**
 ```typescript
 const tl = std.timeline(time, duration);
 const enter = tl.at("enter", 0, 0.8);
-const hold = tl.at("hold", 0.8, 2);
-const exit = tl.at("exit", 2.8, 0.8);
-
 const scale = enter.active ? std.tween(0.8, 1, enter.progress, "easeOutBack") : 1;
-const opacity = exit.active ? std.tween(1, 0, exit.progress, "easeInCubic") : 1;
-```
-
-**Simple single-phase fade-in:**
-```typescript
-const progress = std.math.clamp(time / 1.0, 0, 1);
-const opacity = std.tween(0, 1, progress, "easeOutCubic");
 ```
 
 **Animated counter:** `Math.floor(std.tween(0, value, progress, "easeOutCubic"))`
@@ -69,11 +80,21 @@ const opacity = std.tween(0, 1, progress, "easeOutCubic");
 
 ## Stdlib Cheat Sheet
 
-- `std.tween(from, to, progress, "easeOutCubic")` — canonical animation
-- `std.math.clamp`, `std.math.map`
-- `std.color.alpha`, `std.color.mix`, `std.color.lighten`, `std.color.darken`
+- `std.motion.enter(progress, { y: 20 })` — fade in + slide (returns `{ style, opacity, transform }`)
+- `std.motion.enterExit(progress, opts)` — three-phase enter/hold/exit animation
+- `std.phases(progress, { enter: 1, hold: 2, exit: 1 })` — split progress into named phases
+- `std.createResponsive(ctx)` — factory for `r({ portrait: X, default: Y })`
+- `std.tween(from, to, progress, "easeOutCubic")` — low-level eased interpolation
+- `std.math.clamp`, `std.math.map` — value clamping and mapping
+- `std.color.alpha`, `std.color.mix` — color manipulation
 - `std.css(obj)` — object → inline style string
-- `std.timeline(time, duration)` — declarative timing
+- `std.timeline(time, duration)` — declarative timeline for complex choreography
+- `std.spring(progress, config?)` — spring curve 0→1 with overshoot/bounce
+- `std.springTween(from, to, progress, config?)` — spring-interpolated value
+- `std.createSpring(config?)` — create spring easing for use with `std.tween()`
+- `std.stagger(items, progress, opts?)` — distribute progress across items with cascading delays
+- `std.interpolate(progress, inputRange, outputRange)` — multi-keyframe interpolation
+- `std.interpolateColor(progress, inputRange, colors)` — multi-keyframe color interpolation
 
 ## Do / Don't
 
@@ -121,4 +142,4 @@ For detailed API documentation and working examples, consult:
 - **[examples/stats-card.ts](examples/stats-card.ts)** — Advanced template with phase timing, animated counters, responsive sizing
 
 ### Project Examples
-See `examples/templates/` in the SuperImg repo for full templates: `lower-thirds`, `stats-card`, `phase-demo`, `countdown`.
+See `examples/templates/` in the SuperImg repo for full templates: `lower-thirds`, `stats-card`, `phase-demo`, `countdown`, `spring-stagger-demo`.

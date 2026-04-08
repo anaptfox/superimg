@@ -149,11 +149,15 @@ async function runHomeMode(port: number, devRoot: string, open: boolean) {
     execAsync(command).catch(() => {});
   }
 
-  process.on("SIGINT", () => {
+  const cleanup = () => {
     console.log("\n  Shutting down dev server...\n");
+    server.closeAllConnections();
     server.close();
     process.exit(0);
-  });
+  };
+
+  process.once("SIGINT", cleanup);
+  process.once("SIGTERM", cleanup);
 }
 
 async function runSingleVideoMode(
@@ -210,7 +214,8 @@ async function runSingleVideoMode(
     ws.on("close", () => clients.delete(ws));
   });
 
-  chokidar.watch(templatePath, { ignoreInitial: true }).on("change", () => {
+  const watcher = chokidar.watch(templatePath, { ignoreInitial: true });
+  watcher.on("change", () => {
     bundleCache = null;
     console.log("  Template changed, notifying clients...");
     for (const client of clients) {
@@ -337,10 +342,15 @@ async function runSingleVideoMode(
     execAsync(command).catch(() => {});
   }
 
-  process.on("SIGINT", () => {
+  const cleanup = () => {
     console.log("\n  Shutting down dev server...\n");
+    watcher.close();
     wss.close();
+    server.closeAllConnections();
     server.close();
     process.exit(0);
-  });
+  };
+
+  process.once("SIGINT", cleanup);
+  process.once("SIGTERM", cleanup);
 }

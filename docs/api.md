@@ -229,6 +229,53 @@ std.color.saturate(color, amount) // Increase saturation
 std.color.desaturate(color, amount) // Decrease saturation
 ```
 
+#### `std.spring` / `std.springTween` / `std.createSpring`
+
+Spring physics for organic motion with overshoot and bounce:
+
+```typescript
+// Spring curve: maps 0-1 to 0→overshoot→1
+std.spring(progress)
+std.spring(progress, { stiffness: 200, damping: 8, mass: 1 })
+
+// Interpolate between values with spring physics
+std.springTween(0.8, 1, progress)                    // 0.8→overshoot→1
+std.springTween(0, 500, progress, { stiffness: 200, damping: 8 })
+
+// Create reusable easing function for std.tween()
+const bounce = std.createSpring({ stiffness: 200, damping: 8 });
+std.tween(0, 100, progress, bounce);
+```
+
+#### `std.stagger`
+
+Distribute progress across items for cascading animations:
+
+```typescript
+// Count-based: returns number[]
+std.stagger(5, progress, { duration: 0.3 })
+
+// Items-based: returns StaggerItem<T>[]
+std.stagger(items, progress, { duration: 0.4, from: "center" })
+// Each item: { item, progress, index, active, done }
+
+// Options: each, duration, from ("start"|"end"|"center"|"edges"), easing
+```
+
+#### `std.interpolate` / `std.interpolateColor`
+
+Multi-keyframe interpolation with arbitrary input ranges:
+
+```typescript
+// Fade in, hold, fade out
+std.interpolate(progress, [0, 0.2, 0.8, 1], [0, 1, 1, 0])
+
+// Color gradient over time
+std.interpolateColor(progress, [0, 0.5, 1], ["#f00", "#0f0", "#00f"])
+
+// Options: easing (per-segment), extrapolate ("clamp"|"extend")
+```
+
 ### Extended Modules
 
 These modules provide specialized functionality beyond the core set.

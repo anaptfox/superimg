@@ -76,7 +76,8 @@ program
 program
   .command("render")
   .description("Render template to video")
-  .argument("[template]", "Video name or path (optional with --all)")
+  .argument("[template]", "Video name or path (optional for interactive mode)")
+  .option("-y, --yes", "Non-interactive mode (requires template or --all)")
   .option("-o, --output <path>", "Output path (file or directory, defaults to output/)")
   .option("--format <type>", "Output format: mp4, webm")
   .option("-w, --width <pixels>", "Video width")
@@ -100,11 +101,22 @@ program
   .option("--debug-html", "Save the underlying HTML of each frame to .superimg/debug/")
   .action(async (template: string | undefined, options) => {
     const mod = await import("./commands/render.js");
-    // Require template unless --all is used
+
+    // Interactive mode: no template, no --all, no --yes
+    if (!template && !options.all && !options.yes) {
+      const { selectVideoInteractive } = await import("./commands/render-interactive.js");
+      const selection = await selectVideoInteractive();
+      if (!selection) process.exit(0); // User cancelled
+      template = selection.template;
+      if (selection.preset) options.preset = selection.preset;
+    }
+
+    // Require template if --yes without template (and not --all)
     if (!template && !options.all) {
-      console.error("Error: <template> argument required unless using --all");
+      console.error("Error: <template> argument required with -y flag or use --all");
       process.exit(1);
     }
+
     await mod.renderCommand(template ?? "", options as Parameters<typeof mod.renderCommand>[1]);
   });
 

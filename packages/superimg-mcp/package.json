@@ -1,0 +1,55 @@
+{
+  "name": "@superimg/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for SuperImg - expose video generation to AI assistants",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "superimg-mcp": "./dist/bin/superimg-mcp.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest --run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist",
+    "skills"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "superimg",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "video"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@superimg/core": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "zod": "^3.23.0"
+  },
+  "peerDependencies": {
+    "playwright": "^1.57.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  }
+}

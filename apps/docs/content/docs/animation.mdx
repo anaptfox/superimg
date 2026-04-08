@@ -146,53 +146,109 @@ return `
 `;
 ```
 
+## Spring Physics
+
+For organic, bouncy motion, use spring physics instead of easing curves. Springs overshoot their target and settle naturally.
+
+```typescript
+// Spring curve: 0→overshoot→1
+const val = std.spring(progress);
+const val = std.spring(progress, { stiffness: 200, damping: 8 });
+
+// Interpolate between values with spring physics
+const scale = std.springTween(0.8, 1, ctx.sceneProgress, { stiffness: 200, damping: 8 });
+
+// Create reusable spring easing for std.tween()
+const bounce = std.createSpring({ stiffness: 150, damping: 12 });
+const y = std.tween(40, 0, ctx.sceneProgress, bounce);
+```
+
+**Config options:**
+- `stiffness` (default: 100) — higher = faster oscillation
+- `damping` (default: 10) — lower = more bouncy
+- `mass` (default: 1) — higher = slower, more momentum
+
+**When to use spring vs easing:** Use `easeOutCubic` for subtle UI motion. Use spring when you want visible overshoot — card entrances, number counters, playful interactions.
+
 ## Staggered Animations
 
-Animate multiple elements with delays between them:
+Use `std.stagger()` to cascade animations across multiple elements:
 
 ```typescript
 render(ctx) {
-  const { sceneTimeSeconds: time, std } = ctx;
+  const { sceneProgress, std } = ctx;
   const items = ["First", "Second", "Third"];
 
-  return items.map((item, i) => {
-    const delay = i * 0.2;  // 200ms between each item
-    const duration = 0.5;   // Each animation takes 500ms
+  const staggered = std.stagger(items, sceneProgress, {
+    duration: 0.3,
+    easing: "easeOutCubic",
+  });
 
-    // Calculate progress for this item
-    const itemProgress = std.math.clamp((time - delay) / duration, 0, 1);
-
-    const opacity = std.tween(0, 1, itemProgress, "easeOutCubic");
-    const y = std.tween(20, 0, itemProgress, "easeOutCubic");
-
+  return staggered.map(({ item, progress }) => {
+    const opacity = std.tween(0, 1, progress);
+    const y = std.tween(20, 0, progress);
     return `<div style="opacity: ${opacity}; transform: translateY(${y}px)">${item}</div>`;
   }).join("");
 }
 ```
 
+**Options:**
+- `duration` — each item's animation window as a fraction of 1
+- `each` — delay between item starts (alternative to duration)
+- `from` — stagger direction: `"start"`, `"end"`, `"center"`, `"edges"`
+- `easing` — per-item easing
+
+The count-based overload returns plain progress values:
+
+```typescript
+const progresses = std.stagger(3, sceneProgress, { duration: 0.4 });
+// progresses[0] = 0.8, progresses[1] = 0.4, progresses[2] = 0.0
+```
+
+## Multi-Keyframe Interpolation
+
+`std.interpolate()` maps a value through multiple keyframe ranges — like Remotion's `interpolate()`:
+
+```typescript
+// Fade in (0-20%), hold (20-80%), fade out (80-100%)
+const opacity = std.interpolate(ctx.sceneProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
+
+// Multi-stop position
+const x = std.interpolate(ctx.sceneProgress, [0, 0.5, 1], [0, 500, 300]);
+
+// With per-segment easing
+const y = std.interpolate(ctx.sceneProgress, [0, 0.5, 1], [0, 200, 0], {
+  easing: "easeInOutCubic",
+});
+```
+
+For color transitions through multiple stops:
+
+```typescript
+const bg = std.interpolateColor(ctx.sceneProgress,
+  [0, 0.3, 0.7, 1],
+  ["#0f172a", "#1e1b4b", "#1e1b4b", "#0f172a"]
+);
+```
+
 ## Sequenced Animations
 
-Run animations one after another:
+Use `std.phases()` to split progress into named phases:
 
 ```typescript
 render(ctx) {
-  const { sceneTimeSeconds: time, std } = ctx;
+  const { sceneProgress, std } = ctx;
 
-  // Phase 1: Fade in title (0s - 1s)
-  const titleProgress = std.math.clamp(time / 1, 0, 1);
-  const titleOpacity = std.tween(0, 1, titleProgress);
+  const { enter, hold, exit } = std.phases(sceneProgress, { enter: 1, hold: 2, exit: 1 });
 
-  // Phase 2: Slide in subtitle (1s - 2s)
-  const subtitleProgress = std.math.clamp((time - 1) / 1, 0, 1);
-  const subtitleX = std.tween(-50, 0, subtitleProgress, "easeOutCubic");
-  const subtitleOpacity = std.tween(0, 1, subtitleProgress);
+  const titleOpacity = std.tween(0, 1, enter.progress, "easeOutCubic");
+  const exitOpacity = std.tween(1, 0, exit.progress, "easeInCubic");
 
-  return `
-    <h1 style="opacity: ${titleOpacity}">Title</h1>
-    <p style="opacity: ${subtitleOpacity}; transform: translateX(${subtitleX}px)">Subtitle</p>
-  `;
+  return `<h1 style="opacity: ${titleOpacity * exitOpacity}">Title</h1>`;
 }
 ```
+
+Each phase has `{ progress, active, done, start, end }`. Weights are proportional — `{ enter: 1, hold: 2, exit: 1 }` gives enter 25%, hold 50%, exit 25%.
 
 ## Looping Animations
 

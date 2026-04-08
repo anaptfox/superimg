@@ -61,6 +61,34 @@
     "./timeline": {
       "import": "./dist/timeline/index.js",
       "types": "./dist/timeline/index.d.ts"
+    },
+    "./motion": {
+      "import": "./dist/motion.js",
+      "types": "./dist/motion.d.ts"
+    },
+    "./phases": {
+      "import": "./dist/phases.js",
+      "types": "./dist/phases.d.ts"
+    },
+    "./backgrounds": {
+      "import": "./dist/backgrounds.js",
+      "types": "./dist/backgrounds.d.ts"
+    },
+    "./montage": {
+      "import": "./dist/montage.js",
+      "types": "./dist/montage.d.ts"
+    },
+    "./spring": {
+      "import": "./dist/spring.js",
+      "types": "./dist/spring.d.ts"
+    },
+    "./stagger": {
+      "import": "./dist/stagger.js",
+      "types": "./dist/stagger.d.ts"
+    },
+    "./interpolate": {
+      "import": "./dist/interpolate.js",
+      "types": "./dist/interpolate.d.ts"
     }
   },
   "scripts": {

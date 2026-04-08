@@ -25,7 +25,8 @@ export function createRenderContext(
   height: number,
   data: Record<string, unknown> = {},
   outputName: string = "default",
-  assets: Record<string, AssetMeta> = {}
+  assets: Record<string, AssetMeta> = {},
+  assetResolver?: (filename: string) => string
 ): RenderContext {
   const timeSeconds = frame / fps;
   const progress =
@@ -85,6 +86,9 @@ export function createRenderContext(
 
     // Assets
     assets,
+
+    // Asset resolver
+    asset: assetResolver ?? ((filename) => filename),
 
     // CSS viewport
     cssViewport: {

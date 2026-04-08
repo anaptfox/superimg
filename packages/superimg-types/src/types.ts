@@ -4,32 +4,6 @@
 import type { Stdlib } from "./stdlib.js";
 import type { Checkpoint } from "./checkpoint.js";
 
-// =============================================================================
-// BRANDED TYPES - Prevent mixing structurally identical but semantically different values
-// =============================================================================
-
-declare const FrameBrand: unique symbol;
-declare const ProgressBrand: unique symbol;
-declare const DurationFramesBrand: unique symbol;
-declare const TimeSecondsBrand: unique symbol;
-
-/** Frame number (0-indexed) */
-export type FrameNumber = number & { readonly [FrameBrand]: typeof FrameBrand };
-
-/** Progress value (0-1) */
-export type Progress = number & { readonly [ProgressBrand]: typeof ProgressBrand };
-
-/** Duration in frames */
-export type DurationFrames = number & { readonly [DurationFramesBrand]: typeof DurationFramesBrand };
-
-/** Time in seconds */
-export type TimeSeconds = number & { readonly [TimeSecondsBrand]: typeof TimeSecondsBrand };
-
-// Helper functions to create branded values (for internal use)
-export function frame(n: number): FrameNumber { return n as FrameNumber; }
-export function progress(n: number): Progress { return n as Progress; }
-export function durationFrames(n: number): DurationFrames { return n as DurationFrames; }
-export function timeSeconds(n: number): TimeSeconds { return n as TimeSeconds; }
 
 /**
  * Define a template module with full type inference from defaults.
@@ -128,6 +102,9 @@ export interface RenderContext<TData = Record<string, unknown>> {
   /** Resolved static assets with full metadata (from config.assets) */
   assets: Record<string, AssetMeta>;
 
+  /** Get URL for a file in the template's co-located assets/ folder */
+  asset: (filename: string) => string;
+
   // === Output Info ===
   /** Output configuration */
   output: OutputInfo;
@@ -225,6 +202,11 @@ export interface ProjectConfig {
    * Composed behind template content via buildCompositeHtml.
    */
   background?: BackgroundValue;
+  /**
+   * Audio track to mix into the rendered video.
+   * Can be a file path string or an AudioOptions object with volume, fade, and loop controls.
+   */
+  audio?: AudioValue;
 }
 
 /**
@@ -291,6 +273,11 @@ export interface TemplateConfig {
    * Can be an image URL, text string, or configuration object.
    */
   watermark?: WatermarkValue;
+  /**
+   * Audio track to mix into the rendered video.
+   * Can be a file path string or an AudioOptions object with volume, fade, and loop controls.
+   */
+  audio?: AudioValue;
   /**
    * Static assets to preload before rendering.
    * Keys become accessible via ctx.assets.{key}
@@ -400,8 +387,6 @@ export type HoverBehavior = "none" | "play" | "preview-scrub";
 // ASSET TYPES
 // =============================================================================
 
-/** Asset reference (URL string) - used in template data schemas for data-driven assets */
-export type AssetRef = string & { readonly __assetRef: true };
 
 /** Declaration for a static asset in config.assets */
 export interface AssetDeclaration {

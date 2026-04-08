@@ -25,6 +25,7 @@ export interface TemplateMetadataConfig {
   watermark?: import("@superimg/types").WatermarkValue;
   background?: import("@superimg/types").BackgroundValue;
   audio?: string | AudioMetadataConfig;
+  assets?: Record<string, string | import("@superimg/types").AssetDeclaration>;
 }
 
 export interface TemplateMetadata {
@@ -115,6 +116,41 @@ function readTailwindConfig(node: any): boolean | TailwindMetadataConfig | undef
   return undefined;
 }
 
+function readAssetsConfig(node: any): Record<string, string | import("@superimg/types").AssetDeclaration> | undefined {
+  if (node.type !== "ObjectExpression") return undefined;
+  const assets: Record<string, any> = {};
+  for (const prop of node.properties) {
+    if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
+    if (prop.computed) continue;
+    let key: string | undefined;
+    if (prop.key.type === "Identifier") key = prop.key.name;
+    else if (prop.key.type === "Literal" && typeof prop.key.value === "string") key = prop.key.value;
+    if (!key) continue;
+
+    if (prop.value.type === "Literal" && typeof prop.value.value === "string") {
+      assets[key] = prop.value.value;
+    } else if (prop.value.type === "ObjectExpression") {
+      const decl: any = {};
+      for (const field of prop.value.properties) {
+        if (field.type !== "Property" && field.type !== "ObjectProperty") continue;
+        if (field.computed) continue;
+        let fieldKey: string | undefined;
+        if (field.key.type === "Identifier") fieldKey = field.key.name;
+        else if (field.key.type === "Literal" && typeof field.key.value === "string") fieldKey = field.key.value;
+        
+        if (fieldKey === "src" && field.value.type === "Literal" && typeof field.value.value === "string") {
+          decl.src = field.value.value;
+        }
+        if (fieldKey === "type" && field.value.type === "Literal" && typeof field.value.value === "string") {
+          decl.type = field.value.value;
+        }
+      }
+      if (decl.src) assets[key] = decl;
+    }
+  }
+  return Object.keys(assets).length > 0 ? assets : undefined;
+}
+
 function readConfigObject(expr: any): TemplateMetadataConfig | undefined {
   if (expr.type !== "ObjectExpression") return undefined;
 
@@ -195,6 +231,14 @@ function readConfigObject(expr: any): TemplateMetadataConfig | undefined {
       const audioValue = readAudioConfig(property.value);
       if (audioValue !== undefined) {
         config.audio = audioValue;
+      }
+      continue;
+    }
+
+    if (key === "assets") {
+      const assetsValue = readAssetsConfig(property.value);
+      if (assetsValue !== undefined) {
+        config.assets = assetsValue;
       }
       continue;
     }

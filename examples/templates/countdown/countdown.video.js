@@ -1,6 +1,6 @@
 // Countdown Timer Example
 // Animated countdown with pulsing numbers and particle effects
-// Demonstrates: std.css(), std.css.center(), inlineCss, easing, math, and color utilities
+// Demonstrates: std.css(), std.css.center(), std.springTween(), std.interpolate(), color utilities
 
 import { defineScene } from "superimg";
 
@@ -55,9 +55,9 @@ export default defineScene({
     const currentNumber = Math.ceil(remaining);
     const fraction = remaining % 1;
 
-    const pulse = std.tween(1, 1.3, fraction, "easeOutBack");
+    const pulse = std.springTween(1, 1.3, fraction, { stiffness: 300, damping: 8 });
     const numberOpacity = std.tween(0.5, 1, fraction);
-    const ringProgress = std.tween(0, 360, sceneProgress, "easeInOutCubic");
+    const ringProgress = std.interpolate(sceneProgress, [0, 0.1, 0.9, 1], [0, 0, 360, 360]);
     const bgHue = std.tween(20, 50, sceneProgress);
 
     const primaryColor = "#ff6b35";

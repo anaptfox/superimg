@@ -12,11 +12,11 @@ import type {
   WatermarkValue,
 } from "./types.js";
 
-/** Resolved asset declaration for preloading (from @superimg/core) */
 export interface ResolvedAssetDeclaration {
   key: string;
   type: "image" | "video" | "audio";
   src: string;
+  sourceDir: string;
 }
 
 export interface RenderJob {
@@ -106,6 +106,10 @@ export interface RenderPlan {
   data?: Record<string, unknown>;
   background?: BackgroundValue;
   watermark?: WatermarkValue;
+  /** Base URL for serving local relative assets to browser context */
+  assetBaseUrl?: string;
+  /** Template directory for resolving co-located assets */
+  templateDir?: string;
   /** Resolved config.assets for preloading */
   resolvedAssets: ResolvedAssetDeclaration[];
 }

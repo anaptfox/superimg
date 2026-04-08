@@ -1,11 +1,14 @@
 # Assets
 
-This guide covers how to declare, preload, and use assets (images, videos, audio) in SuperImg templates. Assets declared in `config.assets` are preloaded before rendering and their metadata is available via `ctx.assets`.
+SuperImg provides two ways to use assets (images, videos, audio) in templates:
+
+1. **`ctx.asset(filename)`** — Zero-config. Drop files in an `assets/` folder next to your template.
+2. **`config.assets` + `ctx.assets`** — Declared assets with preloaded metadata (dimensions, duration, size).
 
 ## Table of Contents
 
-- [Basic Usage](#basic-usage)
-- [Asset Declaration](#asset-declaration)
+- [Quick Start](#quick-start)
+- [Declared Assets](#declared-assets)
 - [Asset Metadata](#asset-metadata)
 - [Data-Driven Assets](#data-driven-assets)
 - [Soft Validation](#soft-validation)
@@ -13,9 +16,38 @@ This guide covers how to declare, preload, and use assets (images, videos, audio
 
 ---
 
-## Basic Usage
+## Quick Start
 
-Declare assets in your template's `config.assets` to preload them before rendering. The runtime extracts metadata (dimensions, duration, file size) and makes it available via `ctx.assets`:
+Drop files into an `assets/` folder next to your `.video.ts` file and reference them with `ctx.asset()`:
+
+```
+my-template/
+  my-template.video.ts
+  assets/
+    logo.png
+    background.jpg
+```
+
+```typescript
+import { defineScene } from 'superimg';
+
+export default defineScene({
+  render(ctx) {
+    return `
+      <img src="${ctx.asset('logo.png')}" />
+      <div style="background: url('${ctx.asset('background.jpg')}')"></div>
+    `;
+  },
+});
+```
+
+No config needed. `ctx.asset()` returns a URL string for any file in the co-located `assets/` folder.
+
+---
+
+## Declared Assets
+
+When you need asset metadata (dimensions, duration, file size), declare assets in `config.assets`. The runtime preloads them and makes metadata available via `ctx.assets`:
 
 ```typescript
 import { defineScene } from 'superimg';

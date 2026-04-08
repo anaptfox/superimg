@@ -211,13 +211,9 @@ async function initHome() {
           try {
             // Hide thumbnail, show player
             thumbnailImg.style.opacity = "0";
-            const configRes = await fetch(`/api/videos/${encodeURIComponent(video.name)}/config`);
-            const config = await configRes.json();
-            const w = Math.min(config.width ?? 1920, 400);
-            const h = Math.round(w * ((config.height ?? 1080) / (config.width ?? 1920)));
             hoverPlayer = new Player({
               container: previewContainer,
-              format: { width: w, height: h },
+              format: "horizontal",  // Force 1920×1080 like React version
               playbackMode: "loop",
             });
             const mod = await loadTemplate(`/api/videos/${encodeURIComponent(video.name)}/template`);

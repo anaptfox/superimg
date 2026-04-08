@@ -28,5 +28,10 @@
     "title": "Phase Animation",
     "category": "developer",
     "description": "Enter/hold/exit phase timing pattern"
+  },
+  "spring-stagger-demo": {
+    "title": "Spring & Stagger",
+    "category": "developer",
+    "description": "Spring physics, staggered entrances, and multi-keyframe interpolation"
   }
 }

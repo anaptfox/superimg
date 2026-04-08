@@ -7,7 +7,6 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { createSuperimgPlugin } from "@superimg/core/bundler-plugin";
 import type { ProjectConfig } from "@superimg/types";
-import { ProjectConfigSchema } from "@superimg/types";
 
 /**
  * Walks up from the video file's directory to the project root,
@@ -22,14 +21,14 @@ export async function loadCascadingConfig(
   videoPath: string,
   projectRoot: string
 ): Promise<ProjectConfig> {
-  const configs: { path: string; dir: string }[] = [];
+  const configs: string[] = [];
   let dir = dirname(videoPath);
   const root = join(projectRoot);
 
   while (dir && (dir.length >= root.length || dir === root)) {
     const configPath = join(dir, "_config.ts");
     if (existsSync(configPath)) {
-      configs.push({ path: configPath, dir });
+      configs.push(configPath);
     }
     const parent = dirname(dir);
     if (parent === dir) break;
@@ -45,7 +44,7 @@ export async function loadCascadingConfig(
   configs.reverse();
 
   const loaded: ProjectConfig[] = [];
-  for (const { path: configPath } of configs) {
+  for (const configPath of configs) {
     const config = await loadSingleConfig(configPath);
     if (config && Object.keys(config).length > 0) {
       loaded.push(config);
@@ -77,13 +76,12 @@ async function loadSingleConfig(configPath: string): Promise<ProjectConfig | nul
     try {
       const mod = await import(pathToFileURL(tmpFile).href);
       const raw = mod.default ?? mod;
-      const parsed = ProjectConfigSchema.safeParse(raw);
-      if (!parsed.success) {
+      if (!raw || typeof raw !== "object") {
         throw new Error(
-          `Invalid _config.ts at ${configPath}: ${parsed.error.message}`
+          `Invalid _config.ts at ${configPath}: expected an object, got ${typeof raw}`
         );
       }
-      return parsed.data as ProjectConfig;
+      return raw as ProjectConfig;
     } finally {
       rmSync(tmpDir, { recursive: true });
     }
@@ -100,12 +98,17 @@ function mergeConfigs(configs: ProjectConfig[]): ProjectConfig {
   const merged: ProjectConfig = {};
 
   for (const config of configs) {
-    // Scalars: overwrite
+    // Scalars: nearest wins (overwrite)
     if (config.width !== undefined) merged.width = config.width;
     if (config.height !== undefined) merged.height = config.height;
     if (config.fps !== undefined) merged.fps = config.fps;
     if (config.duration !== undefined) merged.duration = config.duration;
     if (config.outputs !== undefined) merged.outputs = config.outputs;
+    if (config.outDir !== undefined) merged.outDir = config.outDir;
+    if (config.tailwind !== undefined) merged.tailwind = config.tailwind;
+    if (config.watermark !== undefined) merged.watermark = config.watermark;
+    if (config.background !== undefined) merged.background = config.background;
+    if (config.audio !== undefined) merged.audio = config.audio;
 
     // Arrays: concatenate (parent first, then child)
     if (config.fonts?.length) {

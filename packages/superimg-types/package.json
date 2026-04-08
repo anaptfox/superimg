@@ -25,9 +25,6 @@
     "types"
   ],
   "license": "MIT",
-  "dependencies": {
-    "zod": "^4.3.5"
-  },
   "devDependencies": {
     "@superimg/stdlib": "workspace:*"
   }

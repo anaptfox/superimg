@@ -11,12 +11,6 @@ export type {
   OutputInfo,
   CssViewport,
 
-  // Branded Types
-  FrameNumber,
-  Progress,
-  DurationFrames,
-  TimeSeconds,
-
   // Mode Types
   PlaybackMode,
   LoadMode,
@@ -52,10 +46,8 @@ export type {
   HardwareAcceleration,
 
   // Asset Types
-  AssetRef,
   AssetDeclaration,
   AssetMeta,
-  AssetMetaBase,
   ImageAssetMeta,
   VideoAssetMeta,
   AudioAssetMeta,
@@ -72,17 +64,8 @@ export type {
   TailwindConfig,
 } from "./types.js";
 
-// Branded type helpers
-export {
-  frame,
-  progress,
-  durationFrames,
-  timeSeconds,
-} from "./types.js";
-
 // Template helpers
 export { defineScene, defineConfig } from "./types.js";
-export { ProjectConfigSchema } from "./project-config-schema.js";
 
 // =============================================================================
 // RESULT TYPES & ERRORS

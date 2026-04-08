@@ -1,4 +1,4 @@
-// Advanced template with phase timing, animated counters, and responsive sizing
+// Advanced template demonstrating phases, motion helpers, and responsive sizing
 import { defineScene } from "superimg";
 
 export default defineScene({
@@ -26,13 +26,7 @@ export default defineScene({
         border: 1px solid rgba(255, 255, 255, 0.08);
         text-align: left;
       }
-      .label {
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.6);
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        margin-bottom: 12px;
-      }
+      .label { font-weight: 600; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; }
       .value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 20px; }
       .value { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
       .unit { font-family: 'JetBrains Mono', monospace; color: rgba(255, 255, 255, 0.5); }
@@ -42,60 +36,45 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, isPortrait, data } = ctx;
+    const { std, sceneProgress, width, height, data } = ctx;
     const { label, value, unit, target, accentColor, secondaryColor } = data;
 
-    // Responsive sizing
-    const valueSize = isPortrait ? 72 : 96;
-    const labelSize = isPortrait ? 18 : 24;
-    const barHeight = isPortrait ? 8 : 12;
-    const barMaxWidth = isPortrait ? 280 : 400;
+    // Responsive sizing - bind ctx once, use for all values
+    const r = std.createResponsive(ctx);
+    const valueSize = r({ portrait: 72, default: 96 });
+    const labelSize = r({ portrait: 18, default: 24 });
+    const barHeight = r({ portrait: 8, default: 12 });
+    const barMaxWidth = r({ portrait: 280, default: 400 });
+    const cardPadding = r({ portrait: 32, default: 48 });
 
-    // Phase timing: Enter 0-1.2s | Hold 1.2-3s | Exit 3-4s
-    const enterProgress = std.math.clamp(time / 1.2, 0, 1);
-    const exitProgress = std.math.clamp((time - 3.0) / 1.0, 0, 1);
-    const easedEnter = std.tween(0, 1, enterProgress, "easeOutCubic");
+    // Phase timing: 30% enter, 45% hold, 25% exit
+    const { enter, hold, exit } = std.phases(sceneProgress, { enter: 3, hold: 4.5, exit: 2.5 });
 
-    // Staggered elements
-    const labelEnter = std.math.clamp((time - 0.1) / 0.8, 0, 1);
-    const valueEnter = std.math.clamp((time - 0.3) / 1.0, 0, 1);
-    const barEnter = std.math.clamp((time - 0.5) / 1.0, 0, 1);
+    // Card enter/exit animation
+    const card = std.motion.enterExit(sceneProgress, { y: 20, enterEnd: 0.3, exitStart: 0.75 });
 
-    const easedLabel = std.tween(0, 1, labelEnter, "easeOutCubic");
-    const easedValue = std.tween(0, 1, valueEnter, "easeOutBack");
-    const easedBar = std.tween(0, 1, barEnter, "easeOutCubic");
+    // Staggered element animations (within enter phase)
+    const labelAnim = std.motion.enter(std.math.clamp(enter.progress * 1.2, 0, 1), { y: 10 });
+    const valueAnim = std.motion.enter(std.math.clamp((enter.progress - 0.15) * 1.5, 0, 1), { y: 15, scale: 0.2, easing: "easeOutBack" });
+    const barAnim = std.motion.enter(std.math.clamp((enter.progress - 0.3) * 1.5, 0, 1), { y: 10 });
 
-    // Animated number (0 → value over hold phase)
-    const countProgress = std.math.clamp((time - 1.2) / 1.5, 0, 1);
-    const displayValue = Math.floor(std.tween(0, value, countProgress, "easeOutCubic"));
+    // Animated number (counts up during hold phase)
+    const displayValue = Math.floor(std.tween(0, value, hold.progress, "easeOutCubic"));
 
-    // Progress bar fill (0 → value/target, capped at 100%)
-    const barFill = std.math.clamp(value / target, 0, 1) * easedBar * (1 - exitProgress);
+    // Progress bar fill
+    const barFill = std.math.clamp(value / target, 0, 1) * barAnim.opacity * (1 - exit.progress);
 
-    const opacity = easedEnter * (1 - exitProgress);
-    const labelOpacity = easedLabel * (1 - exitProgress);
-    const valueOpacity = easedValue * (1 - exitProgress);
-    const valueScale = std.tween(0.8, 1, enterProgress, "easeOutBack") * (1 - exitProgress * 0.2);
-
+    // Colors
     const barGradient = std.color.mix(accentColor, secondaryColor, 0.3);
     const barBg = std.color.alpha("#ffffff", 0.1);
 
+    // Styles
     const bodyStyle = std.css({ width, height }) + ";" + std.css.center();
-    const cardStyle = std.css({ padding: isPortrait ? 32 : 48, opacity });
-    const labelStyle = std.css({ fontSize: labelSize, opacity: labelOpacity });
-    const valueStyle = std.css({
-      fontSize: valueSize,
-      color: accentColor,
-      transform: "scale(" + valueScale + ")",
-      opacity: valueOpacity,
-    });
-    const unitStyle = std.css({ fontSize: valueSize * 0.4, opacity: valueOpacity });
-    const trackStyle = std.css({
-      width: barMaxWidth,
-      height: barHeight,
-      background: barBg,
-      borderRadius: barHeight / 2,
-    });
+    const cardStyle = std.css({ padding: cardPadding, opacity: card.opacity });
+    const labelStyle = std.css({ fontSize: labelSize, opacity: labelAnim.opacity });
+    const valueStyle = std.css({ fontSize: valueSize, color: accentColor }) + ";" + valueAnim.style;
+    const unitStyle = std.css({ fontSize: valueSize * 0.4, opacity: valueAnim.opacity });
+    const trackStyle = std.css({ width: barMaxWidth, height: barHeight, background: barBg, borderRadius: barHeight / 2 });
     const fillStyle = std.css({
       width: barFill * 100 + "%",
       background: "linear-gradient(90deg, " + accentColor + ", " + barGradient + ")",

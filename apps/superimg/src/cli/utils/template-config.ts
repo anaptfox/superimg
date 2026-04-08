@@ -1,9 +1,16 @@
 //! Template config parsing utilities
 
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
+import { resolveConfigAssets } from "@superimg/core";
 import { extractTemplateMetadata } from "@superimg/core/template-metadata";
-import type { ProjectConfig, TailwindConfig, EncodingOptions } from "@superimg/types";
+import type {
+  ProjectConfig,
+  TailwindConfig,
+  EncodingOptions,
+  AssetDeclaration,
+  ResolvedAssetDeclaration,
+} from "@superimg/types";
 
 export interface ParsedTemplate {
   templateCode: string;
@@ -12,6 +19,7 @@ export interface ParsedTemplate {
     hasDefaultExport: boolean;
   };
   templateConfig?: RenderConfig;
+  resolvedAssets: ResolvedAssetDeclaration[];
   config?: {
     width?: number;
     height?: number;
@@ -33,7 +41,7 @@ export interface RenderConfig {
   width?: number;
   height?: number;
   fps?: number;
-  duration?: number;
+  duration?: number | string;
   fonts?: string[];
   inlineCss?: string[];
   stylesheets?: string[];
@@ -43,6 +51,7 @@ export interface RenderConfig {
   watermark?: import("@superimg/types").WatermarkValue;
   background?: import("@superimg/types").BackgroundValue;
   audio?: string | AudioConfig;
+  assets?: Record<string, string | AssetDeclaration>;
 }
 
 export interface RenderConfigDefaults {
@@ -151,6 +160,9 @@ export function mergeCascadingIntoRenderConfig(
   if (merged.tailwind === undefined && cascadingConfig?.tailwind !== undefined) {
     merged.tailwind = cascadingConfig.tailwind;
   }
+  if (cascadingConfig?.audio !== undefined && merged.audio === undefined) {
+    merged.audio = cascadingConfig.audio;
+  }
   return merged;
 }
 
@@ -172,6 +184,11 @@ export async function parseTemplate(
   }
 
   const rawTemplateConfig = metadata.config;
+  const resolvedAssets = resolveConfigAssets(
+    rawTemplateConfig?.assets,
+    dirname(fullPath)
+  );
+
   const templateConfig = options?.cascadingConfig
     ? mergeCascadingIntoRenderConfig(rawTemplateConfig, options.cascadingConfig)
     : rawTemplateConfig;
@@ -188,6 +205,7 @@ export async function parseTemplate(
       hasDefaultExport: metadata.hasDefaultExport,
     },
     templateConfig,
+    resolvedAssets,
     config: resolvedConfig,
   };
 }

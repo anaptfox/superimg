@@ -11,12 +11,6 @@ export type {
   OutputInfo,
   CssViewport,
 
-  // Branded types
-  FrameNumber,
-  Progress,
-  DurationFrames,
-  TimeSeconds,
-
   // Mode types
   PlaybackMode,
   LoadMode,
@@ -79,14 +73,6 @@ export type {
   RenderEngine,
   RenderPlan,
   FramePresenter,
-} from "@superimg/types";
-
-// Branded type helpers
-export {
-  frame,
-  progress,
-  durationFrames,
-  timeSeconds,
 } from "@superimg/types";
 
 // Template helpers

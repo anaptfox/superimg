@@ -13,10 +13,12 @@ import { resolveTemplatePath } from "../utils/resolve-template.js";
 import { findProjectRoot } from "../utils/find-project-root.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";
 import { discoverVideos } from "../utils/discover-videos.js";
+import { discoverTemplateAssets } from "../utils/asset-discovery.js";
 import { parseTemplate, resolveRenderConfig, resolvePresetConfig, resolveAllPresets } from "../utils/template-config.js";
 import { resolveOutputPath } from "../utils/resolve-output-path.js";
 import type { EncodingOptions } from "@superimg/types";
 import { mergeEncoding } from "../utils/merge-encoding.js";
+import { prepareAssets, resolveAudioUrl } from "../../utils/prepare-assets.js";
 
 interface RenderOptions {
   output?: string;
@@ -308,7 +310,7 @@ export async function renderCommand(template: string, options: RenderOptions) {
     process.exit(1);
   }
 
-  const projectRoot = findProjectRoot();
+  const projectRoot = findProjectRoot(dirname(resolvedTemplate));
   const cascadingConfig = await loadCascadingConfig(resolvedTemplate, projectRoot);
 
   let templateData!: Awaited<ReturnType<typeof parseTemplate>>;
@@ -431,6 +433,19 @@ export async function renderCommand(template: string, options: RenderOptions) {
           }
 
           await engine.init();
+          const assetBaseUrl = engine.getBaseUrl();
+          const templateDir = dirname(resolvedTemplate);
+          const resolvedAssets = prepareAssets({
+            autoDiscovered: discoverTemplateAssets(templateDir),
+            configAssets: templateData.resolvedAssets,
+            assetBaseUrl,
+          });
+          const resolvedAudio = resolveAudioUrl(
+            templateData.templateConfig?.audio,
+            templateDir,
+            assetBaseUrl
+          );
+
           for (let i = 0; i < targets.length; i++) {
             if (!mounted) return;
             const target = targets[i];
@@ -438,18 +453,6 @@ export async function renderCommand(template: string, options: RenderOptions) {
             setStatus(targets.length > 1
               ? `Rendering "${target.name}" (${i + 1}/${targets.length})...`
               : "Rendering...");
-
-            // Resolve audio path to URL served by engine's internal server
-            let resolvedAudio = templateData.templateConfig?.audio;
-            if (resolvedAudio) {
-              const audioConfig = typeof resolvedAudio === 'string'
-                ? { src: resolvedAudio }
-                : resolvedAudio;
-              const templateDir = dirname(resolvedTemplate);
-              const absolutePath = resolve(templateDir, audioConfig.src);
-              const baseUrl = engine.getBaseUrl();
-              resolvedAudio = { ...audioConfig, src: `${baseUrl}/assets?path=${encodeURIComponent(absolutePath)}` };
-            }
 
             const job: RenderJob = {
               templateCode: bundledTemplateCode,
@@ -467,7 +470,12 @@ export async function renderCommand(template: string, options: RenderOptions) {
               audio: resolvedAudio,
             };
 
-            const plan = createRenderPlan(job);
+            const plan = createRenderPlan(job, {
+              assetBaseUrl,
+              resolvedAssets,
+              templateDir: dirname(resolvedTemplate),
+            });
+
             const { renderer, encoder } = engine.createAdapters();
             const result = await executeRenderPlan(plan, renderer, encoder, {
               onProgress: (p) => {

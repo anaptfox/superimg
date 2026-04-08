@@ -1,5 +1,5 @@
 // Lower Thirds Example — Broadcast-style speaker identification
-// Demonstrates: std.css(), std.css.stack(), inlineCss, staggered tweens, color.alpha()
+// Demonstrates: std.css(), std.css.stack(), std.stagger(), std.phases(), color.alpha()
 // Customize by passing data or editing the defaults!
 
 import { defineScene } from "superimg";
@@ -34,7 +34,7 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, isPortrait, data } = ctx;
+    const { std, sceneProgress, width, height, isPortrait, data } = ctx;
     const { name, title, accentColor } = data;
 
     // Responsive sizing
@@ -49,20 +49,18 @@ export default defineScene({
 
     const offScreenX = -(width * 0.45);
 
-    // Enter phase (staggered slide-in from left)
-    const barEnter = std.math.clamp(time / 0.6, 0, 1);
-    const nameEnter = std.math.clamp((time - 0.15) / 0.7, 0, 1);
-    const titleEnter = std.math.clamp((time - 0.35) / 0.7, 0, 1);
+    // Split into enter / hold / exit phases
+    const { enter, exit } = std.phases(sceneProgress, { enter: 1.5, hold: 5, exit: 1.5 });
 
-    // Exit phase (staggered slide-out, reverse order)
-    const titleExit = std.math.clamp((time - 2.8) / 0.5, 0, 1);
-    const nameExit = std.math.clamp((time - 2.95) / 0.5, 0, 1);
-    const barExit = std.math.clamp((time - 3.15) / 0.5, 0, 1);
+    // Staggered slide-in (bar → name → title)
+    const enterP = std.stagger(3, enter.progress, { duration: 0.5, easing: "easeOutCubic" });
+    // Staggered slide-out (reverse: title → name → bar)
+    const exitP = std.stagger(3, exit.progress, { duration: 0.5, from: "end", easing: "easeInCubic" });
 
-    const barX = std.tween(offScreenX, 0, barEnter, "easeOutCubic") + std.tween(0, offScreenX, barExit, "easeInCubic");
-    const nameX = std.tween(offScreenX, 0, nameEnter, "easeOutCubic") + std.tween(0, offScreenX, nameExit, "easeInCubic");
-    const titleX = std.tween(offScreenX, 0, titleEnter, "easeOutCubic") + std.tween(0, offScreenX, titleExit, "easeInCubic");
-    const titleOpacity = titleEnter * (1 - titleExit);
+    const barX = std.tween(offScreenX, 0, enterP[0]) + std.tween(0, offScreenX, exitP[0]);
+    const nameX = std.tween(offScreenX, 0, enterP[1]) + std.tween(0, offScreenX, exitP[1]);
+    const titleX = std.tween(offScreenX, 0, enterP[2]) + std.tween(0, offScreenX, exitP[2]);
+    const titleOpacity = enterP[2] * (1 - exitP[2]);
 
     const nameBg  = std.color.alpha("#000000", 0.85);
     const titleBg = std.color.alpha("#000000", 0.65);

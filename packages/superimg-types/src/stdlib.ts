@@ -18,6 +18,13 @@ import type {
   markers,
   script,
 } from "@superimg/stdlib/timeline";
+import type * as motion from "@superimg/stdlib/motion";
+import type * as phases from "@superimg/stdlib/phases";
+import type * as backgrounds from "@superimg/stdlib/backgrounds";
+import type { montage } from "@superimg/stdlib/montage";
+import type { spring, springTween, createSpring } from "@superimg/stdlib/spring";
+import type { stagger } from "@superimg/stdlib/stagger";
+import type { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
 
 /**
  * Standard library available via `ctx.std` in render functions.
@@ -69,5 +76,27 @@ export interface Stdlib {
     markers: typeof markers;
     script: typeof script;
   };
+  /** @core Motion helpers: enter(), exit(), enterExit() for fade+slide animations */
+  motion: typeof motion;
+  /** @core Phase splitting: std.phases(progress, { enter: 1, hold: 2, exit: 1 }) */
+  phases: typeof phases.phases;
+  /** @core Ken Burns background effects: std.backgrounds.kenBurns({ src, progress }) */
+  backgrounds: typeof backgrounds;
+  /** @core Image montage with crossfades: std.montage({ images, progress }) */
+  montage: typeof montage;
+  /** @core Factory for responsive sizing: const r = std.createResponsive(ctx) */
+  createResponsive: typeof responsive.createResponsive;
+  /** @core Spring curve: std.spring(progress, config?) returns 0→1 with overshoot */
+  spring: typeof spring;
+  /** @core Spring interpolation: std.springTween(from, to, progress, config?) */
+  springTween: typeof springTween;
+  /** @core Create spring easing for tween(): std.createSpring({ stiffness: 200, damping: 8 }) */
+  createSpring: typeof createSpring;
+  /** @core Stagger progress across items: std.stagger(items, progress, opts?) */
+  stagger: typeof stagger;
+  /** @core Multi-keyframe interpolation: std.interpolate(progress, inputRange, outputRange) */
+  interpolate: typeof interpolate;
+  /** @core Multi-keyframe color interpolation: std.interpolateColor(progress, inputRange, colors) */
+  interpolateColor: typeof interpolateColor;
 }
 

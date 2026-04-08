@@ -9,8 +9,9 @@ import type {
   RenderContext,
   TemplateModule,
 } from "@superimg/types";
-import { resolveConfigAssets } from "../shared/assets.js";
+import type { ResolvedAssetDeclaration } from "../shared/assets.js";
 import { TemplateRuntimeError } from "@superimg/types";
+import { resolve, isAbsolute } from "node:path";
 import { compileTemplate } from "./compiler.js";
 import { createRenderContext } from "./wasm.js";
 import { buildCompositeHtml } from "../html/html.js";
@@ -65,6 +66,24 @@ function safeRender(
   }
 }
 
+export function resolveAssetUrls(
+  declarations: ResolvedAssetDeclaration[],
+  baseUrl: string
+): ResolvedAssetDeclaration[] {
+  return declarations.map((decl) => {
+    if (decl.src.startsWith("http") || decl.src.startsWith("data:")) return decl;
+
+    const absolutePath = isAbsolute(decl.src)
+      ? decl.src
+      : resolve(decl.sourceDir, decl.src);
+
+    return {
+      ...decl,
+      src: `${baseUrl}/assets?path=${encodeURIComponent(absolutePath)}`,
+    };
+  });
+}
+
 export interface ExecuteRenderPlanCallbacks {
   onProgress?: (progress: RenderProgress) => void;
   onFrameRendered?: (frame: number, html: string, compositeHtml: string) => void;
@@ -74,7 +93,14 @@ export interface ExecuteRenderPlanCallbacks {
  * Create a render plan from a render job.
  * Pure computation: compile template, collect fonts, calculate total frames.
  */
-export function createRenderPlan(job: RenderJob): RenderPlan {
+export function createRenderPlan(
+  job: RenderJob,
+  options?: {
+    assetBaseUrl?: string;
+    resolvedAssets?: ResolvedAssetDeclaration[];
+    templateDir?: string;
+  }
+): RenderPlan {
   const {
     templateCode,
     duration,
@@ -118,7 +144,8 @@ export function createRenderPlan(job: RenderJob): RenderPlan {
   // Resolve Duration → number (seconds)
   const durationSeconds = parseDuration(duration, "duration", fps);
   const totalFrames = Math.ceil(durationSeconds * fps);
-  const resolvedAssets = resolveConfigAssets(template.config?.assets);
+
+  const resolvedAssets = options?.resolvedAssets ?? [];
 
   let finalWatermark = watermark;
   if (!finalWatermark || finalWatermark === "extracted-by-bundler") {
@@ -147,6 +174,8 @@ export function createRenderPlan(job: RenderJob): RenderPlan {
     data,
     background: finalBackground,
     watermark: finalWatermark,
+    assetBaseUrl: options?.assetBaseUrl,
+    templateDir: options?.templateDir,
     resolvedAssets,
   };
 }
@@ -179,12 +208,20 @@ export async function executeRenderPlan<TFrame>(
     resolvedAssets,
   } = plan;
 
+  const assetResolver = plan.assetBaseUrl && plan.templateDir
+    ? (filename: string) => {
+        const abs = resolve(plan.templateDir!, 'assets', filename);
+        return `${plan.assetBaseUrl}/assets?path=${encodeURIComponent(abs)}`;
+      }
+    : undefined;
+
   await renderer.init({ width, height, fonts, inlineCss, stylesheets, tailwind });
 
   let assetsMap: Record<string, import("@superimg/types").AssetMeta> = {};
   if (resolvedAssets.length > 0 && renderer.preloadAssets) {
     assetsMap = await renderer.preloadAssets(resolvedAssets);
   }
+
   await encoder.init({
     width,
     height,
@@ -204,7 +241,8 @@ export async function executeRenderPlan<TFrame>(
         height,
         mergedData,
         outputName,
-        assetsMap
+        assetsMap,
+        assetResolver
       );
 
       const html = safeRender(template, ctx, outputName);

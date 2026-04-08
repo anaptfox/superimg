@@ -19,14 +19,9 @@ export async function generateThumbnail(
   document.body.appendChild(tempContainer);
 
   try {
-    const configRes = await fetch(`/api/videos/${encodeURIComponent(video.name)}/config`);
-    const config = await configRes.json();
-    const w = 400;
-    const h = Math.round(w * ((config.height ?? 1080) / (config.width ?? 1920)));
-
     const player = new Player({
       container: tempContainer,
-      format: { width: w, height: h }
+      format: "horizontal",  // Force 1920×1080 like hover preview
     });
 
     const mod = await loadTemplate(`/api/videos/${encodeURIComponent(video.name)}/template`);

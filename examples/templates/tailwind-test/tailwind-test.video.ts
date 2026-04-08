@@ -16,7 +16,7 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, sceneDurationSeconds: duration, data } = ctx;
+    const { std, sceneTimeSeconds: time, sceneDurationSeconds: duration, sceneProgress, data } = ctx;
     const { title, features } = data;
 
     // Timeline: intro (0-2s) → features (2-6s) → outro (6-8s)
@@ -74,7 +74,8 @@ function renderFeatures(std: any, tl: any, featuresPhase: any, features: string[
   const cardHtml = features
     .map((feature, i) => {
       const cardEvent = cards.get(i);
-      const y = std.tween(40, 0, cardEvent.progress, "easeOutCubic");
+      const bounce = std.createSpring({ stiffness: 150, damping: 12 });
+      const y = std.tween(40, 0, cardEvent.progress, bounce);
       const opacity = std.tween(0, 1, cardEvent.progress, "easeOutCubic");
       const cardStyle = std.css({ transform: `translateY(${y}px)`, opacity });
 

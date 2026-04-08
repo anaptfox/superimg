@@ -30,32 +30,22 @@ export interface ResolvedAudio {
 }
 
 /**
- * Detect config asset type from file extension (image, video, audio only)
+ * Detect asset type from file extension (image, video, or audio)
  */
-function detectConfigAssetType(src: string): "image" | "video" | "audio" {
+export function detectAssetType(src: string): "image" | "video" | "audio" {
   if (/\.(mp4|webm|mov|avi|mkv|flv|wmv)$/i.test(src)) return "video";
   if (/\.(mp3|wav|ogg|aac|m4a|flac|opus)$/i.test(src)) return "audio";
   return "image";
 }
 
 /**
- * Detect asset type from file extension or color format
+ * Detect background type from file extension or color format (adds "solid" detection)
  */
-function detectAssetType(src: string): AssetType {
-  // Color formats
+function detectBackgroundType(src: string): AssetType {
   if (src.startsWith("#") || src.startsWith("rgb") || src.startsWith("hsl") || src.startsWith("rgba") || src.startsWith("hsla")) {
     return "solid";
   }
-  // Video formats
-  if (/\.(mp4|webm|mov|avi|mkv|flv|wmv)$/i.test(src)) {
-    return "video";
-  }
-  // Audio formats
-  if (/\.(mp3|wav|ogg|aac|m4a|flac|opus)$/i.test(src)) {
-    return "audio";
-  }
-  // Default to image
-  return "image";
+  return detectAssetType(src);
 }
 
 /**
@@ -63,7 +53,7 @@ function detectAssetType(src: string): AssetType {
  */
 export function resolveBackground(value: BackgroundValue): ResolvedBackground {
   if (typeof value === "string") {
-    const type = detectAssetType(value);
+    const type = detectBackgroundType(value);
     return {
       type,
       src: value,
@@ -74,7 +64,7 @@ export function resolveBackground(value: BackgroundValue): ResolvedBackground {
   }
 
   // Object form
-  const type = detectAssetType(value.src);
+  const type = detectBackgroundType(value.src);
   return {
     type,
     src: value.src,
@@ -112,23 +102,27 @@ export function resolveAudio(value: AudioValue): ResolvedAudio {
  * Supports shorthand (string) and explicit (AssetDeclaration) forms.
  */
 export function resolveConfigAssets(
-  assets: Record<string, string | AssetDeclaration> | undefined
+  assets: Record<string, string | AssetDeclaration> | undefined,
+  defaultSourceDir: string = process.cwd()
 ): ResolvedAssetDeclaration[] {
   if (!assets || Object.keys(assets).length === 0) return [];
 
   return Object.entries(assets).map(([key, value]) => {
+    const sourceDir = defaultSourceDir;
     if (typeof value === "string") {
       return {
         key,
-        type: detectConfigAssetType(value),
+        type: detectAssetType(value),
         src: value,
+        sourceDir,
       };
     }
-    const type = value.type ?? detectConfigAssetType(value.src);
+    const type = value.type ?? detectAssetType(value.src);
     return {
       key,
       type,
       src: value.src,
+      sourceDir,
     };
   });
 }

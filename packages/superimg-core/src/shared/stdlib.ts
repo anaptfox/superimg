@@ -19,6 +19,13 @@ import {
   markers,
   script,
 } from "@superimg/stdlib/timeline";
+import * as motion from "@superimg/stdlib/motion";
+import { phases } from "@superimg/stdlib/phases";
+import * as backgrounds from "@superimg/stdlib/backgrounds";
+import { montage } from "@superimg/stdlib/montage";
+import { spring, springTween, createSpring } from "@superimg/stdlib/spring";
+import { stagger } from "@superimg/stdlib/stagger";
+import { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
 
 const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
@@ -42,4 +49,15 @@ export const stdlib: Stdlib = {
     markers,
     script,
   }),
+  motion,
+  phases,
+  backgrounds,
+  montage,
+  createResponsive: responsive.createResponsive,
+  spring,
+  springTween,
+  createSpring,
+  stagger,
+  interpolate,
+  interpolateColor,
 };
