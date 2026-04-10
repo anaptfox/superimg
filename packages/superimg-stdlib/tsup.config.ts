@@ -22,6 +22,8 @@ export default defineConfig({
     "src/spring.ts",
     "src/stagger.ts",
     "src/interpolate.ts",
+    "src/path.ts",
+    "src/svg/index.ts",
     "src/index.ts",
   ],
   format: ["esm"],
@@ -33,5 +35,5 @@ export default defineConfig({
   // Bundle everything into each file (including dependencies)
   bundle: true,
   // Don't mark dependencies as external - we want them bundled
-  noExternal: ["date-fns", "colord", "simplex-noise", "shiki", "@shikijs/themes", "@shikijs/langs"],
+  noExternal: ["date-fns", "colord", "simplex-noise", "shiki", "@shikijs/themes", "@shikijs/langs", "path-data-parser"],
 });

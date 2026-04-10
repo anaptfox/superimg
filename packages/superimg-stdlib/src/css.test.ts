@@ -78,6 +78,42 @@ describe("css", () => {
   });
 });
 
+describe("css variadic", () => {
+  it("combines object with preset string", () => {
+    expect(css({ width: 100, height: 200 }, center())).toBe(
+      "width:100px;height:200px;display:flex;align-items:center;justify-content:center"
+    );
+  });
+
+  it("combines preset string with object", () => {
+    const result = css(fill(), { opacity: 0.5 });
+    expect(result).toContain("position:absolute");
+    expect(result).toContain("width:100%");
+    expect(result).toContain("opacity:0.5");
+  });
+
+  it("combines multiple preset strings", () => {
+    const result = css(fill(), stack(), center());
+    expect(result).toContain("position:absolute");
+    expect(result).toContain("flex-direction:column");
+    expect(result).toContain("justify-content:center");
+  });
+
+  it("combines multiple objects", () => {
+    expect(css({ width: 100 }, { height: 200 })).toBe("width:100px;height:200px");
+  });
+
+  it("ignores empty strings", () => {
+    expect(css({ width: 100 }, "", center())).toBe(
+      css({ width: 100 }, center())
+    );
+  });
+
+  it("returns empty string with no args", () => {
+    expect(css()).toBe("");
+  });
+});
+
 describe("fill", () => {
   it("returns fill preset styles", () => {
     const result = fill();
