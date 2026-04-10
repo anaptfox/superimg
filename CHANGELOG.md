@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.14 — 2026-04-10
+
+- Add `std.svg` module: draw, filter, morph, reveal, shape, textPath, segments
+- Add `std.path` module for SVG path utilities
+- `std.css()` now variadic — mix style objects and preset strings in one call
+- `std.motion.enterExit()` adds `exitEasing` option
+- Fix `pnpm/action-setup` version conflict in render workflow
+
 ## 0.0.13 — 2026-04-10
 
 **Breaking:** `defaults` renamed to `data` in `defineScene()`.
