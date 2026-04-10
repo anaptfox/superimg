@@ -49,19 +49,32 @@ function serializeValue(key: string, value: unknown): string | null {
 }
 
 /**
- * Convert a style object to an inline style string.
+ * Convert style objects and preset strings to an inline style string.
+ * Accepts any mix of style objects and preset strings (from css.fill(), css.center(), etc.).
  * Numeric values get 'px' appended except for unitless properties (opacity, zIndex, etc.).
- * null/undefined values are omitted.
+ * null/undefined values are omitted. Empty strings are ignored.
  *
- * @param styles - Object with camelCase CSS property names
+ * @param args - Style objects and/or preset strings to combine
  * @returns Semicolon-separated inline style string
+ *
+ * @example
+ * ```ts
+ * std.css({ width: 1920, height: 1080 }, std.css.center())
+ * // "width:1920px;height:1080px;display:flex;align-items:center;justify-content:center"
+ * ```
  */
-export function css(styles: Record<string, unknown>): string {
+export function css(...args: (Record<string, unknown> | string)[]): string {
   const parts: string[] = [];
-  for (const [key, value] of Object.entries(styles)) {
-    const serialized = serializeValue(key, value);
-    if (serialized !== null) {
-      parts.push(`${camelToKebab(key)}:${serialized}`);
+  for (const arg of args) {
+    if (typeof arg === "string") {
+      if (arg) parts.push(arg);
+    } else {
+      for (const [key, value] of Object.entries(arg)) {
+        const serialized = serializeValue(key, value);
+        if (serialized !== null) {
+          parts.push(`${camelToKebab(key)}:${serialized}`);
+        }
+      }
     }
   }
   return parts.join(";");

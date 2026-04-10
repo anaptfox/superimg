@@ -28,3 +28,5 @@ export * from "./montage";
 export * from "./spring";
 export { stagger, type StaggerItem } from "./stagger";
 export * from "./interpolate";
+export * from "./path";
+export * from "./svg";

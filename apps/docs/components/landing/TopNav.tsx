@@ -41,12 +41,7 @@ export function TopNav() {
             >
               Blog
             </Link>
-            <Link
-              href="/support"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Support
-            </Link>
+
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -107,14 +102,7 @@ export function TopNav() {
                     Blog
                   </Link>
                 </SheetClose>
-                <SheetClose asChild>
-                  <Link
-                    href="/support"
-                    className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    Support
-                  </Link>
-                </SheetClose>
+
               </div>
             </SheetContent>
           </Sheet>

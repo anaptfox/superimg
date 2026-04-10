@@ -89,6 +89,14 @@
     "./interpolate": {
       "import": "./dist/interpolate.js",
       "types": "./dist/interpolate.d.ts"
+    },
+    "./path": {
+      "import": "./dist/path.js",
+      "types": "./dist/path.d.ts"
+    },
+    "./svg": {
+      "import": "./dist/svg/index.js",
+      "types": "./dist/svg/index.d.ts"
     }
   },
   "scripts": {
@@ -114,6 +122,7 @@
     "@shikijs/themes": "^4.0.2",
     "colord": "^2.9.3",
     "date-fns": "^4.1.0",
+    "path-data-parser": "^0.1.0",
     "shiki": "^3.0.0",
     "simplex-noise": "^4.0.3"
   },

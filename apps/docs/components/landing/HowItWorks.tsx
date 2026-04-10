@@ -15,7 +15,7 @@ export default defineScene({
   render(ctx) {
     const { sceneFrame, fps, width, height, std } = ctx;
     const count = Math.max(1, 5 - Math.floor(sceneFrame / fps));
-    const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }) + ";" + std.css.center();
+    const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }, std.css.center());
     return \`
       <div style="\${bgStyle}">
         <div style="\${std.css({ fontSize: 180, fontWeight: 800, color: 'white', textShadow: '0 4px 20px rgba(0,0,0,0.5)' })}">
@@ -37,7 +37,7 @@ export default defineScene({
     const fraction = (sceneFrame % fps) / fps;
     const pulse = std.tween(1.2, 1, fraction, "easeOutCubic");
     const glow = std.tween(0.8, 0.2, fraction, "easeOutCubic");
-    const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }) + ";" + std.css.center();
+    const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }, std.css.center());
     const numStyle = std.css({ fontSize: 180, fontWeight: 800, color: "white", transform: "scale(" + pulse + ")", textShadow: "0 0 " + (40 * glow) + "px rgba(102,126,234," + glow + ")" });
     return \`
       <div style="\${bgStyle}">

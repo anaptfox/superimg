@@ -55,6 +55,8 @@ export interface EnterExitOptions extends MotionOptions {
   enterEnd?: number;
   /** Progress value where exit phase starts (default: 0.66) */
   exitStart?: number;
+  /** Override exit easing (default: auto-derived from easing via EXIT_EASING) */
+  exitEasing?: EasingName;
 }
 
 function buildTransform(x: number, y: number, scale: number): string {
@@ -143,6 +145,20 @@ export function exit(progress: number, options?: MotionOptions): MotionResult {
   return { opacity, x, y, scale, transform, style };
 }
 
+/** Maps easeOut* enter easings to their easeIn* exit counterparts */
+const EXIT_EASING: Partial<Record<EasingName, EasingName>> = {
+  easeOutQuad: "easeInQuad",
+  easeOutSine: "easeInSine",
+  easeOutCubic: "easeInCubic",
+  easeOutQuart: "easeInQuart",
+  easeOutQuint: "easeInQuint",
+  easeOutExpo: "easeInExpo",
+  easeOutCirc: "easeInCirc",
+  easeOutBack: "easeInBack",
+  easeOutElastic: "easeInElastic",
+  easeOutBounce: "easeInBounce",
+};
+
 /**
  * Calculate enter-hold-exit animation values.
  *
@@ -177,6 +193,7 @@ export function enterExit(
     x: xOffset = 0,
     scale: scaleOffset = 0,
     easing = "easeOutCubic",
+    exitEasing: exitEasingOverride,
     enterEnd = 0.33,
     exitStart = 0.66,
   } = options ?? {};
@@ -188,35 +205,20 @@ export function enterExit(
   let exitProgress = 0;
 
   if (t < enterEnd) {
-    // Enter phase
     enterProgress = t / enterEnd;
   } else if (t >= exitStart) {
-    // Exit phase
     exitProgress = (t - exitStart) / (1 - exitStart);
   }
-  // Hold phase: both stay at 0
 
-  // Enter animation
-  const enterOpacity = tween(0, 1, clamp01(enterProgress), easing);
-  const enterY = tween(yOffset, 0, clamp01(enterProgress), easing);
-  const enterX = tween(xOffset, 0, clamp01(enterProgress), easing);
-  const enterScale = tween(1 - scaleOffset, 1, clamp01(enterProgress), easing);
+  const resolvedExitEasing = exitEasingOverride ?? EXIT_EASING[easing] ?? easing;
 
-  // Exit animation (use easeIn for exit)
-  const exitEasing: EasingName = easing.includes("Out")
-    ? (easing.replace("Out", "In") as EasingName)
-    : "easeInCubic";
-  const exitOpacity = tween(1, 0, clamp01(exitProgress), exitEasing);
-  const exitY = tween(0, -yOffset, clamp01(exitProgress), exitEasing);
-  const exitX = tween(0, -xOffset, clamp01(exitProgress), exitEasing);
-  const exitScale = tween(1, 1 - scaleOffset, clamp01(exitProgress), exitEasing);
+  const e = enter(enterProgress, { y: yOffset, x: xOffset, scale: scaleOffset, easing });
+  const ex = exit(exitProgress, { y: -yOffset, x: -xOffset, scale: scaleOffset, easing: resolvedExitEasing });
 
-  // Combine: multiply opacity, add transforms
-  const opacity = enterOpacity * exitOpacity;
-  const y = enterY + exitY;
-  const x = enterX + exitX;
-  const scale = enterScale * exitScale;
-
+  const opacity = e.opacity * ex.opacity;
+  const y = e.y + ex.y;
+  const x = e.x + ex.x;
+  const scale = e.scale * ex.scale;
   const transform = buildTransform(x, y, scale);
   const style = buildStyle(opacity, transform);
 

@@ -74,20 +74,20 @@ export default defineScene({
       fontFamily: "system-ui, sans-serif",
       overflow: "hidden",
       position: "relative",
-    }) + ";" + std.css.center();
+    }, std.css.center());
 
     const ringStyle = std.css({
       width: ringSize, height: ringSize,
       borderRadius: "50%",
       background: `conic-gradient(from 0deg, ${primaryColor} 0deg, ${secondaryColor} ${ringProgress}deg, transparent ${ringProgress}deg)`,
       margin: "0 auto 60px",
-    }) + ";" + std.css.center();
+    }, std.css.center());
 
     const ringInnerStyle = std.css({
       width: "85%", height: "85%",
       borderRadius: "50%",
       background: ringInnerBg,
-    }) + ";" + std.css.center();
+    }, std.css.center());
 
     const numberStyle = std.css({
       fontSize: numSize, fontWeight: 800, color: "white",

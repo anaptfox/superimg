@@ -5,8 +5,8 @@
   "description": "SuperImg monorepo",
   "scripts": {
     "dev": "pnpm --parallel -r dev",
-    "build": "pnpm -r --filter '!docs' --filter '!openai-widget' build",
-    "rebuild": "pnpm -r clean && pnpm -r --filter '!docs' --filter '!openai-widget' build",
+    "build": "pnpm -r --filter '!docs' build",
+    "rebuild": "pnpm -r clean && pnpm -r --filter '!docs' build",
     "test": "pnpm -r test",
     "test:coverage": "pnpm -r test -- --coverage",
     "clean": "pnpm -r clean",

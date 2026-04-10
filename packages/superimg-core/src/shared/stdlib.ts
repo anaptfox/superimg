@@ -5,7 +5,7 @@ import * as math from "@superimg/stdlib/math";
 import * as color from "@superimg/stdlib/color";
 import * as text from "@superimg/stdlib/text";
 import * as date from "@superimg/stdlib/date";
-import { css, fill, center, stack } from "@superimg/stdlib/css";
+import { css, fill, center, stack, row } from "@superimg/stdlib/css";
 import { tween } from "@superimg/stdlib/tween";
 import * as responsive from "@superimg/stdlib/responsive";
 import * as subtitle from "@superimg/stdlib/subtitle";
@@ -26,6 +26,8 @@ import { montage } from "@superimg/stdlib/montage";
 import { spring, springTween, createSpring } from "@superimg/stdlib/spring";
 import { stagger } from "@superimg/stdlib/stagger";
 import { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
+import { path, createMotionPath } from "@superimg/stdlib/path";
+import { draw, filter, morph, reveal, shape, textPath } from "@superimg/stdlib/svg";
 
 const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
@@ -36,7 +38,7 @@ export const stdlib: Stdlib = {
   color,
   text,
   date,
-  css: Object.assign(css, { fill, center, stack }),
+  css: Object.assign(css, { fill, center, stack, row }),
   tween,
   responsive,
   subtitle,
@@ -60,4 +62,6 @@ export const stdlib: Stdlib = {
   stagger,
   interpolate,
   interpolateColor,
+  path: Object.assign(path, { parse: createMotionPath }),
+  svg: { draw, filter, morph, reveal, shape, textPath },
 };

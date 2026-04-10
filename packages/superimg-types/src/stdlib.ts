@@ -4,7 +4,7 @@ import type * as math from "@superimg/stdlib/math";
 import type * as color from "@superimg/stdlib/color";
 import type * as text from "@superimg/stdlib/text";
 import type * as date from "@superimg/stdlib/date";
-import type { css, fill, center, stack } from "@superimg/stdlib/css";
+import type { css, fill, center, stack, row } from "@superimg/stdlib/css";
 import type { tween } from "@superimg/stdlib/tween";
 import type * as responsive from "@superimg/stdlib/responsive";
 import type * as subtitle from "@superimg/stdlib/subtitle";
@@ -25,6 +25,8 @@ import type { montage } from "@superimg/stdlib/montage";
 import type { spring, springTween, createSpring } from "@superimg/stdlib/spring";
 import type { stagger } from "@superimg/stdlib/stagger";
 import type { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
+import type { path, createMotionPath } from "@superimg/stdlib/path";
+import type { draw, filter, morph, reveal, shape, textPath } from "@superimg/stdlib/svg";
 
 /**
  * Standard library available via `ctx.std` in render functions.
@@ -52,11 +54,12 @@ export interface Stdlib {
   text: typeof text;
   /** @extended Date formatting and manipulation (formatDate, relativeTime, parseISO) */
   date: typeof date;
-  /** @core CSS style helpers. Callable: std.css({ width: 100 }). Presets: std.css.fill(), std.css.center(), std.css.stack() */
+  /** @core CSS style helpers. Callable: std.css({ width: 100 }, std.css.center()). Presets: std.css.fill(), std.css.center(), std.css.stack(), std.css.row() */
   css: typeof css & {
     fill: typeof fill;
     center: typeof center;
     stack: typeof stack;
+    row: typeof row;
   };
   /** @core Tween: eased interpolation. std.tween(from, to, progress, easing?) */
   tween: typeof tween;
@@ -98,5 +101,16 @@ export interface Stdlib {
   interpolate: typeof interpolate;
   /** @core Multi-keyframe color interpolation: std.interpolateColor(progress, inputRange, colors) */
   interpolateColor: typeof interpolateColor;
+  /** @core Motion along SVG path: std.path(d, progress) → { x, y, angle, transform } */
+  path: typeof path & { parse: typeof createMotionPath };
+  /** @core SVG utilities: draw, filter, morph, reveal, shape, textPath */
+  svg: {
+    draw: typeof draw;
+    filter: typeof filter;
+    morph: typeof morph;
+    reveal: typeof reveal;
+    shape: typeof shape;
+    textPath: typeof textPath;
+  };
 }
 

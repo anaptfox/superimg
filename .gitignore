@@ -50,6 +50,7 @@ out/
 # WASM artifacts
 *.wasm
 
+
 .private/
 .superimg/
 private/
