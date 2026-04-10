@@ -5,7 +5,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     name: "Jane Doe",
     title: "Senior Engineer, Acme Corp",
     accentColor: "#3b82f6",

@@ -2,7 +2,7 @@ import { defineScene } from "superimg";
 import { timeline } from "@superimg/stdlib/timeline";
 
 export default defineScene({
-  defaults: {
+  data: {
     title: "Tailwind v4",
     features: ["Utility-First", "Grid Layout", "Flexbox", "Gradients"],
   },

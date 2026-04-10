@@ -19,7 +19,7 @@ interface TemplateInfo {
     duration?: number | string;
     fonts?: string[];
   };
-  defaults: Record<string, unknown>;
+  data: Record<string, unknown>;
   totalFrames: number;
   durationSeconds: number;
 }
@@ -71,7 +71,7 @@ async function getTemplateInfo(templatePath: string): Promise<TemplateInfo> {
       duration: config.duration ?? durationSeconds,
       fonts: config.fonts,
     },
-    defaults: template.defaults ?? {},
+    data: template.data ?? {},
     totalFrames,
     durationSeconds,
   };
@@ -82,7 +82,7 @@ export function registerTemplateInfoTool(server: McpServer, options: SuperimgMcp
     "template_info",
     {
       description:
-        "Get metadata about a SuperImg template including config, defaults, dimensions, and duration.",
+        "Get metadata about a SuperImg template including config, data, dimensions, and duration.",
       inputSchema: {
         template: z.string().describe("Path to the template file (*.video.ts)"),
       },
@@ -109,8 +109,8 @@ export function registerTemplateInfoTool(server: McpServer, options: SuperimgMcp
           lines.push(`  Fonts: ${info.config.fonts.join(", ")}`);
         }
 
-        if (Object.keys(info.defaults).length > 0) {
-          lines.push("", "Defaults:", JSON.stringify(info.defaults, null, 2));
+        if (Object.keys(info.data).length > 0) {
+          lines.push("", "Data:", JSON.stringify(info.data, null, 2));
         }
 
         return {

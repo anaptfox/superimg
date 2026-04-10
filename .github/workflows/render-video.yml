@@ -1,0 +1,133 @@
+name: Render Videos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.video.ts"
+      - "**.video.js"
+      - "**.data.ts"
+      - "**.data.js"
+      - "CHANGELOG.md"
+  workflow_dispatch:
+    inputs:
+      template:
+        description: "Template path to render (leave empty to render all changed)"
+        required: false
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      templates: ${{ steps.detect.outputs.templates }}
+      has-templates: ${{ steps.detect.outputs.has-templates }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed templates
+        id: detect
+        run: |
+          TEMPLATES="[]"
+
+          if [ -n "${{ github.event.inputs.template }}" ]; then
+            # Manual trigger with specific template
+            TEMPLATES=$(echo '["${{ github.event.inputs.template }}"]')
+          else
+            # Auto-detect from changed files
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+            TEMPLATE_LIST=""
+
+            # Direct template changes
+            for f in $CHANGED; do
+              if echo "$f" | grep -qE '\.video\.(ts|js)$'; then
+                TEMPLATE_LIST="$TEMPLATE_LIST\"$f\","
+              fi
+            done
+
+            # Data file changes → find associated template
+            for f in $CHANGED; do
+              if echo "$f" | grep -qE '\.data\.(ts|js|json)$'; then
+                BASE=$(echo "$f" | sed -E 's/\.data\.(ts|js|json)$/.video.ts/')
+                if [ -f "$BASE" ]; then
+                  TEMPLATE_LIST="$TEMPLATE_LIST\"$BASE\","
+                fi
+                # Also try .video.js
+                BASE_JS=$(echo "$f" | sed -E 's/\.data\.(ts|js|json)$/.video.js/')
+                if [ -f "$BASE_JS" ]; then
+                  TEMPLATE_LIST="$TEMPLATE_LIST\"$BASE_JS\","
+                fi
+              fi
+            done
+
+            # CHANGELOG.md → render changelog video
+            if echo "$CHANGED" | grep -q "^CHANGELOG.md$"; then
+              if [ -f "videos/changelog/changelog.video.ts" ]; then
+                TEMPLATE_LIST="$TEMPLATE_LIST\"videos/changelog/changelog.video.ts\","
+              fi
+            fi
+
+            # Deduplicate and build JSON array
+            if [ -n "$TEMPLATE_LIST" ]; then
+              TEMPLATE_LIST=$(echo "$TEMPLATE_LIST" | sed 's/,$//')
+              TEMPLATES="[${TEMPLATE_LIST}]"
+              # Deduplicate
+              TEMPLATES=$(echo "$TEMPLATES" | jq -c 'unique')
+            fi
+          fi
+
+          echo "templates=$TEMPLATES" >> "$GITHUB_OUTPUT"
+          if [ "$TEMPLATES" = "[]" ]; then
+            echo "has-templates=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-templates=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Templates to render: $TEMPLATES"
+
+  render:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has-templates == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Render templates
+        run: |
+          TEMPLATES='${{ needs.detect-changes.outputs.templates }}'
+          echo "$TEMPLATES" | jq -r '.[]' | while read -r template; do
+            echo "Rendering: $template"
+            node ./apps/superimg/dist/cli.js render "$template" -y
+          done
+
+      - name: Upload rendered videos
+        uses: actions/upload-artifact@v4
+        with:
+          name: superimg-videos
+          path: output/
+          if-no-files-found: warn

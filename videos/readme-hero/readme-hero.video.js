@@ -3,7 +3,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     tagline: "TypeScript in, MP4 out.",
   },
 
@@ -115,7 +115,7 @@ export default defineScene({
     const videoProgress = std.math.clamp((time - 3.5) / 2.0, 0, 0.85);
 
     return `
-      <div style="${std.css({ width, height, position: "relative" })};${std.css.center()}; flex-direction: column;">
+      <div style="${std.css({ width, height, position: "relative" }, std.css.center())}; flex-direction: column;">
         
         <!-- Subtle grid background -->
         <div style="position: absolute; inset: 0; 

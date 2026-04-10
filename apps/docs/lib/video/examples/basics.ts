@@ -108,7 +108,7 @@ export default defineScene({
 });`;
 
 export const COMPLETE_TEMPLATE = `// Complete Template
-// Demonstrates config (width, fps, duration) and defaults (data) together
+// Demonstrates config (width, fps, duration) and data together
 
 import { defineScene } from "superimg";
 
@@ -119,7 +119,7 @@ export default defineScene({
     fps: 30,
     duration: 4,
   },
-  defaults: {
+  data: {
     title: "Welcome",
     subtitle: "Customize via data",
     accentColor: "#667eea",

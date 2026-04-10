@@ -185,13 +185,16 @@ Convert objects to inline CSS strings.
 
 ```typescript
 // Object to inline style
-std.css(styles: Record<string, string | number>): string
+std.css(...args: (Record<string, string | number> | string)[]): string
 
 // Flexbox centering
 std.css.center(): string
 
 // Absolute fill parent
 std.css.fill(): string
+
+// Flexbox row layout
+std.css.row(): string
 
 // Flexbox column stack
 std.css.stack(): string
@@ -206,7 +209,7 @@ std.css.stack(): string
 **Examples:**
 ```typescript
 // Root container
-const containerStyle = std.css({ width, height }) + ";" + std.css.center();
+const containerStyle = std.css({ width, height }, std.css.center());
 
 // Animated element
 const elementStyle = std.css({

@@ -28,8 +28,8 @@ export default defineScene({
     const { std, sceneProgress, width, height, data } = ctx;
     const { style } = std.motion.enter(sceneProgress, { y: 30 });
     return `
-      <div style="${std.css({ width, height })};${std.css.center()}">
-        <div style="${style};${std.css({ color: data.accentColor, fontSize: 64 })}">${data.message}</div>
+      <div style="${std.css({ width, height }, std.css.center())}">
+        <div style="${std.css({ color: data.accentColor, fontSize: 64 }, style)}">${data.message}</div>
       </div>
     `;
   },

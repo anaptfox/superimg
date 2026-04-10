@@ -12,14 +12,15 @@ export default defineScene({
       .brand { font-size: 18px; text-transform: uppercase; letter-spacing: 4px; opacity: 0.6; }
     `],
   },
-  defaults: {
+  data: {
     heading: "Main Content",
     body: "Shared data flows via compose().",
+    brandName: undefined as string | undefined,
   },
   render(ctx) {
     const opacity = ctx.std.tween(0, 1, ctx.sceneProgress * 2, "easeOutCubic");
     return `
-      <div style="${ctx.std.css.fill()};${ctx.std.css.center()}">
+      <div style="${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())}">
         <div class="container">
           ${ctx.data.brandName ? `<div class="brand">${ctx.data.brandName}</div>` : ""}
           <h1 style="${ctx.std.css({ opacity })}">${ctx.data.heading}</h1>

@@ -18,11 +18,20 @@ export function compileTemplate(bundledCode: string): CompileResult {
       return { error: { message: "Template must use defineScene({ render(ctx) { ... } })" } };
     }
 
+    // Migration guard: helpful error if using old `defaults` field
+    if (def.defaults && !def.data) {
+      throw new Error(
+        "`defaults` has been renamed to `data` in defineScene().\n\n" +
+        "  Before:  defineScene({ defaults: { ... } })\n" +
+        "  After:   defineScene({ data: { ... } })\n"
+      );
+    }
+
     return {
       template: {
         render: def.render,
         config: def.config,
-        defaults: def.defaults,
+        data: def.data,
       },
     };
   } catch (e) {

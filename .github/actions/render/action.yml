@@ -1,0 +1,100 @@
+name: "SuperImg Render"
+description: "Render SuperImg video templates (.video.ts) to MP4 in CI"
+branding:
+  icon: "video"
+  color: "purple"
+
+inputs:
+  template:
+    description: "Path to .video.ts or .video.js template file"
+    required: true
+  output:
+    description: "Output file or directory path"
+    required: false
+    default: "output/"
+  width:
+    description: "Override video width (pixels)"
+    required: false
+  height:
+    description: "Override video height (pixels)"
+    required: false
+  fps:
+    description: "Override frames per second"
+    required: false
+  superimg-version:
+    description: "SuperImg npm version to install (ignored if superimg is in package.json)"
+    required: false
+    default: "latest"
+  upload-artifact:
+    description: "Upload rendered video as GitHub artifact"
+    required: false
+    default: "true"
+  artifact-name:
+    description: "Artifact name when uploading"
+    required: false
+    default: "superimg-videos"
+
+outputs:
+  video-path:
+    description: "Path to the rendered video file"
+    value: ${{ steps.render.outputs.video-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ hashFiles('**/package.json') }}
+        restore-keys: playwright-${{ runner.os }}-
+
+    - name: Install SuperImg
+      shell: bash
+      run: |
+        # Use local install if available, otherwise install globally
+        if [ -f "package.json" ] && grep -q '"superimg"' package.json 2>/dev/null; then
+          echo "Found superimg in package.json, using local install"
+          if [ -f "pnpm-lock.yaml" ]; then
+            npm install -g pnpm
+            pnpm install --frozen-lockfile
+          elif [ -f "yarn.lock" ]; then
+            yarn install --frozen-lockfile
+          else
+            npm ci
+          fi
+        else
+          echo "Installing superimg@${{ inputs.superimg-version }} globally"
+          npm install -g superimg@${{ inputs.superimg-version }}
+        fi
+
+    - name: Install Playwright Chromium
+      shell: bash
+      run: npx playwright install chromium --with-deps
+
+    - name: Render video
+      id: render
+      shell: bash
+      run: |
+        ARGS="-y"
+        if [ -n "${{ inputs.output }}" ]; then ARGS="$ARGS -o ${{ inputs.output }}"; fi
+        if [ -n "${{ inputs.width }}" ]; then ARGS="$ARGS -w ${{ inputs.width }}"; fi
+        if [ -n "${{ inputs.height }}" ]; then ARGS="$ARGS -h ${{ inputs.height }}"; fi
+        if [ -n "${{ inputs.fps }}" ]; then ARGS="$ARGS --fps ${{ inputs.fps }}"; fi
+
+        # Use npx to find the right binary (local or global)
+        npx superimg render "${{ inputs.template }}" $ARGS
+
+        echo "video-path=${{ inputs.output }}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload artifact
+      if: inputs.upload-artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.output }}

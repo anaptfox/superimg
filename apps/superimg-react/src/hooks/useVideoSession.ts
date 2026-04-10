@@ -76,7 +76,7 @@ export interface VideoSessionReturn {
   compile: (code: string) => Promise<void>;
   /** Set a pre-compiled template directly */
   setTemplate: (template: TemplateModule | ComposedTemplate) => void;
-  /** Set template data (merged with template.defaults, overrides on conflict) */
+  /** Set template data (merged with template.data, overrides on conflict) */
   setData: (data: Record<string, unknown>) => void;
   /** Current compiled template (null if not compiled) */
   template: TemplateModule | ComposedTemplate | null;
@@ -209,10 +209,10 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
       if (!template || !preview.ready) return;
 
       try {
-        const defaults =
-          "defaults" in template ? template.defaults : undefined;
+        const templateData =
+          "data" in template ? template.data : undefined;
         const mergedData = {
-          ...(defaults ?? {}),
+          ...(templateData ?? {}),
           ...dataRef.current,
         };
         const totalFrames =
@@ -282,7 +282,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
     [compiler, player]
   );
 
-  // Set template data (merged with template.defaults)
+  // Set template data (merged with template.data)
   const setData = useCallback(
     (data: Record<string, unknown>) => {
       dataRef.current = { ...dataRef.current, ...data };
@@ -339,10 +339,10 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
       const renderAtExportSize = async (frame: number) => {
         if (!template) return;
 
-        const defaults =
-          "defaults" in template ? template.defaults : undefined;
+        const templateData =
+          "data" in template ? template.data : undefined;
         const mergedData = {
-          ...(defaults ?? {}),
+          ...(templateData ?? {}),
           ...dataRef.current,
         };
         const ctx = createRenderContext(

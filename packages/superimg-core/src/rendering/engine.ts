@@ -232,7 +232,7 @@ export async function executeRenderPlan<TFrame>(
 
   try {
     for (let frame = 0; frame < totalFrames; frame++) {
-      const mergedData = { ...(template.defaults ?? {}), ...(data ?? {}) };
+      const mergedData = { ...(template.data ?? {}), ...(data ?? {}) };
       const ctx = createRenderContext(
         frame,
         fps,

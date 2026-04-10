@@ -88,7 +88,7 @@ export function initExportHandlers(
 
       const renderAtExportSize = async (frame: number) => {
         if (exportAbortController?.signal.aborted) throw new DOMException("Aborted", "AbortError");
-        const mergedData = template.defaults ?? {};
+        const mergedData = template.data ?? {};
         const ctx = createRenderContext(frame, fps, totalFrames, w, h, mergedData);
         const html = template.render(ctx);
         const compositeHtml = buildCompositeHtml(html, template.config?.background, w, h);

@@ -7,7 +7,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
   },
-  defaults: {
+  data: {
     title: "Project Activity",
     accentColor: "#38bdf8",
     months: [] as string[],
@@ -16,7 +16,7 @@ export default defineScene({
   render({ sceneTimeSeconds: t, data, std, width, height }) {
     const { title, months, series, accentColor } = data;
     if (!series.length || !months.length) {
-      return `<div style="${std.css({ width, height, background: "#090a10" })};${std.css.center()}">
+      return `<div style="${std.css({ width, height, background: "#090a10" }, std.css.center())}">
         <div style="color:rgba(255,255,255,0.35); font:600 28px system-ui;">Not enough git history</div>
       </div>`;
     }

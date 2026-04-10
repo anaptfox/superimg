@@ -6,7 +6,7 @@ import type { Checkpoint } from "./checkpoint.js";
 
 
 /**
- * Define a template module with full type inference from defaults.
+ * Define a template module with full type inference.
  * This is the recommended way to create templates.
  *
  * @example
@@ -14,7 +14,7 @@ import type { Checkpoint } from "./checkpoint.js";
  * import { defineScene } from 'superimg';
  *
  * export default defineScene({
- *   defaults: { title: 'Hello', color: '#fff' },
+ *   data: { title: 'Hello', color: '#fff' },
  *   config: { width: 1920, height: 1080, fps: 30, duration: 5 },
  *   render(ctx) {
  *     return `<div style="color: ${ctx.data.color}">${ctx.data.title}</div>`;
@@ -96,7 +96,7 @@ export interface RenderContext<TData = Record<string, unknown>> {
   isSquare: boolean;
 
   // === Data ===
-  /** Template data (merged from template defaults + incoming data) */
+  /** Template data (merged from template data + companion data + incoming data) */
   data: TData;
 
   /** Resolved static assets with full metadata (from config.assets) */
@@ -137,7 +137,7 @@ export interface CssViewport {
 // =============================================================================
 
 /**
- * A template module exports a render function and optional config/defaults.
+ * A template module exports a render function and optional config/data.
  */
 export interface TemplateModule<
   TData = Record<string, unknown>,
@@ -146,8 +146,8 @@ export interface TemplateModule<
   render: (ctx: RenderContext<TData>) => string;
   /** Optional configuration */
   config?: TemplateConfig;
-  /** Optional default data values (merged with incoming data) */
-  defaults?: Partial<TData>;
+  /** Static data values (merged with companion .data.ts and incoming data) */
+  data?: Partial<TData>;
 }
 
 export interface OutputPreset {
@@ -350,7 +350,7 @@ export interface ResolvedScene {
 }
 
 /** Output of compose() - first-class composed video with scene access */
-export interface ComposedTemplate<TShared = Record<string, unknown>> {
+export interface ComposedTemplate {
   readonly type: "composed";
   readonly scenes: readonly ResolvedScene[];
   readonly totalFrames: number;

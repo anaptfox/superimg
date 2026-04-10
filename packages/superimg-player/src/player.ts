@@ -453,11 +453,11 @@ export class Player {
       return;
     }
 
-    // Build context: merge template.defaults with external data (ComposedTemplate has no defaults)
-    const defaults =
-      "defaults" in this.template ? this.template.defaults : undefined;
+    // Build context: merge template.data with external data (ComposedTemplate has no data field)
+    const templateData =
+      "data" in this.template ? this.template.data : undefined;
     const mergedData = {
-      ...(defaults ?? {}),
+      ...(templateData ?? {}),
       ...this._data,
     };
     const ctx = createRenderContext(
@@ -618,7 +618,7 @@ export class Player {
   }
 
   /**
-   * Set template data (merged with template.defaults, overrides on conflict).
+   * Set template data (merged with template.data, overrides on conflict).
    * Re-renders the current frame.
    */
   setData(data: Record<string, unknown>): void {
@@ -921,8 +921,8 @@ export class Player {
     const quality = options?.quality ?? 0.92;
 
     // Build render context for this frame
-    const defaults = "defaults" in this.template ? this.template.defaults : undefined;
-    const mergedData = { ...(defaults ?? {}), ...this._data };
+    const templateData = "data" in this.template ? this.template.data : undefined;
+    const mergedData = { ...(templateData ?? {}), ...this._data };
     const ctx = createRenderContext(
       targetFrame,
       this._fps,

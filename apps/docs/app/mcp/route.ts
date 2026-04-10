@@ -18,7 +18,7 @@ const CREATE_VIDEO_DESCRIPTION = `Create a SuperImg video template and open the 
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     title: "Hello",
     accentColor: "#667eea",
   },
@@ -42,7 +42,7 @@ export default defineScene({
 - sceneDurationSeconds: total scene duration
 - width, height: canvas pixels
 - isPortrait, isLandscape: orientation booleans
-- data: template data (merged with defaults)
+- data: template data (merged with data defaults)
 - std: standard library (see below)
 - fps: frames per second
 
@@ -63,11 +63,13 @@ export default defineScene({
   std.color.lighten(color, amount), std.color.darken(color, amount)
   std.color.hsl(h, s, l) — create HSL string
 
-### std.css — object-to-inline-style (auto-px for numbers except opacity/zIndex/lineHeight)
+### std.css — object-to-inline-style (auto-px for numbers except opacity/zIndex/lineHeight). Variadic: combine objects and presets in one call.
   std.css({ width, height, opacity, transform }) → "width:1920px;height:1080px;opacity:0.8;transform:..."
+  std.css({ width, height }, std.css.center()) → combines object + preset into one style string
   std.css.center() → "display:flex;align-items:center;justify-content:center"
   std.css.fill()   → "position:absolute;top:0;left:0;width:100%;height:100%"
   std.css.stack()  → "display:flex;flex-direction:column"
+  std.css.row()    → "display:flex;flex-direction:row"
 
 ### std.timeline — declarative timing
   const tl = std.timeline(time, duration);
@@ -103,7 +105,7 @@ items.get(1).progress  // Second item's progress
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     title: "Launch Day",
     subtitle: "Something amazing is coming",
     accentColor: "#667eea",
@@ -127,7 +129,7 @@ export default defineScene({
     const lineWidth = std.tween(0, 100, lineEnter, "easeOutCubic") * alive;
 
     return \\\`
-      <div style="\${std.css({ width, height, background: '#0f0f23', fontFamily: 'system-ui, sans-serif' })};\${std.css.center()}">
+      <div style="\${std.css({ width, height, background: '#0f0f23', fontFamily: 'system-ui, sans-serif' }, std.css.center())}">
         <div style="text-align:center">
           <div style="\${std.css({ width: lineWidth + '%', maxWidth: 400, height: 2, background: std.color.alpha(accentColor, 0.8), margin: '0 auto 24px' })}"></div>
           <h1 style="\${std.css({ fontSize: 72, fontWeight: 700, color: accentColor, margin: 0, opacity: titleOpacity, transform: 'translateY(' + titleY + 'px)' })}">\${title}</h1>

@@ -36,7 +36,7 @@ const INITIAL_FORM: FormState = {
 const TEMPLATE_CODE = `import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     name: "GO!",
     startFrom: 5,
     color: "#ffffff",
@@ -55,7 +55,7 @@ export default defineScene({
       height,
       background: data.gradient,
       fontFamily: "system-ui, sans-serif",
-    }) + ";" + std.css.center();
+    }, std.css.center());
 
     const num = std.css({
       fontSize: data.fontSize,

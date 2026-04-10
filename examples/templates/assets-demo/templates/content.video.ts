@@ -29,25 +29,25 @@ export default defineScene({
       .progress-fill { height: 100%; background: white; border-radius: 2px; }
     `],
   },
-  defaults: {
+  data: {
     heading: "Main Content",
     body: "This demonstrates the asset API.",
     showProgress: true,
     textColor: "#ffffff",
+    brandName: undefined as string | undefined,
   },
   render(ctx) {
-    const { std, sceneProgress, data, shared } = ctx;
-    const { heading, body, showProgress, textColor } = data;
+    const { std, sceneProgress, data } = ctx;
+    const { heading, body, showProgress, textColor, brandName } = data;
 
     const headingOpacity = std.math.clamp(sceneProgress * 3, 0, 1);
     const bodyOpacity = std.math.clamp((sceneProgress - 0.2) * 2, 0, 1);
     const headingY = std.tween(20, 0, headingOpacity, "easeOutCubic");
-    const brandName = shared?.brandName;
 
     const headingStyle = std.css({ opacity: headingOpacity, transform: "translateY(" + headingY + "px)" });
 
     return `
-    <div style="${std.css.fill()};${std.css.center()};${std.css({ color: textColor })}">
+    <div style="${std.css(std.css.fill(), std.css.center(), std.css({ color: textColor }))}">
       <div class="container">
         ${brandName ? `<div class="brand">${brandName}</div>` : ""}
         <h1 class="heading" style="${headingStyle}">${heading}</h1>

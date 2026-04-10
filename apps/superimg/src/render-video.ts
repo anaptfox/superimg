@@ -10,6 +10,7 @@ import type { EncodingOptions } from "@superimg/types";
 import { mergeEncoding } from "./cli/utils/merge-encoding.js";
 import { discoverTemplateAssets } from "./cli/utils/asset-discovery.js";
 import { prepareAssets, resolveAudioUrl } from "./utils/prepare-assets.js";
+import { loadCompanionData } from "./cli/utils/load-companion-data.js";
 
 export interface RenderVideoOptions {
   /** Output file path (writes to disk when provided) */
@@ -40,6 +41,12 @@ export async function renderVideo(
 ): Promise<Uint8Array> {
   const resolvedPath = resolve(templatePath);
   const templateData = await parseTemplate(resolvedPath);
+
+  // Load companion .data.{ts,js,json} file, merge with explicit options.data
+  const companionData = await loadCompanionData(resolvedPath);
+  const mergedData = companionData || options.data
+    ? { ...companionData, ...options.data }
+    : undefined;
 
   const resolvedConfig = resolveRenderConfig({
     cli: {
@@ -82,7 +89,7 @@ export async function renderVideo(
       tailwind: templateData.templateConfig?.tailwind,
       outputName: "default",
       encoding: mergeEncoding(templateData.templateConfig?.encoding, options.encoding),
-      data: options.data,
+      data: mergedData,
       watermark: templateData.templateConfig?.watermark,
       background: templateData.templateConfig?.background,
       audio: resolvedAudio,

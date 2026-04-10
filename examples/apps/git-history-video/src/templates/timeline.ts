@@ -7,7 +7,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
   },
-  defaults: {
+  data: {
     title: "Project Timeline",
     events: [] as { date: string; title: string; description: string }[],
     accentColor: "#38bdf8",
@@ -15,7 +15,7 @@ export default defineScene({
   render({ sceneTimeSeconds: t, data, std, width, height, isPortrait }) {
     const { title, events, accentColor } = data;
     if (!events.length) {
-      return `<div style="${std.css({ width, height, background: "#08080f" })};${std.css.center()}">
+      return `<div style="${std.css({ width, height, background: "#08080f" }, std.css.center())}">
         <div style="color:rgba(255,255,255,0.3); font-size:24px; font-family:system-ui">No events</div>
       </div>`;
     }

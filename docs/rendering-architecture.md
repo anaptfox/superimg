@@ -369,8 +369,8 @@ try {
 │  │  COMPILE                                                 │   │
 │  │  compileTemplate(code) → TemplateModule { render() }     │   │
 │  │                                                          │   │
-│  │  Templates use defineScene({ render, config, defaults })  │   │
-│  │  Compiler extracts render, config, defaults from default   │   │
+│  │  Templates use defineScene({ render, config, data })       │   │
+│  │  Compiler extracts render, config, data from default       │   │
 │  │                                                          │   │
 │  │  Injects: std (stdlib namespace)                         │   │
 │  └────────────────────────┬────────────────────────────────┘   │
@@ -378,7 +378,7 @@ try {
 │                           ▼                                     │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │  MERGE DATA                                              │   │
-│  │  { ...template.defaults, ...incomingData } → ctx.data   │   │
+│  │  { ...template.data, ...incomingData } → ctx.data       │   │
 │  └────────────────────────┬────────────────────────────────┘   │
 │                           │                                     │
 │                           ▼                                     │
@@ -455,7 +455,7 @@ try {
 
 | File | Description |
 |------|-------------|
-| `@superimg/core/src/compiler.ts` | `compileTemplate()` - Template compilation, extracts defaults |
+| `@superimg/core/src/compiler.ts` | `compileTemplate()` - Template compilation, extracts data |
 | `@superimg/core/src/wasm.ts` | `createRenderContext()` |
 | `@superimg/core/src/html.ts` | `buildCompositeHtml()` — background + template HTML compositing |
 | `@superimg/core/src/constants.ts` | Default width, height, fps, duration |

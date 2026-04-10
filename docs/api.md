@@ -82,7 +82,7 @@ interface CssViewport {
 import { defineScene } from 'superimg';
 
 export default defineScene({
-  defaults: { title: 'Hello' },
+  data: { title: 'Hello' },
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
 
@@ -147,12 +147,20 @@ std.css({ display: 'flex', alignItems: 'center', transform: `scale(${scale})` })
 // → "display:flex;align-items:center;transform:scale(1.2)"
 ```
 
+Variadic form — combine objects and presets in one call:
+
+```typescript
+std.css({ width, height }, std.css.center())
+// → "width:1920px;height:1080px;display:flex;align-items:center;justify-content:center"
+```
+
 Layout presets:
 
 ```typescript
 std.css.fill()   // position:absolute; top:0; left:0; width:100%; height:100%
 std.css.center() // display:flex; align-items:center; justify-content:center
 std.css.stack()  // display:flex; flex-direction:column
+std.css.row()    // display:flex; flex-direction:row
 ```
 
 #### `std.tween`
@@ -413,7 +421,7 @@ The recommended way to create a template is with `defineScene`:
 import { defineScene } from 'superimg';
 
 export default defineScene({
-  defaults: {
+  data: {
     title: 'Hello',
     color: '#ffffff',
   },
@@ -436,7 +444,7 @@ export default defineScene({
 });
 ```
 
-`defineScene` is an identity function that provides full type inference from the defaults — no manual type annotations needed.
+`defineScene` is an identity function that provides full type inference from the data — no manual type annotations needed.
 
 ### TemplateModule Interface
 
@@ -447,7 +455,7 @@ interface TemplateModule<TData = Record<string, unknown>> {
 
   // Optional
   config?: TemplateConfig;
-  defaults?: Partial<TData>;
+  data?: Partial<TData>;
 }
 
 interface TemplateConfig {
@@ -552,5 +560,5 @@ type HoverBehavior = 'none' | 'play' | 'preview-scrub';
 ## See Also
 
 - [Project Configuration](./project-config.md) - Cascading config and video discovery
-- [Templates & Data](./templates-and-data.md) - Creating templates with defaults
+- [Templates & Data](./templates-and-data.md) - Creating templates with data
 - [Player Guide](./player-guide.md) - Browser playback

@@ -189,7 +189,7 @@ describe("validateAITemplate", () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
         export default defineScene({
-          defaults: { title: 'Test' },
+          data: { title: 'Test' },
           render(ctx) { return '<div>' + ctx.data.title + '</div>'; }
         });
       `),
@@ -284,11 +284,11 @@ describe("validateAITemplate", () => {
     expect(result.samples).toHaveLength(2);
   });
 
-  it("merges template defaults with provided data", async () => {
+  it("merges template data with provided data", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
         export default defineScene({
-          defaults: { name: 'Default' },
+          data: { name: 'Default' },
           render(ctx) { return '<div>' + ctx.data.name + '</div>'; }
         });
       `),

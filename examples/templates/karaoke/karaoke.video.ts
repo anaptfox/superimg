@@ -16,7 +16,7 @@ const sampleTranscript = [
 ];
 
 export default defineScene({
-  defaults: {
+  data: {
     transcript: sampleTranscript,
     accentColor: "#00d4ff",
     bgColor: "#0a0a1a",
@@ -139,7 +139,7 @@ export default defineScene({
       width,
       height,
       background: bgColor,
-    }) + ";" + std.css.center();
+    }, std.css.center());
 
     return `
       <div style="${containerStyle}">

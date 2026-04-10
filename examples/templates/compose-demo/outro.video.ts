@@ -12,11 +12,11 @@ export default defineScene({
       .cta { font-size: 64px; font-weight: 700; }
     `],
   },
-  defaults: { cta: "Thanks for watching!" },
+  data: { cta: "Thanks for watching!" },
   render(ctx) {
     const opacity = ctx.std.tween(0, 1, ctx.sceneProgress * 2, "easeOutCubic");
     return `
-      <div style="${ctx.std.css.fill()};${ctx.std.css.center()}">
+      <div style="${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())}">
         <h1 class="cta" style="${ctx.std.css({ opacity })}">${ctx.data.cta}</h1>
       </div>
     `;
