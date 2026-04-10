@@ -52,15 +52,11 @@ function resolveTransition(
  * Accepts raw TemplateModules or SceneDefinitions (from scene()).
  *
  * @param scenes - Array of template modules or scene definitions
- * @param shared - Optional data merged into ctx.data for all scenes
  * @returns ComposedTemplate with scene access and navigation
  */
-export function compose<
-  TShared extends Record<string, unknown> = Record<string, unknown>,
->(
+export function compose(
   scenes: (TemplateModule | SceneDefinition)[],
-  shared?: TShared
-): ComposedTemplate<TShared> {
+): ComposedTemplate {
   if (scenes.length === 0) {
     throw new Error("compose() requires at least one scene");
   }
@@ -99,10 +95,7 @@ export function compose<
       endFrame: currentFrame + totalFrames,
       totalFrames,
       duration: durationSeconds,
-      data: { ...template.defaults, ...shared, ...def.data } as Record<
-        string,
-        unknown
-      >,
+      data: { ...template.data, ...def.data } as Record<string, unknown>,
       enterTransition,
       exitTransition,
     });
@@ -124,7 +117,7 @@ export function compose<
     duration: totalDurationSeconds,
   };
 
-  const result: ComposedTemplate<TShared> = {
+  const result: ComposedTemplate = {
     type: "composed",
     scenes: resolvedScenes,
     totalFrames,
@@ -165,7 +158,7 @@ export function compose<
         sceneProgress,
         sceneTotalFrames: scene.totalFrames,
         sceneDurationSeconds: scene.duration,
-        // scene.data already has: defaults + shared + def.data
+        // scene.data already has: defaults + def.data
         // Only merge runtime ctx.data on top
         data: { ...scene.data, ...ctx.data } as RenderContext["data"],
       };

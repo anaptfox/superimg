@@ -2,7 +2,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     message: "Hello, SuperImg!",
     accentColor: "#667eea",
   },
@@ -26,7 +26,7 @@ export default defineScene({
     const y = std.tween(30, 0, progress, "easeOutCubic");
 
     return `
-      <div style="${std.css({ width, height })};${std.css.center()}">
+      <div style="${std.css({ width, height }, std.css.center())}">
         <div style="${std.css({
           opacity,
           transform: "translateY(" + y + "px)",

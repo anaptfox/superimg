@@ -5,7 +5,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     title: "Hello, SuperImg!",
     subtitle: "Create stunning videos from code",
     accentColor: "#667eea",
@@ -63,7 +63,7 @@ export default defineScene({
     const lineWidth = std.tween(0, 100, lineEnter, "easeOutCubic") * (1 - exitProgress);
     const lineColor = std.color.alpha(accentColor, 0.8 * (1 - exitProgress));
 
-    const bodyStyle = std.css({ width, height, position: "relative" }) + ";" + std.css.center();
+    const bodyStyle = std.css({ width, height, position: "relative" }, std.css.center());
     const lineStyle = std.css({ width: lineWidth + "%", maxWidth: lineMaxWidth, background: lineColor });
     const titleStyle = std.css({ fontSize: titleSize, color: accentColor, opacity: titleOpacity, transform: "translateY(" + titleY + "px)" });
     const subtitleStyle = std.css({ fontSize: subtitleSize, opacity: subtitleOpacity, transform: "translateY(" + subtitleY + "px)" });

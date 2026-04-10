@@ -1,4 +1,4 @@
-//! Type inference utilities for auto-generating forms from template defaults
+//! Type inference utilities for auto-generating forms from template data
 
 export type FieldType =
   | "text"
@@ -80,17 +80,17 @@ export function humanizeKey(key: string): string {
 }
 
 /**
- * Generate a form schema from template defaults
+ * Generate a form schema from template data
  * Recursively handles nested objects up to maxDepth
  */
 export function inferSchema(
-  defaults: Record<string, unknown>,
+  data: Record<string, unknown>,
   maxDepth = 2,
   currentDepth = 0
 ): FieldSchema[] {
   const schema: FieldSchema[] = [];
 
-  for (const [key, value] of Object.entries(defaults)) {
+  for (const [key, value] of Object.entries(data)) {
     // Skip functions and symbols
     if (typeof value === "function" || typeof value === "symbol") {
       continue;

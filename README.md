@@ -92,7 +92,7 @@ Pass data at render time. Same template, different content:
 
 ```typescript
 export default defineScene({
-  defaults: {
+  data: {
     productName: 'Widget',
     price: '$99',
   },
@@ -157,7 +157,7 @@ npm install superimg-react     # React player
 
 - [API Reference](./docs/api.md) — RenderContext, std.tween, and the full standard library
 - [Project Configuration](./docs/project-config.md) — Cascading config and video discovery
-- [Templates & Data](./docs/templates-and-data.md) — Creating templates with defaults
+- [Templates & Data](./docs/templates-and-data.md) — Creating templates with data
 - [Examples](./examples/) — Working templates to copy from
 
 ## License

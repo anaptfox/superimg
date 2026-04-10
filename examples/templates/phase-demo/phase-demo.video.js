@@ -6,7 +6,7 @@ import { defineScene } from "superimg";
 import { timeline } from "@superimg/stdlib/timeline";
 
 export default defineScene({
-  defaults: {
+  data: {
     message: "Hello, Phases!",
     accentColor: "#8b5cf6",
   },
@@ -74,7 +74,7 @@ export default defineScene({
       content = card({ scale: 1, opacity: 1, y: 0 });
     }
 
-    const wrapperStyle = std.css({ width, height }) + ";" + std.css.center();
+    const wrapperStyle = std.css({ width, height }, std.css.center());
 
     return `<div style="${wrapperStyle}">${content}</div>`;
   },

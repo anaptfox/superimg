@@ -22,7 +22,7 @@ export default defineScene({
       }
     `],
   },
-  defaults: {
+  data: {
     cta: "Thanks for watching!",
     url: undefined as string | undefined,
     fadeOut: true,
@@ -41,7 +41,7 @@ export default defineScene({
     const ctaStyle = std.css({ transform: "scale(" + pulse + ")" });
 
     return `
-    <div style="${std.css.fill()};${std.css.stack()};${std.css.center()}">
+    <div style="${std.css(std.css.fill(), std.css.stack(), std.css.center())}">
       <div class="content" style="${contentStyle}">
         <h1 class="cta" style="${ctaStyle}">${cta}</h1>
         ${url ? `<div class="url">${url}</div>` : ""}

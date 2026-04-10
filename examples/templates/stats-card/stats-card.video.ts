@@ -1,7 +1,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     symbol: "AAPL",
     companyName: "Apple Inc.",
     price: 230.50,
@@ -137,7 +137,7 @@ export default defineScene({
     const sparklineSvg = generateSparkline(sparkline, chartOpacity, accentColor);
 
     // === STYLES ===
-    const bodyStyle = std.css({ width, height }) + ";" + std.css.center();
+    const bodyStyle = std.css({ width, height }, std.css.center());
     const symbolStyle = std.css({ color: accentColor, opacity: identityOpacity });
     const companyStyle = std.css({ opacity: identityOpacity });
     const priceStyle = std.css({

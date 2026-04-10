@@ -58,13 +58,13 @@ Video is a pure function of time. \`render(ctx)\` is called once per frame, retu
 const TEMPLATE_EXAMPLE = `import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: { title: "Hello", color: "#667eea" },
+  data: { title: "Hello", color: "#667eea" },
   config: { duration: 3 },
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
     const opacity = std.tween(0, 1, sceneProgress, "easeOutCubic");
     return \\\`
-      <div style="\\\${std.css({ width, height, background: '#0f0f23' })};\\\${std.css.center()}">
+      <div style="\\\${std.css({ width, height, background: '#0f0f23' }, std.css.center())}">
         <h1 style="\\\${std.css({ color: data.color, fontSize: 64, opacity })}">\\\${data.title}</h1>
       </div>
     \\\`;
@@ -79,13 +79,13 @@ const HTML_PAGE_EXAMPLE = `<!DOCTYPE html>
     import { Player, defineScene } from 'https://esm.sh/superimg';
 
     const template = defineScene({
-      defaults: { title: "Hello", color: "#667eea" },
+      data: { title: "Hello", color: "#667eea" },
       config: { duration: 3 },
       render(ctx) {
         const { std, sceneProgress, width, height, data } = ctx;
         const opacity = std.tween(0, 1, sceneProgress, "easeOutCubic");
         return \\\`
-          <div style="\\\${std.css({ width, height, background: '#0f0f23' })};\\\${std.css.center()}">
+          <div style="\\\${std.css({ width, height, background: '#0f0f23' }, std.css.center())}">
             <h1 style="\\\${std.css({ color: data.color, fontSize: 64, opacity })}">\\\${data.title}</h1>
           </div>
         \\\`;
@@ -137,14 +137,14 @@ Help me modify this template.`;
 }
 
 const DEFAULT_TEMPLATE = `// SuperImg Template
-// 1. Define \`defaults\` below → they become editable fields in the Data panel
+// 1. Define \`data\` below → they become editable fields in the Data panel
 // 2. Access values via \`ctx.data.title\`, \`ctx.data.accentColor\`, etc.
 // 3. Changes in the Data panel instantly update the preview
 
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     title: "SuperImg Editor",
     accentColor: "#667eea",
     bgColor: "#0f0f23",
@@ -161,7 +161,7 @@ export default defineScene({
     const pulsedColor = std.color.mix(data.accentColor, "#ffffff", Math.sin(sceneTimeSeconds * 2) * 0.08 + 0.08);
 
     return \`
-      <div style="\${std.css({ width, height, background: data.bgColor })};\${std.css.center()}">
+      <div style="\${std.css({ width, height, background: data.bgColor }, std.css.center())}">
         <div style="\${std.css({
           textAlign: "center",
           fontFamily: "system-ui, sans-serif",
@@ -476,7 +476,7 @@ export default function Editor({ templateId }: EditorProps) {
               <div className="flex items-center gap-2">
                 <span>Data</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  from <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">defaults</code>
+                  from <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">data</code>
                 </span>
               </div>
               <svg
@@ -490,16 +490,16 @@ export default function Editor({ templateId }: EditorProps) {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="max-h-[200px] overflow-y-auto px-4 pb-4">
-                {session.template && !isComposedTemplate(session.template) && session.template.defaults && Object.keys(session.template.defaults).length > 0 ? (
+                {session.template && !isComposedTemplate(session.template) && session.template.data && Object.keys(session.template.data).length > 0 ? (
                   <DataForm
-                    defaults={session.template.defaults}
+                    templateData={session.template.data}
                     data={formData}
                     onChange={handleDataChange}
                     theme="dark"
                   />
                 ) : (
                   <p className="py-2 text-sm text-muted-foreground">
-                    Add a <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">defaults</code> object to your template to generate form controls here.
+                    Add a <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">data</code> object to your template to generate form controls here.
                   </p>
                 )}
               </div>

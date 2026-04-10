@@ -51,14 +51,14 @@ describe("compose", () => {
     expect(parseFloat(composed.render(ctxEnd))).toBe(1);
   });
 
-  it("data merges with correct precedence: defaults < shared < CLI", () => {
+  it("data merges with correct precedence: data < scene data < CLI", () => {
     const scene = {
-      defaults: { a: 1, b: 1, c: 1 },
+      data: { a: 1, b: 1, c: 1 },
       config: { duration: 1 },
       render: (ctx: { data: Record<string, number> }) =>
         JSON.stringify(ctx.data),
     };
-    const composed = compose([scene], { b: 2, c: 2 });
+    const composed = compose([{ template: scene, data: { b: 2, c: 2 } }]);
     const ctx = makeTestContext({ data: { c: 3 } });
 
     expect(JSON.parse(composed.render(ctx))).toEqual({ a: 1, b: 2, c: 3 });

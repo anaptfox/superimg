@@ -4,7 +4,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     items: ["Design", "Build", "Test", "Ship", "Scale", "Iterate"],
   },
 
@@ -115,7 +115,7 @@ export default defineScene({
       width,
       height,
       background: bgColor,
-    }) + ";" + std.css.center();
+    }, std.css.center());
 
     const headingStyle = std.css({
       opacity: headingOpacity,
@@ -124,7 +124,7 @@ export default defineScene({
 
     return `
       <div style="${bodyStyle}">
-        <div style="${std.css.stack()}; align-items: center;">
+        <div style="${std.css(std.css.stack())}; align-items: center;">
           <div class="heading" style="${headingStyle}">The Process</div>
           <div class="grid">
             ${cardHtml}

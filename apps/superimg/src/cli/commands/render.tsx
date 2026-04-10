@@ -19,6 +19,7 @@ import { resolveOutputPath } from "../utils/resolve-output-path.js";
 import type { EncodingOptions } from "@superimg/types";
 import { mergeEncoding } from "../utils/merge-encoding.js";
 import { prepareAssets, resolveAudioUrl } from "../../utils/prepare-assets.js";
+import { loadCompanionData } from "../utils/load-companion-data.js";
 
 interface RenderOptions {
   output?: string;
@@ -432,6 +433,9 @@ export async function renderCommand(template: string, options: RenderOptions) {
             bundledTemplateCode = await bundleTemplateCode(templateData.templateCode, resolveDir);
           }
 
+          // Load companion .data.{ts,js,json} file if present
+          const companionData = await loadCompanionData(resolvedTemplate);
+
           await engine.init();
           const assetBaseUrl = engine.getBaseUrl();
           const templateDir = dirname(resolvedTemplate);
@@ -468,6 +472,7 @@ export async function renderCommand(template: string, options: RenderOptions) {
               watermark: templateData.templateConfig?.watermark,
               background: templateData.templateConfig?.background,
               audio: resolvedAudio,
+              data: companionData,
             };
 
             const plan = createRenderPlan(job, {

@@ -17,7 +17,7 @@ console.log(message);`,
 );
 
 export default defineScene({
-  defaults: {
+  data: {
     // Dynamic code: passed in as data, highlighted per-render
     dynamicCode: `const add = (a: number, b: number) => a + b;
 const result = add(2, 3);
@@ -82,7 +82,7 @@ console.log(result); // 5`,
       theme: "dracula",
     });
 
-    const containerStyle = std.css({ width, height }) + ";" + std.css.center();
+    const containerStyle = std.css({ width, height }, std.css.center());
 
     return `
       <div style="${containerStyle}; flex-direction: column;">

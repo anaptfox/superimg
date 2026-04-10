@@ -1,4 +1,4 @@
-//! DataForm - Auto-generated form from template defaults
+//! DataForm - Auto-generated form from template data
 
 import { useState, useCallback, createContext, useContext, type CSSProperties } from "react";
 import {
@@ -11,9 +11,9 @@ import {
 export type DataFormTheme = "light" | "dark";
 
 export interface DataFormProps {
-  /** Template defaults to infer schema from */
-  defaults: Record<string, unknown>;
-  /** Current data values (merged with defaults) */
+  /** Template data to infer schema from */
+  templateData: Record<string, unknown>;
+  /** Current data values (merged with templateData) */
   data: Record<string, unknown>;
   /** Called when any field value changes */
   onChange: (data: Record<string, unknown>) => void;
@@ -368,26 +368,26 @@ function expandShortHex(hex: string): string {
 }
 
 /**
- * Auto-generated form based on template defaults
+ * Auto-generated form based on template data
  *
  * @example
  * ```tsx
  * <DataForm
- *   defaults={template.defaults}
+ *   templateData={template.data}
  *   data={currentData}
  *   onChange={(newData) => session.setData(newData)}
  * />
  * ```
  */
 export function DataForm({
-  defaults,
+  templateData,
   data,
   onChange,
   className,
   style,
   theme = "dark",
 }: DataFormProps) {
-  const schema = inferSchema(defaults);
+  const schema = inferSchema(templateData);
   const styles = getStyles(theme);
 
   const handleFieldChange = useCallback(
@@ -423,8 +423,8 @@ export function DataForm({
     );
   }
 
-  // Merge defaults with data for display
-  const mergedData = { ...defaults, ...data };
+  // Merge template data with overrides for display
+  const mergedData = { ...templateData, ...data };
 
   return (
     <ThemeContext.Provider value={theme}>

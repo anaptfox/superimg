@@ -362,14 +362,14 @@ describe("useVideoSession", () => {
     });
   });
 
-  describe("defaults and setData()", () => {
-    it("merges template.defaults into ctx.data during render", async () => {
+  describe("data and setData()", () => {
+    it("merges template.data into ctx.data during render", async () => {
       const containerRef = { current: document.createElement("div") };
       document.body.appendChild(containerRef.current);
 
       const capturedData: Record<string, unknown>[] = [];
-      const templateWithDefaults = {
-        defaults: { name: "Default", count: 42 },
+      const templateWithData = {
+        data: { name: "Default", count: 42 },
         render: (ctx: { data: Record<string, unknown> }) => {
           capturedData.push({ ...ctx.data });
           return `<div>${ctx.data.name}-${ctx.data.count}</div>`;
@@ -385,7 +385,7 @@ describe("useVideoSession", () => {
       );
 
       act(() => {
-        result.current.setTemplate(templateWithDefaults);
+        result.current.setTemplate(templateWithData);
       });
 
       await act(async () => {
@@ -405,13 +405,13 @@ describe("useVideoSession", () => {
       document.body.removeChild(containerRef.current);
     });
 
-    it("setData() overrides defaults in ctx.data", async () => {
+    it("setData() overrides data in ctx.data", async () => {
       const containerRef = { current: document.createElement("div") };
       document.body.appendChild(containerRef.current);
 
       const capturedData: Record<string, unknown>[] = [];
-      const templateWithDefaults = {
-        defaults: { name: "Default", color: "blue" },
+      const templateWithData = {
+        data: { name: "Default", color: "blue" },
         render: (ctx: { data: Record<string, unknown> }) => {
           capturedData.push({ ...ctx.data });
           return `<div>${ctx.data.name}</div>`;
@@ -427,7 +427,7 @@ describe("useVideoSession", () => {
       );
 
       act(() => {
-        result.current.setTemplate(templateWithDefaults);
+        result.current.setTemplate(templateWithData);
       });
 
       await act(async () => {

@@ -6,14 +6,14 @@ This guide covers how to create templates, define default data, pass data to sce
 
 - [Basic Templates](#basic-templates)
 - [Duration Resolution](#duration-resolution)
-- [Template Defaults](#template-defaults)
+- [Template Data](#template-data)
 - [Template Data](#template-data)
 
 ---
 
 ## Basic Templates
 
-A template is a function that receives a `RenderContext` and returns HTML. The recommended way to create templates is with `defineScene` and a `defaults` object:
+A template is a function that receives a `RenderContext` and returns HTML. The recommended way to create templates is with `defineScene` and a `data` object:
 
 ### Module Templates (recommended)
 
@@ -22,7 +22,7 @@ A template is a function that receives a `RenderContext` and returns HTML. The r
 import { defineScene } from 'superimg';
 
 export default defineScene({
-  defaults: {
+  data: {
     name: 'World',
   },
   config: {
@@ -35,7 +35,7 @@ export default defineScene({
     const { std, sceneProgress, width, height, data } = ctx;
 
     const scale = std.tween(0.8, 1, sceneProgress, 'easeOutCubic');
-    const bodyStyle = std.css({ width, height, transform: 'scale(' + scale + ')' }) + ';' + std.css.center();
+    const bodyStyle = std.css({ width, height, transform: 'scale(' + scale + ')' }, std.css.center());
 
     return `
       <div style="${bodyStyle}">
@@ -54,7 +54,7 @@ Templates can define named output presets via `config.outputs` to target multipl
 
 ```typescript
 export default defineScene({
-  defaults: { title: 'Untitled' },
+  data: { title: 'Untitled' },
   config: {
     width: 1920,
     height: 1080,
@@ -132,12 +132,20 @@ std.css({ width, height, display: 'flex', alignItems: 'center', opacity: eased }
 // → "width:1920px;height:1080px;display:flex;align-items:center;opacity:0.8"
 ```
 
+Combine objects and presets in a single call (variadic):
+
+```typescript
+std.css({ width, height }, std.css.center())
+// → "width:1920px;height:1080px;display:flex;align-items:center;justify-content:center"
+```
+
 Presets for common layouts:
 
 ```typescript
 std.css.fill()   // position:absolute; top:0; left:0; width:100%; height:100%
 std.css.center() // display:flex; align-items:center; justify-content:center
 std.css.stack()  // display:flex; flex-direction:column
+std.css.row()    // display:flex; flex-direction:row
 ```
 
 ### Template Stylesheets (Tailwind, etc.)
@@ -164,18 +172,18 @@ export default defineScene({
 
 ---
 
-## Template Defaults
+## Template Data
 
-Templates can export a `defaults` object. The runtime merges `{ ...defaults, ...incomingData }` before passing to `ctx.data`. This makes templates self-contained — they render correctly with zero configuration.
+Templates can export a `data` object. The runtime merges `{ ...data, ...incomingData }` before passing to `ctx.data`. This makes templates self-contained — they render correctly with zero configuration.
 
-### Defining Defaults
+### Defining Data
 
 ```typescript
 // templates/product.ts — using defineScene (recommended)
 import { defineScene } from 'superimg';
 
 export default defineScene({
-  defaults: {
+  data: {
     title: 'Untitled',
     price: 0,
     discount: undefined as number | undefined,
@@ -204,9 +212,9 @@ export default defineScene({
 });
 ```
 
-### Using Templates with Defaults
+### Using Templates with Data
 
-When a template has defaults, data is merged at render time. Any fields you provide override the defaults; missing fields use the default values.
+When a template has data, it is merged at render time. Any fields you provide override the data defaults; missing fields use the default values.
 
 ---
 
@@ -222,7 +230,7 @@ Data is available via `ctx.data`:
 import { defineScene } from 'superimg';
 
 export default defineScene({
-  defaults: { title: 'Untitled', subtitle: undefined, showLogo: false },
+  data: { title: 'Untitled', subtitle: undefined, showLogo: false },
   render(ctx) {
     const { data } = ctx;
     const { title, subtitle, showLogo } = data;
@@ -296,30 +304,30 @@ interface RenderContext<
 
 ## Best Practices
 
-### 1. Use defineScene with Defaults for Reusable Templates
+### 1. Use defineScene with Data for Reusable Templates
 
 ```typescript
 import { defineScene } from 'superimg';
 
-// Good - self-contained with defaults
+// Good - self-contained with data
 export default defineScene({
-  defaults: {
+  data: {
     title: 'Untitled',
     items: [] as string[],
   },
   render(ctx) {
     const { title, items } = ctx.data;
-    // ctx.data is merged from defaults + incoming data
+    // ctx.data is merged from data + incoming overrides
     return `<div>${title}</div>`;
   },
 });
 ```
 
-### 2. Use Defaults for Optional Fields
+### 2. Use Data for Optional Fields
 
 ```typescript
 export default defineScene({
-  defaults: {
+  data: {
     title: 'Hello',
     subtitle: undefined as string | undefined,  // Optional
     color: '#000',                              // Optional with default
@@ -333,7 +341,7 @@ export default defineScene({
 
 ### 3. Full Type Inference
 
-`defineScene` infers types from your `defaults` — no manual type annotations needed. `ctx.data` is automatically typed.
+`defineScene` infers types from your `data` — no manual type annotations needed. `ctx.data` is automatically typed.
 
 ### 4. Use Explicit Duration in Config
 

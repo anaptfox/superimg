@@ -22,8 +22,8 @@ export interface LoadedTemplateRenderOptions {
 }
 
 export interface LoadedTemplate {
-  /** Template defaults (from defineScene) */
-  readonly defaults: Record<string, unknown> | undefined;
+  /** Template data (from defineScene) */
+  readonly data: Record<string, unknown> | undefined;
   /** Template config (width, height, fps, duration, etc.) */
   readonly config: { width?: number; height?: number; fps?: number; duration?: Duration; fonts?: string[]; inlineCss?: string[]; stylesheets?: string[] } | undefined;
   /** Render to Uint8Array. Playwright is lazy-initialized on first call. */
@@ -35,7 +35,7 @@ export interface LoadedTemplate {
 }
 
 /**
- * Load a template from file. Returns a LoadedTemplate with .defaults, .config,
+ * Load a template from file. Returns a LoadedTemplate with .data, .config,
  * .render(), .renderToFile(), and .dispose(). Playwright is initialized lazily
  * on first .render() or .renderToFile() call.
  */
@@ -117,8 +117,8 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
   }
 
   return {
-    get defaults() {
-      return template.defaults;
+    get data() {
+      return template.data;
     },
     get config() {
       return template.config;

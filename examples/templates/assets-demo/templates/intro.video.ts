@@ -20,7 +20,7 @@ export default defineScene({
       .subtitle { font-size: 32px; font-weight: 400; opacity: 0.8; }
     `],
   },
-  defaults: {
+  data: {
     title: "Welcome",
     subtitle: undefined as string | undefined,
     accentColor: "#667eea",
@@ -36,7 +36,7 @@ export default defineScene({
     const titleBg = std.css({ background: "linear-gradient(135deg, " + accentColor + " 0%, white 100%)" });
 
     return `
-    <div style="${std.css.fill()};${std.css.center()}">
+    <div style="${std.css(std.css.fill(), std.css.center())}">
       <div class="content" style="${contentStyle}">
         <h1 class="title" style="${titleBg}">${title}</h1>
         ${subtitle ? `<p class="subtitle">${subtitle}</p>` : ""}

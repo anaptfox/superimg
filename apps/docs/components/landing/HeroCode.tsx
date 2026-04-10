@@ -7,7 +7,7 @@ import { oneDark } from "@codemirror/theme-one-dark";
 const HERO_CODE = `import { defineScene } from 'superimg'
 
 export default defineScene({
-  defaults: {
+  data: {
     title: 'This video was made with',
     highlight: '100% code',
     accentColor: '#a78bfa',
@@ -33,7 +33,7 @@ export default defineScene({
         width, height,
         background: \`linear-gradient(135deg,
           hsl(\${hue},65%,18%), hsl(\${hue+40},70%,10%))\`,
-      })};\${std.css.center()}">
+      }, std.css.center())}">
         <div style="\${std.css({ opacity, textAlign: 'center',
             fontFamily: 'system-ui, sans-serif', color: 'white' })}">
           <div style="font-size:24px">\${data.title}</div>

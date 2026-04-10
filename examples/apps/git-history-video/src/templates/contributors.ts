@@ -7,7 +7,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
   },
-  defaults: {
+  data: {
     title: "Project Activity",
     accentColor: "#38bdf8",
     contributors: [] as Array<{

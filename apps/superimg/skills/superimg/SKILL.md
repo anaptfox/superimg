@@ -11,7 +11,7 @@ description: >
 
 ## Mental Model
 
-Video is a pure function of time. Your template's `render(ctx)` is called once per frame. It receives a `RenderContext` and returns an HTML string. All animation is derived from `sceneProgress` (0→1 over the scene) or `sceneTimeSeconds` (elapsed seconds). Use `std.tween` as the canonical animation primitive. Data comes from `defaults`, merged with per-scene overrides. No timeline editor, no keyframes — just math and HTML.
+Video is a pure function of time. Your template's `render(ctx)` is called once per frame. It receives a `RenderContext` and returns an HTML string. All animation is derived from `sceneProgress` (0→1 over the scene) or `sceneTimeSeconds` (elapsed seconds). Use `std.tween` as the canonical animation primitive. Data comes from `data`, merged with per-scene overrides. No timeline editor, no keyframes — just math and HTML.
 
 ## Quick Start
 
@@ -19,7 +19,7 @@ Video is a pure function of time. Your template's `render(ctx)` is called once p
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: { message: "Hello!", accentColor: "#667eea" },
+  data: { message: "Hello!", accentColor: "#667eea" },
   config: {
     duration: 3,
     inlineCss: ["* { margin: 0; box-sizing: border-box; } body { background: #0f0f23; font-family: system-ui; }"],
@@ -28,8 +28,8 @@ export default defineScene({
     const { std, sceneProgress, width, height, data } = ctx;
     const { style } = std.motion.enter(sceneProgress, { y: 30 });
     return `
-      <div style="${std.css({ width, height })};${std.css.center()}">
-        <div style="${style};${std.css({ color: data.accentColor, fontSize: 64 })}">${data.message}</div>
+      <div style="${std.css({ width, height }, std.css.center())}">
+        <div style="${std.css({ color: data.accentColor, fontSize: 64 }, style)}">${data.message}</div>
       </div>
     `;
   },

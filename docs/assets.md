@@ -192,7 +192,7 @@ export default defineScene<{
   title: string;
   productImage: string;  // URL provided by caller
 }>({
-  defaults: {
+  data: {
     title: 'Product',
     productImage: '/images/placeholder.png',
   },

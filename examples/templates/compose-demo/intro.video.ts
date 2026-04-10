@@ -12,12 +12,12 @@ export default defineScene({
       .title { font-size: 96px; font-weight: 700; text-shadow: 0 8px 32px rgba(0,0,0,0.3); }
     `],
   },
-  defaults: { title: "Welcome", accentColor: "#667eea" },
+  data: { title: "Welcome", accentColor: "#667eea" },
   render(ctx) {
     const opacity = ctx.std.tween(0, 1, ctx.sceneProgress, "easeOutCubic");
     const scale = ctx.std.tween(0.8, 1, ctx.sceneProgress, "easeOutCubic");
     return `
-      <div style="${ctx.std.css.fill()};${ctx.std.css.center()}">
+      <div style="${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())}">
         <div style="${ctx.std.css({ opacity, transform: "scale(" + scale + ")" })}">
           <h1 class="title" style="background: linear-gradient(135deg, ${ctx.data.accentColor} 0%, white 100%);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;

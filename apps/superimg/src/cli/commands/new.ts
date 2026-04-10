@@ -12,7 +12,7 @@ function singleSceneTS(name: string, tailwind: boolean): string {
     return `import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     title: "${titleCase(name)}",
     subtitle: "Built with SuperImg",
   },
@@ -48,7 +48,7 @@ export default defineScene({
   return `import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     title: "${titleCase(name)}",
     subtitle: "Built with SuperImg",
   },
@@ -73,7 +73,7 @@ export default defineScene({
     const subtitleOpacity = std.tween(0, 0.7, std.math.clamp((time - 0.3) / 1.0, 0, 1), "easeOutCubic");
 
     return \`
-      <div style="\${std.css({ width, height })};\${std.css.center()}; flex-direction: column;">
+      <div style="\${std.css({ width, height }, std.css.center())}; flex-direction: column;">
         <h1 class="title" style="\${std.css({ opacity, transform: "translateY(" + y + "px)" })}">
           \${data.title}
         </h1>
@@ -110,7 +110,7 @@ function composeIntroTS(tailwind: boolean): string {
 
 export default defineScene({
   config: { duration: "2s", tailwind: true },
-  defaults: { title: "Welcome" },
+  data: { title: "Welcome" },
   render(ctx) {
     const opacity = ctx.std.tween(0, 1, ctx.sceneProgress, "easeOutCubic");
     const scale = ctx.std.tween(0.8, 1, ctx.sceneProgress, "easeOutCubic");
@@ -139,12 +139,12 @@ export default defineScene({
       .title { font-size: 96px; font-weight: 700; text-shadow: 0 8px 32px rgba(0,0,0,0.3); }
     \`],
   },
-  defaults: { title: "Welcome" },
+  data: { title: "Welcome" },
   render(ctx) {
     const opacity = ctx.std.tween(0, 1, ctx.sceneProgress, "easeOutCubic");
     const scale = ctx.std.tween(0.8, 1, ctx.sceneProgress, "easeOutCubic");
     return \`
-      <div style="\${ctx.std.css.fill()};\${ctx.std.css.center()};
+      <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
         <h1 class="title" style="\${ctx.std.css({ opacity, transform: "scale(" + scale + ")" })}">
           \${ctx.data.title}
@@ -162,7 +162,7 @@ function composeContentTS(tailwind: boolean): string {
 
 export default defineScene({
   config: { duration: "3s", tailwind: true },
-  defaults: {
+  data: {
     heading: "Main Content",
     body: "Add your content here.",
   },
@@ -196,14 +196,14 @@ export default defineScene({
       .body { font-size: 28px; opacity: 0.7; }
     \`],
   },
-  defaults: {
+  data: {
     heading: "Main Content",
     body: "Add your content here.",
   },
   render(ctx) {
     const opacity = ctx.std.tween(0, 1, ctx.sceneProgress * 2, "easeOutCubic");
     return \`
-      <div style="\${ctx.std.css.fill()};\${ctx.std.css.center()}; flex-direction: column;
+      <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())}; flex-direction: column;
         background: #0f0f23;">
         <h2 class="heading" style="opacity: \${opacity}">\${ctx.data.heading}</h2>
         <p class="body" style="opacity: \${opacity}">\${ctx.data.body}</p>
@@ -220,7 +220,7 @@ function composeOutroTS(tailwind: boolean): string {
 
 export default defineScene({
   config: { duration: "2s", tailwind: true },
-  defaults: { cta: "Thanks for watching!" },
+  data: { cta: "Thanks for watching!" },
   render(ctx) {
     const opacity = ctx.std.tween(0, 1, ctx.sceneProgress * 2, "easeOutCubic");
     return \`
@@ -247,11 +247,11 @@ export default defineScene({
       .cta { font-size: 64px; font-weight: 700; }
     \`],
   },
-  defaults: { cta: "Thanks for watching!" },
+  data: { cta: "Thanks for watching!" },
   render(ctx) {
     const opacity = ctx.std.tween(0, 1, ctx.sceneProgress * 2, "easeOutCubic");
     return \`
-      <div style="\${ctx.std.css.fill()};\${ctx.std.css.center()};
+      <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
         background: linear-gradient(135deg, #059669 0%, #0891b2 100%);">
         <h1 class="cta" style="opacity: \${opacity}">\${ctx.data.cta}</h1>
       </div>

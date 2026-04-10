@@ -2,7 +2,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     label: "Conversion Rate",
     value: 94,
     unit: "%",
@@ -69,10 +69,10 @@ export default defineScene({
     const barBg = std.color.alpha("#ffffff", 0.1);
 
     // Styles
-    const bodyStyle = std.css({ width, height }) + ";" + std.css.center();
+    const bodyStyle = std.css({ width, height }, std.css.center());
     const cardStyle = std.css({ padding: cardPadding, opacity: card.opacity });
     const labelStyle = std.css({ fontSize: labelSize, opacity: labelAnim.opacity });
-    const valueStyle = std.css({ fontSize: valueSize, color: accentColor }) + ";" + valueAnim.style;
+    const valueStyle = std.css({ fontSize: valueSize, color: accentColor }, valueAnim.style);
     const unitStyle = std.css({ fontSize: valueSize * 0.4, opacity: valueAnim.opacity });
     const trackStyle = std.css({ width: barMaxWidth, height: barHeight, background: barBg, borderRadius: barHeight / 2 });
     const fillStyle = std.css({

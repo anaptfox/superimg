@@ -70,7 +70,7 @@ export default defineScene({
 export const BLOG_DATA_TEMPLATE = `import { defineScene } from "superimg";
 
 export default defineScene({
-  defaults: {
+  data: {
     title: "Welcome",
     subtitle: "Customize via data",
     accentColor: "#667eea",
@@ -132,7 +132,7 @@ export default defineScene<TemplateData>({
       .tagline { font-size: 18px; margin-top: 12px; opacity: 0.5; letter-spacing: 3px; text-transform: uppercase; }
     \`],
   },
-  defaults: {
+  data: {
     title: "Hello, SuperImg",
     subtitle: "Video as code",
   },
@@ -144,7 +144,7 @@ export default defineScene<TemplateData>({
       width,
       height,
       background: \`linear-gradient(135deg, hsl(\${hue},65%,14%), hsl(\${hue + 45},75%,8%))\`,
-    }) + ";" + std.css.center();
+    }, std.css.center());
     return \`
       <div style="\${bgStyle}">
         <div style="\${std.css({ textAlign: "center", opacity, transform: "translateY(" + y + "px)" })}">

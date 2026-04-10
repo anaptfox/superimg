@@ -23,11 +23,11 @@ describe("render pipeline integration", () => {
     expect(frames[2]).toContain("opacity: 1");
   });
 
-  it("merges defaults with ctx.data", async () => {
+  it("merges data with ctx.data", async () => {
     const code = `
       import { defineScene } from 'superimg';
       export default defineScene({
-        defaults: { title: 'Default' },
+        data: { title: 'Default' },
         render(ctx) { return '<div>' + ctx.data.title + '</div>'; }
       });
     `;
