@@ -75,7 +75,16 @@ runs:
 
     - name: Install Playwright Chromium
       shell: bash
-      run: npx playwright install chromium --with-deps
+      run: |
+        if [ -f "pnpm-lock.yaml" ]; then
+          pnpm exec playwright install chromium --with-deps
+        elif [ -f "yarn.lock" ]; then
+          yarn exec playwright install chromium --with-deps
+        elif [ -f "package-lock.json" ]; then
+          npx playwright install chromium --with-deps
+        else
+          npx --yes playwright install chromium --with-deps
+        fi
 
     - name: Render video
       id: render
