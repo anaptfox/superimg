@@ -6,7 +6,8 @@
 - Add `std.path` module for SVG path utilities
 - `std.css()` now variadic — mix style objects and preset strings in one call
 - `std.motion.enterExit()` adds `exitEasing` option
-- Fix GitHub Actions CI: use package-manager-aware playwright install (`pnpm exec`, `yarn exec`, `npx`) instead of bare `npx playwright` which fails with pnpm's isolated store
+- Fix GitHub Actions CI: run `playwright install` via `pnpm --filter @superimg/playwright exec` so it resolves from the package that actually owns the dependency
+- CI build now uses `build:render` — only builds packages needed for the render CLI, skipping player, MCP, and React app
 
 ## 0.0.13 — 2026-04-10
 
