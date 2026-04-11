@@ -113,7 +113,7 @@ jobs:
         run: pnpm run build
 
       - name: Install Playwright Chromium
-        run: npx playwright install chromium --with-deps
+        run: pnpm exec playwright install chromium --with-deps
 
       - name: Render templates
         run: |
