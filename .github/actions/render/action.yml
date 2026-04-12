@@ -47,13 +47,6 @@ runs:
       with:
         node-version: "22"
 
-    - name: Cache Playwright browsers
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ hashFiles('**/package.json') }}
-        restore-keys: playwright-${{ runner.os }}-
-
     - name: Install SuperImg
       shell: bash
       run: |
@@ -73,17 +66,45 @@ runs:
           npm install -g superimg@${{ inputs.superimg-version }}
         fi
 
-    - name: Install Playwright Chromium
+    - name: Get Playwright version
+      id: playwright-version
+      shell: bash
+      run: |
+        VERSION=$(node -e "
+          try { console.log(require('playwright/package.json').version); }
+          catch(e) { console.log('unknown'); }
+        ")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Cache Playwright browsers
+      id: playwright-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+        restore-keys: playwright-${{ runner.os }}-
+
+    - name: Install Playwright system deps
       shell: bash
       run: |
         if [ -f "pnpm-lock.yaml" ]; then
-          pnpm --filter @superimg/playwright exec playwright install chromium --with-deps
+          pnpm --filter @superimg/playwright exec playwright install-deps chromium
         elif [ -f "yarn.lock" ]; then
-          yarn exec playwright install chromium --with-deps
-        elif [ -f "package-lock.json" ]; then
-          npx playwright install chromium --with-deps
+          yarn exec playwright install-deps chromium
         else
-          npx --yes playwright install chromium --with-deps
+          npx --yes playwright install-deps chromium
+        fi
+
+    - name: Install Playwright browser
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        if [ -f "pnpm-lock.yaml" ]; then
+          pnpm --filter @superimg/playwright exec playwright install chromium
+        elif [ -f "yarn.lock" ]; then
+          yarn exec playwright install chromium
+        else
+          npx --yes playwright install chromium
         fi
 
     - name: Render video
