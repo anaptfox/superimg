@@ -99,21 +99,26 @@ jobs:
           node-version: "22"
           cache: pnpm
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: playwright-${{ runner.os }}-
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
         run: pnpm run build:render
 
-      - name: Install Playwright Chromium
-        run: pnpm --filter @superimg/playwright exec playwright install chromium --with-deps
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('packages/superimg-playwright/package.json') }}
+          restore-keys: playwright-${{ runner.os }}-
+
+      - name: Install Playwright system deps
+        run: pnpm --filter @superimg/playwright exec playwright install-deps chromium
+
+      - name: Install Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @superimg/playwright exec playwright install chromium
 
       - name: Render templates
         run: |

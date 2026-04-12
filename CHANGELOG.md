@@ -1,13 +1,14 @@
 # Changelog
 
-## 0.0.14 — 2026-04-11
+## 0.0.14 — 2026-04-12
 
 - Add `std.svg` module: draw, filter, morph, reveal, shape, textPath, segments
 - Add `std.path` module for SVG path utilities
 - `std.css()` now variadic — mix style objects and preset strings in one call
 - `std.motion.enterExit()` adds `exitEasing` option
 - Fix GitHub Actions CI: run `playwright install` via `pnpm --filter @superimg/playwright exec` so it resolves from the package that actually owns the dependency
-- CI build now uses `build:render` — only builds packages needed for the render CLI using `pnpm -r --filter 'superimg...'`, skipping player, MCP, and React app
+- CI build uses `pnpm -r --filter 'superimg...'` — only builds packages needed for the render CLI, skipping player, MCP, and React app
+- CI Playwright caching: cache key tied to playwright package version (not full lockfile), browser binary skipped on cache hit (~60s saved per run), OS deps always installed separately
 
 ## 0.0.13 — 2026-04-10
 
