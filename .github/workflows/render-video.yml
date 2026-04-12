@@ -1,5 +1,8 @@
 name: Render Videos
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [main]
@@ -87,7 +90,7 @@ jobs:
 
   render:
     needs: detect-changes
-    if: needs.detect-changes.outputs.has-templates == 'true'
+    if: needs.detect-changes.outputs.has-templates == 'true' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -125,8 +128,24 @@ jobs:
           TEMPLATES='${{ needs.detect-changes.outputs.templates }}'
           echo "$TEMPLATES" | jq -r '.[]' | while read -r template; do
             echo "Rendering: $template"
-            node ./apps/superimg/dist/cli.js render "$template" -y
+            if [ "$template" = "videos/changelog/changelog.video.ts" ]; then
+              node ./apps/superimg/dist/cli.js render "$template" -y \
+                --format gif -w 900 -h 506 --fps 15 \
+                -o videos/changelog/changelog.gif
+            else
+              node ./apps/superimg/dist/cli.js render "$template" -y
+            fi
           done
+
+      - name: Commit changelog GIF back to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add videos/changelog/changelog.gif 2>/dev/null || true
+          git diff --staged --quiet || (
+            git commit -m "chore: update changelog.gif [skip ci]"
+            git push
+          )
 
       - name: Upload rendered videos
         uses: actions/upload-artifact@v4
