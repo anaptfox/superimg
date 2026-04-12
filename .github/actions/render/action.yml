@@ -25,6 +25,10 @@ inputs:
     description: "SuperImg npm version to install (ignored if superimg is in package.json)"
     required: false
     default: "latest"
+  format:
+    description: "Output format: mp4, webm, gif"
+    required: false
+    default: "mp4"
   upload-artifact:
     description: "Upload rendered video as GitHub artifact"
     required: false
@@ -33,6 +37,12 @@ inputs:
     description: "Artifact name when uploading"
     required: false
     default: "superimg-videos"
+  commit-back:
+    description: |
+      Commit rendered output back to the repo instead of (or in addition to) uploading as artifact.
+      Requires: actions/checkout@v4 before calling this action, and permissions: contents: write in your workflow job.
+    required: false
+    default: "false"
 
 outputs:
   video-path:
@@ -116,11 +126,26 @@ runs:
         if [ -n "${{ inputs.width }}" ]; then ARGS="$ARGS -w ${{ inputs.width }}"; fi
         if [ -n "${{ inputs.height }}" ]; then ARGS="$ARGS -h ${{ inputs.height }}"; fi
         if [ -n "${{ inputs.fps }}" ]; then ARGS="$ARGS --fps ${{ inputs.fps }}"; fi
+        if [ -n "${{ inputs.format }}" ] && [ "${{ inputs.format }}" != "mp4" ]; then
+          ARGS="$ARGS --format ${{ inputs.format }}"
+        fi
 
         # Use npx to find the right binary (local or global)
         npx superimg render "${{ inputs.template }}" $ARGS
 
         echo "video-path=${{ inputs.output }}" >> "$GITHUB_OUTPUT"
+
+    - name: Commit output back to repo
+      if: inputs.commit-back == 'true'
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add "${{ inputs.output }}"
+        git diff --staged --quiet || (
+          git commit -m "chore: update rendered video [skip ci]"
+          git push
+        )
 
     - name: Upload artifact
       if: inputs.upload-artifact == 'true'

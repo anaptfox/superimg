@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.15 — 2026-04-12
+
+- Changelog video now renders as GIF and commits back to `videos/changelog/changelog.gif` automatically on every CHANGELOG.md change — embeddable directly in README
+- Reusable action gains `format` (mp4/webm/gif) and `commit-back` inputs for external users
+- Actor guard prevents infinite CI loop when bot pushes the rendered GIF back
+
 ## 0.0.14 — 2026-04-12
 
 - Add `std.svg` module: draw, filter, morph, reveal, shape, textPath, segments
