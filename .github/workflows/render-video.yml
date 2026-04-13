@@ -125,8 +125,16 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('packages/superimg-playwright/package.json') }}
           restore-keys: playwright-${{ runner.os }}-
 
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-${{ runner.os }}-playwright-ffmpeg
+
       - name: Install Playwright system deps
-        run: pnpm --filter @superimg/playwright exec playwright install-deps chromium
+        run: |
+          sudo apt-get update -qq
+          pnpm --filter @superimg/playwright exec playwright install-deps chromium
 
       - name: Install Playwright browser
         if: steps.playwright-cache.outputs.cache-hit != 'true'
