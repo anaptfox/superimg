@@ -129,7 +129,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /var/cache/apt/archives
-          key: apt-${{ runner.os }}-playwright-ffmpeg
+          key: apt-${{ runner.os }}-playwright
 
       - name: Install Playwright system deps
         run: |
@@ -140,8 +140,8 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm --filter @superimg/playwright exec playwright install chromium
 
-      - name: Install ffmpeg
-        run: sudo apt-get install -y ffmpeg
+      - name: Setup ffmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v3
 
       - name: Render templates
         run: |
