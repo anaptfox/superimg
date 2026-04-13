@@ -79,7 +79,7 @@ program
   .argument("[template]", "Video name or path (optional for interactive mode)")
   .option("-y, --yes", "Non-interactive mode (requires template or --all)")
   .option("-o, --output <path>", "Output path (file or directory, defaults to output/)")
-  .option("--format <type>", "Output format: mp4, webm")
+  .option("--format <type>", "Output format: mp4, webm, gif")
   .option("-w, --width <pixels>", "Video width")
   .option("-h, --height <pixels>", "Video height")
   .option("--fps <fps>", "Frames per second")
@@ -98,6 +98,9 @@ program
   .option("--audio-bitrate-mode <mode>", "Audio bitrate mode: constant, variable")
   .option("--fast-start <mode>", "MP4 fast start: false, in-memory, fragmented")
   .option("--cluster-duration <seconds>", "WebM minimum cluster duration in seconds")
+  .option("--max-colors <n>", "GIF max palette colors (2-256, default 256)")
+  .option("--gif-loop <n>", "GIF loop count (0=infinite, -1=no loop)")
+  .option("--gif-dither <algorithm>", "GIF dither algorithm (e.g. sierra2_4a, bayer, none)")
   .option("--debug-html", "Save the underlying HTML of each frame to .superimg/debug/")
   .action(async (template: string | undefined, options) => {
     const mod = await import("./commands/render.js");

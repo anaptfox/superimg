@@ -1,12 +1,10 @@
 //! Add command - installs SuperImg skill for AI coding assistants
 
-import { spawn } from "node:child_process";
+import { execa } from "execa";
 import { writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import * as p from "@clack/prompts";
 import { getSkillContent } from "../utils/skill-content.js";
-
-const isWindows = process.platform === "win32";
 
 const SKILLS_REPO = "anaptfox/superimg";
 
@@ -14,17 +12,7 @@ type Scope = "project" | "global" | "both";
 type AgentsChoice = string[];
 
 async function runSkillsAdd(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("npx", ["skills", "add", SKILLS_REPO], {
-      stdio: "inherit",
-      shell: isWindows,
-    });
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`npx skills exited with code ${code}`));
-    });
-    child.on("error", reject);
-  });
+  await execa("npx", ["skills", "add", SKILLS_REPO], { stdio: "inherit" });
 }
 
 export async function addCommand(

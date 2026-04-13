@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { execa } from "execa";
 import * as p from "@clack/prompts";
 import type { PackageManager } from "../utils/package-manager.js";
 import {
@@ -16,17 +16,8 @@ import { getSkillContent } from "../utils/skill-content.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const isWindows = process.platform === "win32";
-
 async function runInDir(cwd: string, command: string, args: string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, stdio: "inherit", shell: isWindows });
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`Command failed with exit code ${code}`));
-    });
-    child.on("error", reject);
-  });
+  await execa(command, args, { cwd, stdio: "inherit" });
 }
 
 function getSuperimgVersion(): string {

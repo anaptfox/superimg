@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { serve, type ServerType } from "@hono/node-server";
 import { readFileSync, existsSync } from "node:fs";
 import { extname } from "node:path";
-import type { RenderEngine } from "@superimg/types";
+import type { RenderEngine, EncodingOptions, VideoEncoder } from "@superimg/types";
 import {
   checkBrowserStatus,
   ensureBrowser,
@@ -16,6 +16,7 @@ import {
   type EnsureBrowserOptions,
 } from "./browser-utils.js";
 import { PlaywrightFrameRenderer, PlaywrightVideoEncoder } from "./adapters.js";
+import { FfmpegGifEncoder } from "./ffmpeg-gif-encoder.js";
 import { HARNESS_HTML, HARNESS_JS } from "./harness-assets.js";
 
 const MIME_TYPES: Record<string, string> = {
@@ -182,14 +183,19 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
     });
   }
 
-  createAdapters(): { renderer: PlaywrightFrameRenderer; encoder: PlaywrightVideoEncoder } {
+  createAdapters(options?: { encoding?: EncodingOptions }): { renderer: PlaywrightFrameRenderer; encoder: VideoEncoder<Buffer> } {
     const page = this.page;
     if (!page) {
       throw new Error("PlaywrightEngine not initialized. Call init() first.");
     }
+
+    const encoder = options?.encoding?.format === "gif"
+      ? new FfmpegGifEncoder()
+      : new PlaywrightVideoEncoder(page);
+
     return {
       renderer: new PlaywrightFrameRenderer(page),
-      encoder: new PlaywrightVideoEncoder(page),
+      encoder,
     };
   }
 

@@ -525,7 +525,7 @@ export interface RenderOptions {
 export type VideoCodecPreference = "avc" | "vp9" | "av1";
 export type AudioCodecPreference = "aac" | "opus";
 export type QualityPreset = "very-low" | "low" | "medium" | "high" | "very-high";
-export type OutputFormat = "mp4" | "webm";
+export type OutputFormat = "mp4" | "webm" | "gif";
 export type BitrateMode = "constant" | "variable";
 export type LatencyMode = "quality" | "realtime";
 export type HardwareAcceleration = "no-preference" | "prefer-hardware" | "prefer-software";
@@ -551,5 +551,10 @@ export interface EncodingOptions {
   };
   webm?: {
     minimumClusterDuration?: number;
+  };
+  gif?: {
+    maxColors?: number;
+    loop?: number;
+    dither?: string;
   };
 }

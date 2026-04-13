@@ -7,6 +7,7 @@ export type { PlaywrightEngineOptions } from "./playwright-engine.js";
 
 // Adapters (advanced use)
 export { PlaywrightFrameRenderer, PlaywrightVideoEncoder } from "./adapters.js";
+export { FfmpegGifEncoder } from "./ffmpeg-gif-encoder.js";
 
 // Browser management
 export {
