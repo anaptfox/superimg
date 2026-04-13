@@ -1,22 +1,13 @@
 //! Setup command - installs Playwright and downloads required browsers
 
-import { spawn } from "node:child_process";
+import { execa } from "execa";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { detectPackageManager, getPackageManagerCommands, getAddPackagesCommand } from "../utils/package-manager.js";
 import { findProjectRoot } from "../utils/find-project-root.js";
 
-const isWindows = process.platform === "win32";
-
 async function runInDir(cwd: string, command: string, args: string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, stdio: "inherit", shell: isWindows });
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`Command failed with exit code ${code}`));
-    });
-    child.on("error", reject);
-  });
+  await execa(command, args, { cwd, stdio: "inherit" });
 }
 
 export async function setupCommand() {

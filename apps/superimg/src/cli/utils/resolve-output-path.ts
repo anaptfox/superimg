@@ -1,6 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { resolve, dirname, basename, join, relative, isAbsolute } from "node:path";
-import type { ProjectConfig } from "@superimg/types";
+import type { ProjectConfig, OutputFormat } from "@superimg/types";
 
 /** Check if path is a directory (exists and is dir, or ends with /) */
 export function isDirectory(path: string): boolean {
@@ -33,6 +33,8 @@ interface ResolveOutputOptions {
   presetOutFile?: string;
   /** Specific outDir override from the preset config */
   presetOutDir?: string;
+  /** Output format — determines file extension */
+  format?: OutputFormat;
 }
 
 /** 
@@ -54,6 +56,7 @@ export function resolveOutputPath({
   presetSuffix,
   presetOutFile,
   presetOutDir,
+  format,
 }: ResolveOutputOptions): string {
   
   // 1. Preset Exact File Override (Highest Precedence if no CLI override)
@@ -64,7 +67,8 @@ export function resolveOutputPath({
   // Derive the inner filename
   const videoName = deriveVideoName(templatePath);
   const suffix = presetSuffix ? `-${presetSuffix}` : "";
-  const defaultFilename = `${videoName}${suffix}.mp4`;
+  const ext = format === "gif" ? ".gif" : format === "webm" ? ".webm" : ".mp4";
+  const defaultFilename = `${videoName}${suffix}${ext}`;
 
   // 2. CLI Exact File Override
   if (outputArg && !isDirectory(outputArg)) {

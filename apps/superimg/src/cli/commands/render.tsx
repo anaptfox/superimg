@@ -42,18 +42,22 @@ interface RenderOptions {
   audioBitrateMode?: string;
   fastStart?: string;
   clusterDuration?: string;
+  maxColors?: string;
+  gifLoop?: string;
+  gifDither?: string;
   debugHtml?: boolean;
 }
 
-function resolveFormat(opts: RenderOptions): "mp4" | "webm" | undefined {
+function resolveFormat(opts: RenderOptions): "mp4" | "webm" | "gif" | undefined {
   if (opts.format) {
     const f = opts.format.toLowerCase();
-    if (f === "mp4" || f === "webm") return f;
-    console.warn(`Warning: Unknown format "${opts.format}". Valid: mp4, webm. Using default.`);
+    if (f === "mp4" || f === "webm" || f === "gif") return f;
+    console.warn(`Warning: Unknown format "${opts.format}". Valid: mp4, webm, gif. Using default.`);
     return undefined;
   }
   // Auto-detect from output file extension
   if (opts.output?.endsWith(".webm")) return "webm";
+  if (opts.output?.endsWith(".gif")) return "gif";
   return undefined;
 }
 
@@ -72,7 +76,10 @@ function buildEncodingOptions(opts: RenderOptions): EncodingOptions | undefined 
     opts.hardwareAccel ||
     opts.audioBitrateMode ||
     opts.fastStart ||
-    opts.clusterDuration;
+    opts.clusterDuration ||
+    opts.maxColors ||
+    opts.gifLoop ||
+    opts.gifDither;
 
   if (!hasEncoding) return undefined;
 
@@ -175,6 +182,22 @@ function buildEncodingOptions(opts: RenderOptions): EncodingOptions | undefined 
     const sec = parseFloat(opts.clusterDuration);
     if (!isNaN(sec)) {
       encoding.webm = { minimumClusterDuration: sec };
+    }
+  }
+
+  if (opts.maxColors || opts.gifLoop || opts.gifDither) {
+    encoding.gif = {};
+    if (opts.maxColors) {
+      const n = parseInt(opts.maxColors, 10);
+      if (!isNaN(n) && n >= 2 && n <= 256) encoding.gif.maxColors = n;
+      else console.warn(`Warning: --max-colors must be 2-256. Using default (256).`);
+    }
+    if (opts.gifLoop) {
+      const n = parseInt(opts.gifLoop, 10);
+      if (!isNaN(n)) encoding.gif.loop = n;
+    }
+    if (opts.gifDither) {
+      encoding.gif.dither = opts.gifDither;
     }
   }
 
@@ -295,7 +318,8 @@ export async function renderCommand(template: string, options: RenderOptions) {
       const videoOutput = resolveOutputPath({
         outputArg: outputDir + "/",
         templatePath: video.entrypoint,
-        projectRoot
+        projectRoot,
+        format: outputFormat,
       });
       // Recursively call without --all
       await renderCommand(video.entrypoint, { ...options, all: false, output: videoOutput });
@@ -339,6 +363,7 @@ export async function renderCommand(template: string, options: RenderOptions) {
   });
 
   const outputs = templateData.templateConfig?.outputs;
+  const outputFormat = resolveFormat(options);
 
   // Build render targets
   let targets: RenderTarget[];
@@ -361,7 +386,8 @@ export async function renderCommand(template: string, options: RenderOptions) {
         cascadingConfig,
         presetSuffix: p.name,
         presetOutFile: p.outFile,
-        presetOutDir: p.outDir
+        presetOutDir: p.outDir,
+        format: outputFormat,
       }),
       outputName: p.name,
     }));
@@ -384,7 +410,8 @@ export async function renderCommand(template: string, options: RenderOptions) {
           cascadingConfig,
           presetSuffix: preset.name,
           presetOutFile: preset.outFile,
-          presetOutDir: preset.outDir
+          presetOutDir: preset.outDir,
+          format: outputFormat,
         }),
         outputName: preset.name,
       }];
@@ -403,7 +430,8 @@ export async function renderCommand(template: string, options: RenderOptions) {
         outputArg: options.output,
         templatePath: resolvedTemplate,
         projectRoot,
-        cascadingConfig
+        cascadingConfig,
+        format: outputFormat,
       }),
       outputName: "default",
     }];
@@ -458,6 +486,11 @@ export async function renderCommand(template: string, options: RenderOptions) {
               ? `Rendering "${target.name}" (${i + 1}/${targets.length})...`
               : "Rendering...");
 
+            const encoding = mergeEncoding(templateData.templateConfig?.encoding, buildEncodingOptions(options));
+            if (encoding?.format === "gif" && resolvedAudio) {
+              console.warn("Warning: GIF format does not support audio. Audio track will be ignored.");
+            }
+
             const job: RenderJob = {
               templateCode: bundledTemplateCode,
               duration: resolvedConfig.duration,
@@ -468,10 +501,10 @@ export async function renderCommand(template: string, options: RenderOptions) {
               inlineCss: templateData.templateConfig?.inlineCss,
               stylesheets: templateData.templateConfig?.stylesheets,
               outputName: target.outputName,
-              encoding: mergeEncoding(templateData.templateConfig?.encoding, buildEncodingOptions(options)),
+              encoding,
               watermark: templateData.templateConfig?.watermark,
               background: templateData.templateConfig?.background,
-              audio: resolvedAudio,
+              audio: encoding?.format === "gif" ? undefined : resolvedAudio,
               data: companionData,
             };
 
@@ -481,7 +514,7 @@ export async function renderCommand(template: string, options: RenderOptions) {
               templateDir: dirname(resolvedTemplate),
             });
 
-            const { renderer, encoder } = engine.createAdapters();
+            const { renderer, encoder } = engine.createAdapters({ encoding: job.encoding });
             const result = await executeRenderPlan(plan, renderer, encoder, {
               onProgress: (p) => {
                 if (mounted) setProgress(p);

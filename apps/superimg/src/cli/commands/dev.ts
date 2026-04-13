@@ -10,13 +10,10 @@ import { findProjectRoot } from "../utils/find-project-root.js";
 import { discoverVideos } from "../utils/discover-videos.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";
 import { parseTemplate } from "../utils/template-config.js";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import { execa } from "execa";
 import { WebSocketServer, WebSocket } from "ws";
 import { bundleTemplate, bundleTemplateESM } from "@superimg/core/bundler";
 import { compileTemplate } from "@superimg/core";
-
-const execAsync = promisify(exec);
 
 interface DevOptions {
   template?: string;
@@ -140,13 +137,8 @@ async function runHomeMode(port: number, devRoot: string, open: boolean) {
   });
 
   if (open) {
-    const command =
-      process.platform === "win32"
-        ? `start ${url}`
-        : process.platform === "darwin"
-          ? `open ${url}`
-          : `xdg-open ${url}`;
-    execAsync(command).catch(() => {});
+    const openCmd = process.platform === "win32" ? "start" : process.platform === "darwin" ? "open" : "xdg-open";
+    execa(openCmd, [url]).catch(() => {});
   }
 
   const cleanup = () => {
@@ -333,13 +325,8 @@ async function runSingleVideoMode(
   });
 
   if (open) {
-    const command =
-      process.platform === "win32"
-        ? `start ${url}`
-        : process.platform === "darwin"
-          ? `open ${url}`
-          : `xdg-open ${url}`;
-    execAsync(command).catch(() => {});
+    const openCmd = process.platform === "win32" ? "start" : process.platform === "darwin" ? "open" : "xdg-open";
+    execa(openCmd, [url]).catch(() => {});
   }
 
   const cleanup = () => {

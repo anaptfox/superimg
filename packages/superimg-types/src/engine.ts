@@ -85,7 +85,7 @@ export interface VideoEncoder<TFrame = unknown> {
 
 export interface RenderEngine<TFrame = unknown> {
   init(): Promise<void>;
-  createAdapters(): { renderer: FrameRenderer<TFrame>; encoder: VideoEncoder<TFrame> };
+  createAdapters(options?: { encoding?: EncodingOptions }): { renderer: FrameRenderer<TFrame>; encoder: VideoEncoder<TFrame> };
   dispose(): Promise<void>;
 }
 
