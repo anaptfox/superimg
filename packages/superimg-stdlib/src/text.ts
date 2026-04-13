@@ -177,6 +177,12 @@ export type TypeGranularity = "char" | "word" | "line";
 export interface TypeOptions {
   /** Reveal granularity: 'char' (default), 'word', or 'line' */
   by?: TypeGranularity;
+  /** Natural typing speed variation (0-1). 0 = uniform, 1 = max variance. Slows at newlines, punctuation, word starts. Only applies to 'char' mode. */
+  variance?: number;
+  /** Current time in seconds (for cursor blink when idle). If omitted, cursorVisible defaults to true. */
+  time?: number;
+  /** Cursor blink rate when idle (blinks per second, default: 3) */
+  cursorRate?: number;
 }
 
 /** Result of type() */
@@ -191,6 +197,8 @@ export interface TypeResult {
   index: number;
   /** Total number of units */
   total: number;
+  /** True when cursor should be visible — solid during typing, blinks when idle */
+  cursorVisible: boolean;
 }
 
 /**
@@ -225,6 +233,7 @@ export function type(
 ): TypeResult {
   const clamped = Math.max(0, Math.min(1, progress));
   const by = options?.by ?? "char";
+  const variance = Math.max(0, Math.min(1, options?.variance ?? 0));
 
   let total: number;
   let index: number;
@@ -270,19 +279,68 @@ export function type(
     case "char":
     default: {
       total = text.length;
-      index = Math.floor(clamped * total);
+      if (variance > 0 && total > 0) {
+        index = weightedCharIndex(text, clamped, variance);
+      } else {
+        index = Math.floor(clamped * total);
+      }
       visible = text.slice(0, Math.min(index, total));
       break;
     }
   }
 
+  const isTyping = clamped > 0 && clamped < 1;
+  const cursorVisible = isTyping
+    ? true
+    : cursor(options?.time ?? 0, options?.cursorRate ?? 3);
+
   return {
     visible,
-    typing: clamped > 0 && clamped < 1,
+    typing: isTyping,
     done: clamped >= 1,
     index,
     total,
+    cursorVisible,
   };
+}
+
+/**
+ * Compute character index using weighted progress for natural typing rhythm.
+ * Heavier weights = more time spent on that character (slower typing).
+ */
+function weightedCharIndex(text: string, progress: number, variance: number): number {
+  const len = text.length;
+  if (progress <= 0) return 0;
+  if (progress >= 1) return len;
+
+  // Build weight per character
+  let totalWeight = 0;
+  const cumulative = new Float64Array(len + 1);
+  for (let i = 0; i < len; i++) {
+    let w = 1;
+    const ch = text[i];
+    if (ch === "\n") {
+      w += 3 * variance; // pause at newlines
+    } else if ("{()}[];:<>=".includes(ch)) {
+      w += 1.5 * variance; // slow at punctuation/brackets
+    } else if (i > 0 && text[i - 1] === " ") {
+      w += 0.5 * variance; // slight pause at word start
+    }
+    totalWeight += w;
+    cumulative[i + 1] = totalWeight;
+  }
+
+  const target = progress * totalWeight;
+
+  // Binary search for the character index
+  let lo = 0;
+  let hi = len;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (cumulative[mid + 1] <= target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }
 
 /** Options for typeDuration() */

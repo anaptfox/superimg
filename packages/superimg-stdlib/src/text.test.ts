@@ -180,6 +180,73 @@ describe('type', () => {
     });
   });
 
+  describe('cursorVisible', () => {
+    it('is true (solid) while typing', () => {
+      const result = type('Hello', 0.5);
+      expect(result.cursorVisible).toBe(true);
+      expect(result.typing).toBe(true);
+    });
+
+    it('blinks when done (depends on time)', () => {
+      // cursor(0, 3) => floor(0) % 2 === 0 => true
+      const r1 = type('Hi', 1, { time: 0 });
+      expect(r1.cursorVisible).toBe(true);
+      // cursor(0.34, 3) => floor(1.02) % 2 === 1 => false
+      const r2 = type('Hi', 1, { time: 0.34 });
+      expect(r2.cursorVisible).toBe(false);
+    });
+
+    it('blinks at progress 0 (not started)', () => {
+      const r1 = type('Hi', 0, { time: 0 });
+      expect(r1.cursorVisible).toBe(true);
+      const r2 = type('Hi', 0, { time: 0.34 });
+      expect(r2.cursorVisible).toBe(false);
+    });
+  });
+
+  describe('variance', () => {
+    it('variance 0 produces same results as default', () => {
+      const text = 'Hello\nWorld';
+      const r1 = type(text, 0.5);
+      const r2 = type(text, 0.5, { variance: 0 });
+      expect(r1.visible).toBe(r2.visible);
+      expect(r1.index).toBe(r2.index);
+    });
+
+    it('variance causes newlines to be reached later', () => {
+      const text = 'ab\ncd';
+      // Without variance: progress 0.5 => index 2 => visible 'ab'
+      const uniform = type(text, 0.5);
+      // With variance: newline at index 2 has extra weight,
+      // so at the same progress fewer chars are revealed
+      const varied = type(text, 0.5, { variance: 1 });
+      expect(varied.index).toBeLessThanOrEqual(uniform.index);
+    });
+
+    it('completes at progress 1 regardless of variance', () => {
+      const text = 'Hello{World}';
+      const result = type(text, 1, { variance: 1 });
+      expect(result.visible).toBe(text);
+      expect(result.done).toBe(true);
+    });
+
+    it('empty at progress 0 regardless of variance', () => {
+      const result = type('Hello', 0, { variance: 1 });
+      expect(result.visible).toBe('');
+    });
+
+    it('handles empty string with variance', () => {
+      const result = type('', 0.5, { variance: 1 });
+      expect(result.visible).toBe('');
+      expect(result.total).toBe(0);
+    });
+
+    it('handles single char with variance', () => {
+      const result = type('x', 1, { variance: 1 });
+      expect(result.visible).toBe('x');
+    });
+  });
+
   describe('word granularity', () => {
     it('reveals word by word', () => {
       const text = 'Hello World Foo';
