@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.16 — 2026-04-12
+
+- Fix GIF corruption in CI: `ffmpeg-gif-encoder` now uses `-filter_complex "[0:v][1:v]paletteuse"` with explicit stream specifiers instead of `-lavfi` which was ambiguous with two inputs across ffmpeg versions
+- Fix `renderVideo()` programmatic API: encoding options now correctly passed to `createAdapters()` so GIF output works via the public API (not just the CLI)
+
 ## 0.0.15 — 2026-04-12
 
 - Changelog video now renders as GIF and commits back to `videos/changelog/changelog.gif` automatically on every CHANGELOG.md change — embeddable directly in README
