@@ -123,6 +123,9 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm --filter @superimg/playwright exec playwright install chromium
 
+      - name: Install ffmpeg
+        run: sudo apt-get install -y ffmpeg
+
       - name: Render templates
         run: |
           TEMPLATES='${{ needs.detect-changes.outputs.templates }}'

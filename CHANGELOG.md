@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.20 — 2026-04-12
+
+- Fix CI GIF rendering: install ffmpeg via apt before render step — `ubuntu-latest` does not ship ffmpeg by default
+- Add ffmpeg install to reusable `render` action for external users
+
 ## 0.0.19 — 2026-04-12
 
 - Fix invisible CI render errors: non-TTY environments (CI, pipes) now bypass Ink and use the programmatic `renderVideo()` API directly — errors go to stderr and are always visible in logs

@@ -117,6 +117,13 @@ runs:
           npx --yes playwright install chromium
         fi
 
+    - name: Install ffmpeg
+      shell: bash
+      run: |
+        if command -v apt-get &>/dev/null; then
+          sudo apt-get install -y ffmpeg
+        fi
+
     - name: Render video
       id: render
       shell: bash
