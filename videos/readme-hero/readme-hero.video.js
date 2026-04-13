@@ -2,6 +2,14 @@
 // A slick 6-second demo: logo reveal → code snippet appears → output renders
 import { defineScene } from "superimg";
 
+const CODE = `import { defineScene } from 'superimg'
+
+export default defineScene({
+  render(ctx) {
+    return \`<h1>Hello</h1>\`
+  }
+})`;
+
 export default defineScene({
   data: {
     tagline: "TypeScript in, MP4 out.",
@@ -27,12 +35,6 @@ export default defineScene({
     const { std, sceneTimeSeconds: time, width, height, data } = ctx;
 
     // — Phase timing —
-    // 0–1.2s: Logo + tagline fade in
-    // 1.2–3.0s: Code block types in from left
-    // 3.0–4.5s: Arrow + output preview slides in from right
-    // 4.5–5.2s: Hold
-    // 5.2–6.0s: Fade out
-
     const enterP = std.math.clamp(time / 1.0, 0, 1);
     const taglineP = std.math.clamp((time - 0.4) / 0.8, 0, 1);
     const codeP = std.math.clamp((time - 1.2) / 1.2, 0, 1);
@@ -50,75 +52,49 @@ export default defineScene({
     const tagOpacity = std.tween(0, 0.7, taglineP, "easeOutCubic") * globalFade;
     const tagY = std.tween(12 * std.scale, 0, taglineP, "easeOutCubic");
 
-    // — Code block —
+    // — Content shift: starts vertically centered, moves up as code appears —
+    const shiftP = std.math.clamp((time - 0.8) / 0.8, 0, 1);
+    const contentShift = std.tween((height / 2 - 55 * std.scale) - 70 * std.scale, 0, shiftP, "easeInOutCubic");
+
+    // — Code typing with natural rhythm —
     const codeOpacity = std.tween(0, 1, codeP, "easeOutCubic") * globalFade;
     const codeX = std.tween(-30 * std.scale, 0, codeP, "easeOutCubic");
 
-    // Code lines with progressive reveal
-    const codeLines = [
-      { color: "#c792ea", text: "import" },
-      { color: "#89ddff", text: " { defineScene }" },
-      { color: "#c792ea", text: " from " },
-      { color: "#c3e88d", text: "'superimg'" },
-    ];
-    const line2 = [
-      { color: "#82aaff", text: "export default " },
-      { color: "#ffcb6b", text: "defineScene" },
-      { color: "#89ddff", text: "({" },
-    ];
-    const line3 = [
-      { color: "#89ddff", text: "  render" },
-      { color: "#c792ea", text: "(ctx)" },
-      { color: "#89ddff", text: " {" },
-    ];
-    const line4 = [
-      { color: "#f78c6c", text: "    return " },
-      { color: "#c3e88d", text: "`<h1>Hello</h1>`" },
-    ];
-    const line5 = [{ color: "#89ddff", text: "  }" }];
-    const line6 = [{ color: "#89ddff", text: "})" }];
-
-    const blankLine = [{ color: "transparent", text: " " }];
-    const allLines = [codeLines, blankLine, line2, line3, line4, line5, line6];
-    const totalChars = allLines.reduce((sum, line) =>
-      sum + line.reduce((a, seg) => a + seg.text.length, 0), 0
-    );
-    const charsToShow = Math.floor(std.tween(0, totalChars, codeP, "easeOutQuad"));
-
-    let charCount = 0;
-    const renderedLines = allLines.map((line) => {
-      const spans = line.map((seg) => {
-        const startChar = charCount;
-        charCount += seg.text.length;
-        const visible = Math.max(0, Math.min(seg.text.length, charsToShow - startChar));
-        if (visible <= 0) return "";
-        const visibleText = seg.text.substring(0, visible).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        return `<span style="color: ${seg.color}">${visibleText}</span>`;
-      }).join("");
-      return spans;
+    const { visible, cursorVisible } = std.text.type(CODE, codeP, {
+      variance: 0.6,
+      time,
     });
 
-    // — Cursor blink —
-    const cursorVisible = Math.floor(time * 2) % 2 === 0 || codeP < 1;
-    const cursorChar = cursorVisible && codeP < 1 ? `<span style="color: #ffcb6b; opacity: 0.8">▎</span>` : "";
+    const cursorHtml = cursorVisible
+      ? `<span style="color: #ffcb6b; opacity: 0.8">▎</span>`
+      : "";
+
+    // Pad visible code to full line count so panel height stays fixed
+    const fullLineCount = CODE.split("\n").length;
+    const visibleLines = visible.split("\n");
+    while (visibleLines.length < fullLineCount) visibleLines.push("");
+    const paddedVisible = visibleLines.join("\n");
+
+    // Syntax highlight the visible code, then strip Shiki's <pre><code> wrapper
+    const highlightedFull = std.code.highlight(paddedVisible, { lang: "javascript" });
+    const highlightedCode = highlightedFull
+      .replace(/^<pre[^>]*><code[^>]*>/, "")
+      .replace(/<\/code><\/pre>$/, "");
 
     // — Arrow —
     const arrowOpacity = std.tween(0, 0.6, arrowP, "easeOutCubic") * globalFade;
     const arrowScale = std.tween(0.5, 1, arrowP, "easeOutBack");
 
-    // — Output preview (the "result" panel) —
+    // — Output preview —
     const outOpacity = std.tween(0, 1, outputP, "easeOutCubic") * globalFade;
     const outX = std.tween(30 * std.scale, 0, outputP, "easeOutCubic");
     const outScale = std.tween(0.9, 1, outputP, "easeOutCubic");
 
-    // Animated gradient hue rotation in the output preview
     const hue = std.tween(0, 40, std.math.clamp((time - 3.0) / 3.0, 0, 1), "easeInOutSine");
-
-    // Mini video progress bar in output
     const videoProgress = std.math.clamp((time - 3.5) / 2.0, 0, 0.85);
 
     return `
-      <div style="${std.css({ width, height, position: "relative" }, std.css.center())}; flex-direction: column;">
+      <div style="${std.css({ width, height, position: "relative" })}; display: flex; flex-direction: column; align-items: center; padding-top: ${std.px(70)}; transform: translateY(${contentShift}px);">
 
         <!-- Subtle grid background -->
         <div style="position: absolute; inset: 0;
@@ -173,10 +149,7 @@ export default defineScene({
 
             <!-- Code content -->
             <pre style="font-family: 'JetBrains Mono', monospace; font-size: ${std.px(12)}; line-height: 1.7;
-              margin: 0; white-space: pre; height: 11.9em;">${renderedLines.map((l, i) => {
-                const isLastVisible = l.length > 0 && (i === renderedLines.length - 1 || renderedLines.slice(i + 1).every(r => r.length === 0));
-                return isLastVisible ? l + cursorChar : l;
-              }).join("\n")}</pre>
+              margin: 0; white-space: pre; color: #d4d4d4;">${highlightedCode}${cursorHtml}</pre>
           </div>
 
           <!-- Arrow -->
@@ -210,7 +183,7 @@ export default defineScene({
                   transition: none;"></div>
               </div>
 
-              <!-- Play icon overlay (fades out) -->
+              <!-- Play icon overlay -->
               <div style="position: absolute; top: ${std.px(5)}; right: ${std.px(6)}; font-size: ${std.px(8)};
                 color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace;">
                 video.mp4</div>
