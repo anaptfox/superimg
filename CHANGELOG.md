@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.18 — 2026-04-12
+
+- Fix CI render failure: `checkPlaywrightAvailable` now uses `PlaywrightEngine.checkBrowser()` instead of `import("playwright")` directly — the direct import failed in pnpm's isolated store since `playwright` is owned by `@superimg/playwright`, not `apps/superimg`
+
 ## 0.0.17 — 2026-04-12
 
 - Add Playwright install note to README
