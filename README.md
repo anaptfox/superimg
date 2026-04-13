@@ -12,6 +12,8 @@ Programmatic video generation. TypeScript in, MP4 out.
 npm install superimg
 ```
 
+> **Note:** Rendering requires Playwright. If not already installed, run `npx playwright install chromium`.
+
 Create a template:
 
 ```typescript
