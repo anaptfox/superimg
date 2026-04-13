@@ -77,7 +77,8 @@ export default defineScene({
     const line5 = [{ color: "#89ddff", text: "  }" }];
     const line6 = [{ color: "#89ddff", text: "})" }];
 
-    const allLines = [codeLines, line2, line3, line4, line5, line6];
+    const blankLine = [];
+    const allLines = [codeLines, blankLine, line2, line3, line4, line5, line6];
     const totalChars = allLines.reduce((sum, line) =>
       sum + line.reduce((a, seg) => a + seg.text.length, 0), 0
     );
@@ -171,7 +172,10 @@ export default defineScene({
 
             <!-- Code content -->
             <pre style="font-family: 'JetBrains Mono', monospace; font-size: ${24 * s}px; line-height: 1.7;
-              margin: 0; white-space: pre;">${renderedLines.filter(l => l.length > 0).join("\n")}${cursorChar}</pre>
+              margin: 0; white-space: pre; height: 11.9em;">${renderedLines.map((l, i) => {
+                const isLastVisible = l.length > 0 && (i === renderedLines.length - 1 || renderedLines.slice(i + 1).every(r => r.length === 0));
+                return isLastVisible ? l + cursorChar : l;
+              }).join("\n")}</pre>
           </div>
 
           <!-- Arrow -->
