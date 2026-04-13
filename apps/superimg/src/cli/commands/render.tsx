@@ -20,6 +20,7 @@ import type { EncodingOptions } from "@superimg/types";
 import { mergeEncoding } from "../utils/merge-encoding.js";
 import { prepareAssets, resolveAudioUrl } from "../../utils/prepare-assets.js";
 import { loadCompanionData } from "../utils/load-companion-data.js";
+import { renderVideo } from "../../render-video.js";
 
 interface RenderOptions {
   output?: string;
@@ -601,6 +602,36 @@ export async function renderCommand(template: string, options: RenderOptions) {
         </Box>
       </Box>
     );
+  }
+
+  // In non-TTY (CI, pipes): bypass Ink — errors would be silently discarded.
+  // Use the programmatic renderVideo() API which throws on failure.
+  if (!process.stdout.isTTY) {
+    for (let i = 0; i < targets.length; i++) {
+      const target = targets[i];
+      const prefix = targets.length > 1 ? `[${i + 1}/${targets.length}] ` : "";
+      console.log(`${prefix}Rendering ${target.outputPath}...`);
+      try {
+        await renderVideo(resolvedTemplate, {
+          width: target.width,
+          height: target.height,
+          fps: target.fps,
+          encoding: buildEncodingOptions(options),
+          output: target.outputPath,
+          onProgress: (frame, totalFrames) => {
+            process.stdout.write(
+              `\r  Frame ${frame}/${totalFrames} (${Math.round((frame / totalFrames) * 100)}%)`
+            );
+          },
+        });
+        process.stdout.write("\n");
+        console.log(`  Saved to ${target.outputPath}`);
+      } catch (err) {
+        process.stderr.write(`\nError: ${err instanceof Error ? err.message : String(err)}\n`);
+        process.exit(1);
+      }
+    }
+    return;
   }
 
   render(<RenderUI />);
