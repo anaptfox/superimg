@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.19 — 2026-04-12
+
+- Fix invisible CI render errors: non-TTY environments (CI, pipes) now bypass Ink and use the programmatic `renderVideo()` API directly — errors go to stderr and are always visible in logs
+
 ## 0.0.18 — 2026-04-12
 
 - Fix CI render failure: `checkPlaywrightAvailable` now uses `PlaywrightEngine.checkBrowser()` instead of `import("playwright")` directly — the direct import failed in pnpm's isolated store since `playwright` is owned by `@superimg/playwright`, not `apps/superimg`
