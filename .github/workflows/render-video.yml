@@ -71,6 +71,15 @@ jobs:
               fi
             fi
 
+            # readme-hero video → render hero GIF
+            for f in $CHANGED; do
+              if echo "$f" | grep -q "^videos/readme-hero/"; then
+                if [ -f "videos/readme-hero/readme-hero.video.js" ]; then
+                  TEMPLATE_LIST="$TEMPLATE_LIST\"videos/readme-hero/readme-hero.video.js\","
+                fi
+              fi
+            done
+
             # Deduplicate and build JSON array
             if [ -n "$TEMPLATE_LIST" ]; then
               TEMPLATE_LIST=$(echo "$TEMPLATE_LIST" | sed 's/,$//')
@@ -135,18 +144,22 @@ jobs:
               node ./apps/superimg/dist/cli.js render "$template" -y \
                 --format gif -w 900 -h 506 --fps 15 \
                 -o videos/changelog/changelog.gif
+            elif [ "$template" = "videos/readme-hero/readme-hero.video.js" ]; then
+              node ./apps/superimg/dist/cli.js render "$template" -y \
+                --format gif -w 1200 -h 675 --fps 15 \
+                -o docs/assets/hero.gif
             else
               node ./apps/superimg/dist/cli.js render "$template" -y
             fi
           done
 
-      - name: Commit changelog GIF back to repo
+      - name: Commit rendered GIFs back to repo
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add videos/changelog/changelog.gif 2>/dev/null || true
+          git add videos/changelog/changelog.gif docs/assets/hero.gif 2>/dev/null || true
           git diff --staged --quiet || (
-            git commit -m "chore: update changelog.gif [skip ci]"
+            git commit -m "chore: update rendered GIFs [skip ci]"
             git push
           )
 
