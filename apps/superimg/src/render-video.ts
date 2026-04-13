@@ -63,7 +63,8 @@ export async function renderVideo(
   const engine = new PlaywrightEngine();
   try {
     await engine.init();
-    const { renderer, encoder } = engine.createAdapters();
+    const encoding = mergeEncoding(templateData.templateConfig?.encoding, options.encoding);
+    const { renderer, encoder } = engine.createAdapters({ encoding });
     const assetBaseUrl = engine.getBaseUrl();
     const templateDir = dirname(resolvedPath);
     const resolvedAssets = prepareAssets({
@@ -88,7 +89,7 @@ export async function renderVideo(
       stylesheets: templateData.templateConfig?.stylesheets,
       tailwind: templateData.templateConfig?.tailwind,
       outputName: "default",
-      encoding: mergeEncoding(templateData.templateConfig?.encoding, options.encoding),
+      encoding,
       data: mergedData,
       watermark: templateData.templateConfig?.watermark,
       background: templateData.templateConfig?.background,
