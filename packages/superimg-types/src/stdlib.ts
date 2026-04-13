@@ -112,5 +112,9 @@ export interface Stdlib {
     shape: typeof shape;
     textPath: typeof textPath;
   };
+  /** @core Scale a design-resolution pixel value to the actual render size. Returns CSS string e.g. "60px". Scale = renderWidth / config.width. */
+  px: (value: number) => string;
+  /** @core Raw scale factor (renderWidth / config.width). Use for JS math (animation offsets), not CSS strings. */
+  scale: number;
 }
 

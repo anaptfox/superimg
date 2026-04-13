@@ -154,7 +154,7 @@ jobs:
                 -o videos/changelog/changelog.gif
             elif [ "$template" = "videos/readme-hero/readme-hero.video.js" ]; then
               node ./apps/superimg/dist/cli.js render "$template" -y \
-                --format gif -w 1200 -h 675 --fps 15 \
+                --format gif --fps 15 \
                 -o docs/assets/hero.gif
             else
               node ./apps/superimg/dist/cli.js render "$template" -y

@@ -242,7 +242,8 @@ export async function executeRenderPlan<TFrame>(
         mergedData,
         outputName,
         assetsMap,
-        assetResolver
+        assetResolver,
+        template.config?.width
       );
 
       const html = safeRender(template, ctx, outputName);

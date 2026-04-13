@@ -26,7 +26,8 @@ export function createRenderContext(
   data: Record<string, unknown> = {},
   outputName: string = "default",
   assets: Record<string, AssetMeta> = {},
-  assetResolver?: (filename: string) => string
+  assetResolver?: (filename: string) => string,
+  designWidth?: number
 ): RenderContext {
   const timeSeconds = frame / fps;
   const progress =
@@ -39,9 +40,15 @@ export function createRenderContext(
   const { aspectRatio, isPortrait, isLandscape, isSquare } =
     computeOrientationFlags(width, height);
 
+  const scale = designWidth ? width / designWidth : 1;
+
   return {
-    // Standard library
-    std: stdlib,
+    // Standard library (augmented with per-render scale helpers)
+    std: {
+      ...stdlib,
+      px: (value: number) => `${value * scale}px`,
+      scale,
+    },
 
     // Global position
     globalFrame: frame,
