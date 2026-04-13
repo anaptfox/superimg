@@ -345,13 +345,18 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
           ...(templateData ?? {}),
           ...dataRef.current,
         };
+        const designW = isComposedTemplate(template) ? template.config?.width : template.config?.width;
         const ctx = createRenderContext(
           frame,
           ctxFps,
           totalFrames,
           exportWidth,
           exportHeight,
-          mergedData
+          mergedData,
+          "default",
+          {},
+          undefined,
+          designW
         );
 
         const html = (template.render as RenderFn)(ctx);

@@ -13,18 +13,21 @@ export class BrowserScheduler {
   private fps: number;
   private width: number;
   private height: number;
+  private designWidth?: number;
   private renderer: BrowserRenderer;
 
   constructor(
     duration: number,
     fps: number,
     width: number,
-    height: number
+    height: number,
+    designWidth?: number
   ) {
     this.duration = duration;
     this.fps = fps;
     this.width = width;
     this.height = height;
+    this.designWidth = designWidth;
     this.renderer = new BrowserRenderer();
   }
 
@@ -60,7 +63,11 @@ export class BrowserScheduler {
           totalFrames,
           this.width,
           this.height,
-          data ?? {}
+          data ?? {},
+          "default",
+          {},
+          undefined,
+          this.designWidth
         );
 
         const html = renderFn(ctx);

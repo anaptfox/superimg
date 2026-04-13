@@ -10,6 +10,8 @@ export default defineScene({
   config: {
     duration: 6,
     fps: 30,
+    width: 960,
+    height: 540,
     fonts: ["JetBrains+Mono:wght@400;700", "Inter:wght@400;600;800"],
     inlineCss: [`
       * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -23,7 +25,6 @@ export default defineScene({
 
   render(ctx) {
     const { std, sceneTimeSeconds: time, width, height, data } = ctx;
-    const s = width / 1920; // scale factor — sizes authored for 1920, scale to actual
 
     // — Phase timing —
     // 0–1.2s: Logo + tagline fade in
@@ -42,16 +43,16 @@ export default defineScene({
 
     // — Logo —
     const logoOpacity = std.tween(0, 1, enterP, "easeOutCubic") * globalFade;
-    const logoY = std.tween(30 * s, 0, enterP, "easeOutCubic");
+    const logoY = std.tween(15 * std.scale, 0, enterP, "easeOutCubic");
     const logoScale = std.tween(0.95, 1, enterP, "easeOutCubic");
 
     // — Tagline —
     const tagOpacity = std.tween(0, 0.7, taglineP, "easeOutCubic") * globalFade;
-    const tagY = std.tween(24 * s, 0, taglineP, "easeOutCubic");
+    const tagY = std.tween(12 * std.scale, 0, taglineP, "easeOutCubic");
 
     // — Code block —
     const codeOpacity = std.tween(0, 1, codeP, "easeOutCubic") * globalFade;
-    const codeX = std.tween(-60 * s, 0, codeP, "easeOutCubic");
+    const codeX = std.tween(-30 * std.scale, 0, codeP, "easeOutCubic");
 
     // Code lines with progressive reveal
     const codeLines = [
@@ -107,7 +108,7 @@ export default defineScene({
 
     // — Output preview (the "result" panel) —
     const outOpacity = std.tween(0, 1, outputP, "easeOutCubic") * globalFade;
-    const outX = std.tween(60 * s, 0, outputP, "easeOutCubic");
+    const outX = std.tween(30 * std.scale, 0, outputP, "easeOutCubic");
     const outScale = std.tween(0.9, 1, outputP, "easeOutCubic");
 
     // Animated gradient hue rotation in the output preview
@@ -124,54 +125,54 @@ export default defineScene({
           background-image:
             linear-gradient(rgba(102, 126, 234, 0.03) 1px, transparent 1px),
             linear-gradient(90deg, rgba(102, 126, 234, 0.03) 1px, transparent 1px);
-          background-size: ${80 * s}px ${80 * s}px;
+          background-size: ${std.px(40)} ${std.px(40)};
         "></div>
 
         <!-- Glow orbs -->
-        <div style="position: absolute; width: 600px; height: 600px; top: -200px; left: -100px;
+        <div style="position: absolute; width: 400px; height: 400px; top: -150px; left: -80px;
           background: radial-gradient(circle, rgba(102, 126, 234, 0.08) 0%, transparent 70%);
           border-radius: 50%;
         "></div>
-        <div style="position: absolute; width: 500px; height: 500px; bottom: -200px; right: -100px;
+        <div style="position: absolute; width: 350px; height: 350px; bottom: -150px; right: -80px;
           background: radial-gradient(circle, rgba(118, 75, 162, 0.06) 0%, transparent 70%);
           border-radius: 50%;
         "></div>
 
         <!-- Logo + Tagline -->
-        <div style="position: relative; z-index: 1; text-align: center; margin-bottom: ${80 * s}px;
+        <div style="position: relative; z-index: 1; text-align: center; margin-bottom: ${std.px(40)};
           opacity: ${logoOpacity}; transform: translateY(${logoY}px) scale(${logoScale});">
-          <div style="font-size: ${96 * s}px; font-weight: 800; letter-spacing: ${-3 * s}px;
+          <div style="font-size: ${std.px(48)}; font-weight: 800; letter-spacing: ${std.px(-1.5)};
             background: linear-gradient(135deg, #667eea, #a78bfa, #764ba2);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             background-clip: text;
           ">SuperImg</div>
-          <div style="font-size: ${36 * s}px; font-weight: 400; color: rgba(255,255,255,0.5);
-            margin-top: ${16 * s}px; letter-spacing: ${2 * s}px;
+          <div style="font-size: ${std.px(18)}; font-weight: 400; color: rgba(255,255,255,0.5);
+            margin-top: ${std.px(8)}; letter-spacing: ${std.px(1)};
             opacity: ${tagOpacity}; transform: translateY(${tagY}px);">
             ${data.tagline}
           </div>
         </div>
 
         <!-- Code → Output Row -->
-        <div style="position: relative; z-index: 1; display: flex; align-items: center; gap: ${70 * s}px;">
+        <div style="position: relative; z-index: 1; display: flex; align-items: center; gap: ${std.px(35)};">
 
           <!-- Code Panel -->
           <div style="opacity: ${codeOpacity}; transform: translateX(${codeX}px);
             background: rgba(15, 15, 35, 0.9); border: 1px solid rgba(102, 126, 234, 0.15);
-            border-radius: ${16 * s}px; padding: ${36 * s}px ${42 * s}px; min-width: ${780 * s}px;
+            border-radius: ${std.px(8)}; padding: ${std.px(18)} ${std.px(21)}; min-width: ${std.px(390)};
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.03);">
 
             <!-- Window dots -->
-            <div style="display: flex; gap: ${10 * s}px; margin-bottom: ${24 * s}px;">
-              <div style="width: ${14 * s}px; height: ${14 * s}px; border-radius: 50%; background: #ff5f57;"></div>
-              <div style="width: ${14 * s}px; height: ${14 * s}px; border-radius: 50%; background: #febc2e;"></div>
-              <div style="width: ${14 * s}px; height: ${14 * s}px; border-radius: 50%; background: #28c840;"></div>
-              <div style="font-size: ${16 * s}px; color: rgba(255,255,255,0.25); margin-left: ${18 * s}px;
+            <div style="display: flex; gap: ${std.px(5)}; margin-bottom: ${std.px(12)};">
+              <div style="width: ${std.px(7)}; height: ${std.px(7)}; border-radius: 50%; background: #ff5f57;"></div>
+              <div style="width: ${std.px(7)}; height: ${std.px(7)}; border-radius: 50%; background: #febc2e;"></div>
+              <div style="width: ${std.px(7)}; height: ${std.px(7)}; border-radius: 50%; background: #28c840;"></div>
+              <div style="font-size: ${std.px(8)}; color: rgba(255,255,255,0.25); margin-left: ${std.px(9)};
                 font-family: 'Inter', sans-serif;">template.ts</div>
             </div>
 
             <!-- Code content -->
-            <pre style="font-family: 'JetBrains Mono', monospace; font-size: ${24 * s}px; line-height: 1.7;
+            <pre style="font-family: 'JetBrains Mono', monospace; font-size: ${std.px(12)}; line-height: 1.7;
               margin: 0; white-space: pre; height: 11.9em;">${renderedLines.map((l, i) => {
                 const isLastVisible = l.length > 0 && (i === renderedLines.length - 1 || renderedLines.slice(i + 1).every(r => r.length === 0));
                 return isLastVisible ? l + cursorChar : l;
@@ -180,16 +181,16 @@ export default defineScene({
 
           <!-- Arrow -->
           <div style="opacity: ${arrowOpacity}; transform: scale(${arrowScale});
-            font-size: ${56 * s}px; color: rgba(102, 126, 234, 0.8); display: flex; flex-direction: column;
-            align-items: center; gap: ${10 * s}px;">
+            font-size: ${std.px(28)}; color: rgba(102, 126, 234, 0.8); display: flex; flex-direction: column;
+            align-items: center; gap: ${std.px(5)};">
             <div>→</div>
-            <div style="font-size: ${16 * s}px; font-weight: 600; letter-spacing: 2px; color: rgba(102, 126, 234, 0.4);
+            <div style="font-size: ${std.px(8)}; font-weight: 600; letter-spacing: 2px; color: rgba(102, 126, 234, 0.4);
               text-transform: uppercase;">MP4</div>
           </div>
 
           <!-- Output Preview -->
           <div style="opacity: ${outOpacity}; transform: translateX(${outX}px) scale(${outScale});
-            border-radius: ${16 * s}px; overflow: hidden; width: ${580 * s}px; height: ${340 * s}px;
+            border-radius: ${std.px(8)}; overflow: hidden; width: ${std.px(290)}; height: ${std.px(170)};
             border: 1px solid rgba(102, 126, 234, 0.15);
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);">
 
@@ -198,11 +199,11 @@ export default defineScene({
               background: linear-gradient(135deg, hsl(${235 + hue}, 70%, 45%), hsl(${270 + hue}, 55%, 40%));
               display: flex; align-items: center; justify-content: center;">
 
-              <div style="font-size: ${60 * s}px; font-weight: 700; color: white; text-align: center;
+              <div style="font-size: ${std.px(30)}; font-weight: 700; color: white; text-align: center;
                 text-shadow: 0 2px 12px rgba(0,0,0,0.3);">Hello</div>
 
               <!-- Video progress bar -->
-              <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: ${5 * s}px;
+              <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: ${std.px(3)};
                 background: rgba(0,0,0,0.3);">
                 <div style="width: ${videoProgress * 100}%; height: 100%;
                   background: linear-gradient(90deg, #667eea, #a78bfa);
@@ -210,7 +211,7 @@ export default defineScene({
               </div>
 
               <!-- Play icon overlay (fades out) -->
-              <div style="position: absolute; top: ${10 * s}px; right: ${12 * s}px; font-size: ${16 * s}px;
+              <div style="position: absolute; top: ${std.px(5)}; right: ${std.px(6)}; font-size: ${std.px(8)};
                 color: rgba(255,255,255,0.4); font-family: 'JetBrains Mono', monospace;">
                 video.mp4</div>
             </div>

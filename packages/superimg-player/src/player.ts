@@ -460,6 +460,7 @@ export class Player {
       ...(templateData ?? {}),
       ...this._data,
     };
+    const templateConfig = this._composedTemplate?.config ?? this.template?.config;
     const ctx = createRenderContext(
       frame,
       this._fps,
@@ -468,14 +469,15 @@ export class Player {
       this._renderHeight,
       mergedData,
       "default",
-      this._assetsMap
+      this._assetsMap,
+      undefined,
+      templateConfig?.width
     );
 
     try {
       // Render HTML string
       const html = this.template.render(ctx);
       // Compose with template's background (if any)
-      const templateConfig = this._composedTemplate?.config ?? this.template?.config;
       const compositeHtml = buildCompositeHtml(
         html,
         templateConfig?.background,
@@ -923,6 +925,7 @@ export class Player {
     // Build render context for this frame
     const templateData = "data" in this.template ? this.template.data : undefined;
     const mergedData = { ...(templateData ?? {}), ...this._data };
+    const thumbTemplateConfig = this._composedTemplate?.config ?? this.template?.config;
     const ctx = createRenderContext(
       targetFrame,
       this._fps,
@@ -931,7 +934,9 @@ export class Player {
       this._renderHeight,
       mergedData,
       "default",
-      this._assetsMap
+      this._assetsMap,
+      undefined,
+      thumbTemplateConfig?.width
     );
 
     // Render HTML
