@@ -77,7 +77,7 @@ export default defineScene({
     const line5 = [{ color: "#89ddff", text: "  }" }];
     const line6 = [{ color: "#89ddff", text: "})" }];
 
-    const blankLine = [];
+    const blankLine = [{ color: "transparent", text: " " }];
     const allLines = [codeLines, blankLine, line2, line3, line4, line5, line6];
     const totalChars = allLines.reduce((sum, line) =>
       sum + line.reduce((a, seg) => a + seg.text.length, 0), 0
