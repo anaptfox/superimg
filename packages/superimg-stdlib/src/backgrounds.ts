@@ -6,7 +6,7 @@
  * @example
  * ```ts
  * // Before (~25 lines):
- * const zoom = std.tween(1.0, 1.1, std.math.clamp(time / duration, 0, 1), "linear");
+ * const zoom = std.interpolate(time / duration, [0, 1], [1.0, 1.1]);
  * // + background div + overlay div HTML
  *
  * // After (3 lines):

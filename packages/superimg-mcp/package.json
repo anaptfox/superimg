@@ -21,12 +21,11 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest --run",
+    "test": "vitest --run --passWithNoTests",
     "clean": "rm -rf dist"
   },
   "files": [
-    "dist",
-    "skills"
+    "dist"
   ],
   "sideEffects": false,
   "keywords": [
@@ -40,6 +39,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@superimg/core": "workspace:*",
+    "@superimg/skill": "workspace:*",
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
     "zod": "^3.23.0"

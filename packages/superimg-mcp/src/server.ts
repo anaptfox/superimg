@@ -1,5 +1,5 @@
 //! SuperImg MCP Server Factory
-//! Creates an MCP server exposing SuperImg capabilities to AI assistants
+//! Creates an MCP server exposing SuperImg capabilities to AI assistants.
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerSkillResource, registerApiResource, registerExamplesResource, registerEasingsResource } from "./resources/index.js";
@@ -8,12 +8,13 @@ import { registerValidateTool, registerListVideosTool, registerTemplateInfoTool 
 export interface SuperimgMcpOptions {
   /** Project root for video discovery (default: cwd) */
   projectRoot?: string;
-  /** Path to skills directory (default: bundled) */
-  skillsPath?: string;
 }
 
 /**
  * Create a configured SuperImg MCP server.
+ *
+ * Skill content (SKILL.md, references, examples) is sourced from
+ * `@superimg/skill` at build time — no runtime filesystem access for skill data.
  *
  * @example
  * ```ts
@@ -31,13 +32,11 @@ export function createSuperimgServer(options: SuperimgMcpOptions = {}): McpServe
     { capabilities: { tools: {}, resources: {} } }
   );
 
-  // Register resources (static content for AI context)
   registerSkillResource(server, options);
   registerApiResource(server, options);
   registerExamplesResource(server, options);
   registerEasingsResource(server);
 
-  // Register tools (actions AI can execute)
   registerValidateTool(server);
   registerListVideosTool(server, options);
   registerTemplateInfoTool(server, options);

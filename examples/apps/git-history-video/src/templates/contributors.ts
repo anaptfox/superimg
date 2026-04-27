@@ -29,8 +29,8 @@ export default defineScene({
       .map((c, i) => {
         const rowStart = i * 0.25;
         const rowP = std.math.clamp((rowsP - rowStart * 0.2) / 0.8, 0, 1);
-        const y = std.tween(30, 0, rowP, "easeOutCubic");
-        const opacity = std.tween(0, 1, rowP, "easeOutCubic");
+        const y = std.interpolate(rowP, [0, 1], [30, 0], "easeOutCubic");
+        const opacity = std.interpolate(rowP, [0, 1], [0, 1], "easeOutCubic");
         const barW = Math.round((c.commits / maxCommits) * 720);
         return `
           <div style="position:relative; display:flex; align-items:center; margin:20px 0; transform:translateY(${y}px); opacity:${opacity};">
@@ -56,7 +56,7 @@ export default defineScene({
         fontFamily: "Inter, system-ui, -apple-system, sans-serif",
         background: "radial-gradient(circle at 10% 0%, #1E293B 0%, #0F172A 55%, #020617 100%)",
       })}">
-        <div style="position:absolute; inset:0; opacity:${std.tween(0.3, 1, enterP, "easeOutCubic")};">
+        <div style="position:absolute; inset:0; opacity:${std.interpolate(enterP, [0, 1], [0.3, 1], "easeOutCubic")};">
           <div style="position:absolute; top:90px; left:110px; color:rgba(255,255,255,0.75); font-size:26px; letter-spacing:0.08em;">TOP CONTRIBUTORS</div>
           <div style="position:absolute; top:130px; left:110px; color:white; font-size:64px; font-weight:800;">${title}</div>
           <div style="position:absolute; top:224px; left:110px; width:260px; height:4px; border-radius:2px; background:${accentColor};"></div>

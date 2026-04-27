@@ -12,11 +12,11 @@ That's the whole model. A video is a pure function of time. Same input, same out
 
 ## Adding easing
 
-The `std` library ships with every template. `std.tween()` composes easing and interpolation in one call, and `std.math.clamp` bounds a value to a range:
+The `std` library ships with every template. `std.interpolate()` maps a progress value through paired input and output ranges with optional easing, and `std.math.clamp` bounds a value to a range:
 
 <CodeDemo templateId="blog-easing" />
 
-Two functions turn a mechanical linear fade into smooth deceleration: `clamp` bounds time to a 0–1 range, and `tween` maps it to the value you need with your chosen easing curve. Swap in `easeOutBounce` or `easeOutElastic` and the character of motion changes completely.
+Two functions turn a mechanical linear fade into smooth deceleration: `clamp` bounds time to a 0–1 range, and `interpolate` maps it to the value you need with your chosen easing curve. Swap in `easeOutBounce` or `easeOutElastic` and the character of motion changes completely.
 
 ---
 

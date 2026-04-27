@@ -6,16 +6,9 @@ import {
   Player,
   createTimelineController,
   type BackgroundValue,
+  type AudioOptions,
 } from "superimg";
 import { escapeHtml } from "superimg/stdlib";
-
-interface AudioConfig {
-  src: string;
-  loop?: boolean;
-  volume?: number;
-  fadeIn?: number;
-  fadeOut?: number;
-}
 
 interface DevConfig {
   width: number;
@@ -23,7 +16,7 @@ interface DevConfig {
   fps: number;
   duration: number;
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
-  audio?: string | AudioConfig;
+  audio?: string | AudioOptions;
   templateDir?: string;
 }
 

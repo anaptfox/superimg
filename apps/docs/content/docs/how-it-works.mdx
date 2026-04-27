@@ -31,7 +31,7 @@ export default defineScene({
     title: "Hello World"
   },
   render(ctx) {
-    const opacity = ctx.std.tween(0, 1, ctx.sceneProgress);
+    const opacity = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1]);
     return `<div style="opacity: ${opacity}">${ctx.data.title}</div>`;
   }
 })
@@ -47,7 +47,7 @@ Each call receives a `ctx` object with timing info:
 
 | Property | Frame 0 | Frame 45 | Frame 89 |
 |----------|---------|----------|----------|
-| `ctx.frame` | 0 | 45 | 89 |
+| `ctx.sceneFrame` | 0 | 45 | 89 |
 | `ctx.sceneTimeSeconds` | 0.0 | 1.5 | 2.97 |
 | `ctx.sceneProgress` | 0.0 | 0.5 | 0.99 |
 
@@ -92,7 +92,7 @@ The `ctx` object your render function receives:
 ```typescript
 render(ctx) {
   // Timing
-  ctx.frame              // Current frame number (0, 1, 2, ...)
+  ctx.sceneFrame         // Current frame within the scene (0, 1, 2, ...)
   ctx.sceneTimeSeconds   // Time in seconds (0.0, 0.033, 0.066, ...)
   ctx.sceneProgress      // Progress from 0 to 1
 
@@ -104,9 +104,9 @@ render(ctx) {
   ctx.data.title         // Your custom data
 
   // Standard library
-  ctx.std.tween(...)     // Smooth interpolation
-  ctx.std.math.clamp(...) // Constrain values
-  ctx.std.css(...)       // Generate CSS strings
+  ctx.std.score(...)      // Phase-based motion orchestration
+  ctx.std.interpolate(...) // Multi-keyframe interpolation
+  ctx.std.css(...)        // Generate CSS strings
 }
 ```
 

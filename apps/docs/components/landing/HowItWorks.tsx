@@ -35,8 +35,8 @@ export default defineScene({
     const count = Math.max(1, 5 - Math.floor(sceneFrame / fps));
     const showGo = Math.floor(sceneFrame / fps) >= 5;
     const fraction = (sceneFrame % fps) / fps;
-    const pulse = std.tween(1.2, 1, fraction, "easeOutCubic");
-    const glow = std.tween(0.8, 0.2, fraction, "easeOutCubic");
+    const pulse = std.interpolate(fraction, [0, 1], [1.2, 1], "easeOutCubic");
+    const glow = std.interpolate(fraction, [0, 1], [0.8, 0.2], "easeOutCubic");
     const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }, std.css.center());
     const numStyle = std.css({ fontSize: 180, fontWeight: 800, color: "white", transform: "scale(" + pulse + ")", textShadow: "0 0 " + (40 * glow) + "px rgba(102,126,234," + glow + ")" });
     return \`
@@ -56,7 +56,7 @@ const BEFORE_CODE_DISPLAY = `render(ctx) {
 const AFTER_CODE_DISPLAY = `render(ctx) {
   const { sceneFrame, fps, std } = ctx;
   const count = 5 - Math.floor(sceneFrame / fps);
-  const pulse = std.tween(1.2, 1, fraction, 'easeOutCubic');
+  const pulse = std.interpolate(fraction, [0, 1], [1.2, 1], 'easeOutCubic');
   const s = std.css({
     transform: 'scale(' + pulse + ')'
   });

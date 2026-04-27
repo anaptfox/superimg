@@ -59,7 +59,6 @@ function safeRender(
         sceneTimeSeconds: ctx.sceneTimeSeconds,
         sceneProgress: ctx.sceneProgress,
         globalTimeSeconds: ctx.globalTimeSeconds,
-        globalProgress: ctx.globalProgress,
       },
       dataSnapshot: truncateForError(ctx.data),
     });

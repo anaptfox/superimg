@@ -1,0 +1,292 @@
+{
+  "compose-demo": {
+    "title": "Compose Demo",
+    "category": "basics",
+    "description": "Multi-scene composition with transitions between templates"
+  },
+  "hello-world": {
+    "title": "Hello World",
+    "category": "basics",
+    "description": "Animated title card with accent lines"
+  },
+  "watermark-demo": {
+    "title": "Watermark Demo",
+    "category": "basics",
+    "description": "Applying a watermark overlay via config.watermark"
+  },
+  "before-after-image": {
+    "title": "Before / After (Image)",
+    "category": "marketing",
+    "description": "Compare visuals like website redesigns or photos"
+  },
+  "before-after-ui": {
+    "title": "Before / After (UI)",
+    "category": "marketing",
+    "description": "Compare rendered HTML/CSS components side-by-side"
+  },
+  "countdown": {
+    "title": "Countdown Timer",
+    "category": "marketing",
+    "description": "Animated countdown to a target date"
+  },
+  "http-spotlight": {
+    "title": "HTTP Spotlight",
+    "category": "marketing",
+    "description": "Hero clip showcasing an HTTP endpoint — for launches and social"
+  },
+  "logo-reveal": {
+    "title": "Logo Reveal",
+    "category": "marketing",
+    "description": "Brand intro with named std.score phases for logo and tagline reveals"
+  },
+  "lower-thirds": {
+    "title": "Lower Thirds",
+    "category": "marketing",
+    "description": "Broadcast-style name/title overlay"
+  },
+  "shorts": {
+    "title": "Shorts",
+    "category": "marketing",
+    "description": "Simple title/subtitle card for vertical shorts"
+  },
+  "testimonial-split": {
+    "title": "Testimonial Split",
+    "category": "marketing",
+    "description": "Split-layout testimonial with photo, quote, and attribution"
+  },
+  "testimonial-spotlight": {
+    "title": "Testimonial Spotlight",
+    "category": "marketing",
+    "description": "Full-bleed testimonial spotlight with animated quote"
+  },
+  "testimonial-typewriter": {
+    "title": "Testimonial Typewriter",
+    "category": "marketing",
+    "description": "Testimonial with typewriter-style quote reveal"
+  },
+  "url": {
+    "title": "URL Preview",
+    "category": "marketing",
+    "description": "OpenGraph-style link card for a URL"
+  },
+  "event-agenda": {
+    "title": "Event Agenda",
+    "category": "events",
+    "description": "Sequential session cards with time, title, speaker"
+  },
+  "meetup-announcement": {
+    "title": "Meetup Announcement",
+    "category": "events",
+    "description": "Event announcement card with date, time, venue"
+  },
+  "member-of-month": {
+    "title": "Member of the Month",
+    "category": "events",
+    "description": "Community spotlight card for member recognition"
+  },
+  "monthly-events": {
+    "title": "Monthly Events",
+    "category": "events",
+    "description": "Stacked event cards showing a month of meetups"
+  },
+  "recap": {
+    "title": "Recap",
+    "category": "events",
+    "description": "Three-scene event recap: intro, content, outro"
+  },
+  "speaker-expand": {
+    "title": "Speaker Expand",
+    "category": "events",
+    "description": "Speaker card that expands from portrait to full-bleed with details"
+  },
+  "speaker-overlap": {
+    "title": "Speaker Overlap",
+    "category": "events",
+    "description": "Overlapping speaker photo + info panel for meetup promos"
+  },
+  "speaker-split": {
+    "title": "Speaker Split",
+    "category": "events",
+    "description": "Split-screen speaker profile with talk title, venue, and logo outro"
+  },
+  "thread": {
+    "title": "Thread",
+    "category": "social",
+    "description": "Multi-post Twitter thread carousel"
+  },
+  "tweet": {
+    "title": "Tweet",
+    "category": "social",
+    "description": "Turn a tweet URL into a video. Set TWEET_URL to fetch live"
+  },
+  "chatgpt": {
+    "title": "ChatGPT",
+    "category": "interfaces",
+    "description": "Conversation replay styled as ChatGPT"
+  },
+  "claude": {
+    "title": "Claude",
+    "category": "interfaces",
+    "description": "Conversation replay styled as Claude"
+  },
+  "claude-code": {
+    "title": "Claude Code",
+    "category": "interfaces",
+    "description": "Agentic Claude Code session in a terminal-style CLI"
+  },
+  "imessage": {
+    "title": "iMessage",
+    "category": "interfaces",
+    "description": "iOS-style message thread with typing bubbles"
+  },
+  "changelog": {
+    "title": "Changelog",
+    "category": "data",
+    "description": "Release notes with version, date, and highlights"
+  },
+  "contributors": {
+    "title": "Contributors",
+    "category": "data",
+    "description": "Avatar grid spotlight for a team or community"
+  },
+  "faq": {
+    "title": "FAQ",
+    "category": "data",
+    "description": "Sequential Q&A reveals for myth busting"
+  },
+  "list": {
+    "title": "List",
+    "category": "data",
+    "description": "Numbered lists with dramatic reveals — perfect for top 5s"
+  },
+  "schedule": {
+    "title": "Schedule",
+    "category": "data",
+    "description": "Day-by-day schedule with time slots"
+  },
+  "stats-card": {
+    "title": "Stats Card",
+    "category": "data",
+    "description": "Animated stat with progress bar"
+  },
+  "tier-list": {
+    "title": "Tier List",
+    "category": "data",
+    "description": "S/A/B/C-style ranked tiers with items"
+  },
+  "timeline": {
+    "title": "Timeline",
+    "category": "data",
+    "description": "Animated roadmap with milestones appearing along a timeline"
+  },
+  "before-after-code": {
+    "title": "Before / After (Code)",
+    "category": "developer",
+    "description": "Compare code snippets with syntax highlighting and window frames"
+  },
+  "before-after-terminal": {
+    "title": "Before / After (Terminal)",
+    "category": "developer",
+    "description": "Compare CLI outputs and error logs in a terminal style"
+  },
+  "code-highlight": {
+    "title": "Code Highlight",
+    "category": "developer",
+    "description": "Shiki-powered syntax highlighting for static and dynamic code blocks"
+  },
+  "code-reveal": {
+    "title": "Code Reveal",
+    "category": "developer",
+    "description": "Syntax-highlighted code with line-by-line reveal"
+  },
+  "code-typing": {
+    "title": "Code Typing",
+    "category": "developer",
+    "description": "Code typed character-by-character with live highlighting"
+  },
+  "github-wrapped": {
+    "title": "GitHub Wrapped",
+    "category": "developer",
+    "description": "Year-in-review style recap for a GitHub profile"
+  },
+  "http-trace": {
+    "title": "HTTP Trace",
+    "category": "developer",
+    "description": "Follow an HTTP request from method through response — for docs and tutorials"
+  },
+  "karaoke": {
+    "title": "Karaoke",
+    "category": "developer",
+    "description": "Canonical std.cue transcript sync with fromElevenLabs, charProgress, and between"
+  },
+  "markdown": {
+    "title": "Markdown",
+    "category": "developer",
+    "description": "Animated prose from markdown — headings, bullets, quotes"
+  },
+  "npm-stats": {
+    "title": "NPM Stats",
+    "category": "developer",
+    "description": "Weekly download trends for an npm package. Set NPM_PACKAGE to fetch live"
+  },
+  "path-flight": {
+    "title": "Path Flight",
+    "category": "developer",
+    "description": "Animate elements along SVG motion paths with rotation and trails"
+  },
+  "phase-demo": {
+    "title": "Phase Animation",
+    "category": "developer",
+    "description": "Enter/hold/exit phase timing pattern"
+  },
+  "spring-stagger-demo": {
+    "title": "Spring & Stagger",
+    "category": "developer",
+    "description": "Spring physics, staggered entrances, and multi-keyframe interpolation"
+  },
+  "svg-draw": {
+    "title": "SVG Draw",
+    "category": "vector",
+    "description": "Animated line drawing with stroke-dasharray reveals"
+  },
+  "svg-filter": {
+    "title": "SVG Filter",
+    "category": "vector",
+    "description": "Animated SVG filter effects — blur, glow, displacement"
+  },
+  "svg-morph": {
+    "title": "SVG Morph",
+    "category": "vector",
+    "description": "Shape-to-shape SVG path morphing"
+  },
+  "svg-reveal": {
+    "title": "SVG Reveal",
+    "category": "vector",
+    "description": "Mask-based SVG content reveals"
+  },
+  "svg-shapes": {
+    "title": "SVG Shapes",
+    "category": "vector",
+    "description": "Animated primitive shapes built with std.svg"
+  },
+  "svg-text-path": {
+    "title": "SVG Text on Path",
+    "category": "vector",
+    "description": "Text following a curved SVG path"
+  },
+  "tailwind-test": {
+    "title": "Tailwind Test",
+    "category": "developer",
+    "description": "Tailwind-powered scene showcasing utility-class animation patterns"
+  },
+  "terminal": {
+    "title": "Terminal",
+    "category": "developer",
+    "description": "Score-driven terminal commands and output"
+  },
+  "walk-cycle": {
+    "title": "Walk Cycle",
+    "category": "developer",
+    "description": "Biomechanics-driven character animation built with SVG primitives"
+  }
+}

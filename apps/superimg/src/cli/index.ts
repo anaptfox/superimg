@@ -44,7 +44,8 @@ program
   .option("--pm <manager>", "Package manager to use: npm, yarn, pnpm, bun")
   .option("--skip-install", "Skip dependency installation")
   .option("--skip-browser", "Skip browser download")
-  .action(async (name: string, options: { yes?: boolean; js?: boolean; pm?: string; skipInstall?: boolean; skipBrowser?: boolean }) => {
+  .option("--skip-skill", "Skip AI skill installation prompt")
+  .action(async (name: string, options: { yes?: boolean; js?: boolean; pm?: string; skipInstall?: boolean; skipBrowser?: boolean; skipSkill?: boolean }) => {
     const { initCommand } = await import("./commands/init.js");
     await initCommand(name, options);
   });
@@ -78,7 +79,7 @@ program
   .description("Render template to video")
   .argument("[template]", "Video name or path (optional for interactive mode)")
   .option("-y, --yes", "Non-interactive mode (requires template or --all)")
-  .option("-o, --output <path>", "Output path (file or directory, defaults to output/)")
+  .option("-o, --output <path>", "Output path (file or directory). Default: an output/ folder next to the template.")
   .option("--format <type>", "Output format: mp4, webm, gif")
   .option("-w, --width <pixels>", "Video width")
   .option("-h, --height <pixels>", "Video height")
@@ -101,7 +102,7 @@ program
   .option("--max-colors <n>", "GIF max palette colors (2-256, default 256)")
   .option("--gif-loop <n>", "GIF loop count (0=infinite, -1=no loop)")
   .option("--gif-dither <algorithm>", "GIF dither algorithm (e.g. sierra2_4a, bayer, none)")
-  .option("--debug-html", "Save the underlying HTML of each frame to .superimg/debug/")
+  .option("--debug-html", "Save the underlying HTML of each frame next to the resolved output in .superimg/debug/")
   .action(async (template: string | undefined, options) => {
     const mod = await import("./commands/render.js");
 
@@ -148,16 +149,56 @@ program
     await setupCommand();
   });
 
-program
-  .command("add")
-  .description("Add capabilities to your project")
-  .argument("<item>", "Item to add: skill")
-  .option("-y, --yes", "Skip prompts and use defaults")
-  .option("--project", "Project only (AGENTS.md)")
-  .option("--global", "Global only (skills.sh)")
-  .action(async (item: string, options: { yes?: boolean; project?: boolean; global?: boolean }) => {
-    const { addCommand } = await import("./commands/add.js");
-    await addCommand(item, options);
+const skill = program
+  .command("skill")
+  .description("Manage the SuperImg AI skill across coding agents (Claude, Codex, Cursor, Gemini, OpenCode, Pi, …)");
+
+skill
+  .command("install")
+  .description("Install the SuperImg skill into one or more host targets")
+  .option("--host <ids>", "Comma-separated host IDs (e.g. claude,codex,cursor) or 'all'")
+  .option("--all-hosts", "Install for every supported host")
+  .option("--global", "Also install into global host paths (where supported)")
+  .option("--global-only", "Install only into global host paths")
+  .option("-y, --yes", "Skip prompts; use defaults / auto-detection")
+  .action(async (options) => {
+    const { installCommand } = await import("./commands/skill/install.js");
+    await installCommand(options);
+  });
+
+skill
+  .command("update")
+  .description("Refresh existing skill installs to the bundled version")
+  .option("--host <ids>", "Comma-separated host IDs or 'all'")
+  .option("--all-hosts", "Update every supported host (default)")
+  .option("--global", "Include global host paths (default: both project and global)")
+  .option("--global-only", "Update only global host paths")
+  .option("--check", "Print status without writing")
+  .action(async (options) => {
+    const { updateCommand } = await import("./commands/skill/update.js");
+    await updateCommand(options);
+  });
+
+skill
+  .command("list")
+  .description("Show what's installed where, and at what version")
+  .option("--global", "Show only global paths")
+  .action(async (options) => {
+    const { listCommand } = await import("./commands/skill/list.js");
+    await listCommand(options);
+  });
+
+skill
+  .command("remove")
+  .description("Strip the SuperImg skill from installed targets")
+  .option("--host <ids>", "Comma-separated host IDs or 'all'")
+  .option("--all-hosts", "Remove from every supported host")
+  .option("--global", "Also remove from global host paths")
+  .option("--global-only", "Remove only from global host paths")
+  .option("-y, --yes", "Skip confirmation prompt")
+  .action(async (options) => {
+    const { removeCommand } = await import("./commands/skill/remove.js");
+    await removeCommand(options);
   });
 
 program.parse();

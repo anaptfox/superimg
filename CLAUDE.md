@@ -33,7 +33,7 @@ Run `just` or `just --list` to see all available recipes.
 
 Videos are `*.video.ts` files discovered anywhere in the project. No special config needed.
 
-**Examples location**: `examples/templates/<name>/<name>.video.ts`
+**Examples location**: `examples/<category>/<name>/<name>.video.(ts|js)`
 
 **CLI shorthand** (from monorepo root):
 ```bash
@@ -49,10 +49,10 @@ CLI="node ./apps/superimg/dist/cli.js"
 **Render examples**:
 ```bash
 # Render a template
-node ./apps/superimg/dist/cli.js render examples/templates/hello-world/hello-world.video.ts
+node ./apps/superimg/dist/cli.js render examples/basics/hello-world/hello-world.video.js
 
 # Render compose demo (multi-scene)
-node ./apps/superimg/dist/cli.js render examples/templates/compose-demo/compose-demo.video.ts
+node ./apps/superimg/dist/cli.js render examples/basics/compose-demo/compose-demo.video.ts
 ```
 
 Output: `output/<name>.mp4`

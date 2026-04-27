@@ -40,7 +40,7 @@
     }
   },
   "scripts": {
-    "generate": "tsx scripts/generate-runtime.ts",
+    "generate": "node --import tsx scripts/generate-runtime.ts",
     "build": "pnpm run generate && tsup",
     "dev": "tsup --watch",
     "test": "vitest --run",

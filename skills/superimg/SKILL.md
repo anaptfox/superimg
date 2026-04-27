@@ -11,7 +11,7 @@ description: >
 
 ## Mental Model
 
-Video is a pure function of time. Your template's `render(ctx)` is called once per frame. It receives a `RenderContext` and returns an HTML string. All animation is derived from `sceneProgress` (0→1 over the scene) or `sceneTimeSeconds` (elapsed seconds). Use `std.tween` as the canonical animation primitive. Data comes from `data`, merged with per-scene overrides. No timeline editor, no keyframes — just math and HTML.
+Video is a pure function of time. Your template's `render(ctx)` is called once per frame. It receives a `RenderContext` and returns an HTML string. All animation is derived from `sceneProgress` (0→1 over the scene) or `sceneTimeSeconds` (elapsed seconds). Use `std.score` as the primary orchestration primitive for layouts, and `std.interpolate` or `std.spring` for low-level math. Data comes from `data`, merged with per-scene overrides.
 
 ## Quick Start
 
@@ -25,11 +25,14 @@ export default defineScene({
     inlineCss: ["* { margin: 0; box-sizing: border-box; } body { background: #0f0f23; font-family: system-ui; }"],
   },
   render(ctx) {
-    const { std, sceneProgress, width, height, data } = ctx;
-    const { style } = std.motion.enter(sceneProgress, { y: 30 });
+    const { std, width, height, data } = ctx;
+    // score() handles enter/hold/exit phases automatically
+    const t = std.score(); 
+    const card = t.motion({ y: 30 }); // enter from y:30, stay, then auto-exit
+    
     return `
       <div style="${std.css({ width, height }, std.css.center())}">
-        <div style="${std.css({ color: data.accentColor, fontSize: 64 }, style)}">${data.message}</div>
+        <div style="${std.css({ color: data.accentColor, fontSize: 64 }, card.style)}">${data.message}</div>
       </div>
     `;
   },
@@ -44,19 +47,16 @@ Use these from `ctx`: `sceneProgress`, `sceneTimeSeconds`, `sceneDurationSeconds
 
 ## Core Patterns
 
-**Motion helpers (recommended for fade+slide animations):**
+**Score API (recommended for layouts and choreography):**
 ```typescript
-// Single-phase enter animation
-const { style } = std.motion.enter(sceneProgress, { y: 30 });
+// Define phases in fractions of scene duration
+const t = std.score({ enter: 0.15, hold: 0.7, exit: 0.15 });
 
-// Enter-hold-exit animation
-const { style } = std.motion.enterExit(sceneProgress, { y: 40, enterEnd: 0.2, exitStart: 0.8 });
-```
+// Motion with automatic enter/exit
+const card = t.motion({ scale: 0.8, easing: "easeOutBack" });
 
-**Phase splitting (for multi-phase timing):**
-```typescript
-const { enter, hold, exit } = std.phases(sceneProgress, { enter: 1, hold: 2, exit: 1 });
-const { style } = std.motion.enter(enter.progress, { y: 30 });
+// Phase-scoped scalar animation (e.g. animated counter)
+const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
 ```
 
 **Responsive sizing:**
@@ -65,14 +65,18 @@ const r = std.createResponsive(ctx);
 const fontSize = r({ portrait: 48, square: 32, default: 40 });
 ```
 
-**Timeline API (for complex choreography):**
+**Audio & Cue Sync (transcripts, markers):**
 ```typescript
-const tl = std.timeline(time, duration);
-const enter = tl.at("enter", 0, 0.8);
-const scale = enter.active ? std.tween(0.8, 1, enter.progress, "easeOutBack") : 1;
+// Word-level timing from ElevenLabs/Whisper
+const transcript = std.cue.transcript(data.words, ctx.sceneTimeSeconds);
+const word = transcript.current();
+
+// named markers for synced triggers
+const m = std.cue.markers({ intro: 0, main: 2.5, outro: 8 }, ctx.sceneTimeSeconds);
+const opacity = std.interpolate(m.progress("intro", "main"), [0, 1], [0, 1], "easeOutCubic");
 ```
 
-**Animated counter:** `Math.floor(std.tween(0, value, progress, "easeOutCubic"))`
+**Low-level interpolation:** `std.interpolate(progress, [0, 1], [from, to], easing?)`
 
 **Layout:** `std.css({ width, height })`, `std.css.center()`, `std.css.fill()`, `std.css.stack()`
 
@@ -80,27 +84,24 @@ const scale = enter.active ? std.tween(0.8, 1, enter.progress, "easeOutBack") : 
 
 ## Stdlib Cheat Sheet
 
-- `std.motion.enter(progress, { y: 20 })` — fade in + slide (returns `{ style, opacity, transform }`)
-- `std.motion.enterExit(progress, opts)` — three-phase enter/hold/exit animation
-- `std.phases(progress, { enter: 1, hold: 2, exit: 1 })` — split progress into named phases
+- `std.score(phases?)` — primary timing object. Returns `{ motion, tween, value, active, within }`.
+- `std.cue.transcript(words, time)` — word-level sync for voiceovers.
+- `std.cue.markers(def, time)` — progress between named timestamps.
+- `std.cue.script(events, time)` — ID-based trigger system for scripts.
 - `std.createResponsive(ctx)` — factory for `r({ portrait: X, default: Y })`
-- `std.tween(from, to, progress, "easeOutCubic")` — low-level eased interpolation
-- `std.math.clamp`, `std.math.map` — value clamping and mapping
+- `std.interpolate(progress, inputRange, outputRange, easing?)` — multi-keyframe eased interpolation
+- `std.interpolateColor(progress, inputRange, colors, easing?)` — multi-keyframe color interpolation
+- `std.math.clamp01`, `std.math.map` — value clamping and mapping
 - `std.color.alpha`, `std.color.mix` — color manipulation
 - `std.css(obj)` — object → inline style string
-- `std.timeline(time, duration)` — declarative timeline for complex choreography
-- `std.spring(progress, config?)` — spring curve 0→1 with overshoot/bounce
-- `std.springTween(from, to, progress, config?)` — spring-interpolated value
-- `std.createSpring(config?)` — create spring easing for use with `std.tween()`
-- `std.stagger(items, progress, opts?)` — distribute progress across items with cascading delays
-- `std.interpolate(progress, inputRange, outputRange)` — multi-keyframe interpolation
-- `std.interpolateColor(progress, inputRange, colors)` — multi-keyframe color interpolation
+- `std.spring(from, to, progress, config?)` — spring curve with overshoot/bounce
+- `std.stagger(items, progress, opts?)` — distribute progress across items
 
 ## Do / Don't
 
-**DO:** Use `sceneProgress` or `sceneTimeSeconds` for animation. Put shared CSS in `config.inlineCss`. Use `config.fonts` for Google Fonts. Set root element to `width: ${width}px; height: ${height}px`. Use `std.css()` for inline styles. Import from `"superimg"` in templates.
+**DO:** Use `std.score` for complex layouts. Put shared CSS in `config.inlineCss`. Use `config.fonts` for Google Fonts. Set root element to `width: ${width}px; height: ${height}px`. Use `std.css()` for inline styles. Import from `"superimg"` in templates.
 
-**DON'T:** Return JSX — return template literal strings. Mutate state in render — keep it pure. Use `globalProgress` for scene animation. Import from `"superimg/server"` in templates. Use `@import url()` for fonts — use `config.fonts`. Override CLI output paths (e.g. using `-o`) when rendering unless explicitly instructed by the user.
+**DON'T:** Return JSX — return template literal strings. Mutate state in render — keep it pure. Use `globalProgress` for scene animation. Use `std.tween` (retired — use `std.score` or `std.interpolate`). Use `std.phases` (use `std.score` instead).
 
 ## Config
 
@@ -135,11 +136,11 @@ await renderVideo("videos/intro.ts", { outputPath: "out.mp4", width: 1920, heigh
 For detailed API documentation and working examples, consult:
 
 ### Reference Files
-- **[references/api.md](references/api.md)** — Complete RenderContext interface, all std.tween easings, full std.math/color/css/timing APIs, config options
+- **[references/api.md](references/api.md)** — Complete RenderContext interface, all stdlib primitives, config options
 
 ### Example Files
 - **[examples/hello-world.ts](examples/hello-world.ts)** — Minimal template demonstrating core concepts
 - **[examples/stats-card.ts](examples/stats-card.ts)** — Advanced template with phase timing, animated counters, responsive sizing
 
 ### Project Examples
-See `examples/templates/` in the SuperImg repo for full templates: `lower-thirds`, `stats-card`, `phase-demo`, `countdown`, `spring-stagger-demo`.
+See `examples/<category>/<template>/` in the SuperImg repo for full templates, indexed in `examples/_templates.json`: `lower-thirds`, `stats-card`, `phase-demo`, `countdown`, `spring-stagger-demo`.

@@ -1,6 +1,15 @@
 import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "node:url";
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // The skill examples import from "superimg" but we don't want to depend on
+      // the built dist for tests. Map to the source-level shared entrypoint, which
+      // re-exports defineScene/defineConfig.
+      superimg: fileURLToPath(new URL("./src/index.shared.ts", import.meta.url)),
+    },
+  },
   test: {
     globals: true,
     environment: "node",

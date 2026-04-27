@@ -44,24 +44,24 @@ export default defineScene<{ title: string; entries: ChangelogEntry[] }>({
     // 0–1.0s: Title enters
     // 1.0–6.5s: Entries stagger in
     // 6.5–8.0s: Hold + fade out
-    const titleP = std.math.clamp(time / 0.8, 0, 1);
-    const exitP = std.math.clamp((time - 7.0) / 1.0, 0, 1);
-    const globalFade = 1 - std.tween(0, 1, exitP, "easeInCubic");
+    const titleP = std.clamp01(time / 0.8);
+    const exitP = std.clamp01((time - 7.0) / 1.0);
+    const globalFade = 1 - std.interpolate(exitP, [0, 1], [0, 1], "easeInCubic");
 
     // Title
     const titleOpacity =
-      std.tween(0, 1, titleP, "easeOutCubic") * globalFade;
-    const titleY = std.tween(30, 0, titleP, "easeOutCubic");
+      std.interpolate(titleP, [0, 1], [0, 1], "easeOutCubic") * globalFade;
+    const titleY = std.interpolate(titleP, [0, 1], [30, 0], "easeOutCubic");
 
     // Render entries with stagger
     const entryHtml = entries
       .map((entry, i) => {
         const delay = 1.0 + i * 0.8;
-        const entryP = std.math.clamp((time - delay) / 0.6, 0, 1);
+        const entryP = std.clamp01((time - delay) / 0.6);
         const opacity =
-          std.tween(0, 1, entryP, "easeOutCubic") * globalFade;
-        const x = std.tween(40, 0, entryP, "easeOutCubic");
-        const scale = std.tween(0.95, 1, entryP, "easeOutCubic");
+          std.interpolate(entryP, [0, 1], [0, 1], "easeOutCubic") * globalFade;
+        const x = std.interpolate(entryP, [0, 1], [40, 0], "easeOutCubic");
+        const scale = std.interpolate(entryP, [0, 1], [0.95, 1], "easeOutCubic");
 
         // Version badge color cycles
         const hue = 235 + i * 25;
@@ -69,10 +69,10 @@ export default defineScene<{ title: string; entries: ChangelogEntry[] }>({
         const itemsHtml = entry.items
           .map((item, j) => {
             const itemDelay = delay + 0.15 + j * 0.1;
-            const itemP = std.math.clamp((time - itemDelay) / 0.4, 0, 1);
+            const itemP = std.clamp01((time - itemDelay) / 0.4);
             const itemOpacity =
-              std.tween(0, 1, itemP, "easeOutCubic") * globalFade;
-            const itemX = std.tween(20, 0, itemP, "easeOutCubic");
+              std.interpolate(itemP, [0, 1], [0, 1], "easeOutCubic") * globalFade;
+            const itemX = std.interpolate(itemP, [0, 1], [20, 0], "easeOutCubic");
 
             return `
             <div style="display: flex; align-items: flex-start; gap: 8px;

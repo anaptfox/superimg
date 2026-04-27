@@ -26,7 +26,7 @@ export default defineScene({
 
     // Text fade in
     const textProgress = std.math.clamp(p / 0.4, 0, 1)
-    const opacity = std.tween(0, 1, textProgress, 'easeOutCubic')
+    const opacity = std.interpolate(textProgress, [0, 1], [0, 1], 'easeOutCubic')
 
     return \`
       <div style="\${std.css({

@@ -7,8 +7,8 @@ export default defineScene({
   render(ctx) {
     const { width, height, sceneProgress, std } = ctx;
 
-    const opacity = std.tween(0, 1, std.math.clamp(sceneProgress * 3, 0, 1), "easeOutCubic");
-    const scale = std.tween(0.8, 1, sceneProgress, "easeOutCubic");
+    const opacity = std.interpolate(sceneProgress, [0, 0.333], [0, 1], "easeOutCubic");
+    const scale = std.interpolate(sceneProgress, [0, 1], [0.8, 1], "easeOutCubic");
 
     return \`
       <div style="
@@ -42,8 +42,8 @@ export default defineScene({
     // Map the first second of time to a 0–1 progress value
     const progress = std.math.clamp(time / 1.0, 0, 1);
 
-    const opacity = std.tween(0, 1, progress, "easeOutCubic");
-    const y = std.tween(30, 0, progress, "easeOutCubic");
+    const opacity = std.interpolate(progress, [0, 1], [0, 1], "easeOutCubic");
+    const y = std.interpolate(progress, [0, 1], [30, 0], "easeOutCubic");
 
     return \`
       <div style="
@@ -80,8 +80,8 @@ export default defineScene({
     const { title, subtitle, accentColor } = data;
 
     const progress = std.math.clamp(time / 1.0, 0, 1);
-    const opacity = std.tween(0, 1, progress, "easeOutCubic");
-    const y = std.tween(30, 0, progress, "easeOutCubic");
+    const opacity = std.interpolate(progress, [0, 1], [0, 1], "easeOutCubic");
+    const y = std.interpolate(progress, [0, 1], [30, 0], "easeOutCubic");
 
     return \`
       <div style="
@@ -138,8 +138,8 @@ export default defineScene<TemplateData>({
   },
   render({ sceneProgress: p, data, std, width, height }) {
     const hue = 230 + p * 60;
-    const opacity = std.tween(0, 1, std.math.clamp(p / 0.4, 0, 1), "easeOutCubic");
-    const y = std.tween(20, 0, std.math.clamp(p / 0.35, 0, 1), "easeOutCubic");
+    const opacity = std.interpolate(p, [0, 0.4], [0, 1], "easeOutCubic");
+    const y = std.interpolate(p, [0, 0.35], [20, 0], "easeOutCubic");
     const bgStyle = std.css({
       width,
       height,

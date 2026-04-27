@@ -15,7 +15,7 @@ import { loadCascadingConfig } from "../utils/config-loader.js";
 import { discoverVideos } from "../utils/discover-videos.js";
 import { discoverTemplateAssets } from "../utils/asset-discovery.js";
 import { parseTemplate, resolveRenderConfig, resolvePresetConfig, resolveAllPresets } from "../utils/template-config.js";
-import { resolveOutputPath } from "../utils/resolve-output-path.js";
+import { resolveDebugHtmlDir, resolveOutputPath } from "../utils/resolve-output-path.js";
 import type { EncodingOptions } from "@superimg/types";
 import { mergeEncoding } from "../utils/merge-encoding.js";
 import { prepareAssets, resolveAudioUrl } from "../../utils/prepare-assets.js";
@@ -219,6 +219,36 @@ interface RenderTarget {
   fps: number;
   outputPath: string;
   outputName: string;
+  debugHtmlDir: string;
+}
+
+function buildRenderTarget(args: {
+  name: string;
+  width: number;
+  height: number;
+  fps: number;
+  outputPath: string;
+}): RenderTarget {
+  return {
+    name: args.name,
+    width: args.width,
+    height: args.height,
+    fps: args.fps,
+    outputPath: args.outputPath,
+    outputName: args.name,
+    debugHtmlDir: resolveDebugHtmlDir({
+      outputPath: args.outputPath,
+      outputName: args.name,
+    }),
+  };
+}
+
+function writeDebugHtmlFrame(target: RenderTarget, frame: number, compositeHtml: string) {
+  if (!existsSync(target.debugHtmlDir)) {
+    mkdirSync(target.debugHtmlDir, { recursive: true });
+  }
+  const frameStr = String(frame).padStart(5, "0");
+  writeFileSync(join(target.debugHtmlDir, `frame_${frameStr}.html`), compositeHtml);
 }
 
 /** Check if path is a directory (exists and is dir, or ends with /) */
@@ -233,27 +263,7 @@ function isDirectory(path: string): boolean {
 
 
 
-async function checkPlaywrightAvailable(): Promise<{ available: boolean; message?: string; isServerless?: boolean }> {
-  // Check for serverless environment
-  const isServerless = Boolean(
-    process.env.VERCEL ||
-    process.env.AWS_LAMBDA_FUNCTION_NAME ||
-    process.env.NETLIFY
-  );
-
-  if (isServerless) {
-    try {
-      await import("@sparticuz/chromium");
-      return { available: true, isServerless: true };
-    } catch {
-      return {
-        available: false,
-        isServerless: true,
-        message: "For Vercel/serverless, install: pnpm add @sparticuz/chromium",
-      };
-    }
-  }
-
+async function checkPlaywrightAvailable(): Promise<{ available: boolean; message?: string }> {
   // Use PlaywrightEngine's built-in browser check (resolves via @superimg/playwright,
   // which owns the playwright dependency — avoids pnpm isolation issues)
   const status = await PlaywrightEngine.checkBrowser();
@@ -271,17 +281,14 @@ export async function renderCommand(template: string, options: RenderOptions) {
   const pwCheck = await checkPlaywrightAvailable();
   if (!pwCheck.available) {
     console.error(`\nError: ${pwCheck.message}\n`);
-    if (pwCheck.isServerless) {
-      console.error("For serverless environments (Vercel, AWS Lambda, Netlify):");
-      console.error("  pnpm add @sparticuz/chromium\n");
-    } else {
-      console.error("To render videos locally, you need to install Playwright browsers:");
-      console.error("  superimg setup\n");
-      console.error("Or use the dev server to preview and export from browser:");
-      console.error("  superimg dev template.ts\n");
-    }
+    console.error("To render videos locally, you need to install Playwright browsers:");
+    console.error("  superimg setup\n");
+    console.error("Or use the dev server to preview and export from browser:");
+    console.error("  superimg dev template.ts\n");
     process.exit(1);
   }
+
+  const outputFormat = resolveFormat(options);
 
   // Handle --all: render all videos in project
   if (options.all) {
@@ -301,14 +308,15 @@ export async function renderCommand(template: string, options: RenderOptions) {
     for (let i = 0; i < videos.length; i++) {
       const video = videos[i];
       console.log(`\n[${i + 1}/${videos.length}] Rendering ${video.name}...`);
-      // Create output path - use explicit -o as base dir, or default to output/
-      const outputDir = options.output
-        ? (isDirectory(options.output) ? options.output : dirname(options.output))
-        : "output";
+      // Default: each template renders to its own next-to-template output/.
+      // If user supplied -o, coerce it to a directory (multiple inputs → one
+      // file would clobber, so a file-style -o is treated as its parent dir).
+      const cliOutput = options.output
+        ? (isDirectory(options.output) ? options.output : dirname(options.output) + "/")
+        : undefined;
       const videoOutput = resolveOutputPath({
-        outputArg: outputDir + "/",
+        outputArg: cliOutput,
         templatePath: video.entrypoint,
-        projectRoot,
         format: outputFormat,
       });
       // Recursively call without --all
@@ -353,7 +361,6 @@ export async function renderCommand(template: string, options: RenderOptions) {
   });
 
   const outputs = templateData.templateConfig?.outputs;
-  const outputFormat = resolveFormat(options);
 
   // Build render targets
   let targets: RenderTarget[];
@@ -364,23 +371,24 @@ export async function renderCommand(template: string, options: RenderOptions) {
       process.exit(1);
     }
     const presets = resolveAllPresets(outputs, resolvedConfig);
-    targets = presets.map((p) => ({
-      name: p.name,
-      width: p.width,
-      height: p.height,
-      fps: p.fps,
-      outputPath: resolveOutputPath({
+    targets = presets.map((p) => {
+      const outputPath = resolveOutputPath({
         outputArg: options.output,
         templatePath: resolvedTemplate,
-        projectRoot,
         cascadingConfig,
         presetSuffix: p.name,
         presetOutFile: p.outFile,
         presetOutDir: p.outDir,
         format: outputFormat,
-      }),
-      outputName: p.name,
-    }));
+      });
+      return buildRenderTarget({
+        name: p.name,
+        width: p.width,
+        height: p.height,
+        fps: p.fps,
+        outputPath,
+      });
+    });
   } else if (options.preset) {
     if (!outputs || Object.keys(outputs).length === 0) {
       console.error("Error: --preset requires config.outputs to be defined in the template.");
@@ -388,43 +396,41 @@ export async function renderCommand(template: string, options: RenderOptions) {
     }
     try {
       const preset = resolvePresetConfig(options.preset, outputs, resolvedConfig);
-      targets = [{
+      const outputPath = resolveOutputPath({
+        outputArg: options.output,
+        templatePath: resolvedTemplate,
+        cascadingConfig,
+        presetSuffix: preset.name,
+        presetOutFile: preset.outFile,
+        presetOutDir: preset.outDir,
+        format: outputFormat,
+      });
+      targets = [buildRenderTarget({
         name: preset.name,
         width: preset.width,
         height: preset.height,
         fps: preset.fps,
-        outputPath: resolveOutputPath({
-          outputArg: options.output,
-          templatePath: resolvedTemplate,
-          projectRoot,
-          cascadingConfig,
-          presetSuffix: preset.name,
-          presetOutFile: preset.outFile,
-          presetOutDir: preset.outDir,
-          format: outputFormat,
-        }),
-        outputName: preset.name,
-      }];
+        outputPath,
+      })];
     } catch (err) {
       console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
       process.exit(1);
     }
   } else {
     // Default: single render with resolved config
-    targets = [{
+    const outputPath = resolveOutputPath({
+      outputArg: options.output,
+      templatePath: resolvedTemplate,
+      cascadingConfig,
+      format: outputFormat,
+    });
+    targets = [buildRenderTarget({
       name: "default",
       width: resolvedConfig.width,
       height: resolvedConfig.height,
       fps: resolvedConfig.fps,
-      outputPath: resolveOutputPath({
-        outputArg: options.output,
-        templatePath: resolvedTemplate,
-        projectRoot,
-        cascadingConfig,
-        format: outputFormat,
-      }),
-      outputName: "default",
-    }];
+      outputPath,
+    })];
   }
 
   function RenderUI() {
@@ -511,21 +517,12 @@ export async function renderCommand(template: string, options: RenderOptions) {
               },
               onFrameRendered: (frame, _html, compositeHtml) => {
                 if (options.debugHtml) {
-                  const debugDir = join(projectRoot, ".superimg", "debug", target.outputName);
-                  if (!existsSync(debugDir)) {
-                    mkdirSync(debugDir, { recursive: true });
-                  }
-                  const frameStr = String(frame).padStart(5, "0");
-                  writeFileSync(join(debugDir, `frame_${frameStr}.html`), compositeHtml);
+                  writeDebugHtmlFrame(target, frame, compositeHtml);
                 }
               }
             });
 
-            // Ensure output directory exists
-            const outputDir = dirname(target.outputPath);
-            if (!existsSync(outputDir)) {
-              mkdirSync(outputDir, { recursive: true });
-            }
+            mkdirSync(dirname(target.outputPath), { recursive: true });
             writeFileSync(target.outputPath, result);
           }
 
@@ -600,6 +597,11 @@ export async function renderCommand(template: string, options: RenderOptions) {
         <Box marginTop={1}>
           <Text dimColor>Output: {target.outputPath}</Text>
         </Box>
+        {options.debugHtml ? (
+          <Box marginTop={1}>
+            <Text dimColor>Debug HTML: {target.debugHtmlDir}</Text>
+          </Box>
+        ) : null}
       </Box>
     );
   }
@@ -611,6 +613,9 @@ export async function renderCommand(template: string, options: RenderOptions) {
       const target = targets[i];
       const prefix = targets.length > 1 ? `[${i + 1}/${targets.length}] ` : "";
       console.log(`${prefix}Rendering ${target.outputPath}...`);
+      if (options.debugHtml) {
+        console.log(`${prefix}Debug HTML: ${target.debugHtmlDir}`);
+      }
       try {
         await renderVideo(resolvedTemplate, {
           width: target.width,
@@ -618,6 +623,11 @@ export async function renderCommand(template: string, options: RenderOptions) {
           fps: target.fps,
           encoding: buildEncodingOptions(options),
           output: target.outputPath,
+          onFrameRendered: options.debugHtml
+            ? (frame, _html, compositeHtml) => {
+                writeDebugHtmlFrame(target, frame, compositeHtml);
+              }
+            : undefined,
           onProgress: (frame, totalFrames) => {
             process.stdout.write(
               `\r  Frame ${frame}/${totalFrames} (${Math.round((frame / totalFrames) * 100)}%)`

@@ -7,7 +7,7 @@ const REFERENCE_TEMPLATE = `
     config: { fps: 30, duration: 2, width: 640, height: 360 },
     data: { title: 'Snapshot Test' },
     render(ctx) {
-      const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeOutCubic');
+      const eased = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], 'easeOutCubic');
       return '<div class="frame" data-progress="' + ctx.sceneProgress + '" data-eased="' + eased + '">' + ctx.data.title + '</div>';
     }
   });

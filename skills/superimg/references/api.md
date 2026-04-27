@@ -64,19 +64,60 @@ export default defineScene({
 });
 ```
 
-## std.tween
+## std.score
 
-The canonical animation primitive. Interpolates between values with easing.
+The primary primitive for layout orchestration and phased animation. Breaks a scene into enter/hold/exit phases and exposes motions scoped to those phases with automatic fade-in + fade-out.
 
 ```typescript
-std.tween(from: number, to: number, progress: number, easing: EasingName): number
+const t = std.score(phases?: PhaseConfig);  // default: { enter: 0.15, hold: 0.70, exit: 0.15 }
+```
+
+**Returns** an orchestrator with `motion()`, `tween()`, `value()`, `active`, `within()`.
+
+### t.motion(opts?)
+
+The 80% case for animating elements. Returns a `.style` string combining opacity + transform.
+
+```typescript
+const card = t.motion({ y: 30, scale: 0.8, easing: "easeOutBack" });
+// <div style="${card.style}">...</div>
+```
+
+**Options:** `y`, `x`, `scale`, `rotate`, `blur` (number — start offsets), `at` (0-1 stagger within enter), `duration` (0-1 fraction of phase), `easing` (enter easing name), `exit` (boolean or override object).
+
+**Result fields:** `.style`, `.opacity`, `.transform`, `.enter` (0-1 entry progress), `.exit` (0-1 exit progress), `.visible`, `.phase`.
+
+### t.tween(from, to, opts?)
+
+Phase-scoped scalar interpolation. Use for counters or progress bars tied to a specific phase.
+
+```typescript
+const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
+```
+
+### t.within(phase, opts?)
+
+Returns 0-1 progress inside a specific phase, with optional stagger (`at`) and `duration`.
+
+```typescript
+const p = t.within("hold", { at: 0.5, duration: 0.5 });
+```
+
+---
+
+## std.interpolate
+
+Low-level multi-keyframe interpolation. Replaces manual math and retired `std.tween`. Maps a `progress` value through paired input/output ranges with optional easing.
+
+```typescript
+std.interpolate(progress: number, inputRange: number[], outputRange: number[], easing?: EasingName | EasingFn): number
 ```
 
 **Parameters:**
-- `from` - Start value
-- `to` - End value
-- `progress` - Progress 0-1 (not clamped, can overshoot)
-- `easing` - Easing function name
+- `progress` - Input value (clamped to inputRange endpoints)
+- `inputRange` - Input breakpoints (e.g. `[0, 1]` or `[0, 0.5, 1]`)
+- `outputRange` - Output values at each breakpoint (same length as inputRange)
+- `easing` - Optional easing name or function applied per segment
 
 **Available Easings:**
 
@@ -93,16 +134,16 @@ std.tween(from: number, to: number, progress: number, easing: EasingName): numbe
 **Examples:**
 ```typescript
 // Fade in
-const opacity = std.tween(0, 1, progress, "easeOutCubic");
+const opacity = std.interpolate(progress, [0, 1], [0, 1], "easeOutCubic");
 
 // Slide up with overshoot
-const y = std.tween(50, 0, progress, "easeOutBack");
+const y = std.interpolate(progress, [0, 1], [50, 0], "easeOutBack");
 
 // Scale with bounce
-const scale = std.tween(0, 1, progress, "easeOutElastic");
+const scale = std.interpolate(progress, [0, 1], [0, 1], "easeOutElastic");
 
 // Linear for progress bars
-const width = std.tween(0, 100, progress, "linear");
+const width = std.interpolate(progress, [0, 1], [0, 100], "linear");
 ```
 
 ## std.math
@@ -414,53 +455,51 @@ return `
 `;
 ```
 
-## std.timeline
+## std.cue
 
-Declarative timeline for animation phases.
+Absolute-time cue helpers for transcripts, markers, and scripted beats.
 
 ```typescript
-// Create a timeline
-const tl = std.timeline(time, duration);
+// Word-level transcript sync
+const t = std.cue.transcript(words, time);
+const current = t.current();
+const wordCount = t.count();
+const phrase = t.between(0, 3);
+const chars = t.charProgress();
 
-// Define events at absolute positions
-const enter = tl.at("enter", 0, 0.8);      // start=0, duration=0.8
-const hold = tl.at("hold", 0.8, 2.0);      // start=0.8, duration=2.0
-const exit = tl.at("exit", 2.8, 0.8);      // start=2.8, duration=0.8
+// Named timestamps
+const m = std.cue.markers({
+  intro: 0,
+  main: 2.5,
+  outro: 8,
+}, time);
+const fadeIn = m.progress("intro", "main");
+const introToMain = m.segment("intro", "main");
 
-// TimelineEvent properties
-enter.progress   // 0-1 (clamped)
-enter.active     // true when 0 < progress < 1
-enter.start      // 0
-enter.end        // 0.8
-enter.duration   // 0.8
+// Scripted beats
+const s = std.cue.script([
+  { id: "hero-text", time: 0.5 },
+  { id: "product-shot", time: 2.3, duration: 1.0 },
+  { id: "cta", time: 5.0 },
+], time);
+const hero = s.get("hero-text");
+const active = s.current();
 
-// Stagger multiple elements
-const items = tl.stagger(["a", "b", "c"], { each: 0.2, duration: 0.5 });
-items.get(0).progress  // First item's progress
-items.get("b").progress  // Get by ID
-
-// Relative positioning
-const fadeIn = tl.follow("enter", { id: "fadeIn", gap: 0.1, duration: 0.5 });
-
-// Scoped timeline (re-zeroed)
-const scoped = tl.scope(2, 5);  // time re-zeroed to 0-3
-scoped.at("title", 0, 1);  // 0-1 within scope
-
-// Get currently active event
-const current = tl.current();  // TimelineEvent | null
+// STT adapters
+const wordsFromElevenLabs = std.cue.fromElevenLabs(response.words);
+const wordsFromWhisper = std.cue.fromWhisper(response.words);
 ```
 
 **Example:**
 ```typescript
-const tl = std.timeline(time, duration);
-const enter = tl.at("enter", 0, 0.8);
-const hold = tl.at("hold", 0.8, 2.0);
-const exit = tl.at("exit", 2.8, 0.8);
-
-const scale = enter.active ? std.tween(0.8, 1, enter.progress, "easeOutBack") : 1;
-const opacity = exit.active ? std.tween(1, 0, exit.progress, "easeInCubic") : 1;
-return renderCard({ scale, opacity });
+const words = std.cue.fromElevenLabs(response.words);
+const t = std.cue.transcript(words, time);
+const active = t.current();
+const opacity = active ? std.interpolate(active.progress, [0, 1], [0.4, 1], "easeOutCubic") : 0.4;
+return renderCaption({ text: active?.text ?? "", opacity });
 ```
+
+Use `std.score()` for scene-local phase choreography. Use `std.cue.*` when your timing comes from absolute timestamps or external narration data.
 
 ## std.spring / std.springTween / std.createSpring
 
@@ -475,9 +514,9 @@ const val = std.spring(progress, { stiffness: 200, damping: 8 });
 const scale = std.springTween(0.8, 1, progress);     // 0.8→overshoot→1
 const x = std.springTween(0, 500, progress, { stiffness: 200, damping: 8 });
 
-// Create reusable easing function for std.tween()
+// Create reusable easing function for std.interpolate()
 const bounce = std.createSpring({ stiffness: 200, damping: 8 });
-const y = std.tween(0, 100, progress, bounce);
+const y = std.interpolate(progress, [0, 1], [0, 100], bounce);
 ```
 
 **SpringConfig:**
@@ -491,8 +530,8 @@ const y = std.tween(0, 100, progress, bounce);
 ```typescript
 // Bouncy card entrance
 const bounce = std.createSpring({ stiffness: 150, damping: 12 });
-const scale = std.tween(0.8, 1, enterProgress, bounce);
-const y = std.tween(40, 0, enterProgress, bounce);
+const scale = std.interpolate(enterProgress, [0, 1], [0.8, 1], bounce);
+const y = std.interpolate(enterProgress, [0, 1], [40, 0], bounce);
 ```
 
 ## std.stagger
@@ -609,10 +648,10 @@ return `<div>${visible}${typing && show ? '▋' : ''}</div>`;
 const { visible } = std.text.type(CODE, progress, { by: 'line' });
 const highlighted = std.code.highlight(visible, { lang: 'typescript' });
 
-// Terminal commands with timeline
-const tl = std.timeline(time, duration);
-const cmd = tl.at("cmd", 0, 1.0);
-const { visible } = std.text.type("npm run dev", cmd.progress);
+// Terminal commands with score()
+const score = std.score({ enter: 0.25, hold: 0.5, exit: 0.25 });
+const cmdProgress = score.within("enter");
+const { visible: cmdVisible } = std.text.type("npm run dev", cmdProgress);
 ```
 
 **Other text utilities:** `truncate`, `pluralize`, `formatNumber`, `formatCurrency`, `escapeHtml`, `slugify`, `pad`, `wrap`

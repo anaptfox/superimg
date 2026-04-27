@@ -22,6 +22,7 @@ export type {
   TemplateConfig,
   OutputPreset,
   ProjectConfig,
+  BaseConfig,
 
   // Scene Composition
   Duration,

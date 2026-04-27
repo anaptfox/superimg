@@ -5,28 +5,24 @@ import type * as color from "@superimg/stdlib/color";
 import type * as text from "@superimg/stdlib/text";
 import type * as date from "@superimg/stdlib/date";
 import type { css, fill, center, stack, row } from "@superimg/stdlib/css";
-import type { tween } from "@superimg/stdlib/tween";
 import type * as responsive from "@superimg/stdlib/responsive";
 import type * as subtitle from "@superimg/stdlib/subtitle";
 import type * as presets from "@superimg/stdlib/presets";
 import type * as code from "@superimg/stdlib/code";
+import type * as cue from "@superimg/stdlib/cue";
 import type {
-  timeline,
-  transcript,
-  fromElevenLabs,
-  fromWhisper,
-  markers,
-  script,
-} from "@superimg/stdlib/timeline";
-import type * as motion from "@superimg/stdlib/motion";
-import type * as phases from "@superimg/stdlib/phases";
+  PhaseConfig,
+  ScoreOf,
+} from "@superimg/stdlib/score";
 import type * as backgrounds from "@superimg/stdlib/backgrounds";
 import type { montage } from "@superimg/stdlib/montage";
-import type { spring, springTween, createSpring } from "@superimg/stdlib/spring";
+import type { spring } from "@superimg/stdlib/spring";
+import type { clamp01 } from "@superimg/stdlib/easing";
 import type { stagger } from "@superimg/stdlib/stagger";
 import type { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
 import type { path, createMotionPath } from "@superimg/stdlib/path";
 import type { draw, filter, morph, reveal, shape, textPath } from "@superimg/stdlib/svg";
+import type * as layout from "@superimg/stdlib/layout";
 
 /**
  * Standard library available via `ctx.std` in render functions.
@@ -37,10 +33,11 @@ import type { draw, filter, morph, reveal, shape, textPath } from "@superimg/std
  *
  * export default defineScene({
  *   render(ctx) {
- *     const { std, sceneProgress } = ctx;
- *     const x = std.tween(0, 1920, sceneProgress, 'easeOutCubic');
- *     const bg = std.color.alpha('#FF0000', 0.5);
- *     return `<div style="left: ${x}px; background: ${bg}">Hello</div>`;
+ *     const { std } = ctx;
+ *     const t = std.score();
+ *     const card = t.motion({ y: 30 });
+ *     const bg = std.color.alpha('#667eea', 0.8 * card.opacity);
+ *     return `<div style="${card.style}; background: ${bg}">Hello</div>`;
  *   },
  * });
  * ```
@@ -61,8 +58,6 @@ export interface Stdlib {
     stack: typeof stack;
     row: typeof row;
   };
-  /** @core Tween: eased interpolation. std.tween(from, to, progress, easing?) */
-  tween: typeof tween;
   /** @extended Responsive layout helper based on canvas aspect ratio */
   responsive: typeof responsive;
   /** @extended Subtitle parsing and display for SRT/VTT formats */
@@ -71,30 +66,34 @@ export interface Stdlib {
   presets: typeof presets;
   /** @extended Syntax highlighting for code blocks (Shiki-powered) */
   code: typeof code;
-  /** @core Declarative timing: std.timeline(time, duration), transcript(), markers(), script() */
-  timeline: typeof timeline & {
-    transcript: typeof transcript;
-    fromElevenLabs: typeof fromElevenLabs;
-    fromWhisper: typeof fromWhisper;
-    markers: typeof markers;
-    script: typeof script;
-  };
-  /** @core Motion helpers: enter(), exit(), enterExit() for fade+slide animations */
-  motion: typeof motion;
-  /** @core Phase splitting: std.phases(progress, { enter: 1, hold: 2, exit: 1 }) */
-  phases: typeof phases.phases;
+  /** @core Absolute-time cue helpers: transcript(), markers(), script(), fromElevenLabs(), fromWhisper() */
+  cue: typeof cue;
+  /**
+   * @core Unified scene-local timing primitive. Pass a phase layout; returns
+   * an object for declaring motions, tweens, and values scoped to those phases
+   * with auto enter + auto exit and stagger. See DESIGN_score.md for details.
+   *
+   * ```ts
+   * const t = std.score({ enter: 0.15, hold: 0.70, exit: 0.15 });
+   * const card = t.motion();                      // auto enter + auto exit
+   * const val  = t.motion({ y: 15, at: 0.15 });   // stagger within enter
+   * const cnt  = t.tween(0, target, { during: "enter" });
+   * const bar  = t.value(value / target, { fadeOn: "exit" });
+   * ```
+   */
+  score: <P extends PhaseConfig | undefined = undefined>(
+    phases?: P,
+  ) => ScoreOf<P>;
   /** @core Ken Burns background effects: std.backgrounds.kenBurns({ src, progress }) */
   backgrounds: typeof backgrounds;
   /** @core Image montage with crossfades: std.montage({ images, progress }) */
   montage: typeof montage;
   /** @core Factory for responsive sizing: const r = std.createResponsive(ctx) */
   createResponsive: typeof responsive.createResponsive;
-  /** @core Spring curve: std.spring(progress, config?) returns 0→1 with overshoot */
+  /** @core Spring interpolation: std.spring(from, to, progress, config?) */
   spring: typeof spring;
-  /** @core Spring interpolation: std.springTween(from, to, progress, config?) */
-  springTween: typeof springTween;
-  /** @core Create spring easing for tween(): std.createSpring({ stiffness: 200, damping: 8 }) */
-  createSpring: typeof createSpring;
+  /** @core Clamp a value into [0, 1]. Shortcut for std.math.clamp(v, 0, 1). */
+  clamp01: typeof clamp01;
   /** @core Stagger progress across items: std.stagger(items, progress, opts?) */
   stagger: typeof stagger;
   /** @core Multi-keyframe interpolation: std.interpolate(progress, inputRange, outputRange) */
@@ -112,9 +111,10 @@ export interface Stdlib {
     shape: typeof shape;
     textPath: typeof textPath;
   };
+  /** @core Box-math layout primitives: std.layout.stack(area, rows, opts?) returns Box[]; std.layout.inset(area, pad) returns Box. No HTML — pair with std.css. */
+  layout: typeof layout;
   /** @core Scale a design-resolution pixel value to the actual render size. Returns CSS string e.g. "60px". Scale = renderWidth / config.width. */
   px: (value: number) => string;
   /** @core Raw scale factor (renderWidth / config.width). Use for JS math (animation offsets), not CSS strings. */
   scale: number;
 }
-

@@ -15,8 +15,8 @@ export const introTemplate = defineScene({
 
     // Text fade in
     const textProgress = std.math.clamp(p / 0.4, 0, 1)
-    const textOpacity = std.tween(0, 1, textProgress, "easeOutCubic")
-    const textY = std.tween(20, 0, textProgress, "easeOutCubic")
+    const textOpacity = std.interpolate(textProgress, [0, 1], [0, 1], "easeOutCubic")
+    const textY = std.interpolate(textProgress, [0, 1], [20, 0], "easeOutCubic")
 
     // Subtle pulsing glow
     const glowOpacity = 0.25 + Math.sin(p * Math.PI * 3) * 0.1

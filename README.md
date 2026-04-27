@@ -54,7 +54,7 @@ That's it. A function that returns HTML → an MP4 file.
 
 ## Add Animation
 
-Every frame receives a context with `sceneProgress` (0 → 1 over the duration) and a standard library for animation:
+Every frame receives a context with a standard library for animation. `std.score()` breaks the scene into enter/hold/exit phases and `t.motion()` gives each element a fade-in, transform, and fade-out automatically:
 
 ```typescript
 import { defineScene } from 'superimg'
@@ -62,13 +62,13 @@ import { defineScene } from 'superimg'
 export default defineScene({
   config: { width: 1920, height: 1080, fps: 30, duration: 5 },
   render(ctx) {
-    const { std, sceneProgress, width, height } = ctx
+    const { std, width, height } = ctx
 
-    // Animate scale from 0.8 → 1 with easing
-    const scale = std.tween(0.8, 1, sceneProgress, 'easeOutCubic')
+    // Phases default to enter 15% / hold 70% / exit 15%
+    const t = std.score()
 
-    // Fade in over the first 30% of the scene
-    const opacity = std.tween(0, 1, std.math.clamp(sceneProgress / 0.3, 0, 1))
+    // scale 0.8 → 1 on enter, hold, then auto fade + scale back on exit
+    const card = t.motion({ scale: 0.8, easing: 'easeOutCubic' })
 
     return `
       <div style="
@@ -76,17 +76,14 @@ export default defineScene({
         background: linear-gradient(135deg, #667eea, #764ba2);
         display: flex; align-items: center; justify-content: center;
       ">
-        <h1 style="
-          font-size: 80px; color: white;
-          transform: scale(${scale}); opacity: ${opacity};
-        ">Hello, SuperImg</h1>
+        <h1 style="font-size: 80px; color: white; ${card.style}">Hello, SuperImg</h1>
       </div>
     `
   },
 })
 ```
 
-`std.tween` is the core animation primitive. Pair it with `std.math`, `std.color`, and `std.css` for layout, color mixing, and easing — [see the full API →](./docs/api.md)
+`std.score` handles phase timing. For custom-progress math (loops, non-phase curves) reach for `std.interpolate(progress, inputRange, outputRange, easing?)`. [See the full API →](./docs/api.md)
 
 ## Data-Driven Templates
 
@@ -157,7 +154,7 @@ npm install superimg-react     # React player
 
 ## Documentation
 
-- [API Reference](./docs/api.md) — RenderContext, std.tween, and the full standard library
+- [API Reference](./docs/api.md) — RenderContext, std.score, std.interpolate, and the full standard library
 - [Project Configuration](./docs/project-config.md) — Cascading config and video discovery
 - [Templates & Data](./docs/templates-and-data.md) — Creating templates with data
 - [Examples](./examples/) — Working templates to copy from

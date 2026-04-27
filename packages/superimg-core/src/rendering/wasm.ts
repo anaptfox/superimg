@@ -2,6 +2,8 @@
 
 import type { RenderContext, AssetMeta } from "@superimg/types";
 import { stdlib } from "../shared/stdlib.js";
+import { createScore } from "@superimg/stdlib/score";
+import type { PhaseConfig } from "@superimg/stdlib/score";
 
 /**
  * Compute orientation flags from dimensions
@@ -43,17 +45,21 @@ export function createRenderContext(
   const scale = designWidth ? width / designWidth : 1;
 
   return {
-    // Standard library (augmented with per-render scale helpers)
+    // Standard library (augmented with per-render scale helpers + score).
     std: {
       ...stdlib,
       px: (value: number) => `${value * scale}px`,
       scale,
+      score: <P extends PhaseConfig | undefined = undefined>(phases?: P) =>
+        createScore(
+          { sceneProgress: progress, sceneTimeSeconds: timeSeconds },
+          phases,
+        ),
     },
 
     // Global position
     globalFrame: frame,
     globalTimeSeconds: timeSeconds,
-    globalProgress: progress,
     totalFrames,
     totalDurationSeconds: durationSeconds,
 

@@ -132,7 +132,6 @@ export interface TimeContext {
   sceneTimeSeconds: number;
   sceneProgress: number;
   globalTimeSeconds: number;
-  globalProgress: number;
 }
 
 /**

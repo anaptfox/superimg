@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Player } from "superimg-react/player";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -15,49 +14,76 @@ import {
   countdownTemplate,
   testimonialTemplate,
   chartTemplate,
+  vectorTemplate,
   terminalTemplate,
 } from "@/lib/templates/showcase";
+import {
+  getExamplesByCategory,
+  type EditorExample,
+} from "@/lib/video/examples";
 
-const CATEGORIES = [
+const CATEGORIES: Array<{
+  id: EditorExample["category"];
+  title: string;
+  description: string;
+  template: Parameters<typeof Player>[0]["template"];
+  exampleId: string;
+}> = [
+  {
+    id: "basics",
+    title: "Basics",
+    description: "Starter templates and compositional building blocks",
+    template: helloWorldTemplate,
+    exampleId: "hello-world",
+  },
   {
     id: "marketing",
     title: "Marketing",
-    description: "Launch cards, countdowns, and promotional videos",
+    description: "Launch cards, promos, testimonials, and brand assets",
     template: countdownTemplate,
-    exampleId: "product-hunt",
-    count: 5,
+    exampleId: "countdown",
+  },
+  {
+    id: "events",
+    title: "Events",
+    description: "Meetups, speakers, agendas, and event recaps",
+    template: countdownTemplate,
+    exampleId: "meetup-announcement",
   },
   {
     id: "social",
     title: "Social",
-    description: "Testimonials, milestones, and engagement content",
+    description: "Posts, threads, and shareable social formats",
     template: testimonialTemplate,
-    exampleId: "testimonials",
-    count: 5,
+    exampleId: "tweet",
+  },
+  {
+    id: "interfaces",
+    title: "Interfaces",
+    description: "Chat and app-style interface simulations",
+    template: testimonialTemplate,
+    exampleId: "chatgpt",
   },
   {
     id: "data",
     title: "Data",
-    description: "Charts, graphs, and data visualization animations",
+    description: "Dashboards, timelines, rankings, and visual summaries",
     template: chartTemplate,
-    exampleId: "star-history",
-    count: 4,
+    exampleId: "stats-card",
+  },
+  {
+    id: "vector",
+    title: "Vector",
+    description: "SVG drawing, morphs, filters, and path-based motion",
+    template: vectorTemplate,
+    exampleId: "svg-draw",
   },
   {
     id: "developer",
     title: "Developer",
-    description: "Terminal sessions, code snippets, and git workflows",
+    description: "Code, terminal, and technical motion demos",
     template: terminalTemplate,
-    exampleId: "code-typewriter",
-    count: 6,
-  },
-  {
-    id: "getting-started",
-    title: "Getting Started",
-    description: "Learn the basics with simple animated text and effects",
-    template: helloWorldTemplate,
-    exampleId: "hello-world",
-    count: 4,
+    exampleId: "terminal",
   },
 ];
 
@@ -94,7 +120,7 @@ export default function TemplatesPanel() {
               <CardTitle className="flex items-center justify-between text-base">
                 {category.title}
                 <span className="text-sm font-normal text-muted-foreground">
-                  {category.count} templates
+                  {getExamplesByCategory(category.id).length} templates
                 </span>
               </CardTitle>
               <CardDescription>{category.description}</CardDescription>

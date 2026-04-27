@@ -43,6 +43,21 @@ export function formatNumber(num: number, locale = "en-US"): string {
 }
 
 /**
+ * Format a number with compact notation (e.g. 1234 → "1.2K", 1_500_000 → "1.5M").
+ * Uses Intl.NumberFormat's "compact" notation for proper i18n.
+ *
+ * @param num - Number to format
+ * @param locale - Locale string (default: "en-US")
+ * @returns Compact-notation string
+ */
+export function formatCompact(num: number, locale = "en-US"): string {
+  return new Intl.NumberFormat(locale, {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(num);
+}
+
+/**
  * Format a number as currency
  * @param num - Number to format
  * @param currency - Currency code (e.g., "USD", "EUR")
@@ -206,7 +221,7 @@ export interface TypeResult {
  *
  * Takes a string and a progress value (0–1) and returns the visible portion.
  * Compose with `std.code.highlight()` for syntax-highlighted code typing,
- * or with `std.timeline` to sequence multiple typing events.
+ * or with `std.score()` / `std.cue.*` to sequence or sync typing events.
  *
  * @param text - Full text to reveal
  * @param progress - Progress value, typically 0–1 (clamped internally)

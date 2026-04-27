@@ -12,8 +12,8 @@ export const helloWorldTemplate = defineScene({
     const { sceneProgress: p, std, width, height } = ctx;
 
     const textProgress = std.math.clamp(p / 0.4, 0, 1);
-    const textOpacity = std.tween(0, 1, textProgress, "easeOutCubic");
-    const textScale = std.tween(0.8, 1, textProgress, "easeOutCubic");
+    const textOpacity = std.interpolate(textProgress, [0, 1], [0, 1], "easeOutCubic");
+    const textScale = std.interpolate(textProgress, [0, 1], [0.8, 1], "easeOutCubic");
 
     return `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
@@ -117,7 +117,7 @@ export const testimonialTemplate = defineScene({
     const { sceneProgress: p, std, width, height } = ctx;
 
     const cardOpacity = std.math.clamp(p * 3, 0, 1);
-    const cardY = std.tween(20, 0, std.math.clamp(p * 2, 0, 1), "easeOutCubic");
+    const cardY = std.interpolate(p, [0, 0.5], [20, 0], "easeOutCubic");
     const quoteOpacity = std.math.clamp((p - 0.2) * 2.5, 0, 1);
 
     return `
@@ -182,7 +182,7 @@ export const chartTemplate = defineScene({
       .map((bar, i) => {
         const delay = i * 0.1;
         const barProgress = std.math.clamp((p - delay) * 2, 0, 1);
-        const barHeight = (bar.value / maxValue) * chartHeight * std.tween(0, 1, barProgress, "easeOutCubic");
+        const barHeight = (bar.value / maxValue) * chartHeight * std.interpolate(barProgress, [0, 1], [0, 1], "easeOutCubic");
         return `
           <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
             <div style="
@@ -223,6 +223,77 @@ export const chartTemplate = defineScene({
         <div style="display:flex;gap:8px;align-items:flex-end;">
           ${barsHtml}
         </div>
+      </div>
+    `;
+  },
+});
+
+// Vector: Animated shapes and strokes
+export const vectorTemplate = defineScene({
+  config: {
+    fps: 30,
+    duration: 3,
+    width: 320,
+    height: 180,
+  },
+  render(ctx: RenderContext) {
+    const { sceneProgress: p, std, width, height } = ctx;
+
+    const ringProgress = std.math.clamp(p / 0.45, 0, 1);
+    const orbitProgress = std.math.clamp((p - 0.15) / 0.7, 0, 1);
+    const fadeProgress = std.math.clamp((p - 0.75) / 0.25, 0, 1);
+
+    const ringScale = std.interpolate(ringProgress, [0, 1], [0.7, 1], "easeOutBack");
+    const ringOpacity = std.interpolate(ringProgress, [0, 1], [0, 1], "easeOutCubic") * (1 - fadeProgress * 0.5);
+    const orbitX = std.interpolate(orbitProgress, [0, 1], [64, 256], "easeInOutCubic");
+    const orbitY = 90 + Math.sin(orbitProgress * Math.PI * 2) * 24;
+    const pathOffset = std.interpolate(orbitProgress, [0, 1], [220, 0], "easeOutCubic");
+
+    return `
+      <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
+      <div style="
+        width:${width}px;
+        height:${height}px;
+        background:radial-gradient(circle at 20% 20%, #1f2a44 0%, #0b1020 60%, #050812 100%);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        overflow:hidden;
+      ">
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+          <path
+            d="M36 128 C 84 44, 236 44, 284 128"
+            fill="none"
+            stroke="rgba(116, 236, 214, 0.45)"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-dasharray="220"
+            stroke-dashoffset="${pathOffset}"
+          />
+          <circle
+            cx="160"
+            cy="90"
+            r="42"
+            fill="none"
+            stroke="rgba(255,255,255,0.9)"
+            stroke-width="4"
+            style="opacity:${ringOpacity};transform-origin:160px 90px;transform:scale(${ringScale});"
+          />
+          <circle
+            cx="160"
+            cy="90"
+            r="18"
+            fill="#74ecd6"
+            style="opacity:${ringOpacity};transform-origin:160px 90px;transform:scale(${std.interpolate(ringProgress, [0, 1], [0.4, 1], "easeOutBack")});"
+          />
+          <circle
+            cx="${orbitX}"
+            cy="${orbitY}"
+            r="12"
+            fill="#ff8b5e"
+            style="filter:drop-shadow(0 0 12px rgba(255,139,94,0.45));"
+          />
+        </svg>
       </div>
     `;
   },

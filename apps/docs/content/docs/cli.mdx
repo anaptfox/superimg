@@ -63,7 +63,7 @@ Export your template to an MP4 file.
 superimg render my-video.video.ts
 ```
 
-Output goes to `output/my-video.mp4` by default.
+Output is colocated with the template: an `output/` folder is created next to the `.video.ts` file. So `path/to/my-video.video.ts` renders to `path/to/output/my-video.mp4`.
 
 Options:
 ```bash
@@ -131,7 +131,7 @@ Run this once after installing SuperImg, or if rendering fails with browser erro
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-o, --output` | Output file or directory | `output/<name>.mp4` |
+| `-o, --output` | Output file or directory | `<template-folder>/output/<name>.mp4` |
 | `--format` | Output format (`mp4`, `webm`) | `mp4` |
 | `--quality` | Quality preset (`low`, `medium`, `high`, `very-high`) | `medium` |
 | `--fps` | Frames per second | Template config |
@@ -140,7 +140,7 @@ Run this once after installing SuperImg, or if rendering fails with browser erro
 | `--data` | JSON data to pass to template | `{}` |
 | `--preset` | Use a named output preset from template config | — |
 | `--presets` | Render all presets defined in template | — |
-| `--debug-html` | Save frame HTML for debugging | — |
+| `--debug-html` | Save frame HTML next to the resolved output in `.superimg/debug/` | — |
 
 ## Video Codec Options
 

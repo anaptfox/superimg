@@ -16,24 +16,21 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
+    const { std, width, height, data } = ctx;
 
-    // Animation progress (0→1 over first second)
-    const progress = std.math.clamp(time / 1.0, 0, 1);
+    // score() defaults to enter 15% / hold 70% / exit 15%
+    const t = std.score();
 
-    // Animated values
-    const opacity = std.tween(0, 1, progress, "easeOutCubic");
-    const y = std.tween(30, 0, progress, "easeOutCubic");
+    // Auto fade-in, hold, then fade-out. Slides up from y:30 on entrance.
+    const card = t.motion({ y: 30 });
 
     return `
       <div style="${std.css({ width, height }, std.css.center())}">
         <div style="${std.css({
-          opacity,
-          transform: "translateY(" + y + "px)",
           color: data.accentColor,
           fontSize: 64,
           fontWeight: 700,
-        })}">${data.message}</div>
+        })}; ${card.style}">${data.message}</div>
       </div>
     `;
   },

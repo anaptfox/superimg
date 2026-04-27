@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { createSuperimgPlugin } from "@superimg/core/bundler-plugin";
 import type { ProjectConfig } from "@superimg/types";
+import { mergeBaseConfig } from "./merge-base-config.js";
 
 /**
  * Walks up from the video file's directory to the project root,
@@ -95,32 +96,8 @@ async function loadSingleConfig(configPath: string): Promise<ProjectConfig | nul
 }
 
 function mergeConfigs(configs: ProjectConfig[]): ProjectConfig {
-  const merged: ProjectConfig = {};
-
-  for (const config of configs) {
-    // Scalars: nearest wins (overwrite)
-    if (config.width !== undefined) merged.width = config.width;
-    if (config.height !== undefined) merged.height = config.height;
-    if (config.fps !== undefined) merged.fps = config.fps;
-    if (config.duration !== undefined) merged.duration = config.duration;
-    if (config.outputs !== undefined) merged.outputs = config.outputs;
-    if (config.outDir !== undefined) merged.outDir = config.outDir;
-    if (config.tailwind !== undefined) merged.tailwind = config.tailwind;
-    if (config.watermark !== undefined) merged.watermark = config.watermark;
-    if (config.background !== undefined) merged.background = config.background;
-    if (config.audio !== undefined) merged.audio = config.audio;
-
-    // Arrays: concatenate (parent first, then child)
-    if (config.fonts?.length) {
-      merged.fonts = [...(merged.fonts ?? []), ...config.fonts];
-    }
-    if (config.inlineCss?.length) {
-      merged.inlineCss = [...(merged.inlineCss ?? []), ...config.inlineCss];
-    }
-    if (config.stylesheets?.length) {
-      merged.stylesheets = [...(merged.stylesheets ?? []), ...config.stylesheets];
-    }
-  }
-
-  return merged;
+  return configs.reduce<ProjectConfig>(
+    (acc, curr) => mergeBaseConfig<ProjectConfig>(acc, curr),
+    {}
+  );
 }

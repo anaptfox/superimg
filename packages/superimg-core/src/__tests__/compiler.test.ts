@@ -45,24 +45,61 @@ describe("compileTemplate (with bundled code)", () => {
     const result = await compileFromString(wrapDefineTemplate(`
       export default defineScene({
         render(ctx) {
-          const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeInOutCubic');
+          const eased = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], 'easeInOutCubic');
           return \`<div style="opacity: \${eased}">\${eased}</div>\`;
         }
       });
     `));
     expect(result.error).toBeUndefined();
 
-    const testCtx = makeTestContext({ globalProgress: 0.5, sceneProgress: 0.5 });
+    const testCtx = makeTestContext({ sceneProgress: 0.5 });
 
     const html = result.template!.render(testCtx);
     expect(html).toContain("0.5");
   });
 
-  it("provides ctx.std.tween for eased interpolation", async () => {
+  it("provides ctx.std.cue helpers", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
       export default defineScene({
         render(ctx) {
-          const x = ctx.std.tween(0, 100, ctx.sceneProgress, 'easeOutCubic');
+          const t = ctx.std.cue.transcript([
+            { text: 'hello', start: 0, end: 1 }
+          ], ctx.sceneTimeSeconds);
+          return '<div>' + (t.current()?.text ?? 'none') + ':' + t.count() + '</div>';
+        }
+      });
+    `));
+    expect(result.error).toBeUndefined();
+
+    const html = result.template!.render(makeTestContext({ sceneTimeSeconds: 0.5 }));
+    expect(html).toBe("<div>hello:1</div>");
+  });
+
+  it("bundles direct imports from @superimg/stdlib/cue", async () => {
+    const result = await compileFromString(`
+      import { defineScene } from 'superimg';
+      import { transcript } from '@superimg/stdlib/cue';
+
+      export default defineScene({
+        render(ctx) {
+          const t = transcript([
+            { text: 'hello', start: 0, end: 1 }
+          ], ctx.sceneTimeSeconds);
+          return '<div>' + (t.current()?.text ?? 'none') + '</div>';
+        }
+      });
+    `);
+    expect(result.error).toBeUndefined();
+
+    const html = result.template!.render(makeTestContext({ sceneTimeSeconds: 0.5 }));
+    expect(html).toBe("<div>hello</div>");
+  });
+
+  it("provides ctx.std.interpolate for eased interpolation", async () => {
+    const result = await compileFromString(wrapDefineTemplate(`
+      export default defineScene({
+        render(ctx) {
+          const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'easeOutCubic');
           return \`<div style="left: \${x}px">\${x}</div>\`;
         }
       });
@@ -280,7 +317,7 @@ describe("validateTemplate", () => {
     const compileResult = await compileFromString(wrapDefineTemplate(`
       export default defineScene({
         render(ctx) {
-          const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeInOutCubic');
+          const eased = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], 'easeInOutCubic');
           return \`<div style="opacity: \${eased}">\${eased}</div>\`;
         }
       });
@@ -290,7 +327,6 @@ describe("validateTemplate", () => {
     const testCtx = makeTestContext({
       globalFrame: 30,
       sceneFrame: 30,
-      globalProgress: 0.5,
       sceneProgress: 0.5,
     });
 

@@ -129,8 +129,8 @@ export default defineScene({
     const { title, subtitle, accentColor } = data;
 
     const enterProgress = std.math.clamp(time / 1.0, 0, 1);
-    const opacity = std.tween(0, 1, enterProgress, "easeOutCubic");
-    const y = std.tween(30, 0, enterProgress, "easeOutCubic");
+    const opacity = std.interpolate(enterProgress, [0, 1], [0, 1], "easeOutCubic");
+    const y = std.interpolate(enterProgress, [0, 1], [30, 0], "easeOutCubic");
 
     return \`
       <div style="

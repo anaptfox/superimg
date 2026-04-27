@@ -34,7 +34,7 @@ export default defineScene({
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
 
-    const scale = std.tween(0.8, 1, sceneProgress, 'easeOutCubic');
+    const scale = std.interpolate(sceneProgress, [0, 1], [0.8, 1], 'easeOutCubic');
     const bodyStyle = std.css({ width, height, transform: 'scale(' + scale + ')' }, std.css.center());
 
     return `
@@ -105,9 +105,9 @@ export default defineScene({
   render(ctx) {
     const { std, sceneProgress } = ctx;
     
-    // Tween: eased interpolation (0-1 for progress, 0-100 for values)
-    const eased = std.tween(0, 1, sceneProgress, 'easeOutCubic');
-    const value = std.tween(0, 100, sceneProgress, 'easeOutCubic');
+    // Interpolate: eased mapping through input/output ranges
+    const eased = std.interpolate(sceneProgress, [0, 1], [0, 1], 'easeOutCubic');
+    const value = std.interpolate(sceneProgress, [0, 1], [0, 100], 'easeOutCubic');
     const clamped = std.math.clamp(value, 10, 90);
     
     // Color manipulation
@@ -199,7 +199,7 @@ export default defineScene({
     const { std, sceneProgress, data } = ctx;
     const { title, price, accentColor, discount } = data;
 
-    const opacity = std.tween(0, 1, sceneProgress, 'easeOutCubic');
+    const opacity = std.interpolate(sceneProgress, [0, 1], [0, 1], 'easeOutCubic');
     const finalPrice = discount ? price * (1 - discount / 100) : price;
 
     return `
@@ -262,7 +262,6 @@ interface RenderContext<
   // Global position (entire video)
   globalFrame: number;              // Current frame in video
   globalTimeSeconds: number;        // Current time in video
-  globalProgress: number;           // Progress through video (0-1)
   totalFrames: number;              // Total frames in video
   totalDurationSeconds: number;     // Total duration in seconds
 

@@ -16,9 +16,6 @@ export {
   installBrowser,
   getBrowserInstallCommand,
   isCI,
-  isServerless,
-  getServerlessChromium,
-  launchBrowser,
   BrowserNotInstalledError,
   BrowserInstallError,
 } from "./browser-utils.js";
@@ -26,5 +23,4 @@ export type {
   BrowserStatus,
   EnsureBrowserOptions,
   InstallOptions,
-  ServerlessChromium,
 } from "./browser-utils.js";

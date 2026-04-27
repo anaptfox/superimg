@@ -334,7 +334,6 @@ try {
 │  │    std: stdlib,                                         │   │
 │  │    globalFrame: 45,                                     │   │
 │  │    globalTimeSeconds: 1.5,                              │   │
-│  │    globalProgress: 0.3,                                 │   │
 │  │    totalFrames: 150,                                    │   │
 │  │    sceneFrame: 45,         // defaults to global        │   │
 │  │    sceneTimeSeconds: 1.5,  // for single-scene          │   │
