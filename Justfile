@@ -25,7 +25,7 @@ install:
 dev:
     cd "{{root}}" && pnpm run dev
 
-# Generate playground examples from examples/templates/
+# Generate playground examples from examples/<category>/
 generate-examples:
     cd "{{root}}" && npx tsx scripts/generate-examples.ts
 
@@ -67,9 +67,17 @@ test-pkg name:
 build:
     cd "{{root}}" && pnpm run build
 
+# Build the render stack in dependency order
+build-render:
+    cd "{{root}}" && pnpm run build:render
+
 # Clean all dist/ artifacts and rebuild everything from scratch
 rebuild:
     cd "{{root}}" && pnpm run rebuild
+
+# Clean and rebuild only the render stack in dependency order
+rebuild-render:
+    cd "{{root}}" && pnpm run rebuild:render
 
 # Run all tests
 test:
@@ -223,61 +231,10 @@ release:
 
 # === Skills ===
 
-# Install the SuperImg AI skill for Claude Code and/or Cursor
-skill:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    ROOT="{{root}}"
-    SOURCE="$ROOT/skills/superimg/SKILL.md"
-
-    if [ ! -f "$SOURCE" ]; then
-        gum style --foreground 196 "✗ Source not found: skills/superimg/SKILL.md"
-        exit 1
-    fi
-
-    TARGET=$(gum choose --header "Install skill to:" \
-        "claude-local"  \
-        "claude-global" \
-        "cursor"        \
-        "all")
-
-    install_claude_local() {
-        mkdir -p "$ROOT/.claude/skills/superimg"
-        cp "$SOURCE" "$ROOT/.claude/skills/superimg/SKILL.md"
-        gum style --foreground 212 "✓ Installed to .claude/skills/superimg/SKILL.md"
-    }
-
-    install_claude_global() {
-        mkdir -p "$HOME/.claude/skills/superimg"
-        cp "$SOURCE" "$HOME/.claude/skills/superimg/SKILL.md"
-        gum style --foreground 212 "✓ Installed to ~/.claude/skills/superimg/SKILL.md"
-    }
-
-    install_cursor() {
-        mkdir -p "$ROOT/.cursor/rules"
-        # Replace SKILL.md YAML frontmatter with Cursor .mdc frontmatter
-        {
-            echo '---'
-            echo 'description: "SuperImg video generation framework. Use when working with superimg templates or video rendering."'
-            echo 'globs: "*.ts,*.tsx,*.js,*.jsx"'
-            echo 'alwaysApply: false'
-            echo '---'
-            # Skip the YAML frontmatter from source, keep the body
-            awk '/^---$/{c++;next} c<2{next} 1' "$SOURCE"
-        } > "$ROOT/.cursor/rules/superimg.mdc"
-        gum style --foreground 212 "✓ Installed to .cursor/rules/superimg.mdc"
-    }
-
-    case "$TARGET" in
-        claude-local)  install_claude_local ;;
-        claude-global) install_claude_global ;;
-        cursor)        install_cursor ;;
-        all)
-            install_claude_local
-            install_claude_global
-            install_cursor
-            ;;
-    esac
+# Install the SuperImg skill via the CLI (after building apps/superimg).
+# For end users: `superimg skill install` — see apps/superimg/src/cli/commands/skill/.
+skill-dev:
+    cd "{{root}}/apps/superimg" && pnpm exec superimg skill install --all-hosts
 
 # === Info ===
 

@@ -37,12 +37,12 @@ describe("render pipeline integration", () => {
     expect(html).toContain("Override");
   });
 
-  it("uses stdlib tween in output", async () => {
+  it("uses stdlib interpolate in output", async () => {
     const code = `
       import { defineScene } from 'superimg';
       export default defineScene({
         render(ctx) {
-          const eased = ctx.std.tween(0, 1, ctx.sceneProgress, 'easeOutCubic');
+          const eased = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], 'easeOutCubic');
           return '<div data-eased="' + eased + '"></div>';
         }
       });

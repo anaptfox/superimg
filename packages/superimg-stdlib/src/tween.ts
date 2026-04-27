@@ -112,16 +112,19 @@ function resolveEasing(easingOpt: EasingName | EasingFn | undefined): EasingFn {
  * @param easingOrOptions - Easing name, easing function, or options object
  * @returns Interpolated value
  *
+ * Internal-only. Not exposed on `ctx.std`; template authors should use
+ * `std.score()` for phased animation or `std.interpolate()` for custom progress.
+ *
  * @example
  * ```ts
  * // Simple: linear interpolation
- * std.tween(0, 100, 0.5)  // 50
+ * tween(0, 100, 0.5)  // 50
  *
  * // With easing
- * std.tween(0, 100, 0.5, 'easeOutCubic')  // ~87.5
+ * tween(0, 100, 0.5, 'easeOutCubic')  // ~87.5
  *
  * // With time window (animate only between 20% and 60% of scene)
- * std.tween(0, 100, sceneProgress, { easing: 'easeOutCubic', start: 0.2, end: 0.6 })
+ * tween(0, 100, sceneProgress, { easing: 'easeOutCubic', start: 0.2, end: 0.6 })
  * ```
  */
 export function tween(

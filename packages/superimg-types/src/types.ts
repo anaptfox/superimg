@@ -50,8 +50,6 @@ export interface RenderContext<TData = Record<string, unknown>> {
   globalFrame: number;
   /** Current time in seconds across entire video */
   globalTimeSeconds: number;
-  /** Progress through entire video (0-1) */
-  globalProgress: number;
   /** Total frames in video */
   totalFrames: number;
   /** Total duration in seconds */
@@ -164,10 +162,13 @@ export interface OutputPreset {
 }
 
 /**
- * Project-level or folder-level config from _config.ts.
- * Cascades from parent to child directories.
+ * Shared configuration base for project and template configs.
+ *
+ * NOTE: These fields cascade from `_config.ts` files down to individual templates.
+ * If defined in a parent `_config.ts`, they act as defaults for all templates in
+ * that folder (and its children).
  */
-export interface ProjectConfig {
+export interface BaseConfig {
   /** Width in pixels */
   width?: number;
   /** Height in pixels */
@@ -176,14 +177,21 @@ export interface ProjectConfig {
   fps?: number;
   /** Default duration. Accepts number (seconds), "5s", "500ms", or "30f". */
   duration?: Duration;
-  /** List of Google Fonts to load */
+  /**
+   * List of Google Fonts to load.
+   * Format: "Font+Name" or "Font+Name:wght@400;700"
+   */
   fonts?: string[];
-  /** Raw CSS strings to inject */
+  /**
+   * Raw CSS strings to inject into the page (e.g. utility classes, Tailwind precompiled output).
+   * Injected once per render session, not per frame.
+   */
   inlineCss?: string[];
-  /** Stylesheet URLs to load */
+  /**
+   * Stylesheet URLs to load (e.g. CDN Tailwind, local file paths).
+   * Injected once per render session, not per frame.
+   */
   stylesheets?: string[];
-  /** Default output directory for all templates relative to project root */
-  outDir?: string;
   /** Named output presets */
   outputs?: Record<string, OutputPreset>;
   /**
@@ -210,6 +218,15 @@ export interface ProjectConfig {
 }
 
 /**
+ * Project-level or folder-level config from _config.ts.
+ * Cascades from parent to child directories.
+ */
+export interface ProjectConfig extends BaseConfig {
+  /** Default output directory for all templates relative to project root */
+  outDir?: string;
+}
+
+/**
  * Define a project/folder config for _config.ts files.
  * Provides type inference and validation.
  */
@@ -217,27 +234,11 @@ export function defineConfig(config: ProjectConfig): ProjectConfig {
   return config;
 }
 
-export interface TemplateConfig {
-  /** Width in pixels */
-  width?: number;
-  /** Height in pixels */
-  height?: number;
-  /** Frames per second */
-  fps?: number;
-  /**
-   * List of Google Fonts to load.
-   * Format: "Font+Name" or "Font+Name:wght@400;700"
-   */
-  fonts?: string[];
-  /**
-   * Default duration. Accepts number (seconds), "5s", "500ms", or "30f".
-   *
-   * Duration precedence (highest wins):
-   * 1. CLI flags (`--duration`)
-   * 2. This `config.duration` value
-   * 3. Built-in default (5 s)
-   */
-  duration?: Duration;
+/**
+ * Per-template configuration.
+ * Extends BaseConfig with render-time concerns that only make sense per-template.
+ */
+export interface TemplateConfig extends BaseConfig {
   /**
    * Frame to use for thumbnail/preview image.
    * - Integer >= 1: specific frame number
@@ -245,39 +246,6 @@ export interface TemplateConfig {
    * - Omit: auto-select (scene boundary or 25% fallback)
    */
   thumbnailAt?: number;
-  /**
-   * Raw CSS strings to inject into the page (e.g. utility classes, Tailwind precompiled output).
-   * Injected once per render session, not per frame.
-   */
-  inlineCss?: string[];
-  /**
-   * Stylesheet URLs to load (e.g. CDN Tailwind, local file paths).
-   * Injected once per render session, not per frame.
-   */
-  stylesheets?: string[];
-  /**
-   * Background rendered into the video (solid color or image).
-   * Composed behind template content via buildCompositeHtml.
-   */
-  background?: BackgroundValue;
-  /** Named output presets */
-  outputs?: Record<string, OutputPreset>;
-  /**
-   * Enable Tailwind v4 Play CDN.
-   * - `true`: Enable with defaults
-   * - `TailwindConfig`: Enable with custom @theme CSS
-   */
-  tailwind?: boolean | TailwindConfig;
-  /**
-   * Optional watermark rendered over the video.
-   * Can be an image URL, text string, or configuration object.
-   */
-  watermark?: WatermarkValue;
-  /**
-   * Audio track to mix into the rendered video.
-   * Can be a file path string or an AudioOptions object with volume, fade, and loop controls.
-   */
-  audio?: AudioValue;
   /**
    * Static assets to preload before rendering.
    * Keys become accessible via ctx.assets.{key}

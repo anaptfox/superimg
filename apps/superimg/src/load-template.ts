@@ -1,15 +1,15 @@
 //! High-level API: load template once, render multiple times
 
 import { dirname, resolve } from "node:path";
-import { writeFileSync } from "node:fs";
 import { bundleTemplate } from "@superimg/core/bundler";
 import { compileTemplate } from "@superimg/core";
 import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 import { PlaywrightEngine } from "@superimg/playwright";
-import { parseTemplate, resolveRenderConfig } from "./cli/utils/template-config.js";
+import { parseTemplate } from "./cli/utils/template-config.js";
 import type { Duration, EncodingOptions, TemplateModule } from "@superimg/types";
 import { discoverTemplateAssets } from "./cli/utils/asset-discovery.js";
-import { prepareAssets, resolveAudioUrl } from "./utils/prepare-assets.js";
+import { buildRenderJob } from "./utils/build-render-job.js";
+import { writeFileRecursive } from "./utils/fs.js";
 
 export interface LoadedTemplateRenderOptions {
   width?: number;
@@ -55,7 +55,6 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
   // Discover assets at load time (not per-render) to avoid repeated filesystem scans
   const templateDir = dirname(resolvedPath);
   const autoDiscovered = discoverTemplateAssets(templateDir);
-  const configAssets = templateData.resolvedAssets;
 
   async function ensureEngine(): Promise<PlaywrightEngine> {
     if (!engine) {
@@ -66,47 +65,18 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
   }
 
   async function render(options: LoadedTemplateRenderOptions = {}): Promise<Uint8Array> {
-    const resolvedConfig = resolveRenderConfig({
-      cli: {
-        width: options.width != null ? String(options.width) : undefined,
-        height: options.height != null ? String(options.height) : undefined,
-        fps: options.fps != null ? String(options.fps) : undefined,
-        duration: options.duration != null ? String(options.duration) : undefined,
-      },
-      templateConfig: templateData.templateConfig,
-    });
-
     const pw = await ensureEngine();
     const { renderer, encoder } = pw.createAdapters();
     const assetBaseUrl = pw.getBaseUrl();
-    const resolvedAssets = prepareAssets({
-      autoDiscovered,
-      configAssets,
-      assetBaseUrl,
-    });
-    const resolvedAudio = resolveAudioUrl(
-      templateData.templateConfig?.audio,
-      templateDir,
-      assetBaseUrl
-    );
 
-    const job = {
-      templateCode: bundledCode,
-      duration: options.duration ?? resolvedConfig.duration,
-      width: options.width ?? resolvedConfig.width,
-      height: options.height ?? resolvedConfig.height,
-      fps: options.fps ?? resolvedConfig.fps,
-      fonts: templateData.templateConfig?.fonts,
-      inlineCss: templateData.templateConfig?.inlineCss,
-      stylesheets: templateData.templateConfig?.stylesheets,
-      outputName: "default",
-      encoding: options.encoding,
-      data: options.data,
-      tailwind: templateData.templateConfig?.tailwind,
-      watermark: templateData.templateConfig?.watermark,
-      background: templateData.templateConfig?.background,
-      audio: resolvedAudio,
-    };
+    const { job, resolvedAssets } = buildRenderJob({
+      parsed: templateData,
+      bundledCode,
+      templateDir,
+      assetBaseUrl,
+      autoDiscovered,
+      overrides: options,
+    });
 
     const plan = createRenderPlan(job, { assetBaseUrl, resolvedAssets, templateDir });
     return executeRenderPlan(plan, renderer, encoder, {
@@ -126,7 +96,7 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
     render,
     async renderToFile(outputPath: string, options?: LoadedTemplateRenderOptions): Promise<Uint8Array> {
       const result = await render(options);
-      writeFileSync(resolve(outputPath), result);
+      writeFileRecursive(resolve(outputPath), result);
       return result;
     },
     async dispose(): Promise<void> {

@@ -2,15 +2,35 @@
 
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { resolveConfigAssets } from "@superimg/core";
-import { extractTemplateMetadata } from "@superimg/core/template-metadata";
+import {
+  DEFAULT_WIDTH,
+  DEFAULT_HEIGHT,
+  DEFAULT_FPS,
+  resolveConfigAssets,
+} from "@superimg/core";
+import { mergeBaseConfig } from "./merge-base-config.js";
+import {
+  extractTemplateMetadata,
+  type TemplateMetadataConfig,
+} from "@superimg/core/template-metadata";
 import type {
   ProjectConfig,
-  TailwindConfig,
-  EncodingOptions,
-  AssetDeclaration,
   ResolvedAssetDeclaration,
+  TemplateConfig,
+  OutputPreset,
 } from "@superimg/types";
+
+/**
+ * Bridge the statically-extracted `TemplateMetadataConfig` shape (duration is loose
+ * `number | string`) to the runtime `TemplateConfig` shape (duration is `Duration`).
+ * The string is already serialized from user source; downstream logic re-parses it
+ * via `parsePositiveIntOrUndefined`, so passing it through as Duration is safe.
+ */
+export function metadataToTemplateConfig(
+  config: TemplateMetadataConfig | undefined
+): TemplateConfig | undefined {
+  return config as TemplateConfig | undefined;
+}
 
 export interface ParsedTemplate {
   templateCode: string;
@@ -18,40 +38,15 @@ export interface ParsedTemplate {
     hasRenderExport: boolean;
     hasDefaultExport: boolean;
   };
-  templateConfig?: RenderConfig;
+  templateConfig?: TemplateConfig;
   resolvedAssets: ResolvedAssetDeclaration[];
-  config?: {
+  config: {
     width?: number;
     height?: number;
     fps?: number;
     duration?: number;
-    outputs?: Record<string, { width?: number; height?: number; fps?: number; outDir?: string; outFile?: string }>;
+    outputs?: Record<string, OutputPreset>;
   };
-}
-
-export interface AudioConfig {
-  src: string;
-  loop?: boolean;
-  volume?: number;
-  fadeIn?: number;
-  fadeOut?: number;
-}
-
-export interface RenderConfig {
-  width?: number;
-  height?: number;
-  fps?: number;
-  duration?: number | string;
-  fonts?: string[];
-  inlineCss?: string[];
-  stylesheets?: string[];
-  tailwind?: boolean | TailwindConfig;
-  outputs?: Record<string, { width?: number; height?: number; fps?: number; outDir?: string; outFile?: string }>;
-  encoding?: EncodingOptions;
-  watermark?: import("@superimg/types").WatermarkValue;
-  background?: import("@superimg/types").BackgroundValue;
-  audio?: string | AudioConfig;
-  assets?: Record<string, string | AssetDeclaration>;
 }
 
 export interface RenderConfigDefaults {
@@ -62,9 +57,9 @@ export interface RenderConfigDefaults {
 }
 
 export const DEFAULT_RENDER_CONFIG: RenderConfigDefaults = {
-  width: 1920,
-  height: 1080,
-  fps: 30,
+  width: DEFAULT_WIDTH,
+  height: DEFAULT_HEIGHT,
+  fps: DEFAULT_FPS,
   duration: 5,
 };
 
@@ -88,7 +83,7 @@ export interface ResolveRenderConfigInput {
     fps?: string;
     duration?: string;
   };
-  templateConfig?: RenderConfig;
+  templateConfig?: TemplateConfig;
   cascadingConfig?: ProjectConfig;
   defaults?: RenderConfigDefaults;
 }
@@ -132,38 +127,16 @@ export function resolveRenderConfig(input: ResolveRenderConfigInput): RenderConf
   return { width, height, fps, duration };
 }
 
-/** Merge fonts, inlineCss, stylesheets, tailwind from cascading config into template config */
+/**
+ * Merge a cascading project/folder config into a template config.
+ * Cascading config is the base; template config is the override layer.
+ */
 export function mergeCascadingIntoRenderConfig(
-  templateConfig: RenderConfig | undefined,
+  templateConfig: TemplateConfig | undefined,
   cascadingConfig: ProjectConfig | undefined
-): RenderConfig {
-  const merged: RenderConfig = { ...templateConfig };
-  if (cascadingConfig?.fonts?.length) {
-    merged.fonts = [...(cascadingConfig.fonts ?? []), ...(templateConfig?.fonts ?? [])];
-  }
-  if (cascadingConfig?.inlineCss?.length) {
-    merged.inlineCss = [...(cascadingConfig.inlineCss ?? []), ...(templateConfig?.inlineCss ?? [])];
-  }
-  if (cascadingConfig?.stylesheets?.length) {
-    merged.stylesheets = [...(cascadingConfig.stylesheets ?? []), ...(templateConfig?.stylesheets ?? [])];
-  }
-  if (cascadingConfig?.outputs && !merged.outputs) {
-    merged.outputs = cascadingConfig.outputs;
-  }
-  if (cascadingConfig?.watermark !== undefined && merged.watermark === undefined) {
-    merged.watermark = cascadingConfig.watermark;
-  }
-  if (cascadingConfig?.background !== undefined && merged.background === undefined) {
-    merged.background = cascadingConfig.background;
-  }
-  // Tailwind: template config takes precedence over cascading config
-  if (merged.tailwind === undefined && cascadingConfig?.tailwind !== undefined) {
-    merged.tailwind = cascadingConfig.tailwind;
-  }
-  if (cascadingConfig?.audio !== undefined && merged.audio === undefined) {
-    merged.audio = cascadingConfig.audio;
-  }
-  return merged;
+): TemplateConfig {
+  const layer: TemplateConfig = templateConfig ?? {};
+  return mergeBaseConfig<TemplateConfig>(cascadingConfig ?? {}, layer);
 }
 
 /**
@@ -183,7 +156,7 @@ export async function parseTemplate(
     throw new Error("Template must define a `render` function inside `defineScene({ render(ctx) { ... } })`.");
   }
 
-  const rawTemplateConfig = metadata.config;
+  const rawTemplateConfig = metadataToTemplateConfig(metadata.config);
   const resolvedAssets = resolveConfigAssets(
     rawTemplateConfig?.assets,
     dirname(fullPath)
@@ -216,7 +189,7 @@ export async function parseTemplate(
  */
 export function resolvePresetConfig(
   presetName: string,
-  outputs: Record<string, { width?: number; height?: number; fps?: number; outDir?: string; outFile?: string }>,
+  outputs: Record<string, OutputPreset>,
   baseConfig: RenderConfigDefaults
 ): { name: string; width: number; height: number; fps: number; outDir?: string; outFile?: string } {
   const preset = outputs[presetName];
@@ -238,7 +211,7 @@ export function resolvePresetConfig(
  * Resolve all output presets defined in `outputs` against base config defaults.
  */
 export function resolveAllPresets(
-  outputs: Record<string, { width?: number; height?: number; fps?: number; outDir?: string; outFile?: string }>,
+  outputs: Record<string, OutputPreset>,
   baseConfig: RenderConfigDefaults
 ): Array<{ name: string; width: number; height: number; fps: number; outDir?: string; outFile?: string }> {
   return Object.keys(outputs).map((name) => resolvePresetConfig(name, outputs, baseConfig));

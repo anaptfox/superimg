@@ -58,17 +58,13 @@
       "import": "./dist/code.js",
       "types": "./dist/code.d.ts"
     },
-    "./timeline": {
-      "import": "./dist/timeline/index.js",
-      "types": "./dist/timeline/index.d.ts"
+    "./cue": {
+      "import": "./dist/cue/index.js",
+      "types": "./dist/cue/index.d.ts"
     },
-    "./motion": {
-      "import": "./dist/motion.js",
-      "types": "./dist/motion.d.ts"
-    },
-    "./phases": {
-      "import": "./dist/phases.js",
-      "types": "./dist/phases.d.ts"
+    "./score": {
+      "import": "./dist/score.js",
+      "types": "./dist/score.d.ts"
     },
     "./backgrounds": {
       "import": "./dist/backgrounds.js",
@@ -97,6 +93,10 @@
     "./svg": {
       "import": "./dist/svg/index.js",
       "types": "./dist/svg/index.d.ts"
+    },
+    "./layout": {
+      "import": "./dist/layout.js",
+      "types": "./dist/layout.d.ts"
     }
   },
   "scripts": {

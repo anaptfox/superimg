@@ -13,6 +13,7 @@ export default defineConfig({
   },
   format: ["esm"],
   dts: true,
+  clean: true,
   outDir: "dist",
   splitting: false,
   external: ["esbuild", "esbuild-wasm"],

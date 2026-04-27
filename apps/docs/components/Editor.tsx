@@ -43,7 +43,7 @@ Video is a pure function of time. \`render(ctx)\` is called once per frame, retu
 \`sceneProgress\` (0→1), \`sceneTimeSeconds\`, \`width\`, \`height\`, \`data\`, \`std\`
 
 ### Stdlib
-- \`std.tween(from, to, progress, "easeOutCubic")\` — animation
+- \`std.interpolate(progress, [0, 1], [from, to], "easeOutCubic")\` — animation
 - \`std.math.clamp\`, \`std.math.map\`
 - \`std.color.alpha\`, \`std.color.mix\`
 - \`std.css(obj)\` — object → inline style
@@ -62,7 +62,7 @@ export default defineScene({
   config: { duration: 3 },
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
-    const opacity = std.tween(0, 1, sceneProgress, "easeOutCubic");
+    const opacity = std.interpolate(sceneProgress, [0, 1], [0, 1], "easeOutCubic");
     return \\\`
       <div style="\\\${std.css({ width, height, background: '#0f0f23' }, std.css.center())}">
         <h1 style="\\\${std.css({ color: data.color, fontSize: 64, opacity })}">\\\${data.title}</h1>
@@ -83,7 +83,7 @@ const HTML_PAGE_EXAMPLE = `<!DOCTYPE html>
       config: { duration: 3 },
       render(ctx) {
         const { std, sceneProgress, width, height, data } = ctx;
-        const opacity = std.tween(0, 1, sceneProgress, "easeOutCubic");
+        const opacity = std.interpolate(sceneProgress, [0, 1], [0, 1], "easeOutCubic");
         return \\\`
           <div style="\\\${std.css({ width, height, background: '#0f0f23' }, std.css.center())}">
             <h1 style="\\\${std.css({ color: data.color, fontSize: 64, opacity })}">\\\${data.title}</h1>
@@ -154,8 +154,8 @@ export default defineScene({
     const { width, height, sceneProgress: p, sceneTimeSeconds, std, data } = ctx;
 
     // Fade in title
-    const opacity = std.tween(0, 1, std.math.clamp(p * 3, 0, 1), "easeOutCubic");
-    const y = std.tween(30, 0, std.math.clamp(p * 3, 0, 1), "easeOutCubic");
+    const opacity = std.interpolate(std.math.clamp(p * 3, [0, 1], [0, 1], 0, 1), "easeOutCubic");
+    const y = std.interpolate(std.math.clamp(p * 3, [0, 1], [30, 0], 0, 1), "easeOutCubic");
 
     // Subtle hue pulse on accent
     const pulsedColor = std.color.mix(data.accentColor, "#ffffff", Math.sin(sceneTimeSeconds * 2) * 0.08 + 0.08);

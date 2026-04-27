@@ -43,13 +43,5 @@
     "playwright": "^1.57.0",
     "playwright-core": "^1.57.0",
     "zod": "^4.3.5"
-  },
-  "peerDependencies": {
-    "@sparticuz/chromium": "^133.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@sparticuz/chromium": {
-      "optional": true
-    }
   }
 }

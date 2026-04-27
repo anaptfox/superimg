@@ -1,0 +1,35 @@
+{
+  "name": "@superimg/skill",
+  "version": "0.1.0",
+  "description": "Canonical SuperImg skill content (SKILL.md, references, examples) embedded as TypeScript constants",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsx scripts/generate-content.ts && tsup",
+    "dev": "tsx scripts/generate-content.ts && tsup --watch",
+    "test": "vitest --run --passWithNoTests",
+    "clean": "rm -rf dist src/_generated.ts"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "superimg",
+    "skill",
+    "ai",
+    "agents"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "tsx": "^4.21.0"
+  }
+}

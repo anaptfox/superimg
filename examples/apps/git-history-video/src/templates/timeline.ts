@@ -34,9 +34,9 @@ export default defineScene({
     const spineDrawP = std.math.clamp((t - 2.1) / 7.8, 0, 1);
     const exitP = std.math.clamp((t - 10.5) / 1.5, 0, 1);
 
-    const titleOpacity = std.tween(0, 1, titleEnterP, "easeOutCubic");
-    const titleY = std.tween(40, 0, titleEnterP, "easeOutCubic");
-    const accentLineWidth = std.tween(0, 140, accentLineP, "easeOutCubic");
+    const titleOpacity = std.interpolate(titleEnterP, [0, 1], [0, 1], "easeOutCubic");
+    const titleY = std.interpolate(titleEnterP, [0, 1], [40, 0], "easeOutCubic");
+    const accentLineWidth = std.interpolate(accentLineP, [0, 1], [0, 140], "easeOutCubic");
 
     const titleArea = isPortrait ? 180 : 220;
     const startY = isPortrait ? 600 : 380;
@@ -44,8 +44,8 @@ export default defineScene({
     const scrollY = startY + (endY - startY) * scrollP;
 
     const totalSpineLength = (events.length - 1) * eventSpacing + 20;
-    const activeSpineH = totalSpineLength * std.tween(0, 1, spineDrawP, "easeOutCubic");
-    const exitOverlay = std.tween(0, 1, exitP, "easeInOutCubic");
+    const activeSpineH = totalSpineLength * std.interpolate(spineDrawP, [0, 1], [0, 1], "easeOutCubic");
+    const exitOverlay = std.interpolate(exitP, [0, 1], [0, 1], "easeInOutCubic");
     const staggerInterval = 7.8 / Math.max(events.length - 1, 1);
 
     const eventsHtml = events
@@ -55,13 +55,13 @@ export default defineScene({
         const dotP = std.math.clamp((t - eventStart) / 0.5, 0, 1);
         const ringP = std.math.clamp((t - eventStart - 0.08) / 0.5, 0, 1);
 
-        const eventOpacity = std.tween(0, 1, eventP, "easeOutCubic");
-        const dotScale = std.tween(0, 1, dotP, "easeOutBack");
-        const outerRingScale = std.tween(0, 1, ringP, "easeOutCubic");
+        const eventOpacity = std.interpolate(eventP, [0, 1], [0, 1], "easeOutCubic");
+        const dotScale = std.interpolate(dotP, [0, 1], [0, 1], "easeOutBack");
+        const outerRingScale = std.interpolate(ringP, [0, 1], [0, 1], "easeOutCubic");
         const topPx = i * eventSpacing;
         const isLeftSide = isPortrait && i % 2 === 1;
         const slideDir = isLeftSide ? -1 : 1;
-        const eventSlideX = std.tween(50 * slideDir, 0, eventP, "easeOutCubic");
+        const eventSlideX = std.interpolate(eventP, [0, 1], [50 * slideDir, 0], "easeOutCubic");
 
         let textStyle = `margin-left:${spineX + 40}px; padding-right:120px;`;
         if (isPortrait && isLeftSide) {

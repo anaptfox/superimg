@@ -3,7 +3,7 @@
 import { findProjectRoot } from "../utils/find-project-root.js";
 import { discoverVideos } from "../utils/discover-videos.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";
-import { resolveRenderConfig } from "../utils/template-config.js";
+import { resolveRenderConfig, metadataToTemplateConfig } from "../utils/template-config.js";
 import { extractTemplateMetadata } from "@superimg/core/template-metadata";
 import { readFileSync } from "node:fs";
 
@@ -36,7 +36,7 @@ export async function listCommand() {
       const templateCode = readFileSync(video.entrypoint, "utf-8");
       const metadata = await extractTemplateMetadata(templateCode);
       const resolved = resolveRenderConfig({
-        templateConfig: metadata.config,
+        templateConfig: metadataToTemplateConfig(metadata.config),
         cascadingConfig,
       });
       configStr = `${resolved.width}x${resolved.height} ${resolved.fps}fps`;

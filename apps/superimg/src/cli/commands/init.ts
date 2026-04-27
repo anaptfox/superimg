@@ -12,7 +12,7 @@ import {
   getPackageManagerCommands,
   getAddPackagesCommand,
 } from "../utils/package-manager.js";
-import { getSkillContent } from "../utils/skill-content.js";
+import { installCommand } from "./skill/install.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -67,14 +67,13 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
-    const progress = std.math.clamp(time / 1.0, 0, 1);
-    const opacity = std.tween(0, 1, progress, "easeOutCubic");
-    const y = std.tween(30, 0, progress, "easeOutCubic");
+    const { std, width, height, data } = ctx;
+    const t = std.score();
+    const anim = t.motion({ y: 30 });
 
     return \`
       <div style="\${std.css({ width, height }, std.css.center())}">
-        <div class="message" style="\${std.css({ opacity, transform: "translateY(" + y + "px)" })}">
+        <div class="message" style="\${anim.style}">
           \${data.message}
         </div>
       </div>
@@ -100,14 +99,13 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
-    const progress = std.math.clamp(time / 1.0, 0, 1);
-    const opacity = std.tween(0, 1, progress, "easeOutCubic");
-    const y = std.tween(30, 0, progress, "easeOutCubic");
+    const { std, width, height, data } = ctx;
+    const t = std.score();
+    const anim = t.motion({ y: 30 });
 
     return \`
       <div style="\${std.css({ width, height }, std.css.center())}">
-        <div class="message" style="\${std.css({ opacity, transform: "translateY(" + y + "px)" })}">
+        <div class="message" style="\${anim.style}">
           \${data.message}
         </div>
       </div>
@@ -131,7 +129,7 @@ const TSCONFIG = `{
 
 export async function initCommand(
   name: string,
-  options: { yes?: boolean; js?: boolean; pm?: string; skipInstall?: boolean; skipBrowser?: boolean }
+  options: { yes?: boolean; js?: boolean; pm?: string; skipInstall?: boolean; skipBrowser?: boolean; skipSkill?: boolean }
 ) {
   let targetDir = join(process.cwd(), name === "." ? "" : name);
   const dirExists = existsSync(targetDir);
@@ -271,12 +269,6 @@ export async function initCommand(
       writeFileSync(configPath, CONFIG_TS);
     }
 
-    const agentsPath = join(targetDir, "AGENTS.md");
-    const wroteAgents = !existsSync(agentsPath);
-    if (wroteAgents) {
-      writeFileSync(agentsPath, getSkillContent());
-    }
-
     const version = getSuperimgVersion();
     const versionRange = version === "latest" ? "latest" : `^${version}`;
 
@@ -295,9 +287,6 @@ export async function initCommand(
       p.log.message(`videos/${templateFileName}   starter template with a fade-in animation`);
       if (!useJs) {
         p.log.message(`videos/${configFile}       set your canvas size, fps, and duration`);
-      }
-      if (wroteAgents) {
-        p.log.message(`AGENTS.md         AI assistant skill (SuperImg context)`);
       }
       p.log.message(`superimg:dev      live preview in your browser`);
       p.log.message(`superimg:render   export to MP4`);
@@ -335,6 +324,8 @@ export async function initCommand(
         }
       }
     }
+
+    await maybeInstallSkill(targetDir, options);
 
     if (!options.yes) {
       p.outro("You're ready. Start here:");
@@ -375,7 +366,6 @@ export async function initCommand(
       writeFileSync(configPath, CONFIG_TS);
       writeFileSync(join(targetDir, "tsconfig.json"), TSCONFIG);
     }
-    writeFileSync(join(targetDir, "AGENTS.md"), getSkillContent());
 
     if (!skipInstall) {
       const s = p.spinner();
@@ -409,6 +399,8 @@ export async function initCommand(
       }
     }
 
+    await maybeInstallSkill(targetDir, options);
+
     if (!options.yes) {
       p.outro("You're ready. Start here:");
     }
@@ -417,5 +409,31 @@ export async function initCommand(
     }
     console.log(`  ${run} dev      open the live preview`);
     console.log(`  ${run} render   export your first video\n`);
+  }
+}
+
+async function maybeInstallSkill(
+  targetDir: string,
+  options: { yes?: boolean; skipSkill?: boolean }
+): Promise<void> {
+  if (options.skipSkill) return;
+
+  let install = options.yes;
+  if (!options.yes) {
+    const result = await p.confirm({
+      message: "Install the SuperImg AI skill for your coding agents (Claude, Codex, Cursor, …)?",
+      initialValue: true,
+    });
+    if (p.isCancel(result)) return;
+    install = result;
+  }
+  if (!install) return;
+
+  const previousCwd = process.cwd();
+  try {
+    process.chdir(targetDir);
+    await installCommand({ yes: true });
+  } finally {
+    process.chdir(previousCwd);
   }
 }

@@ -23,19 +23,18 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, data } = ctx;
+    const { std, data } = ctx;
 
-    const enterProgress = std.math.clamp(time / 1.0, 0, 1);
-    const opacity = std.tween(0, 1, enterProgress, "easeOutCubic");
-    const scale = std.tween(0.9, 1, enterProgress, "easeOutCubic");
-    const subtitleOpacity = std.tween(0, 0.7, std.math.clamp((time - 0.3) / 1.0, 0, 1), "easeOutCubic");
+    const t = std.score();
+    const titleAnim = t.motion({ scale: 0.9, exit: false });
+    const subtitleAnim = t.motion({ at: 0.3, exit: false });
 
     return \`
       <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <h1 class="text-8xl font-bold text-white tracking-tight" style="\${std.css({ opacity, transform: \`scale(\${scale})\` })}">
+        <h1 class="text-8xl font-bold text-white tracking-tight" style="\${titleAnim.style}">
           \${data.title}
         </h1>
-        <p class="mt-6 text-2xl text-white/70 font-medium" style="opacity: \${subtitleOpacity}">
+        <p class="mt-6 text-2xl text-white/70 font-medium" style="opacity: \${0.7 * subtitleAnim.opacity}">
           \${data.subtitle}
         </p>
       </div>
@@ -65,19 +64,18 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
+    const { std, width, height, data } = ctx;
 
-    const enterProgress = std.math.clamp(time / 1.0, 0, 1);
-    const opacity = std.tween(0, 1, enterProgress, "easeOutCubic");
-    const y = std.tween(30, 0, enterProgress, "easeOutCubic");
-    const subtitleOpacity = std.tween(0, 0.7, std.math.clamp((time - 0.3) / 1.0, 0, 1), "easeOutCubic");
+    const t = std.score();
+    const titleAnim = t.motion({ y: 30 });
+    const subtitleAnim = t.motion({ at: 0.2, y: 20 });
 
     return \`
       <div style="\${std.css({ width, height }, std.css.center())}; flex-direction: column;">
-        <h1 class="title" style="\${std.css({ opacity, transform: "translateY(" + y + "px)" })}">
+        <h1 class="title" style="\${titleAnim.style}">
           \${data.title}
         </h1>
-        <p class="subtitle" style="opacity: \${subtitleOpacity}; transform: translateY(\${y}px);">
+        <p class="subtitle" style="\${subtitleAnim.style}">
           \${data.subtitle}
         </p>
       </div>
@@ -112,12 +110,12 @@ export default defineScene({
   config: { duration: "2s", tailwind: true },
   data: { title: "Welcome" },
   render(ctx) {
-    const opacity = ctx.std.tween(0, 1, ctx.sceneProgress, "easeOutCubic");
-    const scale = ctx.std.tween(0.8, 1, ctx.sceneProgress, "easeOutCubic");
+    const t = ctx.std.score();
+    const anim = t.motion({ scale: 0.8 });
     return \`
       <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
         <h1 class="text-9xl font-black text-white tracking-tight drop-shadow-2xl"
-            style="\${ctx.std.css({ opacity, transform: \`scale(\${scale})\` })}">
+            style="\${anim.style}">
           \${ctx.data.title}
         </h1>
       </div>
@@ -141,12 +139,12 @@ export default defineScene({
   },
   data: { title: "Welcome" },
   render(ctx) {
-    const opacity = ctx.std.tween(0, 1, ctx.sceneProgress, "easeOutCubic");
-    const scale = ctx.std.tween(0.8, 1, ctx.sceneProgress, "easeOutCubic");
+    const t = ctx.std.score();
+    const anim = t.motion({ scale: 0.8 });
     return \`
       <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <h1 class="title" style="\${ctx.std.css({ opacity, transform: "scale(" + scale + ")" })}">
+        <h1 class="title" style="\${anim.style}">
           \${ctx.data.title}
         </h1>
       </div>
@@ -167,13 +165,14 @@ export default defineScene({
     body: "Add your content here.",
   },
   render(ctx) {
-    const opacity = ctx.std.tween(0, 1, ctx.sceneProgress * 2, "easeOutCubic");
+    const t = ctx.std.score();
+    const anim = t.motion();
     return \`
       <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <h2 class="text-6xl font-bold text-white mb-6" style="opacity: \${opacity}">
+        <h2 class="text-6xl font-bold text-white mb-6" style="\${anim.style}">
           \${ctx.data.heading}
         </h2>
-        <p class="text-2xl text-white/70" style="opacity: \${opacity}">
+        <p class="text-2xl text-white/70" style="\${anim.style}">
           \${ctx.data.body}
         </p>
       </div>
@@ -201,12 +200,13 @@ export default defineScene({
     body: "Add your content here.",
   },
   render(ctx) {
-    const opacity = ctx.std.tween(0, 1, ctx.sceneProgress * 2, "easeOutCubic");
+    const t = ctx.std.score();
+    const anim = t.motion();
     return \`
       <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())}; flex-direction: column;
         background: #0f0f23;">
-        <h2 class="heading" style="opacity: \${opacity}">\${ctx.data.heading}</h2>
-        <p class="body" style="opacity: \${opacity}">\${ctx.data.body}</p>
+        <h2 class="heading" style="\${anim.style}">\${ctx.data.heading}</h2>
+        <p class="body" style="\${anim.style}">\${ctx.data.body}</p>
       </div>
     \`;
   },
@@ -222,10 +222,11 @@ export default defineScene({
   config: { duration: "2s", tailwind: true },
   data: { cta: "Thanks for watching!" },
   render(ctx) {
-    const opacity = ctx.std.tween(0, 1, ctx.sceneProgress * 2, "easeOutCubic");
+    const t = ctx.std.score();
+    const anim = t.motion();
     return \`
       <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-cyan-600">
-        <h1 class="text-7xl font-bold text-white" style="opacity: \${opacity}">
+        <h1 class="text-7xl font-bold text-white" style="\${anim.style}">
           \${ctx.data.cta}
         </h1>
       </div>
@@ -249,11 +250,12 @@ export default defineScene({
   },
   data: { cta: "Thanks for watching!" },
   render(ctx) {
-    const opacity = ctx.std.tween(0, 1, ctx.sceneProgress * 2, "easeOutCubic");
+    const t = ctx.std.score();
+    const anim = t.motion();
     return \`
       <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
         background: linear-gradient(135deg, #059669 0%, #0891b2 100%);">
-        <h1 class="cta" style="opacity: \${opacity}">\${ctx.data.cta}</h1>
+        <h1 class="cta" style="\${anim.style}">\${ctx.data.cta}</h1>
       </div>
     \`;
   },

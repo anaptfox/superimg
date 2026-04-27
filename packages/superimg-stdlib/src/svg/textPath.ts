@@ -7,7 +7,7 @@
  * @example
  * ```ts
  * const wave = std.svg.shape.wave(1920, 300, 80, 2);
- * const offset = std.tween(0, 100, sceneProgress, "easeInOutSine");
+ * const offset = std.interpolate(sceneProgress, [0, 1], [0, 100], "easeInOutSine");
  * const svg = std.svg.textPath("SUPERIMG", wave, { offset, fontSize: 72 });
  * return `<svg width="1920" height="400" viewBox="0 0 1920 400">${svg}</svg>`;
  * ```

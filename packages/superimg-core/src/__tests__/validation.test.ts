@@ -97,7 +97,7 @@ describe("validateAITemplate", () => {
       wrapDefineTemplate(`
         export default defineScene({
           render(ctx) {
-            const x = ctx.std.tween(0, 100, ctx.sceneProgress, 'easeInOutBogus');
+            const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'easeInOutBogus');
             return \`<div style="left: \${x}px">Test</div>\`;
           }
         });
@@ -111,7 +111,7 @@ describe("validateAITemplate", () => {
       wrapDefineTemplate(`
         export default defineScene({
           render(ctx) {
-            const x = ctx.std.tween(0, 100, ctx.sceneProgress, 'easeOutCubic');
+            const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'easeOutCubic');
             return \`<div style="left: \${x}px">Test</div>\`;
           }
         });
@@ -246,7 +246,7 @@ describe("validateAITemplate", () => {
       wrapDefineTemplate(`
         export default defineScene({
           render(ctx) {
-            ctx.std.tween(0, 1, ctx.sceneProgress, 'badEasing');
+            ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], 'badEasing');
             return '<div>OK</div>';
           }
         });
@@ -261,7 +261,7 @@ describe("validateAITemplate", () => {
       wrapDefineTemplate(`
         export default defineScene({
           render(ctx) {
-            const x = ctx.std.tween(0, 100, ctx.sceneProgress, 'badEasing');
+            const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'badEasing');
             return \`<div style="left: \${0/0}px">Test</div>\`;
           }
         });
@@ -330,7 +330,7 @@ describe("formatValidationForAI", () => {
       wrapDefineTemplate(`
         export default defineScene({
           render(ctx) {
-            const x = ctx.std.tween(0, 100, ctx.sceneProgress, 'badEasing');
+            const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'badEasing');
             return '<div>' + x + '</div>';
           }
         });

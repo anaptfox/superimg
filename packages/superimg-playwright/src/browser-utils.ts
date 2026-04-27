@@ -4,7 +4,6 @@ import { fork } from "node:child_process";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { access } from "node:fs/promises";
-import type { Browser } from "playwright-core";
 
 const require = createRequire(import.meta.url);
 
@@ -210,65 +209,4 @@ export function isCI(): boolean {
       process.env.TRAVIS ||
       process.env.JENKINS_URL
   );
-}
-
-// =============================================================================
-// SERVERLESS SUPPORT
-// =============================================================================
-
-export interface ServerlessChromium {
-  executablePath: string;
-  args: string[];
-}
-
-/**
- * Check if we're running in a serverless environment (Vercel, AWS Lambda, Netlify).
- */
-export function isServerless(): boolean {
-  return Boolean(
-    process.env.VERCEL ||
-      process.env.AWS_LAMBDA_FUNCTION_NAME ||
-      process.env.NETLIFY
-  );
-}
-
-/**
- * Get serverless Chromium configuration from @sparticuz/chromium if available.
- * Returns null if not in serverless environment or if @sparticuz/chromium is not installed.
- */
-export async function getServerlessChromium(): Promise<ServerlessChromium | null> {
-  if (!isServerless()) return null;
-  try {
-    const chromiumBinary = await import("@sparticuz/chromium");
-    return {
-      executablePath: await chromiumBinary.default.executablePath(),
-      args: chromiumBinary.default.args,
-    };
-  } catch {
-    // @sparticuz/chromium not installed
-    return null;
-  }
-}
-
-/**
- * Launch a browser, automatically detecting whether to use serverless or regular Playwright.
- * In serverless environments with @sparticuz/chromium, uses playwright-core.
- * Otherwise uses regular playwright.
- */
-export async function launchBrowser(): Promise<Browser> {
-  const serverlessChromium = await getServerlessChromium();
-
-  if (serverlessChromium) {
-    // Use playwright-core with @sparticuz/chromium
-    const { chromium: playwrightCore } = await import("playwright-core");
-    return playwrightCore.launch({
-      executablePath: serverlessChromium.executablePath,
-      args: serverlessChromium.args,
-      headless: true,
-    });
-  }
-
-  // Use regular playwright (existing behavior)
-  const chromium = await getChromium();
-  return chromium.launch();
 }

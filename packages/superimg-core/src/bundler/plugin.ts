@@ -35,9 +35,9 @@ export function createSuperimgPlugin(namespace = "superimg-virtual"): EsbuildPlu
       // Strip most stdlib imports (accessed via ctx.std at runtime)
       // EXCEPT certain modules that need to be bundled:
       // - @superimg/stdlib/code: for static syntax highlighting
-      // - @superimg/stdlib/timeline: for declarative timing API
+      // - @superimg/stdlib/cue: for direct cue helpers imports
       build.onResolve({ filter: /^@superimg\/stdlib/ }, (args: { path: string }) => {
-        const bundledModules = ["@superimg/stdlib/code", "@superimg/stdlib/timeline"];
+        const bundledModules = ["@superimg/stdlib/code", "@superimg/stdlib/cue"];
         if (bundledModules.includes(args.path)) {
           return null; // Let esbuild handle it normally
         }

@@ -58,9 +58,10 @@ function checkEasingNames(code: string): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const validEasings = new Set(EASING_NAMES);
 
-  // Match tween calls with string easing: tween(a, b, p, 'easingName') or { easing: 'easingName' }
+  // Match calls with string easing: interpolate(p, ir, or, 'easingName'), t.tween(a, b, 'easingName'),
+  // or { easing: 'easingName' } in options objects.
   const patterns = [
-    /\.tween\([^)]*,\s*['"]([^'"]+)['"]\s*\)/g,
+    /\.(?:interpolate|tween)\([^)]*,\s*['"]([^'"]+)['"]\s*\)/g,
     /easing:\s*['"]([^'"]+)['"]/g,
   ];
 
@@ -403,7 +404,7 @@ function extractSuggestionFromError(error: Error): string {
     return "Check that all data properties exist. Use ctx.data.property with fallbacks.";
   }
   if (msg.includes("is not a function")) {
-    return "Check function names. Use ctx.std.tween, ctx.std.math.lerp, etc.";
+    return "Check function names. Use ctx.std.score, ctx.std.interpolate, ctx.std.math, etc.";
   }
   if (msg.includes("cannot read property") || msg.includes("cannot read properties")) {
     return "A value is undefined. Check data properties and intermediate values.";

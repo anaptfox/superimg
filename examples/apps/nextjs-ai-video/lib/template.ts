@@ -38,22 +38,22 @@ export const timelineTemplate = defineScene<TimelineData>({
     const exitP = std.math.clamp((t - 6.0) / 1.0, 0, 1);
 
     // --- Title ---
-    const titleOpacity = std.tween(0, 1, titleEnterP, "easeOutCubic");
-    const titleY = std.tween(40, 0, titleEnterP, "easeOutCubic");
-    const accentLineWidth = std.tween(0, 140, accentLineP, "easeOutCubic");
+    const titleOpacity = std.interpolate(titleEnterP, [0, 1], [0, 1], "easeOutCubic");
+    const titleY = std.interpolate(titleEnterP, [0, 1], [40, 0], "easeOutCubic");
+    const accentLineWidth = std.interpolate(accentLineP, [0, 1], [0, 140], "easeOutCubic");
 
     // --- Scroll ---
     const startY = 380;
     const endY = 540 - (TITLE_AREA + (events.length - 1) * EVENT_SPACING);
-    const easedScroll = std.tween(0, 1, scrollP, "easeInOutCubic");
+    const easedScroll = std.interpolate(scrollP, [0, 1], [0, 1], "easeInOutCubic");
     const scrollY = startY + (endY - startY) * easedScroll;
 
     // --- Spine ---
     const totalSpineLength = (events.length - 1) * EVENT_SPACING + 20;
-    const activeSpineH = totalSpineLength * std.tween(0, 1, spineDrawP, "easeOutCubic");
+    const activeSpineH = totalSpineLength * std.interpolate(spineDrawP, [0, 1], [0, 1], "easeOutCubic");
 
     // --- Exit ---
-    const exitOverlay = std.tween(0, 1, exitP, "easeInOutCubic");
+    const exitOverlay = std.interpolate(exitP, [0, 1], [0, 1], "easeInOutCubic");
 
     // --- Events ---
     const staggerInterval = 4.0 / Math.max(events.length - 1, 1);
@@ -65,10 +65,10 @@ export const timelineTemplate = defineScene<TimelineData>({
         const dotP = std.math.clamp((t - eventStart) / 0.5, 0, 1);
         const ringP = std.math.clamp((t - eventStart - 0.08) / 0.5, 0, 1);
 
-        const eventOpacity = std.tween(0, 1, eventP, "easeOutCubic");
-        const eventSlideX = std.tween(50, 0, eventP, "easeOutCubic");
-        const dotScale = std.tween(0, 1, dotP, "easeOutBack");
-        const outerRingScale = std.tween(0, 1, ringP, "easeOutCubic");
+        const eventOpacity = std.interpolate(eventP, [0, 1], [0, 1], "easeOutCubic");
+        const eventSlideX = std.interpolate(eventP, [0, 1], [50, 0], "easeOutCubic");
+        const dotScale = std.interpolate(dotP, [0, 1], [0, 1], "easeOutBack");
+        const outerRingScale = std.interpolate(ringP, [0, 1], [0, 1], "easeOutCubic");
 
         const topPx = i * EVENT_SPACING;
 

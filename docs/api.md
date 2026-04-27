@@ -12,13 +12,12 @@ The `RenderContext` is the central object passed to your template's `render` fun
 interface RenderContext<
   TData = Record<string, unknown>,
 > {
-  // Standard library (tween, math, color utilities)
+  // Standard library (score, interpolate, math, color utilities)
   std: Stdlib;
 
   // Global position (entire video)
   globalFrame: number;              // Current frame in video (0-indexed)
   globalTimeSeconds: number;        // Current time in video
-  globalProgress: number;           // Progress through video (0-1)
   totalFrames: number;              // Total frames in video
   totalDurationSeconds: number;     // Total duration in seconds
 
@@ -87,7 +86,7 @@ export default defineScene({
     const { std, sceneProgress, width, height, data } = ctx;
 
     // Eased interpolation in one call
-    const x = std.tween(0, width, sceneProgress, 'easeOutCubic');
+    const x = std.interpolate(sceneProgress, [0, 1], [0, width], 'easeOutCubic');
 
     return `
       <div style="
@@ -117,8 +116,8 @@ export default defineScene({
   render(ctx) {
     const { std, sceneProgress } = ctx;
 
-    // Tween: eased interpolation
-    const x = std.tween(0, 1920, sceneProgress, 'easeOutCubic');
+    // Interpolate: eased mapping through input/output ranges
+    const x = std.interpolate(sceneProgress, [0, 1], [0, 1920], 'easeOutCubic');
     const clamped = std.math.clamp(x, 100, 1800);
 
     // Color
@@ -163,19 +162,90 @@ std.css.stack()  // display:flex; flex-direction:column
 std.css.row()    // display:flex; flex-direction:row
 ```
 
-#### `std.tween`
+#### `std.score`
 
-Eased interpolation in one call (canonical animation primitive):
+Scene-local timing for layout choreography. Use `std.score()` when your animation is driven by the scene's normalized progress (`sceneProgress`) and you want named phases such as enter, hold, and exit.
 
 ```typescript
-std.tween(0, 100, progress)                    // Linear
-std.tween(0, 100, progress, 'easeOutCubic')    // With easing
-std.tween(0, 100, sceneProgress, {             // With time window (20%-60%)
-  easing: 'easeOutCubic',
-  start: 0.2,
-  end: 0.6,
-})
+// Defaults to { enter: 0.15, hold: 0.70, exit: 0.15 }
+const t = std.score();
+
+const card = t.motion({ y: 24, scale: 0.96 });
+const count = t.tween(0, 100, { during: "enter", at: 0.2 });
+const label = t.value("Live", { fadeOn: "exit" });
+
+return `
+  <section style="${card.style}">
+    <strong>${Math.floor(count)}</strong>
+    <span style="opacity:${label.opacity}">${label.current}</span>
+  </section>
+`;
 ```
+
+Custom phase names are supported. Fractions are portions of the scene and must sum to `<= 1`:
+
+```typescript
+const t = std.score({
+  intro: 0.2,
+  product: 0.5,
+  outro: 0.2,
+});
+
+const productProgress = t.within("product"); // 0-1 inside that phase
+const activePhase = t.active;                 // "intro" | "product" | "outro" | "idle"
+
+const title = t.motion({ during: "intro", y: 32 });
+const product = t.motion({ during: "product", at: 0.15, duration: 0.7 });
+const fade = t.tween(1, 0, { during: "outro", easing: "easeInCubic" });
+```
+
+Score object fields and helpers:
+
+```typescript
+t.progress       // Current sceneProgress
+t.seconds        // Current sceneTimeSeconds
+t.active         // Active phase name, or "idle" when outside all phases
+t.within(name)   // Phase-local progress, clamped to 0-1
+
+t.motion(opts?)  // Returns { enter, exit, opacity, transform, filter, style, visible, phase }
+t.tween(from, to, opts?)  // Phase-scoped scalar interpolation
+t.value(value, opts?)     // Preserve a value with phase-based opacity
+```
+
+Common `motion()` options:
+
+```typescript
+t.motion({
+  during: "enter",       // Phase to use for entrance timing; defaults to first phase
+  at: 0.25,              // Start 25% into that phase
+  duration: 0.5,         // Span 50% of that phase
+  y: 40,
+  x: 0,
+  scale: 0.95,
+  rotate: -2,
+  blur: 8,
+  fromOpacity: 0,
+  easing: "easeOutCubic",
+  exitEasing: "easeInCubic",
+  exit: { y: -40 },
+});
+```
+
+Use `std.score(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Score And Cues](/docs/timing) for examples that combine both.
+
+#### `std.interpolate`
+
+Multi-keyframe eased interpolation. Replaces manual math and the retired `std.tween`:
+
+```typescript
+std.interpolate(progress, [0, 1], [0, 100])                    // Linear
+std.interpolate(progress, [0, 1], [0, 100], 'easeOutCubic')    // With easing
+
+// Multi-stop: fade in (0-20%), hold (20-80%), fade out (80-100%)
+std.interpolate(sceneProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0])
+```
+
+For phased scene animation (enter/hold/exit with auto fades), reach for `std.score` instead.
 
 #### `std.math`
 
@@ -237,22 +307,18 @@ std.color.saturate(color, amount) // Increase saturation
 std.color.desaturate(color, amount) // Decrease saturation
 ```
 
-#### `std.spring` / `std.springTween` / `std.createSpring`
+#### `std.spring`
 
 Spring physics for organic motion with overshoot and bounce:
 
 ```typescript
-// Spring curve: maps 0-1 to 0→overshoot→1
-std.spring(progress)
-std.spring(progress, { stiffness: 200, damping: 8, mass: 1 })
-
 // Interpolate between values with spring physics
-std.springTween(0.8, 1, progress)                    // 0.8→overshoot→1
-std.springTween(0, 500, progress, { stiffness: 200, damping: 8 })
+std.spring(0.8, 1, progress)                         // 0.8→overshoot→1
+std.spring(0, 500, progress, { stiffness: 200, damping: 8, mass: 1 })
 
-// Create reusable easing function for std.tween()
-const bounce = std.createSpring({ stiffness: 200, damping: 8 });
-std.tween(0, 100, progress, bounce);
+// Inside a score.motion() / .tween() call, use the string form
+const t = std.score();
+const pop = t.motion({ scale: 0.5, easing: "spring(200,8)" });
 ```
 
 #### `std.stagger`
@@ -318,40 +384,38 @@ std.date.diffSeconds(d1, d2)          // Difference in seconds (absolute)
 
 Date inputs accept `Date`, `string`, or `number` (timestamp).
 
-#### `std.timeline`
+#### `std.cue`
 
-Declarative timeline for animation phases:
+Absolute-time cue helpers for transcripts, markers, and scripted beats:
 
 ```typescript
-// Create a timeline
-const tl = std.timeline(time, duration);
+// Word-level sync from transcript data
+const t = std.cue.transcript(words, time);
+const current = t.current();
+const charProgress = t.charProgress();
 
-// Define events at absolute positions
-const enter = tl.at("enter", 0, 0.8);      // start=0, duration=0.8
-const hold = tl.at("hold", 0.8, 2.0);      // start=0.8, duration=2.0
-const exit = tl.at("exit", 2.8, 0.8);      // start=2.8, duration=0.8
+// Progress between named timestamps
+const m = std.cue.markers({
+  intro: 0,
+  main: 2.5,
+  outro: 8,
+}, time);
+const fadeIn = m.progress("intro", "main");
+const segment = m.segment("main", "outro");
 
-// TimelineEvent properties
-enter.progress   // 0-1 (clamped)
-enter.active     // true when 0 < progress < 1
-enter.start      // 0
-enter.end        // 0.8
-enter.duration   // 0.8
+// Scripted events by ID
+const s = std.cue.script([
+  { id: "hero", time: 0.5 },
+  { id: "cta", time: 2.5, duration: 0.8 },
+], time);
+const cta = s.get("cta");
 
-// Stagger multiple elements
-const items = tl.stagger(["a", "b", "c"], { each: 0.2, duration: 0.5 });
-items.get(0).progress  // First item's progress
-
-// Relative positioning
-const fadeIn = tl.follow("enter", { id: "fadeIn", gap: 0.1, duration: 0.5 });
-
-// Scoped timeline (re-zeroed)
-const scoped = tl.scope(2, 5);
-scoped.at("title", 0, 1);  // 0-1 within scope
-
-// Get currently active event
-const current = tl.current();  // TimelineEvent | null
+// Adapters for STT providers
+const elevenLabsWords = std.cue.fromElevenLabs(response.words);
+const whisperWords = std.cue.fromWhisper(response.words);
 ```
+
+Use `std.score(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Score And Cues](/docs/timing) for a guide-level walkthrough.
 
 #### `std.responsive`
 
@@ -433,7 +497,7 @@ export default defineScene({
   },
   render(ctx) {
     const { std, sceneProgress, data } = ctx;
-    const opacity = std.tween(0, 1, sceneProgress, 'easeOutCubic');
+    const opacity = std.interpolate(sceneProgress, [0, 1], [0, 1], 'easeOutCubic');
 
     return `
       <div style="color: ${data.color}; opacity: ${opacity}">

@@ -1,0 +1,124 @@
+# Timing With Score And Cues
+
+SuperImg has two timing primitives for most template work:
+
+- `std.score()` choreographs scene-local phases from `sceneProgress`.
+- `std.cue.*` follows absolute timestamps from transcripts, markers, audio, or scripts.
+
+Use `score` when the scene owns the timing. Use `cue` when external data owns the timing.
+
+## Enter, Hold, Exit
+
+`std.score()` defaults to `enter`, `hold`, and `exit` phases. It gives you ready-to-use motion styles and handles the fade-out math automatically.
+
+```typescript
+render(ctx) {
+  const { std } = ctx;
+  const t = std.score();
+
+  const card = t.motion({ y: 32, scale: 0.96 });
+  const eyebrow = t.motion({ at: 0.15, y: 20 });
+  const number = t.tween(0, 1280, { during: "enter", at: 0.2 });
+
+  return `
+    <section style="${card.style}">
+      <p style="${eyebrow.style}">Downloads</p>
+      <strong>${Math.floor(number).toLocaleString()}</strong>
+    </section>
+  `;
+}
+```
+
+## Named Phases
+
+For templates with a specific story arc, name the phases after the beats in the scene.
+
+```typescript
+render(ctx) {
+  const { std } = ctx;
+  const t = std.score({
+    intro: 0.18,
+    terminal: 0.62,
+    summary: 0.12,
+    outro: 0.08,
+  });
+
+  const shell = t.motion({ during: "intro", y: 28, exit: false });
+  const commandProgress = t.within("terminal");
+  const summary = t.motion({ during: "summary", y: 18 });
+  const fade = t.tween(1, 0, { during: "outro", easing: "easeInCubic" });
+
+  return `
+    <div style="${shell.style}; opacity:${shell.opacity * fade}">
+      <pre>${commandProgress > 0.5 ? "build complete" : "npm run build"}</pre>
+      <p style="${summary.style}">Ready to ship</p>
+    </div>
+  `;
+}
+```
+
+`t.active` tells you which phase is currently running, and `t.within("phase")` gives progress scoped to that phase.
+
+## Transcript And Marker Timing
+
+`std.cue` reads absolute seconds. That makes it the right primitive for captions, voiceover sync, marker files, and scripted beats.
+
+```typescript
+render(ctx) {
+  const { std, sceneTimeSeconds: time, data } = ctx;
+
+  const words = std.cue.fromElevenLabs(data.transcript);
+  const transcript = std.cue.transcript(words, time);
+  const current = transcript.current();
+
+  const caption = transcript.map((word) => {
+    const color = word.active ? data.accentColor : "white";
+    return `<span style="color:${color}">${word.text}</span>`;
+  }).join(" ");
+
+  return `<p>${caption}</p>`;
+}
+```
+
+Markers are useful when the timing is known by named timestamps:
+
+```typescript
+const markers = std.cue.markers({
+  intro: 0,
+  demo: 2.5,
+  cta: 8,
+}, ctx.sceneTimeSeconds);
+
+const demoProgress = markers.progress("demo", "cta");
+const demo = markers.segment("demo", "cta");
+```
+
+## Combining Them
+
+Use `score` for the frame and `cue` for audio-synced content inside it.
+
+```typescript
+render(ctx) {
+  const { std, sceneTimeSeconds: time, data } = ctx;
+  const scene = std.score({ enter: 0.12, captions: 0.76, exit: 0.12 });
+  const panel = scene.motion({ y: 24 });
+
+  const words = std.cue.fromElevenLabs(data.transcript);
+  const transcript = std.cue.transcript(words, time);
+  const phrase = transcript.between(0, 3);
+
+  const phraseOpacity = std.interpolate(phrase.progress, [0, 1], [0.25, 1], "easeOutCubic");
+
+  return `
+    <div style="${panel.style}">
+      <strong style="opacity:${phraseOpacity}">${phrase.text}</strong>
+    </div>
+  `;
+}
+```
+
+## Next Steps
+
+- [Animation Basics](/docs/animation) — Timing and easing fundamentals
+- [How It Works](/docs/how-it-works) — Rendering model and frame context
+- [CLI Reference](/docs/cli) — Render and inspect templates

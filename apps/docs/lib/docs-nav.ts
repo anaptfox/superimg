@@ -21,6 +21,7 @@ export const docsNav: NavSection[] = [
     title: 'Guides',
     items: [
       { title: 'Animation Basics', slug: 'animation' },
+      { title: 'Timing With Score And Cues', slug: 'timing' },
     ],
   },
   {

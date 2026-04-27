@@ -8,11 +8,13 @@ import {
   countdownTemplate,
   testimonialTemplate,
   chartTemplate,
+  vectorTemplate,
   terminalTemplate,
 } from "@/lib/templates/showcase";
+import { type EditorExample } from "@/lib/video/examples";
 
 interface CategoryPreview {
-  id: string;
+  id: EditorExample["category"];
   title: string;
   description: string;
   template: Parameters<typeof Player>[0]["template"];
@@ -21,39 +23,60 @@ interface CategoryPreview {
 
 const CATEGORY_PREVIEWS: CategoryPreview[] = [
   {
-    id: "getting-started",
-    title: "Getting Started",
-    description: "Learn the basics with simple animated text and effects",
+    id: "basics",
+    title: "Basics",
+    description: "Starter templates and compositional building blocks",
     template: helloWorldTemplate,
     exampleId: "hello-world",
   },
   {
     id: "marketing",
     title: "Marketing",
-    description: "Launch cards, countdowns, and promotional videos",
+    description: "Launch cards, promos, testimonials, and brand assets",
     template: countdownTemplate,
-    exampleId: "product-hunt",
+    exampleId: "countdown",
+  },
+  {
+    id: "events",
+    title: "Events",
+    description: "Meetups, speakers, agendas, and event recaps",
+    template: countdownTemplate,
+    exampleId: "meetup-announcement",
   },
   {
     id: "social",
     title: "Social",
-    description: "Testimonials, milestones, and engagement content",
+    description: "Posts, threads, and shareable social formats",
     template: testimonialTemplate,
-    exampleId: "testimonials",
+    exampleId: "tweet",
+  },
+  {
+    id: "interfaces",
+    title: "Interfaces",
+    description: "Chat and app-style interface simulations",
+    template: testimonialTemplate,
+    exampleId: "chatgpt",
   },
   {
     id: "data",
     title: "Data",
-    description: "Charts, graphs, and data visualization animations",
+    description: "Dashboards, timelines, rankings, and visual summaries",
     template: chartTemplate,
-    exampleId: "star-history",
+    exampleId: "stats-card",
+  },
+  {
+    id: "vector",
+    title: "Vector",
+    description: "SVG drawing, morphs, filters, and path-based motion",
+    template: vectorTemplate,
+    exampleId: "svg-draw",
   },
   {
     id: "developer",
     title: "Developer",
-    description: "Terminal sessions, code snippets, and git workflows",
+    description: "Code, terminal, and technical motion demos",
     template: terminalTemplate,
-    exampleId: "code-typewriter",
+    exampleId: "terminal",
   },
 ];
 

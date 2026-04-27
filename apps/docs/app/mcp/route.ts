@@ -48,14 +48,23 @@ export default defineScene({
 
 ## Standard Library (ctx.std)
 
-### std.tween — eased interpolation (canonical animation primitive)
-  std.tween(from, to, progress, easing?)
-  Easings: "linear", "easeInQuad", "easeOutQuad", "easeInOutQuad", "easeInSine", "easeOutSine", "easeInOutSine", "easeInCubic", "easeOutCubic", "easeInOutCubic", "easeInQuart", "easeOutQuart", "easeInOutQuart", "easeInQuint", "easeOutQuint", "easeInOutQuint", "easeInExpo", "easeOutExpo", "easeInOutExpo", "easeInCirc", "easeOutCirc", "easeInOutCirc", "easeInBack", "easeOutBack", "easeInOutBack", "easeInElastic", "easeOutElastic", "easeInOutElastic", "easeInBounce", "easeOutBounce", "easeInOutBounce"
+### std.score — phase-scoped timing (primary primitive)
+  const t = std.score({ enter: 0.2, hold: 0.6, exit: 0.2 });
+  const card = t.motion({ y: 20 });                        // auto fade-in + fade-out
+  const val  = t.motion({ y: 15, at: 0.15, scale: 0.2 });  // staggered 15% into enter
+  const cnt  = t.tween(0, target, { during: "hold" });     // scoped tween
+  const fill = t.value(ratio, { fadeOn: "exit" });         // steady value with fade lifecycle
+  // <div style="\${card.style}"> — opacity + transform + filter combined
+  Default phases if omitted: { enter: 0.15, hold: 0.70, exit: 0.15 }. Bypass phases with \`window: [0.1, 0.3]\`.
+
+### std.tween — low-level eased interpolation
+  std.interpolate(progress, [0, 1], [from, to], easing?)
+  Easings: "linear", plus Quad/Cubic/Quart/Quint/Sine/Expo/Circ/Elastic/Back/Bounce in In/Out/InOut, plus "spring" / "spring(stiffness,damping)".
 
 ### std.math
-  std.math.clamp(val, min, max)
-  std.math.map(val, inMin, inMax, outMin, outMax)
+  std.math.clamp(val, min, max), std.math.map(val, inMin, inMax, outMin, outMax), std.math.mapClamp(...)
   std.math.noise(x), std.math.noise2D(x, y) — simplex noise (-1 to 1)
+  std.clamp01(x) — shortcut for clamp(x, 0, 1)
 
 ### std.color
   std.color.alpha(color, opacity) — "rgba(…)"
@@ -71,33 +80,20 @@ export default defineScene({
   std.css.stack()  → "display:flex;flex-direction:column"
   std.css.row()    → "display:flex;flex-direction:row"
 
-### std.timeline — declarative timing
-  const tl = std.timeline(time, duration);
-  const enter = tl.at("enter", 0, 1.0);
-  const hold = tl.at("hold", 1.0, 2.0);
-  enter.progress  // 0-1 during the event
-  enter.active    // true when 0 < progress < 1
+### std.cue — absolute-time cue helpers (for voiceover / transcript / marker-based work)
+  const t = std.cue.transcript(words, time);
+  const current = t.current();
+  const m = std.cue.markers({ intro: 0, outro: 8 }, time);
+  m.progress("intro", "outro")  // 0-1 between markers
+  Also: .script(), .fromElevenLabs(), .fromWhisper().
 
-## Timeline Pattern (recommended for multi-stage animations)
-
-\`\`\`
-const { std, sceneTimeSeconds: time, sceneDurationSeconds: duration } = ctx;
-const tl = std.timeline(time, duration);
-const enter = tl.at("enter", 0, 1.0);
-const hold = tl.at("hold", 1.0, 2.0);
-const exit = tl.at("exit", 3.0, 1.0);
-const opacity = enter.active ? std.tween(0, 1, enter.progress, "easeOutCubic") : 1;
-const y = std.tween(40, 0, enter.progress, "easeOutCubic");
-\`\`\`
-
-## Staggered Elements
-
-Use timeline stagger for automatic offsets:
-\`\`\`
-const items = tl.stagger(["a", "b", "c"], { each: 0.2, duration: 0.5 });
-items.get(0).progress  // First item's progress
-items.get(1).progress  // Second item's progress
-\`\`\`
+### More on ctx.std
+  std.spring(from, to, progress, config?); std.stagger(items, progress, opts?);
+  std.interpolate(progress, inputRange, outputRange); std.interpolateColor(...);
+  std.createResponsive(ctx); std.px(n); std.scale;
+  std.text.type(text, progress, { by, variance, time }); std.text.cursor(time);
+  std.path(d, progress); std.svg.{draw,morph,reveal,shape,filter,textPath};
+  std.backgrounds.kenBurns(...); std.montage(...); std.code.highlight(source, { lang }).
 
 ## Complete Example
 
@@ -118,15 +114,15 @@ export default defineScene({
     const exitProgress = std.math.clamp((time - 3.5) / 1.0, 0, 1);
     const alive = 1 - exitProgress;
 
-    const titleOpacity = std.tween(0, 1, enterProgress, "easeOutCubic") * alive;
-    const titleY = std.tween(40, 0, enterProgress, "easeOutCubic");
+    const titleOpacity = std.interpolate(enterProgress, [0, 1], [0, 1], "easeOutCubic") * alive;
+    const titleY = std.interpolate(enterProgress, [0, 1], [40, 0], "easeOutCubic");
 
     const subEnter = std.math.clamp((time - 0.3) / 1.5, 0, 1);
-    const subOpacity = std.tween(0, 0.8, subEnter, "easeOutCubic") * alive;
-    const subY = std.tween(30, 0, subEnter, "easeOutCubic");
+    const subOpacity = std.interpolate(subEnter, [0, 1], [0, 0.8], "easeOutCubic") * alive;
+    const subY = std.interpolate(subEnter, [0, 1], [30, 0], "easeOutCubic");
 
     const lineEnter = std.math.clamp((time - 0.5) / 1.0, 0, 1);
-    const lineWidth = std.tween(0, 100, lineEnter, "easeOutCubic") * alive;
+    const lineWidth = std.interpolate(lineEnter, [0, 1], [0, 100], "easeOutCubic") * alive;
 
     return \\\`
       <div style="\${std.css({ width, height, background: '#0f0f23', fontFamily: 'system-ui, sans-serif' }, std.css.center())}">
@@ -144,11 +140,11 @@ export default defineScene({
 ## Critical Rules
 1. Return HTML template literal strings, NOT JSX/React.
 2. Set root element to width: \${width}px; height: \${height}px so it fills the frame.
-3. Use sceneProgress or sceneTimeSeconds for animation — never globalProgress.
+3. Use sceneProgress or sceneTimeSeconds for animation. Prefer std.score() for enter/hold/exit timing.
 4. render() must be pure — no side effects, no DOM access, no global state.
 5. Import only from "superimg". Everything is available via ctx.std.
 6. Use \${} interpolation for all dynamic values inside the HTML string.
-7. Always use std.tween() for smooth animations — avoid raw Math for motion.`;
+7. Use std.score() + t.motion() for phased animations; reach for std.interpolate() for custom-progress math — avoid raw Math for motion.`;
 
 function createServer() {
   const server = new McpServer(

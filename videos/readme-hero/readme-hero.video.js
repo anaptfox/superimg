@@ -35,30 +35,30 @@ export default defineScene({
     const { std, sceneTimeSeconds: time, width, height, data } = ctx;
 
     // — Phase timing —
-    const enterP = std.math.clamp(time / 1.0, 0, 1);
-    const taglineP = std.math.clamp((time - 0.4) / 0.8, 0, 1);
-    const codeP = std.math.clamp((time - 1.2) / 1.2, 0, 1);
-    const arrowP = std.math.clamp((time - 2.8) / 0.6, 0, 1);
-    const outputP = std.math.clamp((time - 3.0) / 0.8, 0, 1);
-    const exitP = std.math.clamp((time - 5.2) / 0.8, 0, 1);
-    const globalFade = 1 - std.tween(0, 1, exitP, "easeInCubic");
+    const enterP = std.clamp01(time / 1.0);
+    const taglineP = std.clamp01((time - 0.4) / 0.8);
+    const codeP = std.clamp01((time - 1.2) / 1.2);
+    const arrowP = std.clamp01((time - 2.8) / 0.6);
+    const outputP = std.clamp01((time - 3.0) / 0.8);
+    const exitP = std.clamp01((time - 5.2) / 0.8);
+    const globalFade = 1 - std.interpolate(exitP, [0, 1], [0, 1], "easeInCubic");
 
     // — Logo —
-    const logoOpacity = std.tween(0, 1, enterP, "easeOutCubic") * globalFade;
-    const logoY = std.tween(15 * std.scale, 0, enterP, "easeOutCubic");
-    const logoScale = std.tween(0.95, 1, enterP, "easeOutCubic");
+    const logoOpacity = std.interpolate(enterP, [0, 1], [0, 1], "easeOutCubic") * globalFade;
+    const logoY = std.interpolate(enterP, [0, 1], [15 * std.scale, 0], "easeOutCubic");
+    const logoScale = std.interpolate(enterP, [0, 1], [0.95, 1], "easeOutCubic");
 
     // — Tagline —
-    const tagOpacity = std.tween(0, 0.7, taglineP, "easeOutCubic") * globalFade;
-    const tagY = std.tween(12 * std.scale, 0, taglineP, "easeOutCubic");
+    const tagOpacity = std.interpolate(taglineP, [0, 1], [0, 0.7], "easeOutCubic") * globalFade;
+    const tagY = std.interpolate(taglineP, [0, 1], [12 * std.scale, 0], "easeOutCubic");
 
     // — Content shift: starts vertically centered, moves up as code appears —
-    const shiftP = std.math.clamp((time - 0.8) / 0.8, 0, 1);
-    const contentShift = std.tween((height / 2 - 55 * std.scale) - 70 * std.scale, 0, shiftP, "easeInOutCubic");
+    const shiftP = std.clamp01((time - 0.8) / 0.8);
+    const contentShift = std.interpolate(shiftP, [0, 1], [(height / 2 - 55 * std.scale) - 70 * std.scale, 0], "easeInOutCubic");
 
     // — Code typing with natural rhythm —
-    const codeOpacity = std.tween(0, 1, codeP, "easeOutCubic") * globalFade;
-    const codeX = std.tween(-30 * std.scale, 0, codeP, "easeOutCubic");
+    const codeOpacity = std.interpolate(codeP, [0, 1], [0, 1], "easeOutCubic") * globalFade;
+    const codeX = std.interpolate(codeP, [0, 1], [-30 * std.scale, 0], "easeOutCubic");
 
     const { visible, cursorVisible } = std.text.type(CODE, codeP, {
       variance: 0.6,
@@ -82,15 +82,15 @@ export default defineScene({
       .replace(/<\/code><\/pre>$/, "");
 
     // — Arrow —
-    const arrowOpacity = std.tween(0, 0.6, arrowP, "easeOutCubic") * globalFade;
-    const arrowScale = std.tween(0.5, 1, arrowP, "easeOutBack");
+    const arrowOpacity = std.interpolate(arrowP, [0, 1], [0, 0.6], "easeOutCubic") * globalFade;
+    const arrowScale = std.interpolate(arrowP, [0, 1], [0.5, 1], "easeOutBack");
 
     // — Output preview —
-    const outOpacity = std.tween(0, 1, outputP, "easeOutCubic") * globalFade;
-    const outX = std.tween(30 * std.scale, 0, outputP, "easeOutCubic");
-    const outScale = std.tween(0.9, 1, outputP, "easeOutCubic");
+    const outOpacity = std.interpolate(outputP, [0, 1], [0, 1], "easeOutCubic") * globalFade;
+    const outX = std.interpolate(outputP, [0, 1], [30 * std.scale, 0], "easeOutCubic");
+    const outScale = std.interpolate(outputP, [0, 1], [0.9, 1], "easeOutCubic");
 
-    const hue = std.tween(0, 40, std.math.clamp((time - 3.0) / 3.0, 0, 1), "easeInOutSine");
+    const hue = std.interpolate(std.clamp01((time - 3.0) / 3.0), [0, 1], [0, 40], "easeInOutSine");
     const videoProgress = std.math.clamp((time - 3.5) / 2.0, 0, 0.85);
 
     return `

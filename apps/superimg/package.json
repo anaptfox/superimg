@@ -45,15 +45,15 @@
     }
   },
   "scripts": {
-    "build": "tsup && node scripts/copy-skills.cjs",
+    "build": "tsup && node scripts/verify-build-artifacts.mjs",
     "build:browser": "SUPERIMG_BROWSER_ONLY=1 tsup && cp dist/index.browser.js dist/index.server.js && cp dist/index.browser.d.ts dist/index.server.d.ts",
     "dev": "tsup --watch",
     "test": "vitest --run --passWithNoTests",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "verify:build": "node scripts/verify-build-artifacts.mjs"
   },
   "files": [
-    "dist",
-    "skills"
+    "dist"
   ],
   "sideEffects": false,
   "engines": {
@@ -115,6 +115,7 @@
     "@superimg/player": "workspace:*",
     "@superimg/playwright": "workspace:*",
     "@superimg/runtime": "workspace:*",
+    "@superimg/skill": "workspace:*",
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
     "@tailwindcss/vite": "^4.2.1",

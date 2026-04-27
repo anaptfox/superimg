@@ -9,7 +9,7 @@ export function registerEasingsResource(server: McpServer): void {
     "easings",
     "superimg://easings",
     {
-      description: "List of all 31 valid easing function names for std.tween()",
+      description: "List of all valid easing function names for std.interpolate() and t.motion()",
       mimeType: "application/json",
     },
     async () => ({
@@ -19,7 +19,7 @@ export function registerEasingsResource(server: McpServer): void {
         text: JSON.stringify({
           count: EASING_NAMES.length,
           easings: EASING_NAMES,
-          usage: 'std.tween(from, to, progress, "easeOutCubic")',
+          usage: 'std.interpolate(progress, [0, 1], [from, to], "easeOutCubic")',
         }, null, 2),
       }],
     })

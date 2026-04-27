@@ -1,5 +1,7 @@
 import { defineConfig } from "tsup";
 
+const noExternal = ["@superimg/skill"];
+
 export default defineConfig([
   {
     entry: {
@@ -11,6 +13,7 @@ export default defineConfig([
     outDir: "dist",
     splitting: false,
     clean: true,
+    noExternal,
   },
   {
     entry: {
@@ -22,5 +25,6 @@ export default defineConfig([
     banner: {
       js: "#!/usr/bin/env node",
     },
+    noExternal,
   },
 ]);

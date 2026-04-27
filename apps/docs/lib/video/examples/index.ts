@@ -5,28 +5,41 @@ import { CODE_TYPEWRITER, GIT_DIFF, TERMINAL, GIT_BRANCH, GITHUB_README, CHANGEL
 import { PRODUCT_HUNT, YEAR_IN_REVIEW, COUNTDOWN, LOGO_ANIMATION, PERSONALIZED_VIDEO } from "./marketing";
 import { TEMPLATE_EXAMPLES } from "./from-templates";
 
+export type ExampleCategoryId =
+  | "basics"
+  | "marketing"
+  | "events"
+  | "social"
+  | "interfaces"
+  | "data"
+  | "vector"
+  | "developer";
+
 export interface EditorExample {
   id: string;
   title: string;
-  category: "getting-started" | "marketing" | "social" | "data" | "developer";
+  category: ExampleCategoryId;
   code: string;
 }
 
 export const EXAMPLE_CATEGORIES = [
-  { id: "getting-started", title: "Getting Started" },
+  { id: "basics", title: "Basics" },
   { id: "marketing", title: "Marketing" },
+  { id: "events", title: "Events" },
   { id: "social", title: "Social" },
+  { id: "interfaces", title: "Interfaces" },
   { id: "data", title: "Data" },
+  { id: "vector", title: "Vector" },
   { id: "developer", title: "Developer" },
-] as const;
+] as const satisfies ReadonlyArray<{ id: ExampleCategoryId; title: string }>;
 
 // Existing examples (from string literals in this repo)
 const BUILTIN_EXAMPLES: EditorExample[] = [
-  // Getting Started
-  { id: "complete-template", title: "Complete Template (config + defaults)", category: "getting-started", code: COMPLETE_TEMPLATE },
-  { id: "hello-world", title: "Hello World", category: "getting-started", code: HELLO_WORLD },
-  { id: "animated-text", title: "Animated Text", category: "getting-started", code: ANIMATED_TEXT },
-  { id: "gradient", title: "Gradient Background", category: "getting-started", code: GRADIENT },
+  // Basics
+  { id: "complete-template", title: "Complete Template (config + defaults)", category: "basics", code: COMPLETE_TEMPLATE },
+  { id: "hello-world", title: "Hello World", category: "basics", code: HELLO_WORLD },
+  { id: "animated-text", title: "Animated Text", category: "basics", code: ANIMATED_TEXT },
+  { id: "gradient", title: "Gradient Background", category: "basics", code: GRADIENT },
 
   // Marketing
   { id: "product-hunt", title: "Product Hunt Launch Card", category: "marketing", code: PRODUCT_HUNT },
@@ -34,16 +47,18 @@ const BUILTIN_EXAMPLES: EditorExample[] = [
   { id: "countdown", title: "Countdown Timer", category: "marketing", code: COUNTDOWN },
   { id: "logo-animation", title: "Logo Animation", category: "marketing", code: LOGO_ANIMATION },
   { id: "personalized-video", title: "Personalized Video", category: "marketing", code: PERSONALIZED_VIDEO },
+  { id: "testimonials", title: "Testimonial Wall", category: "marketing", code: TESTIMONIALS },
+
+  // Events
+  { id: "weekly-schedule", title: "Weekly Schedule", category: "events", code: WEEKLY_SCHEDULE },
 
   // Social
-  { id: "testimonials", title: "Testimonial Wall", category: "social", code: TESTIMONIALS },
   { id: "milestone", title: "Follower Milestone", category: "social", code: MILESTONE },
-  { id: "mrr", title: "MRR Counter", category: "social", code: MRR },
-  { id: "weekly-schedule", title: "Weekly Schedule", category: "social", code: WEEKLY_SCHEDULE },
   { id: "twitter-post", title: "Twitter/X Post Animation", category: "social", code: TWITTER_POST },
 
   // Data
   { id: "star-history", title: "Star History", category: "data", code: STAR_HISTORY },
+  { id: "mrr", title: "MRR Counter", category: "data", code: MRR },
   { id: "npm-stats", title: "NPM Downloads", category: "data", code: NPM_STATS },
   { id: "benchmark", title: "Benchmark Bars", category: "data", code: BENCHMARK },
   { id: "timeline", title: "Animated Timeline", category: "data", code: TIMELINE },
@@ -57,7 +72,7 @@ const BUILTIN_EXAMPLES: EditorExample[] = [
   { id: "changelog", title: "Changelog/Release Notes", category: "developer", code: CHANGELOG },
 ];
 
-// Merge: templates from examples/ folder take precedence over built-in
+// Merge: templates from examples/<category>/ folders take precedence over built-in
 const templateIds = new Set(TEMPLATE_EXAMPLES.map((t) => t.id));
 const filteredBuiltin = BUILTIN_EXAMPLES.filter((e) => !templateIds.has(e.id));
 

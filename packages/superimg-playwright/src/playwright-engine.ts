@@ -11,7 +11,6 @@ import {
   ensureBrowser,
   getBrowserInstallCommand,
   isCI,
-  launchBrowser,
   type BrowserStatus,
   type EnsureBrowserOptions,
 } from "./browser-utils.js";
@@ -122,7 +121,8 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
     }
 
     try {
-      this.browser = await launchBrowser();
+      const { chromium } = await import("playwright");
+      this.browser = await chromium.launch();
     } catch (err) {
       if (err instanceof Error && err.message.includes("Executable doesn't exist")) {
         const prettyMessage = createBrowserNotFoundMessage();
