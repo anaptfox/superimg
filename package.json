@@ -6,14 +6,14 @@
   "scripts": {
     "dev": "pnpm --parallel -r dev",
     "build": "pnpm -r --filter '!docs' build",
-    "build:render": "pnpm --filter @superimg/stdlib run build && pnpm --filter @superimg/types run build && pnpm --filter @superimg/core run build && pnpm --filter superimg run build",
-    "rebuild:render": "pnpm --filter @superimg/stdlib run clean && pnpm --filter @superimg/types run clean && pnpm --filter @superimg/core run clean && pnpm --filter superimg run clean && pnpm --filter @superimg/stdlib run build && pnpm --filter @superimg/types run build && pnpm --filter @superimg/core run build && pnpm --filter superimg run build",
+    "build:render": "pnpm --filter @superimg/cli... run build",
+    "rebuild:render": "pnpm --filter @superimg/cli... run clean && pnpm --filter @superimg/cli... run build",
     "rebuild": "pnpm -r clean && pnpm -r --filter '!docs' build",
     "test": "pnpm -r test",
     "test:coverage": "pnpm -r test -- --coverage",
     "clean": "pnpm -r clean",
     "lint": "pnpm -r lint",
-    "videos": "node ./apps/superimg/dist/cli.js dev"
+    "videos": "node ./packages/superimg/dist/cli.js dev"
   },
   "keywords": [],
   "author": "",

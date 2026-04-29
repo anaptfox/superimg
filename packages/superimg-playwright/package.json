@@ -1,6 +1,7 @@
 {
   "name": "@superimg/playwright",
   "version": "0.1.0",
+  "private": true,
   "description": "Playwright-based server-side renderer for SuperImg",
   "type": "module",
   "main": "./dist/index.js",
@@ -41,7 +42,6 @@
     "execa": "^9.6.1",
     "hono": "^4.7.11",
     "playwright": "^1.57.0",
-    "playwright-core": "^1.57.0",
-    "zod": "^4.3.5"
+    "playwright-core": "^1.57.0"
   }
 }

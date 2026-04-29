@@ -1,6 +1,7 @@
 {
   "name": "@superimg/types",
   "version": "0.1.0",
+  "private": true,
   "description": "TypeScript type definitions for SuperImg",
   "type": "module",
   "main": "./dist/index.js",

@@ -2,7 +2,7 @@
 //! List of all valid easing function names
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { EASING_NAMES } from "@superimg/stdlib/tween";
+import { EASING_NAMES } from "@superimg/stdlib/easing";
 
 export function registerEasingsResource(server: McpServer): void {
   server.registerResource(

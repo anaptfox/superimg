@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@superimg/cli": ["../superimg-cli/src/cli/index.ts"],
+      "@superimg/cli/server": ["../superimg-cli/src/server.ts"],
+      "@superimg/core": ["../superimg-core/src/index.ts"],
+      "@superimg/core/*": ["../superimg-core/src/*.ts", "../superimg-core/src/*/index.ts"],
+      "@superimg/player": ["../superimg-player/src/index.ts"],
+      "@superimg/playwright": ["../superimg-playwright/src/index.ts"],
+      "@superimg/runtime": ["../superimg-runtime/src/index.ts"],
+      "@superimg/runtime/*": ["../superimg-runtime/src/*.ts"],
+      "@superimg/skill": ["../superimg-skill/src/index.ts"],
+      "@superimg/stdlib": ["../superimg-stdlib/src/index.ts"],
+      "@superimg/stdlib/*": ["../superimg-stdlib/src/*.ts", "../superimg-stdlib/src/*/index.ts"],
+      "@superimg/types": ["../superimg-types/src/index.ts"]
+    },
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

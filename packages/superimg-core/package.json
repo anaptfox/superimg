@@ -1,6 +1,7 @@
 {
   "name": "@superimg/core",
   "version": "0.1.0",
+  "private": true,
   "description": "Core environment-agnostic primitives for SuperImg",
   "type": "module",
   "main": "./dist/index.js",
@@ -37,6 +38,14 @@
     "./validation": {
       "import": "./dist/validation.js",
       "types": "./dist/validation.d.ts"
+    },
+    "./errors": {
+      "import": "./dist/errors.js",
+      "types": "./dist/errors.d.ts"
+    },
+    "./errors-node": {
+      "import": "./dist/errors-node.js",
+      "types": "./dist/errors-node.d.ts"
     }
   },
   "scripts": {
@@ -58,10 +67,12 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@babel/code-frame": "^7.29.0",
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
     "oxc-parser": "^0.119.0",
-    "zod": "^4.3.5",
+    "picocolors": "^1.1.1",
+    "source-map-js": "^1.2.1",
     "zustand": "^5.0.0"
   },
   "peerDependencies": {
@@ -76,6 +87,7 @@
     }
   },
   "devDependencies": {
+    "@types/babel__code-frame": "^7.27.0",
     "esbuild-wasm": "^0.27.3"
   },
   "optionalDependencies": {

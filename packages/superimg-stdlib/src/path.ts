@@ -13,7 +13,7 @@
 
 import { normalizePath, pointAtProgress, angleAtProgress } from "./svg/segments";
 import type { NormalizedPath } from "./svg/segments";
-import type { EasingName, EasingFn } from "./tween";
+import type { EasingName, EasingFn } from "./easing";
 import { clamp01 } from "./easing";
 import * as easing from "./easing";
 

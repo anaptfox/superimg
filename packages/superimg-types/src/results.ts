@@ -71,9 +71,44 @@ export type RenderBufferResult =
 // =============================================================================
 
 /**
+ * Source location mapped back to the user's template file (post-sourcemap).
+ * Populated by enrichError() in the SuperImg core compiler.
+ */
+export interface SourceLocation {
+  /** Absolute or project-relative path to the user's source file */
+  file: string;
+  /** 1-indexed line number in the source */
+  line: number;
+  /** 0-indexed column number in the source */
+  column?: number;
+}
+
+/**
+ * Serialized form of a SuperImgError. Stable shape suitable for transport
+ * over MCP / WebSocket / process boundaries.
+ */
+export interface SuperImgErrorJSON {
+  name: string;
+  code: string;
+  message: string;
+  details: Record<string, unknown>;
+  suggestion: string;
+  docsUrl?: string;
+  /** Mapped source location (when sourcemap available) */
+  location?: SourceLocation;
+  /** Vite-style code frame string (when source content available) */
+  codeFrame?: string;
+}
+
+/**
  * Base error class for all SuperImg errors
  */
 export class SuperImgError extends Error {
+  /** Mapped source location (populated by enrichError when sourcemap available) */
+  public location?: SourceLocation;
+  /** Vite-style code frame string (populated by enrichError when source content available) */
+  public codeFrame?: string;
+
   constructor(
     message: string,
     public readonly code: string,
@@ -90,7 +125,7 @@ export class SuperImgError extends Error {
   }
 
   /** Convert to a plain object for logging/serialization */
-  toJSON(): Record<string, unknown> {
+  toJSON(): SuperImgErrorJSON {
     return {
       name: this.name,
       code: this.code,
@@ -98,6 +133,8 @@ export class SuperImgError extends Error {
       details: this.details,
       suggestion: this.suggestion,
       docsUrl: this.docsUrl,
+      location: this.location,
+      codeFrame: this.codeFrame,
     };
   }
 }
@@ -108,19 +145,30 @@ export class SuperImgError extends Error {
 export class TemplateCompilationError extends SuperImgError {
   constructor(details: {
     templateName?: string;
+    file?: string;
     line?: number;
     column?: number;
     syntaxError: string;
+    /** Optional override for the default suggestion */
+    suggestion?: string;
   }) {
     const location = details.line ? ` at line ${details.line}` : "";
+    const defaultSuggestion = `Check the template syntax${location}. Ensure the render function returns a string.`;
     super(
       `Template compilation failed${location}: ${details.syntaxError}`,
       "TEMPLATE_COMPILATION_ERROR",
       details,
-      `Check the template syntax${location}. Ensure the render function returns a string.`,
+      details.suggestion ?? defaultSuggestion,
       "https://superimg.dev/docs/templates"
     );
     this.name = "TemplateCompilationError";
+    if (details.file && details.line !== undefined) {
+      this.location = {
+        file: details.file,
+        line: details.line,
+        column: details.column,
+      };
+    }
   }
 }
 
@@ -142,23 +190,35 @@ export class TemplateRuntimeError extends SuperImgError {
     templateName?: string;
     frame: number;
     originalError: string;
+    file?: string;
     line?: number;
+    column?: number;
     /** Timeline context for debugging */
     timeContext?: TimeContext;
     /** Data snapshot (truncated for large objects) */
     dataSnapshot?: unknown;
+    /** Optional override for the default suggestion */
+    suggestion?: string;
   }) {
     const timeInfo = details.timeContext
       ? ` (${details.timeContext.sceneTimeSeconds.toFixed(3)}s, ${(details.timeContext.sceneProgress * 100).toFixed(1)}% progress)`
       : "";
+    const defaultSuggestion = `The render function threw an error. Check that all data properties exist and values aren't NaN/undefined at this point in the timeline.`;
     super(
       `Template error at frame ${details.frame}${timeInfo}: ${details.originalError}`,
       "TEMPLATE_RUNTIME_ERROR",
       details,
-      `The render function threw an error. Check that all data properties exist and values aren't NaN/undefined at this point in the timeline.`,
+      details.suggestion ?? defaultSuggestion,
       "https://superimg.dev/docs/templates#debugging"
     );
     this.name = "TemplateRuntimeError";
+    if (details.file && details.line !== undefined) {
+      this.location = {
+        file: details.file,
+        line: details.line,
+        column: details.column,
+      };
+    }
   }
 }
 
@@ -170,16 +230,30 @@ export class ValidationError extends SuperImgError {
     field: string;
     expectedType: string;
     receivedValue: unknown;
+    file?: string;
+    line?: number;
+    column?: number;
+    /** Optional override for the default suggestion */
+    suggestion?: string;
   }) {
+    const defaultSuggestion =
+      `Expected ${details.expectedType} but received ${typeof details.receivedValue}. ` +
+      `Check your data object.`;
     super(
       `Validation failed for field "${details.field}"`,
       "VALIDATION_ERROR",
       details,
-      `Expected ${details.expectedType} but received ${typeof details.receivedValue}. ` +
-        `Check your data object.`,
+      details.suggestion ?? defaultSuggestion,
       "https://superimg.dev/docs/templates"
     );
     this.name = "ValidationError";
+    if (details.file && details.line !== undefined) {
+      this.location = {
+        file: details.file,
+        line: details.line,
+        column: details.column,
+      };
+    }
   }
 }
 
@@ -193,24 +267,32 @@ export class RenderError extends SuperImgError {
     htmlError?: string;
     encoderError?: string;
     browserError?: string;
+    file?: string;
+    line?: number;
+    column?: number;
+    /** Optional override for the default suggestion */
+    suggestion?: string;
   }) {
-    const errorSource = details.htmlError
-      ? "HTML"
+    const defaultSuggestion = details.htmlError
+      ? `The template returned invalid HTML. Check your render function output.`
       : details.encoderError
-        ? "encoder"
-        : "browser";
+        ? `Encoder error. Try reducing resolution or changing codec.`
+        : `Browser error. Check for browser compatibility issues.`;
     super(
       `Render failed at frame ${details.frame}`,
       "RENDER_ERROR",
       details,
-      details.htmlError
-        ? `The template returned invalid HTML. Check your render function output.`
-        : details.encoderError
-          ? `Encoder error. Try reducing resolution or changing codec.`
-          : `Browser error. Check for browser compatibility issues.`,
+      details.suggestion ?? defaultSuggestion,
       "https://superimg.dev/docs/troubleshooting"
     );
     this.name = "RenderError";
+    if (details.file && details.line !== undefined) {
+      this.location = {
+        file: details.file,
+        line: details.line,
+        column: details.column,
+      };
+    }
   }
 }
 

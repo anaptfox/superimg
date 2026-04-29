@@ -5,14 +5,13 @@
  * Individual modules can also be imported directly:
  *
  * @example
- * import { easeOutCubic } from '@superimg/stdlib/easing';
- * import { lerp } from '@superimg/stdlib/math';
+ * import { easeOutCubic } from 'superimg/stdlib/easing';
+ * import { lerp } from 'superimg/stdlib/math';
  */
 
 export * from "./easing";
 export * from "./math";
 export * from "./color";
-export * from "./tween";
 export * from "./date";
 export * from "./text";
 export * from "./css";

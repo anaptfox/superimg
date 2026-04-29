@@ -16,7 +16,7 @@
 
 import { clamp01 } from "./easing.js";
 import * as easing from "./easing.js";
-import type { EasingFn } from "./tween.js";
+import type { EasingFn } from "./easing.js";
 import { lerp } from "./math.js";
 
 // -----------------------------------------------------------------------------

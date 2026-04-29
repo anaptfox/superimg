@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { tween, EASING_NAMES, type EasingName } from "./tween";
+import { tween } from "./tween";
+import { EASING_NAMES, type EasingName } from "./easing";
 import * as easing from "./easing";
 
 describe("tween", () => {

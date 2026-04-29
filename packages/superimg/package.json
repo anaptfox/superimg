@@ -1,0 +1,244 @@
+{
+  "name": "superimg",
+  "version": "0.0.13",
+  "description": "Programmatic video generation with HTML/CSS templates",
+  "type": "module",
+  "bin": {
+    "superimg": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/index.browser.d.ts",
+      "import": "./dist/index.browser.js",
+      "default": "./dist/index.browser.js"
+    },
+    "./server": {
+      "types": "./dist/index.server.d.ts",
+      "import": "./dist/index.server.js",
+      "default": "./dist/index.server.js"
+    },
+    "./player": {
+      "types": "./dist/index.player.d.ts",
+      "import": "./dist/index.player.js",
+      "default": "./dist/index.player.js"
+    },
+    "./bundler": {
+      "types": "./dist/index.bundler.d.ts",
+      "import": "./dist/index.bundler.js",
+      "default": "./dist/index.bundler.js"
+    },
+    "./stdlib": {
+      "types": "./dist/stdlib.d.ts",
+      "import": "./dist/stdlib.js",
+      "default": "./dist/stdlib.js"
+    },
+    "./stdlib/backgrounds": {
+      "types": "./dist/stdlib/backgrounds.d.ts",
+      "import": "./dist/stdlib/backgrounds.js",
+      "default": "./dist/stdlib/backgrounds.js"
+    },
+    "./stdlib/code": {
+      "types": "./dist/stdlib/code.d.ts",
+      "import": "./dist/stdlib/code.js",
+      "default": "./dist/stdlib/code.js"
+    },
+    "./stdlib/color": {
+      "types": "./dist/stdlib/color.d.ts",
+      "import": "./dist/stdlib/color.js",
+      "default": "./dist/stdlib/color.js"
+    },
+    "./stdlib/css": {
+      "types": "./dist/stdlib/css.d.ts",
+      "import": "./dist/stdlib/css.js",
+      "default": "./dist/stdlib/css.js"
+    },
+    "./stdlib/date": {
+      "types": "./dist/stdlib/date.d.ts",
+      "import": "./dist/stdlib/date.js",
+      "default": "./dist/stdlib/date.js"
+    },
+    "./stdlib/easing": {
+      "types": "./dist/stdlib/easing.d.ts",
+      "import": "./dist/stdlib/easing.js",
+      "default": "./dist/stdlib/easing.js"
+    },
+    "./stdlib/interpolate": {
+      "types": "./dist/stdlib/interpolate.d.ts",
+      "import": "./dist/stdlib/interpolate.js",
+      "default": "./dist/stdlib/interpolate.js"
+    },
+    "./stdlib/layout": {
+      "types": "./dist/stdlib/layout.d.ts",
+      "import": "./dist/stdlib/layout.js",
+      "default": "./dist/stdlib/layout.js"
+    },
+    "./stdlib/math": {
+      "types": "./dist/stdlib/math.d.ts",
+      "import": "./dist/stdlib/math.js",
+      "default": "./dist/stdlib/math.js"
+    },
+    "./stdlib/montage": {
+      "types": "./dist/stdlib/montage.d.ts",
+      "import": "./dist/stdlib/montage.js",
+      "default": "./dist/stdlib/montage.js"
+    },
+    "./stdlib/path": {
+      "types": "./dist/stdlib/path.d.ts",
+      "import": "./dist/stdlib/path.js",
+      "default": "./dist/stdlib/path.js"
+    },
+    "./stdlib/presets": {
+      "types": "./dist/stdlib/presets.d.ts",
+      "import": "./dist/stdlib/presets.js",
+      "default": "./dist/stdlib/presets.js"
+    },
+    "./stdlib/responsive": {
+      "types": "./dist/stdlib/responsive.d.ts",
+      "import": "./dist/stdlib/responsive.js",
+      "default": "./dist/stdlib/responsive.js"
+    },
+    "./stdlib/score": {
+      "types": "./dist/stdlib/score.d.ts",
+      "import": "./dist/stdlib/score.js",
+      "default": "./dist/stdlib/score.js"
+    },
+    "./stdlib/spring": {
+      "types": "./dist/stdlib/spring.d.ts",
+      "import": "./dist/stdlib/spring.js",
+      "default": "./dist/stdlib/spring.js"
+    },
+    "./stdlib/stagger": {
+      "types": "./dist/stdlib/stagger.d.ts",
+      "import": "./dist/stdlib/stagger.js",
+      "default": "./dist/stdlib/stagger.js"
+    },
+    "./stdlib/subtitle": {
+      "types": "./dist/stdlib/subtitle.d.ts",
+      "import": "./dist/stdlib/subtitle.js",
+      "default": "./dist/stdlib/subtitle.js"
+    },
+    "./stdlib/svg": {
+      "types": "./dist/stdlib/svg.d.ts",
+      "import": "./dist/stdlib/svg.js",
+      "default": "./dist/stdlib/svg.js"
+    },
+    "./stdlib/text": {
+      "types": "./dist/stdlib/text.d.ts",
+      "import": "./dist/stdlib/text.js",
+      "default": "./dist/stdlib/text.js"
+    },
+    "./stdlib/cue": {
+      "types": "./dist/stdlib/cue.d.ts",
+      "import": "./dist/stdlib/cue.js",
+      "default": "./dist/stdlib/cue.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js",
+      "default": "./dist/react/index.js"
+    },
+    "./react/player": {
+      "types": "./dist/react/player.d.ts",
+      "import": "./dist/react/player.js",
+      "default": "./dist/react/player.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup && node scripts/verify-build-artifacts.mjs",
+    "dev": "tsup --watch",
+    "test": "vitest --run --passWithNoTests",
+    "clean": "rm -rf dist",
+    "verify:build": "node scripts/verify-build-artifacts.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "video",
+    "rendering",
+    "html",
+    "css",
+    "animation",
+    "programmatic"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/superimg"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.0.1",
+    "@hono/node-server": "^1.14.1",
+    "acorn": "^8.14.0",
+    "chokidar": "^5.0.0",
+    "colord": "^2.9.3",
+    "commander": "^14.0.3",
+    "date-fns": "^4.1.0",
+    "esbuild": "^0.27.0",
+    "esbuild-wasm": "^0.27.0",
+    "execa": "^9.6.1",
+    "hono": "^4.7.7",
+    "ink": "^6.6.0",
+    "oxc-parser": "^0.119.0",
+    "simplex-noise": "^4.0.3",
+    "vite": "^7.3.1",
+    "ws": "^8.18.0",
+    "zustand": "^5.0.0"
+  },
+  "optionalDependencies": {
+    "@oxc-parser/binding-darwin-arm64": "^0.119.0",
+    "@oxc-parser/binding-darwin-x64": "^0.119.0",
+    "@oxc-parser/binding-linux-arm64-gnu": "^0.119.0",
+    "@oxc-parser/binding-linux-arm64-musl": "^0.119.0",
+    "@oxc-parser/binding-linux-x64-gnu": "^0.119.0",
+    "@oxc-parser/binding-linux-x64-musl": "^0.119.0",
+    "@oxc-parser/binding-win32-arm64-msvc": "^0.119.0",
+    "@oxc-parser/binding-win32-x64-msvc": "^0.119.0"
+  },
+  "peerDependencies": {
+    "playwright": "^1.57.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@superimg/cli": "workspace:*",
+    "@superimg/core": "workspace:*",
+    "@superimg/player": "workspace:*",
+    "@superimg/playwright": "workspace:*",
+    "@superimg/runtime": "workspace:*",
+    "@superimg/skill": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "@tailwindcss/vite": "^4.2.1",
+    "@testing-library/react": "^16.0.0",
+    "@types/react": "catalog:",
+    "@types/ws": "^8.18.0",
+    "happy-dom": "^15.0.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "^4.2.1"
+  }
+}

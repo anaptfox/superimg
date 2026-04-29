@@ -10,6 +10,8 @@ export default defineConfig({
     "template-metadata": "src/template-metadata.ts",
     "bundler-plugin": "src/bundler-plugin.ts",
     validation: "src/validation.ts",
+    errors: "src/errors/index.ts",
+    "errors-node": "src/errors-node.ts",
   },
   format: ["esm"],
   dts: true,

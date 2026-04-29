@@ -15,7 +15,8 @@ import type {
   AssetMeta,
 } from "@superimg/types";
 import { isComposedTemplate } from "@superimg/types";
-import { SuperImgError } from "@superimg/types";
+import { SuperImgError, TemplateRuntimeError } from "@superimg/types";
+import { enrichError } from "@superimg/core/errors";
 import { getPreset } from "@superimg/stdlib";
 
 // =============================================================================
@@ -157,6 +158,14 @@ import { CanvasPresenter } from "./canvas-presenter.js";
 export interface LoadOptions {
   /** Explicit markers for non-scene checkpoints */
   markers?: Marker[];
+  /**
+   * Parsed sourcemap for the template's bundle, used to map runtime errors
+   * back to the user's `.video.ts` source. Required for rich error overlays
+   * in the dev UI.
+   */
+  sourceMap?: import("@superimg/types").TemplateSourceMap;
+  /** Logical path of the entry source (paired with sourceMap). */
+  sourceFile?: string;
 }
 
 /**
@@ -232,6 +241,8 @@ export class Player {
   private _isReady = false;
   private _data: Record<string, unknown> = {};
   private _assetsMap: Record<string, AssetMeta> = {};
+  private _sourceMap: import("@superimg/types").TemplateSourceMap | undefined;
+  private _sourceFile: string | undefined;
 
   constructor(options: PlayerOptions) {
     // Resolve container
@@ -284,6 +295,9 @@ export class Player {
       // Store template
       this.template = input;
       this._composedTemplate = isComposedTemplate(input) ? input : null;
+      // Capture sourcemap context for runtime error enrichment
+      this._sourceMap = loadOptions?.sourceMap;
+      this._sourceFile = loadOptions?.sourceFile;
 
       // Get config from template (both TemplateModule and ComposedTemplate have config)
       const fps = this._composedTemplate
@@ -432,15 +446,18 @@ export class Player {
         fps,
       };
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.events.error?.(err);
+      const enriched = enrichError(error, {
+        sourceMap: this._sourceMap,
+        sourceFile: this._sourceFile,
+      });
+      this.events.error?.(enriched);
 
       return {
         status: "error",
         errorType: "compilation",
-        message: err.message,
-        suggestion: "Check that the template module exports a valid render function.",
-        details: { originalError: err.message },
+        message: enriched.message,
+        suggestion: enriched.suggestion,
+        details: enriched.toJSON() as unknown as Record<string, unknown>,
       };
     }
   }
@@ -491,13 +508,24 @@ export class Player {
       this.events.frameRendered?.(frame, html, compositeHtml);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      // Create enriched error with context
-      const enrichedError = new Error(
-        `Render error at frame ${frame} (${ctx.sceneTimeSeconds.toFixed(3)}s, ` +
-          `${(ctx.sceneProgress * 100).toFixed(1)}% progress): ${err.message}`
-      );
-      // Fire error event with context
-      this.events.error?.(enrichedError);
+      // Build a TemplateRuntimeError with frame + time context, then enrich
+      // via sourcemap so dev UI / consumers get a mapped source location and code frame.
+      const tre = new TemplateRuntimeError({
+        frame,
+        originalError: err.message,
+        timeContext: {
+          sceneFrame: ctx.sceneFrame,
+          sceneTimeSeconds: ctx.sceneTimeSeconds,
+          sceneProgress: ctx.sceneProgress,
+          globalTimeSeconds: ctx.globalTimeSeconds,
+        },
+      });
+      if (err.stack) tre.stack = err.stack;
+      const enriched = enrichError(tre, {
+        sourceMap: this._sourceMap,
+        sourceFile: this._sourceFile,
+      });
+      this.events.error?.(enriched);
     }
   }
 

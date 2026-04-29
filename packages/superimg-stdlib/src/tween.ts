@@ -6,47 +6,8 @@
 
 import { clamp01 } from "./easing";
 import * as easing from "./easing";
+import { EASING_NAMES, type EasingName, type EasingFn } from "./easing";
 import { lerp } from "./math";
-
-/** Easing function: takes t in [0,1], returns eased value */
-export type EasingFn = (t: number) => number;
-
-/** Named easing keys supported by tween */
-export const EASING_NAMES = [
-  "linear",
-  "easeInQuad",
-  "easeOutQuad",
-  "easeInOutQuad",
-  "easeInSine",
-  "easeOutSine",
-  "easeInOutSine",
-  "easeInCubic",
-  "easeOutCubic",
-  "easeInOutCubic",
-  "easeInQuart",
-  "easeOutQuart",
-  "easeInOutQuart",
-  "easeInQuint",
-  "easeOutQuint",
-  "easeInOutQuint",
-  "easeInExpo",
-  "easeOutExpo",
-  "easeInOutExpo",
-  "easeInCirc",
-  "easeOutCirc",
-  "easeInOutCirc",
-  "easeInBack",
-  "easeOutBack",
-  "easeInOutBack",
-  "easeInElastic",
-  "easeOutElastic",
-  "easeInOutElastic",
-  "easeInBounce",
-  "easeOutBounce",
-  "easeInOutBounce",
-] as const;
-
-export type EasingName = (typeof EASING_NAMES)[number];
 
 const EASING_MAP: Record<EasingName, EasingFn> = {
   linear: easing.linear,
@@ -114,7 +75,6 @@ function resolveEasing(easingOpt: EasingName | EasingFn | undefined): EasingFn {
  *
  * Internal-only. Not exposed on `ctx.std`; template authors should use
  * `std.score()` for phased animation or `std.interpolate()` for custom progress.
- *
  * @example
  * ```ts
  * // Simple: linear interpolation

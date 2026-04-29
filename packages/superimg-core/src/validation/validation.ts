@@ -9,7 +9,7 @@ import type {
   TemplateModule,
 } from "@superimg/types";
 import { resolveConfigAssets } from "../shared/assets.js";
-import { EASING_NAMES } from "@superimg/stdlib/tween";
+import { EASING_NAMES } from "@superimg/stdlib/easing";
 import { bundleTemplateCode } from "../bundler/bundler.js";
 import { compileTemplate } from "../rendering/compiler.js";
 import { createRenderContext } from "../rendering/wasm.js";
