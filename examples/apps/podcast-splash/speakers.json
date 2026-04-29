@@ -1,0 +1,24 @@
+[
+  {
+    "slug": "jane-doe",
+    "podcastName": "The Build Log",
+    "episodeNumber": "042",
+    "episodeTitle": "Why we ditched microservices",
+    "speakerName": "Jane Doe",
+    "speakerTitle": "Principal Engineer @ TechCo",
+    "speakerPhoto": "https://i.pravatar.cc/600?img=47",
+    "brandColor": "#FF4D6D",
+    "accentColor": "#FFD166"
+  },
+  {
+    "slug": "ada-lovelace",
+    "podcastName": "The Build Log",
+    "episodeNumber": "043",
+    "episodeTitle": "On the analytical engine",
+    "speakerName": "Ada Lovelace",
+    "speakerTitle": "Mathematician · First Programmer",
+    "speakerPhoto": "https://i.pravatar.cc/600?img=32",
+    "brandColor": "#7C3AED",
+    "accentColor": "#22D3EE"
+  }
+]
