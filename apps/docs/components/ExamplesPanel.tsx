@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Player } from "superimg-react";
+import { Player } from "superimg/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   EXAMPLE_CATEGORIES,

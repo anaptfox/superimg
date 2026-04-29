@@ -1,61 +1,76 @@
 import { defineScene, type RenderContext } from "superimg";
 
-export interface ClaudeCodeStep {
-  label: string;
-  detail: string;
-  kind: "read" | "edit" | "test" | "done";
+export interface ClaudeCodeFeedPart {
+  text: string;
+  tone?: "normal" | "muted" | "blue" | "bold" | "accent";
+}
+
+export interface ClaudeCodeFeedLine {
+  bullet: "green" | "white";
+  parts: ClaudeCodeFeedPart[];
+}
+
+export interface ClaudeCodeCommand {
+  command: string;
+  description: string;
 }
 
 export interface ClaudeCodeData extends Record<string, unknown> {
-  projectName: string;
+  userName: string;
+  version: string;
+  modelLine: string;
   cwd: string;
-  branch: string;
   prompt: string;
-  summary: string;
-  steps: ClaudeCodeStep[];
+  finalMessage: string;
+  tips: string[];
+  recentActivity: string[];
+  commands: ClaudeCodeCommand[];
+  feed: ClaudeCodeFeedLine[];
   theme: "dark" | "warm";
-  showHeader: boolean;
 }
 
 const THEME = {
   dark: {
-    page: "#101014",
-    terminal: "#1b1b1d",
-    chrome: "#2a2a2c",
-    border: "rgba(255,255,255,0.09)",
-    text: "#ece7df",
-    muted: "#8e8982",
-    dim: "#625d58",
-    prompt: "#d97757",
-    green: "#8ccf7e",
-    blue: "#7da8ff",
-    yellow: "#e9c46a",
-    red: "#ff6b6b",
-    panel: "#232326",
+    page: "#171717",
+    terminal: "#050505",
+    chrome: "#252525",
+    chromeBorder: "#3a3a3a",
+    border: "#e0704d",
+    borderDim: "rgba(224,112,77,0.78)",
+    text: "#f2f2f0",
+    muted: "#9d9d9d",
+    dim: "#656565",
+    prompt: "#e0704d",
+    green: "#00c875",
+    blue: "#a7adff",
+    rule: "#474747",
+    input: "#0b0b0b",
   },
   warm: {
-    page: "#191612",
-    terminal: "#211d19",
-    chrome: "#302a24",
-    border: "rgba(255,244,230,0.1)",
-    text: "#f4eadc",
-    muted: "#a69a8a",
-    dim: "#6f6458",
-    prompt: "#e07a5f",
-    green: "#98c379",
-    blue: "#89b4fa",
-    yellow: "#e5c07b",
-    red: "#e06c75",
-    panel: "#2b251f",
+    page: "#18120e",
+    terminal: "#0a0705",
+    chrome: "#302721",
+    chromeBorder: "#493b32",
+    border: "#eb7c54",
+    borderDim: "rgba(235,124,84,0.78)",
+    text: "#f5ede5",
+    muted: "#aaa29a",
+    dim: "#716a63",
+    prompt: "#eb7c54",
+    green: "#8ed26f",
+    blue: "#b8bcff",
+    rule: "#5b524b",
+    input: "#100c09",
   },
 };
 
 const SCORE = {
-  intro: 0.1,
-  prompt: 0.24,
-  working: 0.42,
-  summary: 0.18,
-  outro: 0.06,
+  intro: 0.08,
+  welcome: 0.18,
+  prompt: 0.25,
+  work: 0.35,
+  final: 0.1,
+  outro: 0.04,
 };
 
 function escapeHtml(value: string): string {
@@ -65,23 +80,103 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
+function claudeMark(color: string, cellSize: number): string {
+  const rows = [
+    "00111100",
+    "01111110",
+    "11011011",
+    "11111111",
+    "01111110",
+    "01011010",
+  ];
+
+  return `
+    <div class="claude-mark" style="grid-template-columns:repeat(8, ${cellSize}px);grid-auto-rows:${cellSize}px;">
+      ${rows.map((row) => Array.from(row).map((cell) => (
+        `<span style="background:${cell === "1" ? color : "transparent"};"></span>`
+      )).join("")).join("")}
+    </div>
+  `;
+}
+
 export default defineScene<ClaudeCodeData>({
   data: {
-    projectName: "acme-dashboard",
-    cwd: "~/src/acme-dashboard",
-    branch: "feature/shortcuts",
-    prompt: "add keyboard shortcuts to the command palette and cover them with tests",
-    summary: "Implemented shortcut handling, updated command palette copy, and added focused keyboard tests.",
-    steps: [
-      { kind: "read", label: "Read", detail: "src/components/CommandPalette.tsx" },
-      { kind: "read", label: "Read", detail: "src/hooks/use-command-palette.ts" },
-      { kind: "edit", label: "Edit", detail: "src/components/CommandPalette.tsx" },
-      { kind: "edit", label: "Edit", detail: "src/hooks/use-hotkeys.ts" },
-      { kind: "test", label: "Run", detail: "pnpm test command-palette" },
-      { kind: "done", label: "Done", detail: "2 files changed, 6 tests passed" },
+    userName: "Andrew",
+    version: "2.0.33",
+    modelLine: "Sonnet 4.5 - Claude Max",
+    cwd: "C:\\Users\\Andrew\\Documents\\AI\\CCApps",
+    prompt: "Show me the code path for keyboard shortcuts in the command palette, then patch the handler and add focused tests.",
+    finalMessage: "Updated the shortcut handler, tightened command palette copy, and added focused keyboard tests.",
+    tips: [
+      "Run /init to create a CLAUDE.md file with instructions for Claude",
+      "Run /terminal-setup-hotkey to tag Claude right from your status bar",
+    ],
+    recentActivity: [
+      "No recent activity",
+    ],
+    commands: [
+      { command: "/add-dir", description: "Add a new working directory" },
+      { command: "/agents", description: "Manage agent configurations" },
+      { command: "/hooks", description: "List and manage hooks" },
+      { command: "/init", description: "Initialize a new CLAUDE.md file to add context" },
+      { command: "/compact", description: "Clear conversation history but keep a summary in context" },
+    ],
+    feed: [
+      {
+        bullet: "green",
+        parts: [
+          { text: "Searched for " },
+          { text: "2", tone: "bold" },
+          { text: " patterns, read " },
+          { text: "3", tone: "bold" },
+          { text: " files " },
+          { text: "(ctrl+o to expand)", tone: "muted" },
+        ],
+      },
+      {
+        bullet: "white",
+        parts: [
+          { text: "Now let me trace the " },
+          { text: "command-palette", tone: "blue" },
+          { text: " package - specifically " },
+          { text: "registerShortcut", tone: "blue" },
+          { text: " and " },
+          { text: "handleKeydown", tone: "blue" },
+          { text: "." },
+        ],
+      },
+      {
+        bullet: "green",
+        parts: [
+          { text: "Searched for " },
+          { text: "3", tone: "bold" },
+          { text: " patterns, read " },
+          { text: "2", tone: "bold" },
+          { text: " files " },
+          { text: "(ctrl+o to expand)", tone: "muted" },
+        ],
+      },
+      {
+        bullet: "white",
+        parts: [
+          { text: "Edited " },
+          { text: "src/components/CommandPalette.tsx", tone: "blue" },
+          { text: " and " },
+          { text: "src/hooks/use-hotkeys.ts", tone: "blue" },
+          { text: "." },
+        ],
+      },
+      {
+        bullet: "green",
+        parts: [
+          { text: "Ran " },
+          { text: "pnpm test command-palette", tone: "bold" },
+          { text: " - " },
+          { text: "6 tests passed", tone: "bold" },
+        ],
+      },
     ],
     theme: "dark",
-    showHeader: true,
   },
   config: {
     width: 1920,
@@ -92,269 +187,397 @@ export default defineScene<ClaudeCodeData>({
   render(ctx: RenderContext<ClaudeCodeData>) {
     const { std, width, height, data } = ctx;
     const {
-      projectName,
+      userName,
+      version,
+      modelLine,
       cwd,
-      branch,
       prompt,
-      summary,
-      steps,
+      finalMessage,
+      tips,
+      recentActivity,
+      commands,
+      feed,
       theme,
-      showHeader,
     } = data;
 
     const colors = THEME[theme] ?? THEME.dark;
     const score = std.score(SCORE);
-    const intro = score.motion({ during: "intro", y: 26, scale: 0.985, exit: false });
+    const intro = score.motion({ during: "intro", y: 22, scale: 0.992, exit: false });
+    const welcomeProgress = score.within("welcome");
     const promptProgress = score.within("prompt");
-    const workingProgress = score.within("working");
-    const summaryProgress = score.within("summary");
+    const workProgress = score.within("work");
+    const finalProgress = score.within("final");
     const outroOpacity = score.active === "outro" ? 1 - score.within("outro") : 1;
+    const isSubmitted = score.active === "work" || score.active === "final" || score.active === "outro";
 
-    const terminalWidth = Math.min(width - 180, 1260);
-    const terminalHeight = Math.min(height - 180, 720);
-    const baseFontSize = Math.min(width, height) * 0.021;
-    const chromeHeight = showHeader ? 44 : 0;
-    const panelWidth = 340;
-    const bodyPadding = 28;
-    const lineHeight = 1.48;
+    const terminalWidth = Math.min(width - 260, 1540);
+    const terminalHeight = Math.min(height - 150, 860);
+    const baseFontSize = Math.min(width, height) * 0.0175;
+    const titleBarHeight = baseFontSize * 1.9;
+    const viewportHeight = terminalHeight - titleBarHeight;
+    const contentPadding = baseFontSize * 0.98;
+    const welcomeHeight = baseFontSize * 15.1;
+    const commandTop = contentPadding + welcomeHeight + baseFontSize * 1.22;
+    const inputHeight = baseFontSize * 2.05;
+    const footerHeight = baseFontSize * 1.28;
+    const composerHeight = inputHeight + footerHeight;
 
-    const safePrompt = escapeHtml(prompt);
-    const safeSummary = escapeHtml(summary);
-    const visiblePromptChars = Math.floor(std.clamp01(promptProgress / 0.78) * safePrompt.length);
-    const promptDone = promptProgress >= 0.82 || score.active === "working" || score.active === "summary" || score.active === "outro";
-    const displayPrompt = promptDone ? safePrompt : safePrompt.slice(0, visiblePromptChars);
+    const promptReveal = score.active === "prompt" || score.active === "work" || score.active === "final" || score.active === "outro"
+      ? std.clamp01(promptProgress / 0.84)
+      : 0;
+    const startupOpacity = isSubmitted ? 0 : 1;
+    const feedTop = contentPadding;
+    const promptDone = isSubmitted || promptProgress > 0.92;
+    const displayPrompt = escapeHtml(prompt.slice(0, Math.floor((promptDone ? 1 : promptReveal) * prompt.length)));
     const promptCursor = promptDone ? "" : '<span class="cursor">&nbsp;</span>';
 
-    const thinkingOpacity = score.active === "working"
-      ? std.interpolate(workingProgress, [0, 0.18, 0.86, 1], [0, 1, 1, 0], "linear")
+    const workWindow = std.clamp01((workProgress - 0.08) / 0.84);
+    const feedCursor = workWindow * feed.length;
+    const finalReveal = score.active === "final" || score.active === "outro"
+      ? std.clamp01(finalProgress / 0.74)
       : 0;
-    const thinkingDots = ".".repeat(Math.floor((workingProgress * 18) % 4));
+    const finalText = escapeHtml(finalMessage.slice(0, Math.floor(finalReveal * finalMessage.length)));
+    const finalCursor = score.active === "final" && finalReveal < 1 ? '<span class="cursor">&nbsp;</span>' : "";
+    const feedScroll = 0;
 
-    const stepWindow = std.clamp01((workingProgress - 0.1) / 0.78);
-    const visibleSteps = Math.min(steps.length, Math.floor(stepWindow * steps.length) + (stepWindow > 0 ? 1 : 0));
-
-    const kindColor = {
-      read: colors.blue,
-      edit: colors.yellow,
-      test: colors.prompt,
-      done: colors.green,
+    const toneStyle = {
+      normal: `color:${colors.text};font-weight:400;`,
+      muted: `color:${colors.muted};font-weight:400;`,
+      blue: `color:${colors.blue};font-weight:400;`,
+      bold: `color:${colors.text};font-weight:800;`,
+      accent: `color:${colors.prompt};font-weight:700;`,
     } as const;
 
-    let stepHtml = "";
-    for (let i = 0; i < visibleSteps; i++) {
-      const step = steps[i]!;
-      const local = std.clamp01(stepWindow * steps.length - i);
-      const opacity = std.interpolate(local, [0, 1], [0, 1], "easeOutCubic");
-      const y = std.interpolate(local, [0, 1], [8, 0], "easeOutCubic");
-      stepHtml += `
-        <div class="step" style="opacity:${opacity}; transform:translateY(${y}px);">
-          <span class="tag" style="color:${kindColor[step.kind]}; border-color:${kindColor[step.kind]}55;">${step.label}</span>
-          <span class="path">${escapeHtml(step.detail)}</span>
+    const renderParts = (parts: ClaudeCodeFeedPart[], maxChars = Number.POSITIVE_INFINITY) => {
+      let remaining = maxChars;
+      let html = "";
+
+      for (const part of parts) {
+        if (remaining <= 0) break;
+        const chunk = part.text.slice(0, Math.floor(remaining));
+        html += `<span style="${toneStyle[part.tone ?? "normal"]}">${escapeHtml(chunk)}</span>`;
+        remaining -= chunk.length;
+      }
+
+      return html;
+    };
+
+    const commandRows = commands.map((item) => `
+      <div class="command-row">
+        <span class="slash">${escapeHtml(item.command)}</span>
+        <span>${escapeHtml(item.description)}</span>
+      </div>
+    `).join("");
+
+    const tipRows = tips.map((tip, index) => {
+      const label = index === 0 ? "Run" : "Run";
+      return `<div class="info-line"><span>${label}</span> ${escapeHtml(tip.replace(/^Run /, ""))}</div>`;
+    }).join("");
+
+    const activityRows = recentActivity.map((item) => (
+      `<div class="info-line">${escapeHtml(item)}</div>`
+    )).join("");
+
+    const feedRows = feed.map((line, index) => {
+      const local = feedCursor - index;
+      if (local <= 0) return "";
+
+      const bulletColor = line.bullet === "green" ? colors.green : colors.text;
+      const totalChars = line.parts.reduce((sum, part) => sum + part.text.length, 0);
+      const visibleChars = Math.min(totalChars, Math.floor(std.clamp01(local / 0.82) * totalChars));
+      if (visibleChars <= 0) return "";
+
+      return `
+        <div class="feed-row">
+          <span class="bullet" style="background:${bulletColor};box-shadow:0 0 ${baseFontSize * 0.75}px ${bulletColor}44;"></span>
+          <span class="feed-text">${renderParts(line.parts, visibleChars)}</span>
         </div>
       `;
-    }
-
-    const summaryReveal = std.clamp01(summaryProgress / 0.62);
-    const visibleSummaryChars = Math.floor(summaryReveal * safeSummary.length);
-    const displaySummary = score.active === "summary" || score.active === "outro"
-      ? safeSummary.slice(0, visibleSummaryChars)
-      : "";
-    const showSummaryCursor = score.active === "summary" && summaryReveal < 1;
-
-    const metricsProgress = score.active === "summary" || score.active === "outro"
-      ? std.interpolate(summaryProgress, [0.35, 0.8], [0, 1], "easeOutCubic")
-      : 0;
-
-    const planRows = [
-      ["[x]", "Inspect command palette wiring"],
-      [visibleSteps >= 4 ? "[x]" : "[ ]", "Patch shortcut handling"],
-      [visibleSteps >= 5 ? "[x]" : "[ ]", "Run focused tests"],
-    ].map(([mark, text], i) => {
-      const active = (i === 0 && visibleSteps >= 1) || (i === 1 && visibleSteps >= 4) || (i === 2 && visibleSteps >= 5);
-      return `<div class="plan-row" style="color:${active ? colors.text : colors.dim};"><span>${mark}</span><span>${text}</span></div>`;
     }).join("");
-
-    const fileRows = [
-      "src/components/CommandPalette.tsx",
-      "src/hooks/use-hotkeys.ts",
-      "src/hooks/use-command-palette.ts",
-      "tests/command-palette.test.ts",
-    ].map((file, i) => {
-      const isTouched = visibleSteps > i + 1;
-      return `<div class="file-row" style="color:${isTouched ? colors.text : colors.dim};">${escapeHtml(file)}</div>`;
-    }).join("");
-
-    const setupLines = [
-      `<span class="muted">$</span> claude`,
-      `<span class="brand">Claude Code</span> <span class="muted">in ${escapeHtml(cwd)}</span>`,
-      `<span class="muted">branch:</span> ${escapeHtml(branch)}`,
-      "",
-    ].join("\n");
 
     return `
       <style>
         @keyframes blink { 0%, 52% { opacity: 1; } 53%, 100% { opacity: 0; } }
-        @keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
         * { box-sizing: border-box; }
         .mono {
           font-family: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-          font-variant-ligatures: none;
-          -webkit-font-smoothing: antialiased;
+          font-variant-ligatures:none;
+          -webkit-font-smoothing:antialiased;
+          letter-spacing:0;
         }
         .cursor {
           display:inline-block;
-          width:0.62em;
+          width:0.58em;
           height:1.05em;
           margin-left:2px;
           background:${colors.text};
-          opacity:0.82;
+          opacity:0.9;
           animation:blink 1s steps(1, end) infinite;
-          vertical-align:-0.12em;
+          vertical-align:-0.13em;
         }
-        .muted { color:${colors.muted}; }
-        .brand { color:${colors.prompt}; font-weight:700; }
-        .step {
-          display:flex;
-          align-items:center;
-          gap:12px;
-          min-height:${baseFontSize * 1.65}px;
+        .claude-mark {
+          display:grid;
+          justify-content:center;
+          margin:${baseFontSize * 1.22}px auto ${baseFontSize}px;
         }
-        .tag {
-          width:58px;
-          padding:3px 7px;
-          border:1px solid;
-          border-radius:5px;
-          text-align:center;
-          font-size:${baseFontSize * 0.58}px;
-          text-transform:uppercase;
+        .claude-mark span { display:block; }
+        .panel-heading {
+          color:${colors.prompt};
+          font-weight:700;
+          font-size:${baseFontSize * 0.73}px;
+          margin-bottom:${baseFontSize * 0.24}px;
         }
-        .path { color:${colors.text}; }
-        .panel-title {
+        .info-line {
+          color:${colors.text};
+          font-size:${baseFontSize * 0.52}px;
+          line-height:1.24;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+        .info-line span { color:${colors.muted}; }
+        .command-row {
+          display:grid;
+          grid-template-columns:${baseFontSize * 8.8}px 1fr;
+          gap:${baseFontSize * 1.05}px;
           color:${colors.muted};
-          font-size:${baseFontSize * 0.62}px;
-          text-transform:uppercase;
-          letter-spacing:0.08em;
-          margin-bottom:12px;
+          font-size:${baseFontSize * 0.54}px;
+          line-height:1.38;
+          min-height:${baseFontSize * 0.78}px;
         }
-        .plan-row, .file-row {
-          display:flex;
-          gap:10px;
-          min-height:${baseFontSize * 1.28}px;
-          font-size:${baseFontSize * 0.72}px;
-          line-height:1.35;
+        .slash { color:${colors.text}; }
+        .feed-row {
+          display:grid;
+          grid-template-columns:${baseFontSize * 0.86}px 1fr;
+          gap:${baseFontSize * 0.46}px;
+          align-items:start;
+          margin-bottom:${baseFontSize * 0.92}px;
+          font-size:${baseFontSize * 0.88}px;
+          line-height:1.25;
+        }
+        .bullet {
+          width:${baseFontSize * 0.42}px;
+          height:${baseFontSize * 0.42}px;
+          border-radius:50%;
+          margin-top:${baseFontSize * 0.32}px;
+        }
+        .feed-text {
+          display:block;
+          overflow-wrap:anywhere;
         }
       </style>
       <div class="mono" style="
         width:${width}px;
         height:${height}px;
         background:
-          radial-gradient(circle at 50% 18%, rgba(217,119,87,0.12), transparent 34%),
-          linear-gradient(180deg, ${colors.page} 0%, #0c0c10 100%);
+          linear-gradient(180deg, ${colors.page} 0%, #101010 100%);
+        color:${colors.text};
         display:flex;
         align-items:center;
         justify-content:center;
-        padding:70px;
-        color:${colors.text};
       ">
-        <div style="
+        <main style="
           width:${terminalWidth}px;
           height:${terminalHeight}px;
+          position:relative;
           background:${colors.terminal};
-          border:1px solid ${colors.border};
-          border-radius:10px;
+          border:1px solid ${colors.chromeBorder};
+          border-radius:7px;
           overflow:hidden;
-          box-shadow:0 28px 70px rgba(0,0,0,0.48);
+          box-shadow:0 26px 80px rgba(0,0,0,0.52);
           opacity:${intro.opacity * outroOpacity};
           ${intro.style}
         ">
-          ${showHeader ? `
-            <div style="
-              height:${chromeHeight}px;
-              background:${colors.chrome};
-              border-bottom:1px solid ${colors.border};
-              display:flex;
-              align-items:center;
-              padding:0 18px;
-              gap:10px;
-            ">
-              <div style="display:flex;gap:8px;">
-                <div style="width:12px;height:12px;border-radius:50%;background:#ff5f57;"></div>
-                <div style="width:12px;height:12px;border-radius:50%;background:#ffbd2e;"></div>
-                <div style="width:12px;height:12px;border-radius:50%;background:#28c840;"></div>
-              </div>
-              <div style="flex:1;text-align:center;color:${colors.muted};font-size:14px;">${escapeHtml(projectName)} - claude</div>
-            </div>
-          ` : ""}
           <div style="
-            height:${terminalHeight - chromeHeight}px;
+            height:${titleBarHeight}px;
+            background:${colors.chrome};
+            border-bottom:1px solid ${colors.chromeBorder};
             display:grid;
-            grid-template-columns:1fr ${panelWidth}px;
+            grid-template-columns:auto 1fr auto;
+            align-items:center;
+            gap:${baseFontSize * 0.75}px;
+            padding:0 ${baseFontSize * 0.72}px;
+            color:${colors.muted};
+            font-size:${baseFontSize * 0.58}px;
           ">
-            <main style="
-              padding:${bodyPadding}px;
-              border-right:1px solid ${colors.border};
-              overflow:hidden;
-              font-size:${baseFontSize}px;
-              line-height:${lineHeight};
-            ">
-              <pre style="margin:0 0 ${baseFontSize * 0.55}px;white-space:pre-wrap;color:${colors.text};font:inherit;line-height:inherit;">${setupLines}</pre>
-              <div style="margin-bottom:${baseFontSize * 0.7}px;">
-                <span style="color:${colors.prompt};">></span>
-                <span> ${displayPrompt}${promptCursor}</span>
-              </div>
-              ${thinkingOpacity > 0 ? `
-                <div style="opacity:${thinkingOpacity}; color:${colors.muted}; margin-bottom:${baseFontSize * 0.55}px;">
-                  Thinking${thinkingDots}<span style="animation:pulse 1s ease-in-out infinite;">_</span>
-                </div>
-              ` : ""}
-              <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:${baseFontSize * 0.9}px;">
-                ${stepHtml}
-              </div>
-              ${displaySummary ? `
-                <div style="margin-top:${baseFontSize * 0.5}px;">
-                  <span class="brand">Claude:</span>
-                  <span> ${displaySummary}${showSummaryCursor ? '<span class="cursor">&nbsp;</span>' : ""}</span>
-                </div>
-              ` : ""}
-            </main>
-            <aside style="
-              padding:${bodyPadding}px ${bodyPadding * 0.85}px;
-              background:${colors.panel};
-              font-size:${baseFontSize * 0.78}px;
-              line-height:1.45;
-            ">
-              <div class="panel-title">Session</div>
-              <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin-bottom:${baseFontSize * 1.35}px;">
-                <span class="muted">cwd</span><span>${escapeHtml(cwd)}</span>
-                <span class="muted">model</span><span>Claude Sonnet 4.5</span>
-                <span class="muted">mode</span><span>interactive CLI</span>
-              </div>
-
-              <div class="panel-title">Plan</div>
-              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:${baseFontSize * 1.35}px;">
-                ${planRows}
-              </div>
-
-              <div class="panel-title">Touched Files</div>
-              <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:${baseFontSize * 1.35}px;">
-                ${fileRows}
-              </div>
-
-              <div class="panel-title">Result</div>
-              <div style="
-                border:1px solid ${colors.border};
-                border-radius:7px;
-                padding:14px;
-                color:${metricsProgress > 0 ? colors.green : colors.dim};
-                opacity:${0.35 + metricsProgress * 0.65};
-              ">
-                tests ${metricsProgress >= 1 ? "passed" : "pending"}<br>
-                edits ${metricsProgress >= 1 ? "applied" : "queued"}<br>
-                ready ${metricsProgress >= 1 ? "for review" : "soon"}
-              </div>
-            </aside>
+            <div style="display:flex;gap:${baseFontSize * 0.36}px;">
+              <span style="width:${baseFontSize * 0.46}px;height:${baseFontSize * 0.46}px;border-radius:50%;background:#ff5f57;"></span>
+              <span style="width:${baseFontSize * 0.46}px;height:${baseFontSize * 0.46}px;border-radius:50%;background:#ffbd2e;"></span>
+              <span style="width:${baseFontSize * 0.46}px;height:${baseFontSize * 0.46}px;border-radius:50%;background:#28c840;"></span>
+            </div>
+            <div style="text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              andrew@workstation: ~/acme-dashboard - claude
+            </div>
+            <div style="color:${colors.dim};">132x38</div>
           </div>
-        </div>
+          <div style="
+            position:relative;
+            height:${viewportHeight}px;
+            background:${colors.terminal};
+            overflow:hidden;
+          ">
+          <section style="
+            position:absolute;
+            top:${contentPadding}px;
+            left:${contentPadding}px;
+            right:${contentPadding}px;
+            height:${welcomeHeight}px;
+            border:1px solid ${colors.border};
+            display:grid;
+            grid-template-columns:47% 53%;
+            opacity:${std.interpolate(welcomeProgress, [0, 0.35, 1], [0.72, 1, 1], "easeOutCubic") * startupOpacity};
+          ">
+            <div style="
+              position:absolute;
+              top:-${baseFontSize * 0.64}px;
+              left:${baseFontSize * 2.3}px;
+              padding:0 ${baseFontSize * 0.86}px;
+              background:${colors.terminal};
+              color:${colors.prompt};
+              font-size:${baseFontSize * 0.7}px;
+              line-height:1;
+              white-space:nowrap;
+            ">
+              Claude Code <span style="color:${colors.muted};">v${escapeHtml(version)}</span>
+            </div>
+
+            <div style="
+              display:flex;
+              flex-direction:column;
+              align-items:center;
+              justify-content:center;
+              text-align:center;
+              padding:${baseFontSize}px;
+            ">
+              <div style="font-size:${baseFontSize * 0.56}px;margin-bottom:${baseFontSize * 0.45}px;">Welcome back ${escapeHtml(userName)}!</div>
+              ${claudeMark(colors.prompt, baseFontSize * 0.34)}
+              <div style="color:${colors.muted};font-size:${baseFontSize * 0.55}px;line-height:1.42;">
+                ${escapeHtml(modelLine)}<br>
+                ${escapeHtml(cwd)}
+              </div>
+            </div>
+
+            <div style="
+              display:grid;
+              grid-template-rows:52% 48%;
+              border-left:1px solid ${colors.borderDim};
+              min-width:0;
+            ">
+              <div style="padding:${baseFontSize * 0.82}px ${baseFontSize * 1.1}px ${baseFontSize * 0.42}px;overflow:hidden;">
+                <div class="panel-heading">Tips for getting started</div>
+                ${tipRows}
+              </div>
+              <div style="
+                padding:${baseFontSize * 0.76}px ${baseFontSize * 1.1}px;
+                border-top:1px solid ${colors.borderDim};
+                overflow:hidden;
+              ">
+                <div class="panel-heading">Recent activity</div>
+                ${activityRows}
+              </div>
+            </div>
+          </section>
+
+          <div style="
+            position:absolute;
+            top:${commandTop}px;
+            left:${contentPadding}px;
+            right:${contentPadding}px;
+            height:1px;
+            background:${colors.rule};
+            opacity:${startupOpacity};
+          "></div>
+
+          <section style="
+            position:absolute;
+            top:${commandTop + baseFontSize * 0.78}px;
+            left:${contentPadding}px;
+            right:${contentPadding}px;
+            opacity:${startupOpacity};
+          ">
+            ${commandRows}
+          </section>
+
+          <section style="
+            position:absolute;
+            top:${feedTop}px;
+            left:${contentPadding}px;
+            right:${contentPadding}px;
+            bottom:${composerHeight + contentPadding * 0.7}px;
+            opacity:${isSubmitted ? 1 : 0};
+            overflow:hidden;
+          ">
+            <div style="
+              display:grid;
+              grid-template-columns:${baseFontSize * 1.15}px 1fr;
+              gap:${baseFontSize * 0.38}px;
+              padding:${baseFontSize * 0.12}px 0 ${baseFontSize * 0.95}px;
+              font-size:${baseFontSize * 0.82}px;
+              line-height:1.26;
+            ">
+              <span style="color:${colors.muted};">></span>
+              <span style="white-space:pre-wrap;">${escapeHtml(prompt)}</span>
+            </div>
+
+            <div style="
+              height:calc(100% - ${baseFontSize * 4.55}px);
+              overflow:hidden;
+              margin-top:${baseFontSize * 0.32}px;
+            ">
+              <div style="transform:translateY(${feedScroll}px);">
+                ${feedRows}
+
+                ${finalText ? `
+                  <div class="feed-row" style="margin-top:${baseFontSize * 0.08}px;">
+                    <span class="bullet" style="background:${colors.text};"></span>
+                    <span class="feed-text">
+                      <span style="${toneStyle.accent}">Done:</span>
+                      <span> ${finalText}${finalCursor}</span>
+                    </span>
+                  </div>
+                ` : ""}
+              </div>
+            </div>
+          </section>
+
+          <section style="
+            position:absolute;
+            left:${contentPadding}px;
+            right:${contentPadding}px;
+            bottom:${contentPadding * 0.62}px;
+            opacity:1;
+          ">
+            <div style="
+              height:${inputHeight}px;
+              border:1px solid ${colors.rule};
+              background:${colors.input};
+              display:grid;
+              grid-template-columns:${baseFontSize * 1.15}px 1fr;
+              gap:${baseFontSize * 0.34}px;
+              align-items:center;
+              padding:0 ${baseFontSize * 0.42}px;
+              color:${colors.text};
+              font-size:${baseFontSize * 0.74}px;
+              line-height:1.2;
+            ">
+              <span style="color:${colors.muted};">></span>
+              <span style="white-space:pre-wrap;">${isSubmitted ? '<span class="cursor">&nbsp;</span>' : `${displayPrompt}${promptCursor}`}</span>
+            </div>
+            <div style="
+              display:grid;
+              grid-template-columns:1fr auto 1fr;
+              align-items:center;
+              color:${colors.muted};
+              font-size:${baseFontSize * 0.42}px;
+              line-height:${footerHeight}px;
+            ">
+              <span>! for bash mode</span>
+              <span>/ for commands - esc to undo - tab to save</span>
+              <span style="text-align:right;">shift+tab for auto-accept edits</span>
+            </div>
+          </section>
+          </div>
+        </main>
       </div>
     `;
   },

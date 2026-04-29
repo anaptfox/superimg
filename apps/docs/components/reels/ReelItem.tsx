@@ -3,7 +3,7 @@
 "use client";
 
 import { useRef, useEffect, forwardRef, useImperativeHandle, memo, useCallback } from "react";
-import { Player, type PlayerRef } from "superimg-react/player";
+import { Player, type PlayerRef } from "superimg/react/player";
 import type { PlayerInput, FormatOption } from "superimg/browser";
 import { useVisibility } from "./useVisibility";
 

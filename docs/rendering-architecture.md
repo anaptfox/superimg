@@ -2,6 +2,8 @@
 
 SuperImg supports two rendering modes: **Browser** (client-side) and **Playwright** (server-side). Both share the same core rendering engine.
 
+This document describes internal workspace architecture. User-facing code should import from the published `superimg` package and its public subpaths.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -31,7 +33,7 @@ SuperImg supports two rendering modes: **Browser** (client-side) and **Playwrigh
 │                            │                                    │
 ├────────────────────────────┴────────────────────────────────────┤
 │                                                                 │
-│                    SHARED CORE ENGINE                           │
+│              PRIVATE WORKSPACE IMPLEMENTATION                   │
 │                                                                 │
 │  @superimg/runtime    BrowserRenderer, BrowserEncoder           │
 │  @superimg/core       Compiler, Context, HTML                   │
@@ -85,7 +87,7 @@ Direct client-side rendering using WebCodecs and Snapdom v2.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  BrowserRenderer (@superimg/runtime/renderer.ts)                │
+│  BrowserRenderer (private @superimg/runtime)                    │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  HTML String                                                    │
@@ -118,7 +120,7 @@ Direct client-side rendering using WebCodecs and Snapdom v2.
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  BrowserEncoder (@superimg/runtime/encoder.ts)                  │
+│  BrowserEncoder (private @superimg/runtime)                     │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ImageData                                                      │
@@ -148,8 +150,12 @@ Direct client-side rendering using WebCodecs and Snapdom v2.
 ### Usage
 
 ```typescript
-import { BrowserRenderer, BrowserEncoder } from '@superimg/runtime';
-import { compileTemplate, createRenderContext } from '@superimg/core';
+import {
+  BrowserRenderer,
+  BrowserEncoder,
+  compileTemplate,
+  createRenderContext,
+} from 'superimg/browser';
 
 const renderer = new BrowserRenderer();
 const encoder = new BrowserEncoder(1920, 1080, 30);
@@ -171,7 +177,7 @@ const blob = await encoder.finalize(); // Returns Blob
 
 ## Playwright Rendering
 
-Server-side rendering using headless Chromium orchestrated from Node.js. The architecture separates **orchestration** (`@superimg/core/engine`) from **rendering adapters** (`@superimg/playwright`).
+Server-side rendering uses headless Chromium orchestrated from Node.js. Public code imports from `superimg/server`; internally, orchestration lives in private `@superimg/core` code and adapters live in private `@superimg/playwright` code.
 
 ### Architecture
 
@@ -241,8 +247,7 @@ superimg render template.js -o video.mp4
 For programmatic rendering, use the engine directly:
 
 ```typescript
-import { createRenderPlan, executeRenderPlan } from 'superimg/server';
-import { PlaywrightEngine } from '@superimg/playwright';
+import { createRenderPlan, executeRenderPlan, PlaywrightEngine } from 'superimg/server';
 
 const plan = createRenderPlan(renderJob);
 const engine = new PlaywrightEngine();
@@ -265,7 +270,9 @@ try {
 
 ## Shared Infrastructure
 
-### Package Dependencies
+### Private Package Dependencies
+
+Only `superimg` is published. The `@superimg/*` packages shown here are private workspace packages used to keep the implementation modular.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -313,7 +320,7 @@ try {
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Key architectural boundary:** `@superimg/core` has two kinds of entry points:
+**Key architectural boundary:** private `@superimg/core` has two kinds of entry points:
 - **Browser-safe** (`.`): Compiler, context, HTML utilities — no Node.js deps
 - **Server-only** (`./bundler`): Template bundling — requires `esbuild`, `fs`
 - **Engine** (`./engine`): `createRenderPlan()`, `executeRenderPlan()` — browser-safe but exposed as a separate entry point for tree-shaking
@@ -437,40 +444,40 @@ try {
 
 | File | Description |
 |------|-------------|
-| `@superimg/runtime/src/renderer.ts` | `BrowserRenderer` - HTML to ImageData via Snapdom v2 (iframe isolation) |
-| `@superimg/runtime/src/encoder.ts` | `BrowserEncoder` - ImageData to MP4 via WebCodecs |
-| `@superimg/runtime/src/index.ts` | Runtime exports |
+| `packages/superimg-runtime/src/renderer.ts` | `BrowserRenderer` - HTML to ImageData via Snapdom v2 (iframe isolation) |
+| `packages/superimg-runtime/src/encoder.ts` | `BrowserEncoder` - ImageData to MP4 via WebCodecs |
+| `packages/superimg-runtime/src/index.ts` | Private runtime exports bundled behind `superimg/browser` |
 
 ### Playwright Rendering
 
 | File | Description |
 |------|-------------|
-| `@superimg/playwright/src/playwright-engine.ts` | `PlaywrightEngine` - Chromium lifecycle, Hono server, adapter factory |
-| `@superimg/playwright/src/adapters.ts` | `PlaywrightFrameRenderer`, `PlaywrightVideoEncoder` - engine adapter implementations |
-| `@superimg/playwright/src/harness/harness.ts` | Render harness (runs inside Chromium) |
-| `@superimg/playwright/src/browser-utils.ts` | Browser install/check utilities |
+| `packages/superimg-playwright/src/playwright-engine.ts` | `PlaywrightEngine` - Chromium lifecycle, Hono server, adapter factory |
+| `packages/superimg-playwright/src/adapters.ts` | `PlaywrightFrameRenderer`, `PlaywrightVideoEncoder` - engine adapter implementations |
+| `packages/superimg-playwright/src/harness/harness.ts` | Render harness (runs inside Chromium) |
+| `packages/superimg-playwright/src/browser-utils.ts` | Browser install/check utilities |
 
 ### Core (Browser-Safe)
 
 | File | Description |
 |------|-------------|
-| `@superimg/core/src/compiler.ts` | `compileTemplate()` - Template compilation, extracts data |
-| `@superimg/core/src/wasm.ts` | `createRenderContext()` |
-| `@superimg/core/src/html.ts` | `buildCompositeHtml()` — background + template HTML compositing |
-| `@superimg/core/src/constants.ts` | Default width, height, fps, duration |
+| `packages/superimg-core/src/rendering/compiler.ts` | `compileTemplate()` - Template compilation, extracts data |
+| `packages/superimg-core/src/rendering/wasm.ts` | `createRenderContext()` |
+| `packages/superimg-core/src/html/html.ts` | `buildCompositeHtml()` — background + template HTML compositing |
+| `packages/superimg-core/src/shared/constants.ts` | Default width, height, fps, duration |
 
 ### Core (Server-Only Entry Points)
 
 | File | Description |
 |------|-------------|
-| `@superimg/core/src/engine.ts` | `createRenderPlan()`, `executeRenderPlan()` - generic render orchestration |
+| `packages/superimg-core/src/rendering/engine.ts` | `createRenderPlan()`, `executeRenderPlan()` - generic render orchestration |
 
 ### Types
 
 | File | Description |
 |------|-------------|
-| `@superimg/types/src/types.ts` | `RenderContext`, `TemplateModule`, etc. |
-| `@superimg/types/src/engine.ts` | `RenderEngine`, `FrameRenderer`, `VideoEncoder`, `RenderPlan`, `RenderJob` |
+| `packages/superimg-types/src/types.ts` | `RenderContext`, `TemplateModule`, etc. |
+| `packages/superimg-types/src/engine.ts` | `RenderEngine`, `FrameRenderer`, `VideoEncoder`, `RenderPlan`, `RenderJob` |
 
 ---
 

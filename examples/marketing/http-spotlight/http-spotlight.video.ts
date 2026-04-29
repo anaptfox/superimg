@@ -1,5 +1,5 @@
 import { defineScene, type RenderContext } from "superimg";
-import { highlight } from "@superimg/stdlib/code";
+import { highlight } from "superimg/stdlib/code";
 import {
   type HttpMethod,
   METHOD_COLORS,

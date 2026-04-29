@@ -4,7 +4,7 @@
  * live here so both templates stay visually consistent.
  */
 
-import { highlight, type ThemeName, type LangName } from "@superimg/stdlib/code";
+import { highlight, type ThemeName, type LangName } from "superimg/stdlib/code";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 

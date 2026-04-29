@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Player, type PlayerRef } from "superimg-react";
+import { Player, type PlayerRef } from "superimg/react";
 import { defineScene } from "superimg";
 
 // =============================================================================

@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
-import { Player, type PlayerRef } from "superimg-react";
+import { Player, type PlayerRef } from "superimg/react";
 import { ChevronDown, Copy, Check, Download, ArrowRight } from "lucide-react";
 import {
   Dialog,

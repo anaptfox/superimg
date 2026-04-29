@@ -149,15 +149,15 @@ jobs:
           echo "$TEMPLATES" | jq -r '.[]' | while read -r template; do
             echo "Rendering: $template"
             if [ "$template" = "videos/changelog/changelog.video.ts" ]; then
-              node ./apps/superimg/dist/cli.js render "$template" -y \
+              node ./packages/superimg-cli/dist/cli.js render "$template" -y \
                 --format gif -w 900 -h 506 --fps 15 \
                 -o videos/changelog/changelog.gif
             elif [ "$template" = "videos/readme-hero/readme-hero.video.js" ]; then
-              node ./apps/superimg/dist/cli.js render "$template" -y \
+              node ./packages/superimg-cli/dist/cli.js render "$template" -y \
                 --format gif --fps 15 \
                 -o docs/assets/hero.gif
             else
-              node ./apps/superimg/dist/cli.js render "$template" -y
+              node ./packages/superimg-cli/dist/cli.js render "$template" -y
             fi
           done
 

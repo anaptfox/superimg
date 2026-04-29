@@ -1,12 +1,4 @@
----
-name: superimg
-description: >
-  This skill should be used when the user asks to "create a video template",
-  "animate with SuperImg", "render HTML to MP4", "use defineScene", "work with
-  ctx.std", or mentions SuperImg, video generation, or programmatic video.
-  Provides the SuperImg framework for HTML/CSS templates rendered to video.
----
-
+<!-- BEGIN superimg-skill v0.1.0 — managed by `superimg skill update`; do not edit -->
 # SuperImg Skill
 
 ## Mental Model
@@ -144,3 +136,4 @@ For detailed API documentation and working examples, consult:
 
 ### Project Examples
 See `examples/<category>/<template>/` in the SuperImg repo for full templates, indexed in `examples/_templates.json`: `lower-thirds`, `stats-card`, `phase-demo`, `countdown`, `spring-stagger-demo`.
+<!-- END superimg-skill -->

@@ -211,13 +211,13 @@ const players = videos.map((video) => {
 ### Installation
 
 ```bash
-npm install superimg superimg-react react react-dom
+npm install superimg react react-dom
 ```
 
 ### Basic Usage
 
 ```tsx
-import { Player } from "superimg-react";
+import { Player } from "superimg/react";
 import type { RenderContext } from "superimg";
 
 const template = {
@@ -252,7 +252,7 @@ function App() {
 ### Hover Preview
 
 ```tsx
-import { Player } from "superimg-react";
+import { Player } from "superimg/react";
 
 function VideoCard({ video }) {
   return (
@@ -279,7 +279,7 @@ function VideoCard({ video }) {
 
 ```tsx
 import { useRef } from "react";
-import { Player, type PlayerRef } from "superimg-react";
+import { Player, type PlayerRef } from "superimg/react";
 
 function ControlledPlayer() {
   const playerRef = useRef<PlayerRef>(null);
@@ -322,7 +322,7 @@ function ControlledPlayer() {
 ### YouTube-Style Grid
 
 ```tsx
-import { Player } from "superimg-react";
+import { Player } from "superimg/react";
 
 function VideoGrid({ videos }) {
   return (
@@ -497,7 +497,7 @@ Make sure you have both dependencies:
 {
   "dependencies": {
     "superimg": "latest",
-    "superimg-react": "latest",
+    "superimg": "latest",
     "react": "^18.0.0 || ^19.0.0"
   }
 }

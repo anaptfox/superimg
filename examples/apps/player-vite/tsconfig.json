@@ -9,7 +9,7 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "superimg/browser": ["../../apps/superimg/src/index.browser.ts"]
+      "superimg/browser": ["../../../packages/superimg/src/index.browser.ts"]
     }
   },
   "include": ["src"]

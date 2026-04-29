@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import posthog from "posthog-js";
-import { Player, type PlayerRef } from "superimg-react";
+import { Player, type PlayerRef } from "superimg/react";
 import type { EditorExample } from "@/lib/video/examples";
 import { useIsMobile } from "@/hooks/use-mobile";
 

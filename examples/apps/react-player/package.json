@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "superimg": "workspace:*",
-    "superimg-react": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
