@@ -91,7 +91,9 @@ const opacity = std.interpolate(m.progress("intro", "main"), [0, 1], [0, 1], "ea
 - `std.createResponsive(ctx)` — factory for `r({ portrait: X, default: Y })`
 - `std.interpolate(progress, inputRange, outputRange, easing?)` — multi-keyframe eased interpolation
 - `std.interpolateColor(progress, inputRange, colors, easing?)` — multi-keyframe color interpolation
-- `std.math.clamp01`, `std.math.map` — value clamping and mapping
+- `std.clamp01(t)` — clamp value to 0–1 range
+- `std.math.map(v, inMin, inMax, outMin, outMax)` — map value between ranges
+- `std.math.mapClamp(...)` — map and clamp combined
 - `std.color.alpha`, `std.color.mix` — color manipulation
 - `std.css(obj)` — object → inline style string
 - `std.spring(from, to, progress, config?)` — spring curve with overshoot/bounce
