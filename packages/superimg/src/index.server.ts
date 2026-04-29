@@ -36,6 +36,12 @@ export type { PlaywrightEngineOptions } from "@superimg/cli/server";
 // =============================================================================
 
 export { renderVideo } from "@superimg/cli/server";
+export { renderBatch } from "@superimg/cli/server";
 export { loadTemplate } from "@superimg/cli/server";
 export type { RenderVideoOptions } from "@superimg/cli/server";
+export type {
+  RenderBatchOptions,
+  RenderBatchResultEntry,
+  BatchProgressEvent,
+} from "@superimg/cli/server";
 export type { LoadedTemplate, LoadedTemplateRenderOptions } from "@superimg/cli/server";

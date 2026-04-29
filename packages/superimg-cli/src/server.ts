@@ -16,6 +16,12 @@ export type {
 } from "@superimg/types";
 
 export { renderVideo } from "./render-video.js";
+export { renderBatch } from "./render-batch.js";
 export { loadTemplate } from "./load-template.js";
 export type { RenderVideoOptions } from "./render-video.js";
+export type {
+  RenderBatchOptions,
+  RenderBatchResultEntry,
+  BatchProgressEvent,
+} from "./render-batch.js";
 export type { LoadedTemplate, LoadedTemplateRenderOptions } from "./load-template.js";

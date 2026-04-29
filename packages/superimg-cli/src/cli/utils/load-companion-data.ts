@@ -1,12 +1,9 @@
 //! Companion data file loader
 //! Discovers and loads .data.{ts,js,json} files colocated with .video.{ts,js} templates
 
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
-import { dirname, resolve, join } from "node:path";
-import { pathToFileURL } from "node:url";
-import { tmpdir } from "node:os";
-import { randomBytes } from "node:crypto";
-import * as esbuild from "esbuild";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { loadDataScript } from "./data-loader.js";
 
 const DATA_EXTENSIONS = [".data.ts", ".data.js", ".data.json"] as const;
 const VIDEO_PATTERN = /\.video\.(ts|js|tsx|jsx)$/;
@@ -22,36 +19,6 @@ function findCompanionDataFile(templatePath: string): string | undefined {
     if (existsSync(candidate)) return candidate;
   }
   return undefined;
-}
-
-/**
- * Bundle and execute a .data.ts/.data.js file, returning its default export.
- * Bundles as ESM, writes to a temp file, and dynamically imports it.
- */
-async function loadDataScript(filePath: string): Promise<unknown> {
-  const fileUrl = pathToFileURL(resolve(filePath)).href;
-  const result = await esbuild.build({
-    entryPoints: [filePath],
-    bundle: true,
-    write: false,
-    format: "esm",
-    platform: "node",
-    target: "es2020",
-    define: {
-      "import.meta.url": JSON.stringify(fileUrl),
-    },
-  });
-
-  const code = result.outputFiles[0]!.text;
-  const tmpFile = join(tmpdir(), `superimg-data-${randomBytes(8).toString("hex")}.mjs`);
-
-  try {
-    writeFileSync(tmpFile, code);
-    const mod = await import(tmpFile);
-    return mod?.default ?? mod;
-  } finally {
-    try { unlinkSync(tmpFile); } catch {}
-  }
 }
 
 /**

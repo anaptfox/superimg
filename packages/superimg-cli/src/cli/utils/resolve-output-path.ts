@@ -33,6 +33,9 @@ interface ResolveOutputOptions {
   presetOutDir?: string;
   /** Output format — determines file extension */
   format?: OutputFormat;
+  /** Per-entry suffix for batch renders (e.g., 'jane-doe'). Inserted before
+   *  the preset suffix: `<name>-<entry>-<preset>.ext`. */
+  entrySuffix?: string;
 }
 
 /**
@@ -59,6 +62,7 @@ export function resolveOutputPath({
   presetOutFile,
   presetOutDir,
   format,
+  entrySuffix,
 }: ResolveOutputOptions): string {
   const templateDir = dirname(templatePath);
 
@@ -68,9 +72,10 @@ export function resolveOutputPath({
   }
 
   const videoName = deriveVideoName(templatePath);
-  const suffix = presetSuffix ? `-${presetSuffix}` : "";
+  const entry = entrySuffix ? `-${entrySuffix}` : "";
+  const preset = presetSuffix ? `-${presetSuffix}` : "";
   const ext = format === "gif" ? ".gif" : format === "webm" ? ".webm" : ".mp4";
-  const filename = `${videoName}${suffix}${ext}`;
+  const filename = `${videoName}${entry}${preset}${ext}`;
 
   // 2. CLI exact-file override.
   if (outputArg && !isDirectory(outputArg)) {

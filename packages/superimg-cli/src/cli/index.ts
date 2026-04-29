@@ -87,6 +87,7 @@ program
   .option("--preset <name>", "Render a named output preset from config.outputs")
   .option("--presets", "Render all output presets defined in config.outputs")
   .option("--all", "Render all videos in project")
+  .option("--data <path-or-json>", "Path to a .json/.ts/.js data file, or inline JSON. Object → 1 render; array → 1 render per entry. Composes with --presets.")
   .option("--quality <level>", "Video quality: very-low, low, medium, high, very-high")
   .option("--video-codec <codec>", "Video codec: avc, vp9, av1")
   .option("--video-bitrate <bps>", "Video bitrate in bits/second")

@@ -29,8 +29,10 @@ export interface ExecuteRenderOptions {
   onTargetStart?: (target: RenderTarget, index: number, total: number) => void;
   /** Called on each frame's progress for the current target. */
   onProgress?: (target: RenderTarget, p: RenderProgress) => void;
-  /** Called once per target, after the MP4 is written. */
-  onTargetComplete?: (target: RenderTarget) => void;
+  /** Called once per target, after the MP4 is written. Receives the bytes
+   *  too, so programmatic callers (renderBatch, etc.) don't have to re-read
+   *  from disk. */
+  onTargetComplete?: (target: RenderTarget, result: Uint8Array) => void;
   /** Optional cancellation signal, polled between targets. */
   isCancelled?: () => boolean;
 }
@@ -88,6 +90,10 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         console.warn("Warning: GIF format does not support audio. Audio track will be ignored.");
       }
 
+      // Per-target data (from --data) takes precedence over the template's
+      // companion data. Companion data still applies when --data is absent.
+      const targetData = target.data ?? companionData;
+
       const { job, resolvedAssets } = buildRenderJob({
         parsed: templateData,
         templateBundle,
@@ -99,7 +105,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
           height: target.height,
           fps: target.fps,
           encoding,
-          data: companionData,
+          data: targetData,
           outputName: target.outputName,
         },
       });
@@ -129,7 +135,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
 
       mkdirSync(dirname(target.outputPath), { recursive: true });
       writeFileSync(target.outputPath, result);
-      onTargetComplete?.(target);
+      onTargetComplete?.(target, result);
     }
   } finally {
     await engine.dispose();
