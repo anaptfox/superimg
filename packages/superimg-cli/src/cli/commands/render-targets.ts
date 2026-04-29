@@ -7,6 +7,7 @@
 //! Throws on failure — never calls process.exit. The CLI surface in render.tsx
 //! catches throws at one centralized boundary.
 
+import { existsSync, statSync } from "node:fs";
 import { dirname } from "node:path";
 import type { EncodingOptions } from "@superimg/types";
 import { ValidationError } from "@superimg/types";
@@ -20,6 +21,8 @@ import {
   resolveAllPresets,
 } from "../utils/template-config.js";
 import { resolveDebugHtmlDir, resolveOutputPath } from "../utils/resolve-output-path.js";
+import { loadDataInput } from "../utils/data-loader.js";
+import { deriveEntrySlug } from "../utils/slug.js";
 
 export interface RenderOptions {
   output?: string;
@@ -46,6 +49,12 @@ export interface RenderOptions {
   gifLoop?: string;
   gifDither?: string;
   debugHtml?: boolean;
+  /**
+   * Optional inline JSON or path to a `.json` / `.ts` / `.js` data file.
+   * Object → one render with that data. Array → one render per entry.
+   * Composes with `--presets` so N entries × M presets = N×M MP4s.
+   */
+  data?: string;
 }
 
 export interface RenderTarget {
@@ -56,6 +65,10 @@ export interface RenderTarget {
   outputPath: string;
   outputName: string;
   debugHtmlDir: string;
+  /** Per-target data override. Set when --data supplied an entry for this target. */
+  data?: Record<string, unknown>;
+  /** Human-readable label for progress logs, e.g. "jane-doe". */
+  entryLabel?: string;
 }
 
 export interface ResolvedTargets {
@@ -235,6 +248,8 @@ export function buildRenderTarget(args: {
   height: number;
   fps: number;
   outputPath: string;
+  data?: Record<string, unknown>;
+  entryLabel?: string;
 }): RenderTarget {
   return {
     name: args.name,
@@ -247,6 +262,8 @@ export function buildRenderTarget(args: {
       outputPath: args.outputPath,
       outputName: args.name,
     }),
+    data: args.data,
+    entryLabel: args.entryLabel,
   };
 }
 
@@ -283,8 +300,21 @@ export async function resolveRenderTargets(
     cascadingConfig,
   });
 
+  // Build the list of preset specs (one per target dimension/preset).
+  // For default (no --presets/--preset), a single "default" spec with no name suffix.
+  type PresetSpec = {
+    /** Render target name (preset name, or "default"). */
+    name: string;
+    width: number;
+    height: number;
+    fps: number;
+    outFile?: string;
+    outDir?: string;
+    /** Whether this is the no-preset default. Skips the preset suffix in filenames. */
+    isDefault: boolean;
+  };
   const outputs = templateData.templateConfig?.outputs;
-  let targets: RenderTarget[];
+  let presetSpecs: PresetSpec[];
 
   if (options.presets) {
     if (!outputs || Object.keys(outputs).length === 0) {
@@ -295,25 +325,15 @@ export async function resolveRenderTargets(
         suggestion: "Define `outputs: { mobile: { width: 720, height: 1280 } }` in the template's config.",
       });
     }
-    const presets = resolveAllPresets(outputs, resolvedConfig);
-    targets = presets.map((p) => {
-      const outputPath = resolveOutputPath({
-        outputArg: options.output,
-        templatePath: resolvedTemplate,
-        cascadingConfig,
-        presetSuffix: p.name,
-        presetOutFile: p.outFile,
-        presetOutDir: p.outDir,
-        format: outputFormat,
-      });
-      return buildRenderTarget({
-        name: p.name,
-        width: p.width,
-        height: p.height,
-        fps: p.fps,
-        outputPath,
-      });
-    });
+    presetSpecs = resolveAllPresets(outputs, resolvedConfig).map((p) => ({
+      name: p.name,
+      width: p.width,
+      height: p.height,
+      fps: p.fps,
+      outFile: p.outFile,
+      outDir: p.outDir,
+      isDefault: false,
+    }));
   } else if (options.preset) {
     if (!outputs || Object.keys(outputs).length === 0) {
       throw new ValidationError({
@@ -324,36 +344,98 @@ export async function resolveRenderTargets(
       });
     }
     const preset = resolvePresetConfig(options.preset, outputs, resolvedConfig);
-    const outputPath = resolveOutputPath({
-      outputArg: options.output,
-      templatePath: resolvedTemplate,
-      cascadingConfig,
-      presetSuffix: preset.name,
-      presetOutFile: preset.outFile,
-      presetOutDir: preset.outDir,
-      format: outputFormat,
-    });
-    targets = [buildRenderTarget({
+    presetSpecs = [{
       name: preset.name,
       width: preset.width,
       height: preset.height,
       fps: preset.fps,
-      outputPath,
-    })];
+      outFile: preset.outFile,
+      outDir: preset.outDir,
+      isDefault: false,
+    }];
   } else {
-    const outputPath = resolveOutputPath({
-      outputArg: options.output,
-      templatePath: resolvedTemplate,
-      cascadingConfig,
-      format: outputFormat,
-    });
-    targets = [buildRenderTarget({
+    presetSpecs = [{
       name: "default",
       width: resolvedConfig.width,
       height: resolvedConfig.height,
       fps: resolvedConfig.fps,
-      outputPath,
-    })];
+      isDefault: true,
+    }];
+  }
+
+  // Build the list of entry specs from --data (or a single empty entry when --data is absent).
+  type EntrySpec = {
+    /** Per-entry data override. `undefined` means "use companion data / no override". */
+    data?: Record<string, unknown>;
+    /** Filename suffix; empty for non-batch single renders. */
+    slug: string;
+  };
+  let entrySpecs: EntrySpec[];
+
+  if (options.data) {
+    const parsed = await loadDataInput(options.data, dirname(resolvedTemplate));
+    const isBatch = Array.isArray(parsed);
+    const entries = isBatch ? (parsed as unknown[]) : [parsed];
+    entrySpecs = entries.map((entry, index) => {
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        throw new ValidationError({
+          field: "--data",
+          expectedType: "object or array of objects",
+          receivedValue: Array.isArray(entry) ? "nested array" : typeof entry,
+          suggestion: "Each entry must be a plain object whose fields merge into the template's `data`.",
+        });
+      }
+      return {
+        data: entry as Record<string, unknown>,
+        slug: isBatch ? deriveEntrySlug(entry, index, entries.length) : "",
+      };
+    });
+  } else {
+    entrySpecs = [{ slug: "" }];
+  }
+
+  // Multi-target output coercion: a single `-o <path>` is destructive when
+  // we're producing N files (presets, batch, or both) — every render would
+  // clobber the same path. If the user passed a path without a trailing `/`
+  // and it's not already a file, treat it as a directory.
+  const targetCount = entrySpecs.length * presetSpecs.length;
+  let coercedOutput = options.output;
+  if (coercedOutput && targetCount > 1 && !coercedOutput.endsWith("/")) {
+    if (existsSync(coercedOutput) && statSync(coercedOutput).isFile()) {
+      throw new ValidationError({
+        field: "-o / --output",
+        expectedType: "directory (multi-target run)",
+        receivedValue: coercedOutput,
+        suggestion: `This run produces ${targetCount} files. Pass a directory path (e.g. \`${coercedOutput}/\`) or a different parent dir.`,
+      });
+    }
+    coercedOutput = coercedOutput + "/";
+  }
+
+  // Cross-product: targets = entries × presets.
+  const targets: RenderTarget[] = [];
+  for (const entry of entrySpecs) {
+    for (const preset of presetSpecs) {
+      const outputPath = resolveOutputPath({
+        outputArg: coercedOutput,
+        templatePath: resolvedTemplate,
+        cascadingConfig,
+        presetSuffix: preset.isDefault ? undefined : preset.name,
+        presetOutFile: preset.outFile,
+        presetOutDir: preset.outDir,
+        entrySuffix: entry.slug || undefined,
+        format: outputFormat,
+      });
+      targets.push(buildRenderTarget({
+        name: preset.name,
+        width: preset.width,
+        height: preset.height,
+        fps: preset.fps,
+        outputPath,
+        data: entry.data,
+        entryLabel: entry.slug || undefined,
+      }));
+    }
   }
 
   return {

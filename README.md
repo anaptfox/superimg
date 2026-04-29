@@ -104,10 +104,14 @@ export default defineScene({
 
 ```bash
 # Single video with inline data
-npx superimg render template.ts --data '{"productName": "Gadget", "price": "$149"}'
+npx superimg render template.video.ts --data '{"productName": "Gadget", "price": "$149"}'
 
-# Batch render from a JSON file — one video per entry
-npx superimg render template.ts --data products.json -o ./output/
+# Batch render from a JSON file — one video per entry. Filenames pick a slug
+# from each entry's `slug` / `name` / `title` / `id` field (else array index).
+npx superimg render template.video.ts --data products.json -y
+
+# Composes with --presets: 10 entries × 2 presets = 20 MP4s in one Playwright session.
+npx superimg render template.video.ts --data products.json --presets -y
 ```
 
 ## Multi-Format Output

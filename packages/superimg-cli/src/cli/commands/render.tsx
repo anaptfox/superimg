@@ -65,6 +65,13 @@ export async function renderCommand(template: string, options: RenderOptions) {
 
   const outputFormat = resolveFormat(options);
 
+  if (options.all && options.data) {
+    console.error(
+      "Error: --all and --data cannot be combined. --all selects N templates; --data selects N data entries for one template.",
+    );
+    process.exit(1);
+  }
+
   if (options.all) {
     const projectRoot = findProjectRoot();
     const videos = discoverVideos(projectRoot);
@@ -106,7 +113,8 @@ async function runRenderTargetsPlain(resolved: ResolvedTargets, options: RenderO
     options,
     onTargetStart: (target, index) => {
       const prefix = total > 1 ? `[${index + 1}/${total}] ` : "";
-      console.log(`${prefix}Rendering ${target.outputPath}...`);
+      const label = target.entryLabel ? `${target.entryLabel} (${target.name}) — ` : "";
+      console.log(`${prefix}${label}Rendering ${target.outputPath}...`);
       if (options.debugHtml) {
         console.log(`${prefix}Debug HTML: ${target.debugHtmlDir}`);
       }
