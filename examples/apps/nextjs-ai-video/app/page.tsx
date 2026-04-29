@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { useVideoSession } from "superimg-react";
+import { useVideoSession } from "superimg/react";
 import { type TemplateModule } from "superimg";
 import { timelineTemplate, type TimelineData } from "@/lib/template";
 

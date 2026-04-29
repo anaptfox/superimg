@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Player } from "superimg-react/player";
+import { Player } from "superimg/react/player";
 import {
   Card,
   CardContent,

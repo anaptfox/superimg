@@ -57,8 +57,9 @@ export default defineScene({
   // <div style="\${card.style}"> — opacity + transform + filter combined
   Default phases if omitted: { enter: 0.15, hold: 0.70, exit: 0.15 }. Bypass phases with \`window: [0.1, 0.3]\`.
 
-### std.tween — low-level eased interpolation
+### std.interpolate — low-level custom-progress interpolation
   std.interpolate(progress, [0, 1], [from, to], easing?)
+  Use t.tween() from std.score() for phase-scoped scalar animation. std.tween() is not a public ctx.std API.
   Easings: "linear", plus Quad/Cubic/Quart/Quint/Sine/Expo/Circ/Elastic/Back/Bounce in In/Out/InOut, plus "spring" / "spring(stiffness,damping)".
 
 ### std.math

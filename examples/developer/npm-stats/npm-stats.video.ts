@@ -1,5 +1,5 @@
 import { defineScene, type RenderContext } from "superimg";
-import { formatCompact } from "@superimg/stdlib/text";
+import { formatCompact } from "superimg/stdlib/text";
 
 export interface NpmStatsVideoData extends Record<string, unknown> {
   downloads: Array<{ date: string; count: number }>;

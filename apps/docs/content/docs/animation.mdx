@@ -2,6 +2,8 @@
 
 In traditional video editors, you set keyframes and the software interpolates between them. In SuperImg, you write the interpolation logic directly.
 
+Use `std.score()` and its `t.tween()` helper when motion belongs to named scene phases like enter, hold, and exit. Use `std.interpolate()` when you already have a progress value and need custom ranges, multi-keyframes, loops, or non-phased math. `std.tween()` is not a public `ctx.std` API.
+
 ## The Mental Model
 
 Instead of thinking "animate opacity from 0 to 1 over 1 second," think: **"What is the opacity right now?"**

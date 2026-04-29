@@ -3,7 +3,7 @@
 // Shows both static (hoisted) and dynamic (in-render) highlighting patterns
 
 import { defineScene } from "superimg";
-import { highlight } from "@superimg/stdlib/code";
+import { highlight } from "superimg/stdlib/code";
 
 // Static code: highlighted ONCE at module load (efficient for hardcoded code)
 const staticCodeHtml = highlight(

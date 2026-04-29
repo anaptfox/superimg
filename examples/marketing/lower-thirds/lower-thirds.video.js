@@ -58,9 +58,15 @@ export default defineScene({
     // Staggered slide-out (reverse: title → name → bar)
     const exitP = std.stagger(3, phaseExitP, { duration: 0.5, from: "end", easing: "easeInCubic" });
 
-    const barX = std.interpolate(enterP[0]) + std.interpolate(1], [offScreenX, 0], offScreenX, exitP[0], [0, 1], [0, [0]);
-    const nameX = std.interpolate(enterP[1]) + std.interpolate(1], [offScreenX, 0], offScreenX, exitP[1], [0, 1], [0, [0]);
-    const titleX = std.interpolate(enterP[2]) + std.interpolate(1], [offScreenX, 0], offScreenX, exitP[2], [0, 1], [0, [0]);
+    const barX =
+      std.interpolate(enterP[0], [0, 1], [offScreenX, 0]) +
+      std.interpolate(exitP[0], [0, 1], [0, offScreenX]);
+    const nameX =
+      std.interpolate(enterP[1], [0, 1], [offScreenX, 0]) +
+      std.interpolate(exitP[1], [0, 1], [0, offScreenX]);
+    const titleX =
+      std.interpolate(enterP[2], [0, 1], [offScreenX, 0]) +
+      std.interpolate(exitP[2], [0, 1], [0, offScreenX]);
     const titleOpacity = enterP[2] * (1 - exitP[2]);
 
     const nameBg  = std.color.alpha("#000000", 0.85);

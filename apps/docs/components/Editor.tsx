@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useVideoSession, DataForm, VideoControls, isComposedTemplate, type ExportOptions } from "superimg-react";
+import { useVideoSession, DataForm, VideoControls, isComposedTemplate, type ExportOptions } from "superimg/react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";

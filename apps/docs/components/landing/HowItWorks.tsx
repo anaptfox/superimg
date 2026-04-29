@@ -2,8 +2,8 @@
 
 import { useRef, useEffect } from "react";
 import { Code, Sparkles, Eye, Video } from "lucide-react";
-import { useVideoSession } from "superimg-react";
-import type { PlayerStore } from "superimg-react";
+import { useVideoSession } from "superimg/react";
+import type { PlayerStore } from "superimg/react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";

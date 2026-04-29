@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { useVideoSession, VideoControls } from "superimg-react";
+import { useVideoSession, VideoControls } from "superimg/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";

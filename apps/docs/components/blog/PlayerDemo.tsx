@@ -1,8 +1,8 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { Player } from 'superimg-react/player'
-import { useVideoSession, VideoControls, VideoCanvas } from 'superimg-react'
+import { Player } from 'superimg/react/player'
+import { useVideoSession, VideoControls, VideoCanvas } from 'superimg/react'
 import { introTemplate } from '@/content/blog/templates/intro-demo'
 import { getExampleById } from '@/lib/video/examples'
 

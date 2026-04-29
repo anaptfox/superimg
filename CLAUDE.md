@@ -37,7 +37,7 @@ Videos are `*.video.ts` files discovered anywhere in the project. No special con
 
 **CLI shorthand** (from monorepo root):
 ```bash
-CLI="node ./apps/superimg/dist/cli.js"
+CLI="node ./packages/superimg/dist/cli.js"
 ```
 
 | Action | Command |
@@ -45,14 +45,20 @@ CLI="node ./apps/superimg/dist/cli.js"
 | List all videos | `$CLI list` |
 | Dev/preview | `$CLI dev <path>` |
 | Render to MP4 | `$CLI render <path>` |
+| Render every video | `$CLI render --all -y` |
 
 **Render examples**:
 ```bash
 # Render a template
-node ./apps/superimg/dist/cli.js render examples/basics/hello-world/hello-world.video.js
+node ./packages/superimg/dist/cli.js render examples/basics/hello-world/hello-world.video.js
 
 # Render compose demo (multi-scene)
-node ./apps/superimg/dist/cli.js render examples/basics/compose-demo/compose-demo.video.ts
+node ./packages/superimg/dist/cli.js render examples/basics/compose-demo/compose-demo.video.ts
+
+# Render every video in the project. Multi-output templates (those declaring
+# config.outputs) automatically render all presets (e.g. youtube + reel);
+# single-output templates render once at their default config.
+node ./packages/superimg/dist/cli.js render --all -y
 ```
 
 Output: `output/<name>.mp4`

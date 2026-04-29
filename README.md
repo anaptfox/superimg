@@ -127,6 +127,11 @@ await render(template, { format: 'tiktok.video' })         // 1080×1920
 
 ```bash
 npx superimg render template.ts -o video.mp4
+
+# Render every video in the project. Multi-output templates (those declaring
+# config.outputs) automatically render all presets; single-output templates
+# render once at their default config.
+npx superimg render --all -y
 ```
 
 **Browser** — Live preview at 60fps while you edit. Run `npx superimg dev template.ts` to start the dev server.
@@ -134,7 +139,7 @@ npx superimg render template.ts -o video.mp4
 **React** — Embed videos anywhere with the `<Player />` component:
 
 ```tsx
-import { Player } from 'superimg-react'
+import { Player } from 'superimg/react'
 import template from './template'
 
 <Player template={template} width={1280} height={720} />
@@ -144,12 +149,25 @@ import template from './template'
 
 | Package | Description |
 |---------|-------------|
-| `superimg` | Core library + CLI |
-| `superimg-react` | React `<Player/>` component |
+| `superimg` | Core library, CLI, browser player, and React APIs |
 
 ```bash
 npm install superimg           # Core + CLI
-npm install superimg-react     # React player
+```
+
+## With AI Coding Agents
+
+SuperImg ships a skill that teaches your AI coding agent the framework. One command installs it across hosts (Claude Code, Cursor, Codex, Gemini, OpenCode, Pi, Aider, Continue, Windsurf, Copilot):
+
+```bash
+npx superimg skill install
+```
+
+Codex users can also install the official plugin (skill + MCP tools, versioned, no AGENTS.md edits):
+
+```bash
+codex marketplace add github.com/anaptfox/superimg
+codex plugin install superimg@anaptfox
 ```
 
 ## Documentation

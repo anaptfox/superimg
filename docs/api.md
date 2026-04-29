@@ -235,7 +235,7 @@ Use `std.score(...)` for phase-based scene choreography. Use `std.cue.*` when th
 
 #### `std.interpolate`
 
-Multi-keyframe eased interpolation. Replaces manual math and the retired `std.tween`:
+Multi-keyframe eased interpolation for custom progress, loops, and non-phased value mapping:
 
 ```typescript
 std.interpolate(progress, [0, 1], [0, 100])                    // Linear

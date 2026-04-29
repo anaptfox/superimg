@@ -1,6 +1,6 @@
 # React Player Example
 
-React example demonstrating the `Player` component from `superimg-react`.
+React example demonstrating the `Player` component from `superimg/react`.
 
 ## Features
 
@@ -28,7 +28,7 @@ pnpm build
 ### Basic Player
 
 ```tsx
-import { Player } from "superimg-react";
+import { Player } from "superimg/react";
 
 <Player
   input={templateCode}

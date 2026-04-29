@@ -107,7 +107,7 @@ const p = t.within("hold", { at: 0.5, duration: 0.5 });
 
 ## std.interpolate
 
-Low-level multi-keyframe interpolation. Replaces manual math and retired `std.tween`. Maps a `progress` value through paired input/output ranges with optional easing.
+Low-level multi-keyframe interpolation. Maps a `progress` value through paired input/output ranges with optional easing.
 
 ```typescript
 std.interpolate(progress: number, inputRange: number[], outputRange: number[], easing?: EasingName | EasingFn): number
