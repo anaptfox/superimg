@@ -8,6 +8,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname, basename } from "node:path";
 import { bundleTemplateCode } from "@superimg/core/bundler";
 import { compileTemplate } from "@superimg/core";
+import { formatError } from "@superimg/core/errors";
 
 interface TemplateInfo {
   path: string;
@@ -122,12 +123,18 @@ export function registerTemplateInfoTool(server: McpServer, options: SuperimgMcp
           ],
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        // Return both a human-readable summary and the structured JSON
+        // (so MCP clients can display rich error info or fall back to text).
+        const formatted = formatError(error);
         return {
           content: [
             {
               type: "text" as const,
-              text: `Failed to get template info: ${message}`,
+              text: formatted.plain,
+            },
+            {
+              type: "text" as const,
+              text: JSON.stringify(formatted.json, null, 2),
             },
           ],
           isError: true,

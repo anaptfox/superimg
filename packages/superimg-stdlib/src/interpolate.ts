@@ -16,7 +16,8 @@
 
 import { clamp01 } from "./easing";
 import { lerp, inverseLerp } from "./math";
-import { tween, type EasingName, type EasingFn } from "./tween";
+import { tween } from "./tween";
+import type { EasingName, EasingFn } from "./easing";
 import { colord, extend } from "colord";
 import mixPlugin from "colord/plugins/mix";
 

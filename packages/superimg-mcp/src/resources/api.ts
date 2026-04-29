@@ -10,7 +10,7 @@ export function registerApiResource(server: McpServer, _options: SuperimgMcpOpti
     "api-reference",
     "superimg://api",
     {
-      description: "Complete SuperImg stdlib API reference - RenderContext, tween, math, color, score, cue",
+      description: "Complete SuperImg stdlib API reference - RenderContext, score, interpolate, math, color, cue",
       mimeType: "text/markdown",
     },
     async () => ({

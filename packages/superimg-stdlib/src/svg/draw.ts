@@ -15,7 +15,7 @@
  */
 
 import { normalizePath } from "./segments";
-import type { EasingName, EasingFn } from "../tween";
+import type { EasingName, EasingFn } from "../easing";
 import { clamp01 } from "../easing";
 import * as easing from "../easing";
 

@@ -5,6 +5,9 @@ import { createSuperimgPlugin } from "./plugin.js";
 
 const ESBUILD_WASM_VERSION = "0.27.3";
 const DEFAULT_WASM_URL = `https://unpkg.com/esbuild-wasm@${ESBUILD_WASM_VERSION}/esbuild.wasm`;
+const templateImportAliases = {
+  "superimg/stdlib": "@superimg/stdlib",
+};
 
 let initPromise: Promise<void> | null = null;
 
@@ -30,6 +33,8 @@ export async function bundleTemplateBrowser(code: string): Promise<string> {
     format: "iife",
     globalName: "__template",
     target: "es2020",
+    sourcemap: "inline",
+    alias: templateImportAliases,
     plugins: [createSuperimgPlugin()],
   });
   return result.outputFiles[0]!.text;

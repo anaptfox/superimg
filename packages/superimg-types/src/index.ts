@@ -77,6 +77,8 @@ export type {
   RenderResult,
   RenderBufferResult,
   TimeContext,
+  SourceLocation,
+  SuperImgErrorJSON,
 } from "./results.js";
 
 export {
@@ -138,6 +140,8 @@ export type {
   RenderPlan,
   FramePresenter,
   ResolvedAssetDeclaration,
+  TemplateBundle,
+  TemplateSourceMap,
 } from "./engine.js";
 
 // =============================================================================

@@ -1,6 +1,13 @@
 # @superimg/core
 
-Environment-agnostic core primitives for SuperImg.
+Private workspace package for environment-agnostic SuperImg primitives.
+
+This package is not published as a public API. User-facing code should import from the published `superimg` package instead:
+
+```typescript
+import { compileTemplate, createRenderContext } from "superimg/browser";
+import { createRenderPlan, executeRenderPlan, PlaywrightEngine } from "superimg/server";
+```
 
 ## Overview
 
@@ -19,12 +26,12 @@ These are separate entry points that require Node.js (not bundled into the brows
 - **`@superimg/core/bundler`** — `bundleTemplate()` using esbuild (native)
 - **`@superimg/core/bundler-browser`** — `bundleTemplate()` using esbuild-wasm (browser)
 
-## Usage
+## Internal Usage
 
 ### Browser (compiler + context)
 
 ```typescript
-import { compileTemplate, createRenderContext } from '@superimg/core';
+import { compileTemplate, createRenderContext } from "@superimg/core";
 
 const { template } = compileTemplate(templateCode);
 const ctx = createRenderContext(frame, fps, totalFrames, width, height, data, outputName);
@@ -34,8 +41,8 @@ const html = template.render(ctx);
 ### Server (engine orchestration)
 
 ```typescript
-import { createRenderPlan, executeRenderPlan } from '@superimg/core/engine';
-import { PlaywrightEngine } from '@superimg/playwright';
+import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
+import { PlaywrightEngine } from "@superimg/playwright";
 
 const plan = createRenderPlan(renderJob);
 const engine = new PlaywrightEngine();

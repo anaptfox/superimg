@@ -1,4 +1,5 @@
-import { tween, type EasingName } from "./tween.js";
+import { tween } from "./tween.js";
+import type { EasingName } from "./easing.js";
 import { kenBurns } from "./backgrounds.js";
 import { css } from "./css.js";
 import { clamp } from "./math.js";

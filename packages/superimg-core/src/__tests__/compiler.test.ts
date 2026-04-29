@@ -95,6 +95,43 @@ describe("compileTemplate (with bundled code)", () => {
     expect(html).toBe("<div>hello</div>");
   });
 
+  it("bundles public direct imports from superimg/stdlib/cue", async () => {
+    const result = await compileFromString(`
+      import { defineScene } from 'superimg';
+      import { transcript } from 'superimg/stdlib/cue';
+
+      export default defineScene({
+        render(ctx) {
+          const t = transcript([
+            { text: 'hello', start: 0, end: 1 }
+          ], ctx.sceneTimeSeconds);
+          return '<div>' + (t.current()?.text ?? 'none') + '</div>';
+        }
+      });
+    `);
+    expect(result.error).toBeUndefined();
+
+    const html = result.template!.render(makeTestContext({ sceneTimeSeconds: 0.5 }));
+    expect(html).toBe("<div>hello</div>");
+  });
+
+  it("bundles public direct imports from superimg/stdlib/text", async () => {
+    const result = await compileFromString(`
+      import { defineScene } from 'superimg';
+      import { formatCompact } from 'superimg/stdlib/text';
+
+      export default defineScene({
+        render() {
+          return '<div>' + formatCompact(1200) + '</div>';
+        }
+      });
+    `);
+    expect(result.error).toBeUndefined();
+
+    const html = result.template!.render(makeTestContext());
+    expect(html).toBe("<div>1.2K</div>");
+  });
+
   it("provides ctx.std.interpolate for eased interpolation", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
       export default defineScene({

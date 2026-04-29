@@ -93,7 +93,7 @@ export interface HighlightOptions {
  * const html = ctx.std.code.highlight(`const x = 1;`, { lang: 'typescript' });
  *
  * // Direct import for static code (highlighted once at module load)
- * import { highlight } from '@superimg/stdlib/code';
+ * import { highlight } from 'superimg/stdlib/code';
  * const html = highlight(`const x = 1;`, { lang: 'typescript', theme: 'dracula' });
  * ```
  */

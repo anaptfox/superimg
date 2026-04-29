@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { createRenderPlan, executeRenderPlan } from "../rendering/engine.js";
-import { bundleTemplateCode } from "../bundler/bundler.js";
+import { bundleTemplateCodeWithMap } from "../bundler/bundler.js";
 import { TemplateRuntimeError } from "@superimg/types";
 
 async function jobFromCode(code: string) {
-  const bundled = await bundleTemplateCode(code);
+  const templateBundle = await bundleTemplateCodeWithMap(code, { sourcefile: "test.video.ts" });
   return {
-    templateCode: bundled,
+    templateBundle,
     duration: 2,
     width: 640,
     height: 360,

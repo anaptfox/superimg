@@ -17,7 +17,8 @@
  */
 
 import { clamp01 } from "./easing";
-import { tween, type EasingName, type EasingFn } from "./tween";
+import { tween } from "./tween";
+import type { EasingName, EasingFn } from "./easing";
 
 export interface StaggerOptions {
   /** Delay between item starts as fraction of total (0-1). Mutually exclusive with duration. */

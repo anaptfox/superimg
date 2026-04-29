@@ -19,8 +19,36 @@ export interface ResolvedAssetDeclaration {
   sourceDir: string;
 }
 
+/**
+ * A Source Map v3 object (structurally typed to avoid pulling source-map-js
+ * as a peer dep here). Produced by the bundler, consumed by error enrichment.
+ */
+export interface TemplateSourceMap {
+  version: number;
+  sources: string[];
+  sourcesContent?: (string | null)[];
+  names: string[];
+  mappings: string;
+  file?: string;
+  sourceRoot?: string;
+}
+
+/**
+ * A bundled template ready for rendering, paired with its sourcemap so
+ * runtime / compile errors can be mapped back to the user's original source.
+ */
+export interface TemplateBundle {
+  /** Bundled IIFE code (with optional inline sourcemap comment) */
+  code: string;
+  /** Parsed sourcemap covering the bundle */
+  sourceMap: TemplateSourceMap;
+  /** Logical path of the entry source (absolute or virtual) */
+  sourceFile: string;
+}
+
 export interface RenderJob {
-  templateCode: string;
+  /** Bundled template + sourcemap. The bundle is consumed by createRenderPlan. */
+  templateBundle: TemplateBundle;
   duration: Duration;
   width: number;
   height: number;
@@ -91,6 +119,8 @@ export interface RenderEngine<TFrame = unknown> {
 
 export interface RenderPlan {
   template: TemplateModule;
+  /** The bundle that produced `template` — used to enrich runtime errors with source locations. */
+  bundle: TemplateBundle;
   durationSeconds: number; // resolved from Duration via parseDuration
   width: number;
   height: number;

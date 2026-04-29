@@ -1,6 +1,7 @@
 {
   "name": "@superimg/skill",
   "version": "0.1.0",
+  "private": true,
   "description": "Canonical SuperImg skill content (SKILL.md, references, examples) embedded as TypeScript constants",
   "type": "module",
   "main": "./dist/index.js",

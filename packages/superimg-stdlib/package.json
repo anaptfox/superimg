@@ -1,6 +1,7 @@
 {
   "name": "@superimg/stdlib",
   "version": "0.1.0",
+  "private": true,
   "description": "Standard library for SuperImg templates - easing, math, color, date, text, responsive",
   "type": "module",
   "main": "./dist/index.js",
@@ -49,10 +50,6 @@
     "./css": {
       "import": "./dist/css.js",
       "types": "./dist/css.d.ts"
-    },
-    "./tween": {
-      "import": "./dist/tween.js",
-      "types": "./dist/tween.d.ts"
     },
     "./code": {
       "import": "./dist/code.js",

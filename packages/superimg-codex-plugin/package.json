@@ -1,0 +1,17 @@
+{
+  "name": "@superimg/codex-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Codex CLI plugin for SuperImg — exposes the SuperImg skill and MCP server to Codex via the OpenAI Codex plugin system.",
+  "type": "module",
+  "scripts": {
+    "build": "tsx scripts/generate-plugin-skill.ts && tsx scripts/generate-plugin-mcp.ts",
+    "build:dev": "SUPERIMG_PLUGIN_DEV=1 tsx scripts/generate-plugin-skill.ts && SUPERIMG_PLUGIN_DEV=1 tsx scripts/generate-plugin-mcp.ts",
+    "clean": "rm -rf plugin/skills plugin/.mcp.json"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@superimg/skill": "workspace:*",
+    "tsx": "^4.21.0"
+  }
+}

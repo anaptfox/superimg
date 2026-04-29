@@ -1,4 +1,5 @@
 import { parseSync } from "oxc-parser";
+import { TemplateCompilationError } from "@superimg/types";
 
 export interface TailwindMetadataConfig {
   css?: string;
@@ -316,9 +317,46 @@ function unwrapDefineTemplate(expr: any): any {
  * Extract template metadata without executing user code.
  * Uses oxc-parser to statically analyze the file.
  */
+/**
+ * Convert a byte offset within `code` to a 1-indexed line and 0-indexed column.
+ * Used to translate oxc-parser's `labels[].start` (byte offset) into the
+ * line/column shape that `TemplateCompilationError` expects.
+ */
+function offsetToLineColumn(code: string, offset: number): { line: number; column: number } {
+  let line = 1;
+  let lastLineStart = 0;
+  for (let i = 0; i < offset && i < code.length; i++) {
+    if (code.charCodeAt(i) === 10 /* \n */) {
+      line++;
+      lastLineStart = i + 1;
+    }
+  }
+  return { line, column: offset - lastLineStart };
+}
+
 export async function extractTemplateMetadata(code: string): Promise<TemplateMetadata> {
   // Parse directly using oxc-parser with TS support
   const astResult = parseSync("template.ts", code);
+  // Surface parse-time syntax errors as TemplateCompilationError so the
+  // formatter can render them with location + code frame.
+  if (astResult.errors && astResult.errors.length > 0) {
+    const first = astResult.errors[0]! as {
+      message: string;
+      labels?: { start: number; end: number }[];
+      codeframe?: string | null;
+    };
+    const label = first.labels?.[0];
+    const loc = label != null ? offsetToLineColumn(code, label.start) : undefined;
+    const tce = new TemplateCompilationError({
+      syntaxError: first.message ?? "Syntax error",
+      line: loc?.line,
+      column: loc?.column,
+    });
+    // oxc-parser already renders a Vite-style code frame; use it directly so
+    // surfaces (CLI / dev UI) get a useful snippet without us reading the file.
+    if (first.codeframe) tce.codeFrame = first.codeframe.trimEnd();
+    throw tce;
+  }
   const ast = astResult.program;
 
   const variableInits: VariableInitMap = new Map();
@@ -398,9 +436,10 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
   }
 
   if (!hasDefaultExport) {
-    throw new Error(
-      "Template must use export default defineScene({ ... }). Named exports are no longer supported."
-    );
+    throw new TemplateCompilationError({
+      syntaxError: "Template must use `export default defineScene({ ... })`. Named exports are no longer supported.",
+      suggestion: "Change `export const myScene = defineScene(...)` to `export default defineScene(...)`. If you're seeing this on a file with a syntax error, fix the syntax first.",
+    });
   }
 
   return {

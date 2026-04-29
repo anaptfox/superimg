@@ -8,9 +8,11 @@ import type {
   VideoEncoder,
   RenderContext,
   TemplateModule,
+  TemplateBundle,
 } from "@superimg/types";
 import type { ResolvedAssetDeclaration } from "../shared/assets.js";
-import { TemplateRuntimeError } from "@superimg/types";
+import { TemplateRuntimeError, RenderError } from "@superimg/types";
+import { enrichError } from "../errors/enrich.js";
 import { resolve, isAbsolute } from "node:path";
 import { compileTemplate } from "./compiler.js";
 import { createRenderContext } from "./wasm.js";
@@ -39,18 +41,20 @@ function truncateForError(data: unknown, maxDepth = 2): unknown {
 }
 
 /**
- * Safely render a template, wrapping errors with frame/time context.
+ * Safely render a template, wrapping errors with frame/time context plus
+ * sourcemap-mapped source location and code frame when a bundle is available.
  */
 function safeRender(
   template: TemplateModule,
   ctx: RenderContext,
-  templateName?: string
+  templateName?: string,
+  bundle?: TemplateBundle
 ): string {
   try {
     return template.render(ctx);
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    throw new TemplateRuntimeError({
+    const tre = new TemplateRuntimeError({
       templateName,
       frame: ctx.globalFrame,
       originalError: err.message,
@@ -62,6 +66,9 @@ function safeRender(
       },
       dataSnapshot: truncateForError(ctx.data),
     });
+    // Carry the original stack so enrichError can map it via sourcemap.
+    if (err.stack) tre.stack = err.stack;
+    throw enrichError(tre, bundle);
   }
 }
 
@@ -101,7 +108,7 @@ export function createRenderPlan(
   }
 ): RenderPlan {
   const {
-    templateCode,
+    templateBundle,
     duration,
     width,
     height,
@@ -119,9 +126,11 @@ export function createRenderPlan(
   } = job;
 
   // Compile template
-  const result = compileTemplate(templateCode);
+  const result = compileTemplate(templateBundle.code);
   if (result.error || !result.template) {
-    throw new Error(`Template compilation failed: ${result.error?.message || "Unknown error"}`);
+    // Re-throw the typed error if compileTemplate produced one; otherwise wrap.
+    if (result.error) throw enrichError(result.error, templateBundle);
+    throw enrichError(new Error("Template compilation failed: unknown error"), templateBundle);
   }
   const template = result.template;
 
@@ -158,6 +167,7 @@ export function createRenderPlan(
 
   return {
     template,
+    bundle: templateBundle,
     durationSeconds,
     width,
     height,
@@ -245,23 +255,65 @@ export async function executeRenderPlan<TFrame>(
         template.config?.width
       );
 
-      const html = safeRender(template, ctx, outputName);
-      const compositeHtml = buildCompositeHtml(html, background, watermark, width, height);
+      // template.render() — throws TemplateRuntimeError (mapped via sourcemap)
+      const html = safeRender(template, ctx, outputName, plan.bundle);
+
+      // buildCompositeHtml — pure HTML manipulation; failures here are
+      // template-output problems (e.g., invalid HTML chunk).
+      let compositeHtml: string;
+      try {
+        compositeHtml = buildCompositeHtml(html, background, watermark, width, height);
+      } catch (e) {
+        const err = e as Error;
+        throw new RenderError({
+          frame,
+          htmlError: err.message,
+        });
+      }
 
       callbacks?.onFrameRendered?.(frame, html, compositeHtml);
 
-      const capturedFrame = await renderer.captureFrame(compositeHtml, {
-        alpha: encoding?.video?.alpha === "keep",
-      });
+      // renderer.captureFrame — Playwright/canvas/Blitz layer.
+      let capturedFrame: TFrame;
+      try {
+        capturedFrame = await renderer.captureFrame(compositeHtml, {
+          alpha: encoding?.video?.alpha === "keep",
+        });
+      } catch (e) {
+        const err = e as Error;
+        throw new RenderError({
+          frame,
+          browserError: err.message,
+        });
+      }
 
+      // encoder.addFrame — ffmpeg/WebCodecs layer.
       const timestamp = frame / fps;
-      await encoder.addFrame(capturedFrame, timestamp);
+      try {
+        await encoder.addFrame(capturedFrame, timestamp);
+      } catch (e) {
+        const err = e as Error;
+        throw new RenderError({
+          frame,
+          encoderError: err.message,
+        });
+      }
 
       callbacks?.onProgress?.({ frame, totalFrames, fps });
     }
 
-    const result = await encoder.finalize();
-    return result;
+    // encoder.finalize — last write of muxed output. Final-frame is irrelevant
+    // here, so report the last frame index we produced.
+    try {
+      const result = await encoder.finalize();
+      return result;
+    } catch (e) {
+      const err = e as Error;
+      throw new RenderError({
+        frame: totalFrames - 1,
+        encoderError: err.message,
+      });
+    }
   } finally {
     await renderer.dispose();
     await encoder.dispose();

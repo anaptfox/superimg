@@ -4,6 +4,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { validateAITemplate, formatValidationForAI } from "@superimg/core/validation";
+import { formatError } from "@superimg/core/errors";
 
 export function registerValidateTool(server: McpServer): void {
   server.registerTool(
@@ -50,13 +51,11 @@ export function registerValidateTool(server: McpServer): void {
           isError: true,
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const formatted = formatError(error);
         return {
           content: [
-            {
-              type: "text" as const,
-              text: `Validation failed: ${message}`,
-            },
+            { type: "text" as const, text: formatted.plain },
+            { type: "text" as const, text: JSON.stringify(formatted.json, null, 2) },
           ],
           isError: true,
         };

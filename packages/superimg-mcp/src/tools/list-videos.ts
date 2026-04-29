@@ -6,6 +6,7 @@ import type { SuperimgMcpOptions } from "../server.js";
 import { z } from "zod";
 import { readdirSync, existsSync } from "node:fs";
 import { join, relative } from "node:path";
+import { formatError } from "@superimg/core/errors";
 
 const EXCLUDE_DIRS = new Set([
   "node_modules",
@@ -107,13 +108,11 @@ export function registerListVideosTool(server: McpServer, options: SuperimgMcpOp
           ],
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const formatted = formatError(error);
         return {
           content: [
-            {
-              type: "text" as const,
-              text: `Failed to discover videos: ${message}`,
-            },
+            { type: "text" as const, text: formatted.plain },
+            { type: "text" as const, text: JSON.stringify(formatted.json, null, 2) },
           ],
           isError: true,
         };

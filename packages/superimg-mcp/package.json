@@ -1,6 +1,7 @@
 {
   "name": "@superimg/mcp",
   "version": "0.1.0",
+  "private": true,
   "description": "MCP server for SuperImg - expose video generation to AI assistants",
   "type": "module",
   "main": "./dist/index.js",

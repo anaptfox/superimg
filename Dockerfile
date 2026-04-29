@@ -28,5 +28,5 @@ RUN pnpm -r --filter '!docs' build
 
 ENV NODE_ENV=production
 
-ENTRYPOINT ["node", "apps/superimg/dist/cli.js"]
+ENTRYPOINT ["node", "packages/superimg/dist/cli.js"]
 CMD ["--help"]
