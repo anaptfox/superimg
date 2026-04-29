@@ -1,0 +1,63 @@
+{
+  "name": "@superimg/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private CLI and server implementation for the public superimg package",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/cli.js",
+      "types": "./dist/cli.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup && node scripts/check-deps.mjs",
+    "dev": "tsup --watch",
+    "test": "vitest --run --passWithNoTests",
+    "check-deps": "node scripts/check-deps.mjs",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": true,
+  "dependencies": {
+    "@clack/prompts": "^1.0.1",
+    "@hono/node-server": "^1.14.1",
+    "@superimg/core": "workspace:*",
+    "@superimg/player": "workspace:*",
+    "@superimg/playwright": "workspace:*",
+    "@superimg/runtime": "workspace:*",
+    "@superimg/skill": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "chokidar": "^5.0.0",
+    "commander": "^14.0.3",
+    "esbuild": "^0.27.0",
+    "execa": "^9.6.1",
+    "hono": "^4.7.7",
+    "ink": "^6.6.0",
+    "oxc-parser": "^0.119.0",
+    "react": "catalog:",
+    "vite": "^7.3.1",
+    "ws": "^8.18.0"
+  },
+  "peerDependencies": {
+    "playwright": "^1.57.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/react": "catalog:",
+    "@types/ws": "^8.18.0",
+    "tailwindcss": "^4.2.1"
+  }
+}
