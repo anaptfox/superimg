@@ -12,7 +12,7 @@ Programmatic video generation. TypeScript in, MP4 out.
 npm install superimg
 ```
 
-> **Note:** Rendering requires Playwright. If not already installed, run `npx playwright install chromium`.
+> **Note:** Rendering requires Chromium. Run `npx superimg setup` once to download it.
 
 Create a template:
 
@@ -130,7 +130,7 @@ await render(template, { format: 'tiktok.video' })         // 1080×1920
 **CLI** — Render locally or in CI. This is the primary workflow:
 
 ```bash
-npx superimg render template.ts -o video.mp4
+npx superimg render hello.video.ts -o video.mp4
 
 # Render every video in the project. Multi-output templates (those declaring
 # config.outputs) automatically render all presets; single-output templates
@@ -138,7 +138,7 @@ npx superimg render template.ts -o video.mp4
 npx superimg render --all -y
 ```
 
-**Browser** — Live preview at 60fps while you edit. Run `npx superimg dev template.ts` to start the dev server.
+**Browser** — Live preview at 60fps while you edit. Run `npx superimg dev hello` to start the dev server.
 
 **React** — Embed videos anywhere with the `<Player />` component:
 

@@ -35,7 +35,7 @@ Hardcoded text is a demo. Real templates need data. Add a `defaults` object and 
 One command to go from template to MP4:
 
 ```bash
-npx superimg render template.ts -o video.mp4
+npx superimg render my-template.video.ts -o video.mp4
 ```
 
 The pipeline: TypeScript compiles to a `render` function, each frame calls it to produce HTML, a headless browser rasterizes the HTML to pixels, and ffmpeg encodes the pixel frames into a video file. Templates also run in the browser with live preview at 60fps, and SuperImg ships a `<Player>` React component for embedding in apps.
@@ -63,7 +63,7 @@ When you're ready to render locally:
 ```bash
 npx superimg init my-project
 cd my-project
-npx superimg dev template.ts
+npx superimg dev
 ```
 
 Every frame is just HTML.

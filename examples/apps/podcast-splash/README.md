@@ -54,7 +54,7 @@ superimg render examples/apps/podcast-splash/src/templates/splash.video.ts \
 ## Prerequisites
 
 ```bash
-npx playwright install chromium
+npx superimg setup
 ```
 
 ## Why this example matters

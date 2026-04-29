@@ -1,4 +1,10 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "tsup";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(resolve(__dirname, "package.json"), "utf8"));
 
 export default defineConfig({
   entry: {
@@ -35,6 +41,9 @@ export default defineConfig({
   format: ["esm"],
   dts: { resolve: true },
   clean: true,
+  define: {
+    __SUPERIMG_VERSION__: JSON.stringify(pkg.version),
+  },
   noExternal: [
     "@superimg/cli",
     "@superimg/types",

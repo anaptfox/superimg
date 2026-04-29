@@ -8,7 +8,7 @@ This workflow outlines the steps to start the SuperImg local development server,
 1. Provide the path of the template file you would like to test (e.g., `examples/templates/watermark-demo/hello-world.video.js`).
 2. Build the necessary packages, such as utilizing the `just build` or `just dev` routines outlined in `CLAUDE.md`.
 // turbo
-3. Run the CLI dev command using the root `videos` script (or `node ./apps/superimg/dist/cli.js dev`):
+3. Run the CLI dev command (or `node ./packages/superimg/dist/cli.js dev`):
 ```bash
 pnpm run videos <PATH_TO_YOUR_TEMPLATE>
 ```

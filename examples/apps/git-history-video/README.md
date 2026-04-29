@@ -63,7 +63,7 @@ pnpm --filter git-history-video dev -- --since 2024-01-01
 SuperImg uses Playwright for headless rendering. Install it once:
 
 ```bash
-npx playwright install chromium
+npx superimg setup
 ```
 
 ## File Structure
