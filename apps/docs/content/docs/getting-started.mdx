@@ -21,17 +21,13 @@ If you prefer to add SuperImg to an existing project:
 npm install superimg
 ```
 
-For React projects, you'll also want the player:
-
-```bash
-npm install superimg
-```
+For React projects, the `<Player>` component is included in the same package — no extra install needed.
 
 ## Your First Template
 
 A SuperImg template is a function that takes time and data, and returns HTML. Create a template that accepts a dynamic title and subtitle. The demo below shows the code and a live preview — click the video to play or pause, or use the timeline to scrub.
 
-Create a file called `template.ts`:
+Create a file called `videos/template.video.ts`:
 
 <CodeDemo templateId="getting-started" />
 
@@ -42,19 +38,25 @@ Use `defaults` for fallback values when no data is passed. The `render` function
 To see your template in action, start the local development server:
 
 ```bash
-npx superimg dev template.ts
+npx superimg dev template
 ```
 
 This opens a live preview in your browser. Edit your code, and the video updates instantly at 60fps.
 
 ## Render to MP4
 
-When you are ready to export, use the `render` command. 
+When you are ready to export, use the `render` command.
+
+Rendering requires a Chromium browser. If you skipped the download during `init`, run this once first:
+
+```bash
+npx superimg setup
+```
 
 Because our template accepts data, we can pass a JSON string to generate a personalized video:
 
 ```bash
-npx superimg render template.ts -o output.mp4 --data '{"title": "Dynamic Video", "subtitle": "Rendered from CLI"}'
+npx superimg render template -o output.mp4 --data '{"title": "Dynamic Video", "subtitle": "Rendered from CLI"}'
 ```
 
 SuperImg will render every frame headlessly and encode it into a high-quality MP4.

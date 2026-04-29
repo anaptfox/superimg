@@ -107,20 +107,20 @@ const opacity = std.interpolate(m.progress("intro", "main"), [0, 1], [0, 1], "ea
 superimg init my-project
 superimg init .                    # Add to existing project
 superimg dev intro
-superimg render videos/intro.ts    # Outputs natively to nearest package's output/intro.mp4
-superimg render videos/intro.ts -o custom.mp4
+superimg render intro              # Outputs natively to output/intro.mp4
+superimg render intro -o custom.mp4
 superimg list
-superimg info videos/intro.ts
+superimg info intro
 superimg setup
-superimg add skill
+superimg skill install
 ```
 
 ## Server API
 
 ```typescript
 import { renderVideo, loadTemplate } from "superimg/server";
-const t = await loadTemplate("videos/intro.ts");
-await renderVideo("videos/intro.ts", { outputPath: "out.mp4", width: 1920, height: 1080 });
+const t = await loadTemplate("videos/intro.video.ts");
+await renderVideo("videos/intro.video.ts", { outputPath: "out.mp4", width: 1920, height: 1080 });
 ```
 
 ## Additional Resources

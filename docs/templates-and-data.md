@@ -77,11 +77,11 @@ The active output preset is available via `ctx.output` (name, width, height, fit
 ### Using Templates
 
 ```bash
-# Dev server with live preview (bare name resolves to videos/intro.ts)
+# Dev server with live preview
 superimg dev intro
 
 # Render to video
-superimg render videos/intro.ts -o output.mp4
+superimg render intro -o output.mp4
 ```
 
 ### Duration Resolution

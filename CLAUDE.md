@@ -63,4 +63,4 @@ node ./packages/superimg/dist/cli.js render --all -y
 
 Output: `output/<name>.mp4`
 
-**Requires**: Playwright browsers installed (`just setup` or `npx playwright install chromium`)
+**Requires**: Playwright browsers installed (`just setup` or `npx superimg setup`)

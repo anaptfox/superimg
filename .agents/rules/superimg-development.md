@@ -31,5 +31,5 @@ Please always refer to these files for detailed information before making struct
 ## Render Commands
 Never run `pnpm render`. The CLI should be accessed via the node output script:
 ```bash
-node ./apps/superimg/dist/cli.js render <path>
+node ./packages/superimg/dist/cli.js render <path>
 ```

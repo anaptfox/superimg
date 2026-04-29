@@ -176,7 +176,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/superimg"
+    "url": "https://github.com/anaptfox/superimg"
+  },
+  "homepage": "https://github.com/anaptfox/superimg#readme",
+  "bugs": {
+    "url": "https://github.com/anaptfox/superimg/issues"
   },
   "dependencies": {
     "@clack/prompts": "^1.0.1",
