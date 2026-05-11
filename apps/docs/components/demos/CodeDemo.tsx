@@ -5,7 +5,7 @@ import { useVideoSession, VideoControls } from "superimg/react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { BLOG_DEMOS } from "@/content/blog/templates/blog-demos";
+import { CODE_DEMOS } from "@/content/templates/code-demos";
 
 type View = "split" | "code" | "video";
 
@@ -23,7 +23,7 @@ export function CodeDemo({ templateId }: CodeDemoProps) {
   const [view, setView] = useState<View>("split");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const demo = BLOG_DEMOS[templateId];
+  const demo = CODE_DEMOS[templateId];
   const session = useVideoSession({
     containerRef,
     initialFormat: "horizontal",

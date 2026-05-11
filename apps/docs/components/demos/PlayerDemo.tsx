@@ -3,7 +3,7 @@
 import { useRef, useEffect } from 'react'
 import { Player } from 'superimg/react/player'
 import { useVideoSession, VideoControls, VideoCanvas } from 'superimg/react'
-import { introTemplate } from '@/content/blog/templates/intro-demo'
+import { introTemplate } from '@/content/templates/intro-demo'
 import { getExampleById } from '@/lib/video/examples'
 
 interface PlayerDemoProps {
@@ -14,9 +14,9 @@ interface PlayerDemoProps {
 }
 
 /**
- * PlayerDemo renders a video template inline in blog posts.
+ * PlayerDemo renders a video template inline in MDX content.
  *
- * Without templateId: renders the intro-demo template (original behavior)
+ * Without templateId: renders the intro-demo template
  * With templateId: compiles and renders the template from EDITOR_EXAMPLES
  */
 export function PlayerDemo({ templateId, duration = 5 }: PlayerDemoProps) {

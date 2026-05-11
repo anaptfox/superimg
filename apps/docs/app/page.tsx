@@ -30,7 +30,6 @@ export default function HomePage() {
             <div>
               <p className="mb-3 text-sm font-semibold">More</p>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="/blog" className="hover:text-foreground transition-colors">Blog</a></li>
                 <li><a href="/showcase" className="hover:text-foreground transition-colors">Showcase</a></li>
                 <li><a href="https://github.com/anaptfox/superimg" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a></li>
               </ul>
