@@ -1,7 +1,7 @@
-// Compilable template code strings used by CodeDemo in the introducing-superimg blog post.
+// Compilable template code strings used by the CodeDemo MDX component.
 // The code shown in the UI is the same code that gets compiled and rendered.
 
-export const BLOG_INTRO_TEMPLATE = `import { defineScene } from "superimg";
+export const INTRO_TEMPLATE = `import { defineScene } from "superimg";
 
 export default defineScene({
   render(ctx) {
@@ -32,7 +32,7 @@ export default defineScene({
   },
 });`;
 
-export const BLOG_EASING_TEMPLATE = `import { defineScene } from "superimg";
+export const EASING_TEMPLATE = `import { defineScene } from "superimg";
 
 export default defineScene({
   config: { duration: 3 },
@@ -67,7 +67,7 @@ export default defineScene({
   },
 });`;
 
-export const BLOG_DATA_TEMPLATE = `import { defineScene } from "superimg";
+export const DATA_TEMPLATE = `import { defineScene } from "superimg";
 
 export default defineScene({
   data: {
@@ -113,7 +113,7 @@ export default defineScene({
   },
 });`;
 
-// Same as "Your First Template" in Getting Started doc — used by CodeDemo on docs + blog
+// Same as "Your First Template" in Getting Started doc
 export const GETTING_STARTED_TEMPLATE = `import { defineScene } from "superimg";
 
 export interface TemplateData {
@@ -156,9 +156,9 @@ export default defineScene<TemplateData>({
   },
 });`;
 
-export const BLOG_DEMOS: Record<string, { code: string; duration: number }> = {
-  "blog-intro":       { code: BLOG_INTRO_TEMPLATE,       duration: 4 },
-  "blog-easing":      { code: BLOG_EASING_TEMPLATE,      duration: 3 },
-  "blog-data":        { code: BLOG_DATA_TEMPLATE,        duration: 4 },
-  "getting-started":  { code: GETTING_STARTED_TEMPLATE,   duration: 4 },
+export const CODE_DEMOS: Record<string, { code: string; duration: number }> = {
+  "intro":            { code: INTRO_TEMPLATE,            duration: 4 },
+  "easing":           { code: EASING_TEMPLATE,           duration: 3 },
+  "data":             { code: DATA_TEMPLATE,             duration: 4 },
+  "getting-started":  { code: GETTING_STARTED_TEMPLATE,  duration: 4 },
 };

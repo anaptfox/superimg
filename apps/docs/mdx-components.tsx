@@ -1,6 +1,6 @@
 import type { MDXComponents } from 'mdx/types'
-import { PlayerDemo } from '@/components/blog/PlayerDemo'
-import { CodeDemo } from '@/components/blog/CodeDemo'
+import { PlayerDemo } from '@/components/demos/PlayerDemo'
+import { CodeDemo } from '@/components/demos/CodeDemo'
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {

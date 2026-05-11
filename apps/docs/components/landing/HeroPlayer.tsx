@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { Player, type PlayerRef } from "superimg/react/player";
-import { introTemplate } from "@/content/blog/templates/intro-demo";
+import { introTemplate } from "@/content/templates/intro-demo";
 
 export default function HeroPlayer() {
   const playerRef = useRef<PlayerRef>(null);
