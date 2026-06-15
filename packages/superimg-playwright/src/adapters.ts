@@ -19,13 +19,18 @@ import { resolveAudio } from "@superimg/core";
 export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
   private width = 0;
   private height = 0;
+  private mode: 'frame' | 'animation' = 'frame';
 
   constructor(private readonly page: Page) {}
 
   async init(config: FrameRendererConfig): Promise<void> {
     this.width = config.width;
     this.height = config.height;
+    this.mode = config.mode ?? 'frame';
     await this.page.setViewportSize({ width: config.width, height: config.height });
+    if (this.mode === 'animation') {
+      await this.page.clock.install({ time: 0 });
+    }
     const shell = buildPageShell({
       fonts: config.fonts ?? [],
       inlineCss: config.inlineCss ?? [],
@@ -34,6 +39,10 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
     });
     await this.page.setContent(shell, { waitUntil: "load" });
     await this.page.evaluate(() => document.fonts.ready);
+  }
+
+  async advanceClock(ms: number): Promise<void> {
+    await this.page.clock.runFor(ms);
   }
 
   async captureFrame(html: string, options?: { alpha?: boolean }): Promise<Buffer> {
@@ -46,10 +55,13 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
     );
     await this.page.evaluate(() => document.fonts.ready);
 
+    // Use JPEG for speed unless alpha channel is needed (JPEG doesn't support transparency)
+    const useAlpha = options?.alpha === true;
     const png = await this.page.screenshot({
-      type: "png",
+      type: useAlpha ? "png" : "jpeg",
+      quality: useAlpha ? undefined : 95,
       clip: { x: 0, y: 0, width: this.width, height: this.height },
-      omitBackground: options?.alpha === true,
+      omitBackground: useAlpha,
     });
 
     return Buffer.isBuffer(png) ? png : Buffer.from(png);

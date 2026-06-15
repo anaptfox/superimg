@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { serve, type ServerType } from "@hono/node-server";
 import { readFileSync, existsSync } from "node:fs";
 import { extname } from "node:path";
-import type { RenderEngine, EncodingOptions, VideoEncoder } from "@superimg/types";
+import type { RenderEngine, EncodingOptions, VideoEncoder, AudioValue } from "@superimg/types";
 import {
   checkBrowserStatus,
   ensureBrowser,
@@ -14,9 +14,9 @@ import {
   type BrowserStatus,
   type EnsureBrowserOptions,
 } from "./browser-utils.js";
-import { PlaywrightFrameRenderer, PlaywrightVideoEncoder } from "./adapters.js";
+import { PlaywrightFrameRenderer } from "./adapters.js";
 import { FfmpegGifEncoder } from "./ffmpeg-gif-encoder.js";
-import { HARNESS_HTML, HARNESS_JS } from "./harness-assets.js";
+import { NodeVideoEncoder } from "./node-encoder.js";
 
 const MIME_TYPES: Record<string, string> = {
   ".mp3": "audio/mpeg",
@@ -141,21 +141,9 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
 
     this.page = await context.newPage();
 
-    await this.page.evaluate(() => {
-      const w = window as unknown as { __playwright_clock?: { install: (opts: unknown) => void } };
-      if (w.__playwright_clock) {
-        w.__playwright_clock.install({ time: new Date("2025-01-01T00:00:00Z") });
-      }
-    });
-
     const app = new Hono();
-    app.get("/index.html", (c) => c.html(HARNESS_HTML));
-    app.get("/harness.js", (c) => {
-      c.header("Content-Type", "application/javascript");
-      return c.body(HARNESS_JS);
-    });
 
-    // Serve local files for audio/assets
+    // Serve local files for images and other assets referenced in templates
     app.get("/assets", (c) => {
       const filePath = c.req.query("path");
       if (!filePath) {
@@ -175,23 +163,21 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
     this.server = serve({ fetch: app.fetch, port: 0 });
     const address = this.server.address();
     this.serverPort = typeof address === "object" && address ? address.port : 0;
-
-    await this.page.goto(`http://localhost:${this.serverPort}/index.html`);
-
-    await this.page.waitForFunction(() => typeof (window as unknown as { __superimg?: unknown }).__superimg !== "undefined", {
-      timeout: 5000,
-    });
   }
 
-  createAdapters(options?: { encoding?: EncodingOptions }): { renderer: PlaywrightFrameRenderer; encoder: VideoEncoder<Buffer> } {
+  createAdapters(options?: { encoding?: EncodingOptions; audio?: AudioValue }): { renderer: PlaywrightFrameRenderer; encoder: VideoEncoder<Buffer> } {
     const page = this.page;
     if (!page) {
       throw new Error("PlaywrightEngine not initialized. Call init() first.");
     }
 
-    const encoder = options?.encoding?.format === "gif"
-      ? new FfmpegGifEncoder()
-      : new PlaywrightVideoEncoder(page);
+    let encoder: VideoEncoder<Buffer>;
+    if (options?.encoding?.format === "gif") {
+      encoder = new FfmpegGifEncoder();
+    } else {
+      // Server-side encoding via @mediabunny/server — handles both video-only and audio+video
+      encoder = new NodeVideoEncoder();
+    }
 
     return {
       renderer: new PlaywrightFrameRenderer(page),
