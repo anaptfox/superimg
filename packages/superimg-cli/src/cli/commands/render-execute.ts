@@ -120,7 +120,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         templateDir,
       });
 
-      const { renderer, encoder } = engine.createAdapters({ encoding: job.encoding });
+      const { renderer, encoder } = engine.createAdapters({ encoding: job.encoding, audio: job.audio });
       const result = await executeRenderPlan(plan, renderer, encoder, {
         onProgress: (p) => {
           if (isCancelled?.()) return;

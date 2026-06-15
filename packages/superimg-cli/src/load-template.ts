@@ -68,7 +68,6 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
 
   async function render(options: LoadedTemplateRenderOptions = {}): Promise<Uint8Array> {
     const pw = await ensureEngine();
-    const { renderer, encoder } = pw.createAdapters();
     const assetBaseUrl = pw.getBaseUrl();
 
     const { job, resolvedAssets } = buildRenderJob({
@@ -80,6 +79,7 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
       overrides: options,
     });
 
+    const { renderer, encoder } = pw.createAdapters({ encoding: job.encoding, audio: job.audio });
     const plan = createRenderPlan(job, { assetBaseUrl, resolvedAssets, templateDir });
     return executeRenderPlan(plan, renderer, encoder, {
       onProgress: options.onProgress

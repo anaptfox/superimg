@@ -60,7 +60,6 @@ export async function renderVideo(
       templateData.templateConfig?.encoding,
       options.encoding
     );
-    const { renderer, encoder } = engine.createAdapters({ encoding });
     const assetBaseUrl = engine.getBaseUrl();
     const templateDir = dirname(resolvedPath);
 
@@ -76,6 +75,8 @@ export async function renderVideo(
         encoding,
       },
     });
+
+    const { renderer, encoder } = engine.createAdapters({ encoding: job.encoding, audio: job.audio });
 
     const plan = createRenderPlan(job, {
       assetBaseUrl,
