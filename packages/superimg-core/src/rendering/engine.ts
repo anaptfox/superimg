@@ -186,6 +186,7 @@ export function createRenderPlan(
     assetBaseUrl: options?.assetBaseUrl,
     templateDir: options?.templateDir,
     resolvedAssets,
+    mode: template.config?.mode ?? 'frame',
   };
 }
 
@@ -215,6 +216,7 @@ export async function executeRenderPlan<TFrame>(
     background,
     watermark,
     resolvedAssets,
+    mode,
   } = plan;
 
   const assetResolver = plan.assetBaseUrl && plan.templateDir
@@ -224,7 +226,7 @@ export async function executeRenderPlan<TFrame>(
       }
     : undefined;
 
-  await renderer.init({ width, height, fonts, inlineCss, stylesheets, tailwind });
+  await renderer.init({ width, height, fonts, inlineCss, stylesheets, tailwind, mode });
 
   let assetsMap: Record<string, import("@superimg/types").AssetMeta> = {};
   if (resolvedAssets.length > 0 && renderer.preloadAssets) {
@@ -272,6 +274,12 @@ export async function executeRenderPlan<TFrame>(
       }
 
       callbacks?.onFrameRendered?.(frame, html, compositeHtml);
+
+      // In animation mode, advance fake clock one frame interval before capture
+      // so CSS transitions/animations progress deterministically.
+      if (mode === 'animation') {
+        await renderer.advanceClock?.(Math.round(1000 / fps));
+      }
 
       // renderer.captureFrame — Playwright/canvas/Blitz layer.
       let capturedFrame: TFrame;
