@@ -256,6 +256,12 @@ export interface TemplateConfig extends BaseConfig {
    * CLI flags and programmatic API options override these.
    */
   encoding?: EncodingOptions;
+  /**
+   * Rendering mode for this template.
+   * - 'frame' (default): render() is called per frame; CSS transitions don't animate naturally
+   * - 'animation': Playwright fake clock advances per frame so CSS transitions/animations work deterministically
+   */
+  mode?: 'frame' | 'animation';
 }
 
 // =============================================================================

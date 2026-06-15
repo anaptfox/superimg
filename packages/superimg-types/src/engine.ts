@@ -81,12 +81,18 @@ export interface FrameRendererConfig {
   inlineCss?: string[];
   stylesheets?: string[];
   tailwind?: boolean | TailwindConfig;
+  mode?: 'frame' | 'animation';
 }
 
 export interface FrameRenderer<TFrame = unknown> {
   init(config: FrameRendererConfig): Promise<void>;
   captureFrame(html: string, options?: { alpha?: boolean }): Promise<TFrame>;
   dispose(): Promise<void>;
+  /**
+   * Optional: Advance the fake clock by `ms` milliseconds before the next capture.
+   * Required when mode is 'animation' — implement via page.clock.runFor().
+   */
+  advanceClock?(ms: number): Promise<void>;
   /**
    * Optional: Preload config.assets and extract metadata.
    * Called before the frame loop. If not implemented, ctx.assets will be empty.
@@ -113,7 +119,7 @@ export interface VideoEncoder<TFrame = unknown> {
 
 export interface RenderEngine<TFrame = unknown> {
   init(): Promise<void>;
-  createAdapters(options?: { encoding?: EncodingOptions }): { renderer: FrameRenderer<TFrame>; encoder: VideoEncoder<TFrame> };
+  createAdapters(options?: { encoding?: EncodingOptions; audio?: AudioValue }): { renderer: FrameRenderer<TFrame>; encoder: VideoEncoder<TFrame> };
   dispose(): Promise<void>;
 }
 
@@ -142,6 +148,8 @@ export interface RenderPlan {
   templateDir?: string;
   /** Resolved config.assets for preloading */
   resolvedAssets: ResolvedAssetDeclaration[];
+  /** Rendering mode — 'frame' (default) or 'animation' (fake clock per frame) */
+  mode: 'frame' | 'animation';
 }
 
 export interface FramePresenter {
