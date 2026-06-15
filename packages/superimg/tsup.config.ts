@@ -75,6 +75,13 @@ export default defineConfig({
     // Native binding packages must be external
     "oxc-parser",
     /^@oxc-parser\//,
+    // mediabunny is a direct dep — keep external so browser + server share one instance
+    "mediabunny",
+    // Server-side encoding — optional native addons, never bundle
+    "@mediabunny/server",
+    "sharp",
+    "node-av",
+    /^@seydx\//,
   ],
   onSuccess: "rm -rf dist/dev-ui && cp -R ../superimg-cli/dist/dev-ui dist/dev-ui",
 });

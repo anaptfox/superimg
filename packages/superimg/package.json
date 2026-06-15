@@ -184,6 +184,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.0.1",
+    "mediabunny": "^1.46.0",
     "@hono/node-server": "^1.14.1",
     "acorn": "^8.14.0",
     "chokidar": "^5.0.0",
@@ -202,6 +203,7 @@
     "zustand": "^5.0.0"
   },
   "optionalDependencies": {
+    "@mediabunny/server": "^1.46.0",
     "@oxc-parser/binding-darwin-arm64": "^0.119.0",
     "@oxc-parser/binding-darwin-x64": "^0.119.0",
     "@oxc-parser/binding-linux-arm64-gnu": "^0.119.0",
@@ -209,10 +211,11 @@
     "@oxc-parser/binding-linux-x64-gnu": "^0.119.0",
     "@oxc-parser/binding-linux-x64-musl": "^0.119.0",
     "@oxc-parser/binding-win32-arm64-msvc": "^0.119.0",
-    "@oxc-parser/binding-win32-x64-msvc": "^0.119.0"
+    "@oxc-parser/binding-win32-x64-msvc": "^0.119.0",
+    "sharp": "^0.34.0"
   },
   "peerDependencies": {
-    "playwright": "^1.57.0",
+    "playwright": "^1.60.0",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
   },

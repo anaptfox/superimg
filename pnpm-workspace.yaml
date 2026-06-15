@@ -14,5 +14,6 @@ catalog:
 onlyBuiltDependencies:
   - core-js
   - esbuild
+  - node-av
   - protobufjs
   - sharp
