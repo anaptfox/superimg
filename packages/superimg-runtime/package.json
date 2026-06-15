@@ -36,10 +36,10 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@zumer/snapdom": "^2.0.0",
+    "@zumer/snapdom": "^2.12.8",
     "@superimg/core": "workspace:*",
     "@superimg/types": "workspace:*",
-    "mediabunny": "^1.28.0"
+    "mediabunny": "^1.46.0"
   },
   "devDependencies": {
     "@vitest/browser": "^4.0.18",

@@ -188,7 +188,7 @@ export class BrowserRenderer {
       dpr: 1,
       embedFonts: true,
       backgroundColor: this.sessionOptions.backgroundColor ?? "#000000",
-      cache: "full",
+      cache: "auto",
     });
 
     const canvas = await result.toCanvas();
