@@ -41,7 +41,7 @@ export default defineScene({
 
 ## Key Context Fields
 
-Use these from `ctx`: `sceneProgress`, `sceneTimeSeconds`, `sceneDurationSeconds`, `width`, `height`, `isPortrait`, `data`, `std`, `asset()`. Ignore `globalProgress` for scene animation — use `sceneProgress` or `sceneTimeSeconds` instead.
+Use these from `ctx`: `sceneProgress`, `sceneTimeSeconds`, `sceneDurationSeconds`, `width`, `height`, `isPortrait`, `data`, `std`, `asset()`. For scene-local animation, prefer `sceneProgress` / `sceneTimeSeconds` over the `global*` variants — `globalFrame` and `globalTimeSeconds` span the whole composed video and are only useful inside `compose()`.
 
 **Co-located assets (zero config):** `ctx.asset('logo.png')` returns a URL for `assets/logo.png` next to your `.video.ts` file. For named assets with preloaded metadata, use `config.assets` + `ctx.assets`.
 
@@ -103,7 +103,7 @@ const opacity = std.interpolate(m.progress("intro", "main"), [0, 1], [0, 1], "ea
 
 **DO:** Use `std.score` for complex layouts. Put shared CSS in `config.inlineCss`. Use `config.fonts` for Google Fonts. Set root element to `width: ${width}px; height: ${height}px`. Use `std.css()` for inline styles. Import from `"superimg"` in templates.
 
-**DON'T:** Return JSX — return template literal strings. Mutate state in render — keep it pure. Use `globalProgress` for scene animation. Call `std.tween()` — it is not a public `ctx.std` API; use `std.score().tween()` or `std.interpolate()`. Use `std.phases` (use `std.score` instead).
+**DON'T:** Return JSX — return template literal strings. Mutate state in render — keep it pure. Drive scene-local animation off `globalFrame` / `globalTimeSeconds` (those span the whole composed video; use `sceneProgress` / `sceneTimeSeconds` instead). Call `std.tween()` directly — it lives on the score object, via `std.score().tween(...)`. Reach for `std.phases` — it does not exist; use `std.score` for phased timing.
 
 ## Config
 

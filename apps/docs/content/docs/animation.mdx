@@ -2,7 +2,7 @@
 
 In traditional video editors, you set keyframes and the software interpolates between them. In SuperImg, you write the interpolation logic directly.
 
-Use `std.score()` and its `t.tween()` helper when motion belongs to named scene phases like enter, hold, and exit. Use `std.interpolate()` when you already have a progress value and need custom ranges, multi-keyframes, loops, or non-phased math. `std.tween()` is not a public `ctx.std` API.
+Use `std.score()` and its `t.tween()` helper when motion belongs to named scene phases like enter, hold, and exit. Use `std.interpolate()` when you already have a progress value and need custom ranges, multi-keyframes, loops, or non-phased math. Note: `tween` lives on the score object — there is no `std.tween()` at the top level. Always reach it via `const t = std.score(); t.tween(...)`.
 
 ## The Mental Model
 
@@ -78,6 +78,7 @@ t.motion({ easing: "easeOutBack" });
 
 | Family | In | Out | In-Out |
 |--------|----|----|--------|
+| Linear | `linear` | — | — |
 | Quad | `easeInQuad` | `easeOutQuad` | `easeInOutQuad` |
 | Cubic | `easeInCubic` | `easeOutCubic` | `easeInOutCubic` |
 | Quart | `easeInQuart` | `easeOutQuart` | `easeInOutQuart` |

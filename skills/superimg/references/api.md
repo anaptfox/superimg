@@ -11,26 +11,45 @@ interface RenderContext<TData> {
   // Stdlib utilities
   std: Stdlib;
 
-  // Scene timing (use these for animation)
-  sceneProgress: number;          // 0-1 progress through current scene
+  // Scene timing (use these for animation in single-scene templates)
+  sceneFrame: number;             // Current frame within scene (0-indexed)
   sceneTimeSeconds: number;       // Elapsed seconds in current scene
-  sceneDurationSeconds: number;   // Total scene duration
+  sceneProgress: number;          // 0-1 progress through current scene
+  sceneTotalFrames: number;       // Total frames in this scene
+  sceneDurationSeconds: number;   // Duration of this scene
+
+  // Scene metadata (multi-scene compositions)
+  sceneIndex: number;             // Index of current scene (0-indexed)
+  sceneId: string;                // ID of current scene
+
+  // Global timing (entire video — useful inside compose())
+  globalFrame: number;            // Current frame across entire video
+  globalTimeSeconds: number;      // Elapsed seconds total
+  totalFrames: number;            // Total frames in video
+  totalDurationSeconds: number;   // Total duration of video
+
+  // Video info
+  fps: number;                    // Frames per second
+  isFinite: boolean;              // Whether the video has a finite duration
 
   // Canvas dimensions
   width: number;                  // Canvas width in pixels
   height: number;                 // Canvas height in pixels
+  aspectRatio: number;            // width / height
   isPortrait: boolean;            // height > width
   isLandscape: boolean;           // width > height
+  isSquare: boolean;              // width === height
 
-  // Template data (merged with data defaults)
+  // Template data (merged from defaults + companion .data.ts + incoming data)
   data: TData;
 
-  // Global timing (rarely needed)
-  globalProgress: number;         // 0-1 progress through entire video
-  globalTimeSeconds: number;      // Elapsed seconds total
-  totalDurationSeconds: number;   // Total video duration
-  fps: number;                    // Frames per second
-  frameNumber: number;            // Current frame index
+  // Asset access
+  assets: Record<string, AssetMeta>;   // Preloaded from config.assets
+  asset: (filename: string) => string; // URL for files in co-located assets/ folder
+
+  // Output configuration
+  output: OutputInfo;             // { name, width, height, fit }
+  cssViewport?: CssViewport;      // Optional viewport overrides for responsive templates
 }
 ```
 
@@ -296,92 +315,6 @@ return `<div style="${containerStyle}">
 </div>`;
 ```
 
-## std.motion
-
-High-level animation primitives that combine opacity, transform, and CSS generation.
-
-```typescript
-// Fade in + slide from offset
-std.motion.enter(progress: number, options?: MotionOptions): MotionResult
-
-// Fade out + slide to offset
-std.motion.exit(progress: number, options?: MotionOptions): MotionResult
-
-// Three-phase: enter (0→enterEnd), hold, exit (exitStart→1)
-std.motion.enterExit(progress: number, options?: EnterExitOptions): MotionResult
-
-interface MotionOptions {
-  y?: number;          // Y offset in pixels (default: 20)
-  x?: number;          // X offset in pixels (default: 0)
-  scale?: number;      // Scale offset from 1 (default: 0)
-  easing?: EasingName; // Easing function (default: "easeOutCubic")
-}
-
-interface EnterExitOptions extends MotionOptions {
-  enterEnd?: number;   // Progress where enter ends (default: 0.33)
-  exitStart?: number;  // Progress where exit starts (default: 0.66)
-}
-
-interface MotionResult {
-  opacity: number;     // Computed opacity (0-1)
-  x: number;           // Computed X translation
-  y: number;           // Computed Y translation
-  scale: number;       // Computed scale factor
-  transform: string;   // CSS transform string
-  style: string;       // Complete inline style (opacity + transform)
-}
-```
-
-**Examples:**
-```typescript
-// Simple fade + slide up
-const { style } = std.motion.enter(sceneProgress, { y: 30 });
-return `<div style="${style}">Content</div>`;
-
-// Enter-hold-exit for cards
-const { style } = std.motion.enterExit(progress, {
-  y: 40,
-  enterEnd: 0.2,
-  exitStart: 0.8
-});
-
-// Access individual values for custom combinations
-const { opacity, transform } = std.motion.enter(progress, { y: 20, scale: 0.1 });
-```
-
-## std.phases
-
-Split progress into named sub-phases.
-
-```typescript
-std.phases<K extends string>(
-  progress: number,
-  config: Record<K, number>  // weights, auto-normalized
-): Record<K, Phase>
-
-interface Phase {
-  progress: number;  // 0-1 within this phase
-  active: boolean;   // True when currently in this phase
-  done: boolean;     // True when phase has completed
-  start: number;     // Normalized start position (0-1)
-  end: number;       // Normalized end position (0-1)
-}
-```
-
-**Examples:**
-```typescript
-// Equal phases
-const { enter, hold, exit } = std.phases(sceneProgress, { enter: 1, hold: 1, exit: 1 });
-
-// Custom weights (30% enter, 50% hold, 20% exit)
-const { intro, main, outro } = std.phases(progress, { intro: 3, main: 5, outro: 2 });
-
-// Combine with motion
-const { enter, exit } = std.phases(sceneProgress, { enter: 1, hold: 2, exit: 1 });
-const enterAnim = std.motion.enter(enter.progress, { y: 30 });
-const exitAnim = std.motion.exit(exit.progress, { y: -30 });
-```
-
 ## std.createResponsive
 
 Factory for aspect-ratio-based value selection.
@@ -563,14 +496,16 @@ items.map(({ item, progress }) =>
 
 **Example:**
 ```typescript
-const { enter, exit } = std.phases(sceneProgress, { enter: 2, hold: 4, exit: 2 });
-const enterItems = std.stagger(items, enter.progress, {
+// Drive a staggered cascade off the "enter" phase of a score
+const t = std.score({ enter: 0.25, hold: 0.5, exit: 0.25 });
+const items = std.stagger(["First", "Second", "Third"], t.within("enter"), {
   duration: 0.4, from: "center", easing: "easeOutCubic"
 });
-enterItems.map(({ item, progress }) => {
-  const { style } = std.motion.enter(progress, { y: 20 });
-  return `<div style="${style}">${item}</div>`;
-});
+return items.map(({ item, progress }) => {
+  const opacity = std.interpolate(progress, [0, 1], [0, 1]);
+  const y      = std.interpolate(progress, [0, 1], [20, 0]);
+  return `<div style="opacity: ${opacity}; transform: translateY(${y}px)">${item}</div>`;
+}).join("");
 ```
 
 ## std.interpolate / std.interpolateColor
@@ -665,7 +600,7 @@ Options for `defineScene({ config: { ... } })`:
 | `width` | number | 1920 | Canvas width in pixels |
 | `height` | number | 1080 | Canvas height in pixels |
 | `fps` | number | 30 | Frames per second |
-| `durationSeconds` | number | 5 | Scene duration |
+| `duration` | `Duration` | — | Scene duration. Accepts `number` (seconds), `"5s"`, `"500ms"`, or `"30f"` (frames). |
 | `fonts` | string[] | [] | Google Fonts to load |
 | `inlineCss` | string[] | [] | CSS injected into page |
 | `stylesheets` | string[] | [] | External CSS URLs |
@@ -708,7 +643,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
     fps: 30,
-    durationSeconds: 4,
+    duration: 4,
     fonts: ["Inter:wght@400;700"],
     inlineCss: [`
       * { margin: 0; box-sizing: border-box; }

@@ -116,13 +116,30 @@ npx superimg render template.video.ts --data products.json --presets -y
 
 ## Multi-Format Output
 
-One template, every platform:
+One template, every platform. Declare named output presets in `config.outputs`:
 
 ```typescript
-await render(template, { format: 'youtube.video' })        // 1920×1080
-await render(template, { format: 'youtube.video.short' })  // 1080×1920
-await render(template, { format: 'instagram.post' })       // 1080×1080
-await render(template, { format: 'tiktok.video' })         // 1080×1920
+export default defineScene({
+  config: {
+    duration: 5,
+    outputs: {
+      youtube: { width: 1920, height: 1080 },   // landscape
+      reel:    { width: 1080, height: 1920 },   // 9:16 vertical
+      square:  { width: 1080, height: 1080 },   // 1:1
+    },
+  },
+  render(ctx) { /* ... */ },
+})
+```
+
+Then render every preset in one pass (one MP4 per output, single Playwright session):
+
+```bash
+# All declared presets
+npx superimg render template.video.ts --presets
+
+# Or pick specific ones
+npx superimg render template.video.ts --presets youtube,reel
 ```
 
 ## Where It Runs

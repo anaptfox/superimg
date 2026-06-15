@@ -191,18 +191,43 @@ player.nextScene();
 player.previousScene();
 ```
 
+## Checkpoints
+
+Checkpoints are named timestamps within a video — useful for chapter markers, replay buttons, or jumping to a specific moment. Composed templates expose scene boundaries as checkpoints automatically; you can also add your own.
+
+```typescript
+// Jump to a named checkpoint
+player.goToCheckpoint('chorus');
+
+// Step through checkpoints in order
+player.nextCheckpoint();
+player.prevCheckpoint();
+
+// Inspect the current checkpoint (the most recent one <= current frame)
+const current = player.getCurrentCheckpoint(); // Checkpoint | undefined
+
+// Add a custom checkpoint. Frame defaults to the current frame if omitted.
+player.addCheckpoint('chorus', 120, { label: 'Chorus' });
+player.addCheckpoint('here'); // marks the current frame
+
+// Remove one
+player.removeCheckpoint('chorus');
+```
+
 ## Player Options
 
-Full configuration:
+Full configuration with defaults:
 
 ```typescript
 const player = new Player({
-  container: '#video',           // CSS selector or HTMLElement
-  format: 'horizontal',          // Dimensions preset
-  playbackMode: 'loop',          // 'once', 'loop', 'ping-pong'
-  loadMode: 'eager',             // 'eager' or 'lazy'
-  showControls: true,            // Show playback controls
-  maxCacheFrames: 30,            // Frame cache size
+  container: '#video',           // CSS selector or HTMLElement (required)
+  format: 'horizontal',          // Dimensions preset (optional)
+  playbackMode: 'once',          // 'once' | 'loop' | 'ping-pong'   (default: 'once')
+  loadMode: 'eager',             // 'eager' | 'lazy'                 (default: 'eager')
+  hoverBehavior: 'none',         // 'none' | 'play' | 'preview-scrub' (default: 'none')
+  hoverDelayMs: 200,             // Delay before hover behavior fires (default: 200)
+  showControls: false,           // Show playback controls            (default: false)
+  maxCacheFrames: 30,            // Frame cache size                  (default: 30)
 });
 ```
 

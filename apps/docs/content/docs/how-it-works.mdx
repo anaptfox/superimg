@@ -91,24 +91,54 @@ The `ctx` object your render function receives:
 
 ```typescript
 render(ctx) {
-  // Timing
-  ctx.sceneFrame         // Current frame within the scene (0, 1, 2, ...)
-  ctx.sceneTimeSeconds   // Time in seconds (0.0, 0.033, 0.066, ...)
-  ctx.sceneProgress      // Progress from 0 to 1
+  // Scene timing — use these for animation in single-scene templates
+  ctx.sceneFrame           // Current frame within the scene (0-indexed)
+  ctx.sceneTimeSeconds     // Elapsed seconds in the current scene
+  ctx.sceneProgress        // 0-1 progress through the current scene
+  ctx.sceneTotalFrames     // Total frames in this scene
+  ctx.sceneDurationSeconds // Duration of this scene
 
-  // Dimensions
-  ctx.width              // Video width in pixels
-  ctx.height             // Video height in pixels
+  // Scene metadata (multi-scene compositions via compose())
+  ctx.sceneIndex           // Index of the current scene (0-indexed)
+  ctx.sceneId              // ID of the current scene
 
-  // Data (merged from defaults + runtime data)
-  ctx.data.title         // Your custom data
+  // Global timing — across the entire video (useful inside compose())
+  ctx.globalFrame          // Current frame across the entire video
+  ctx.globalTimeSeconds    // Elapsed seconds total
+  ctx.totalFrames          // Total frames in the video
+  ctx.totalDurationSeconds // Total duration of the video
+
+  // Video info
+  ctx.fps                  // Frames per second
+  ctx.isFinite             // True for finite-duration videos
+
+  // Canvas dimensions
+  ctx.width                // Canvas width in pixels
+  ctx.height               // Canvas height in pixels
+  ctx.aspectRatio          // width / height
+  ctx.isPortrait           // true when height > width
+  ctx.isLandscape          // true when width > height
+  ctx.isSquare             // true when width === height
+
+  // Data (merged from template defaults + .data.ts companion + incoming data)
+  ctx.data.title           // Your custom typed data
+
+  // Assets
+  ctx.asset('logo.png')    // URL for a file in the co-located assets/ folder
+  ctx.assets.hero          // Preloaded asset metadata declared in config.assets
+
+  // Output
+  ctx.output               // { name, width, height, fit } for the current preset
+  ctx.cssViewport          // Optional viewport overrides for responsive templates
 
   // Standard library
-  ctx.std.score(...)      // Phase-based motion orchestration
+  ctx.std.score(...)       // Phase-based motion orchestration
   ctx.std.interpolate(...) // Multi-keyframe interpolation
-  ctx.std.css(...)        // Generate CSS strings
+  ctx.std.css(...)         // Generate CSS strings
 }
 ```
+
+The standard library covers more than `score`, `interpolate`, and `css` — see [Animation Basics](/docs/animation) for motion primitives and [Timing With Score And Cues](/docs/timing) for audio sync and cues.
 
 ## Next Steps
 
