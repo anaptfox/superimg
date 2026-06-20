@@ -1,6 +1,17 @@
 //! SuperImg Types - Pure TypeScript type definitions
 //! Core types, interfaces, and error classes for templates, rendering, and playback
 
+import type { TemplateModule } from "./types.js";
+import type { ImageModule } from "./image-types.js";
+import type { GifModule } from "./gif-types.js";
+import type { SvgModule } from "./svg-types.js";
+
+export type AnyTemplateModule =
+  | TemplateModule
+  | ImageModule
+  | GifModule
+  | SvgModule;
+
 // =============================================================================
 // CORE TYPES
 // =============================================================================
@@ -18,6 +29,8 @@ export type {
   FitMode,
 
   // Template Types
+  TemplateKind,
+  DefineSceneInput,
   TemplateModule,
   TemplateConfig,
   OutputPreset,
@@ -36,16 +49,6 @@ export type {
   ComposedTemplate,
 
   RenderOptions,
-
-  // Encoding Options
-  EncodingOptions,
-  OutputFormat,
-  VideoCodecPreference,
-  AudioCodecPreference,
-  QualityPreset,
-  BitrateMode,
-  LatencyMode,
-  HardwareAcceleration,
 
   // Asset Types
   AssetDeclaration,
@@ -66,8 +69,22 @@ export type {
   TailwindConfig,
 } from "./types.js";
 
+export type {
+  EncodingOptions,
+  OutputFormat,
+  VideoCodecPreference,
+  AudioCodecPreference,
+  QualityPreset,
+  BitrateMode,
+  LatencyMode,
+  HardwareAcceleration,
+} from "./encoding-types.js";
+
 // Template helpers
 export { defineScene, defineConfig } from "./types.js";
+export { defineImage, type DefineImageInput, type ImageModule, type ImageConfig, type ImageRenderContext, type ImageOutputPreset, type StillOutputFormat } from "./image-types.js";
+export { defineGif, type DefineGifInput, type GifModule, type GifConfig } from "./gif-types.js";
+export { defineSvg, type DefineSvgInput, type SvgModule, type SvgConfig, type SvgRenderContext, type SvgOutputPreset } from "./svg-types.js";
 
 // =============================================================================
 // RESULT TYPES & ERRORS
@@ -104,7 +121,7 @@ export { isComposedTemplate } from "./player.js";
 // STDLIB TYPES
 // =============================================================================
 
-export type { Stdlib } from "./stdlib.js";
+export type { Stdlib, ImageStdlib, SvgStdlib } from "./stdlib.js";
 
 // =============================================================================
 // CHECKPOINT TYPES
@@ -155,3 +172,10 @@ export type {
   ValidationResult,
   ValidationOptions,
 } from "./validation.js";
+
+// =============================================================================
+// BUILD INTEGRATION EVENTS
+// =============================================================================
+
+export { RENDER_EVENT_VERSION } from "./events.js";
+export type { RenderEvent } from "./events.js";

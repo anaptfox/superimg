@@ -142,3 +142,9 @@ export interface Stdlib {
   /** @core Raw scale factor (renderWidth / config.width). Use for JS math (animation offsets), not CSS strings. */
   scale: number;
 }
+
+/** Stdlib for still images — temporal primitives removed (timeline, oscillate, loop, etc.). */
+export type ImageStdlib = Omit<Stdlib, "timeline" | "oscillate" | "loop" | "pingpong" | "wiggle" | "montage" | "backgrounds" | "cue" | "compose">;
+
+/** Stdlib for SVG templates — same as ImageStdlib; std.svg and std.viz are the value-adds. */
+export type SvgStdlib = ImageStdlib;

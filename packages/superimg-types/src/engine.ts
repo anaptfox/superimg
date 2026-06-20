@@ -4,13 +4,13 @@ import type {
   TemplateModule,
   AudioValue,
   Duration,
-  EncodingOptions,
   BackgroundValue,
   RenderContext,
   TailwindConfig,
   AssetMeta,
   WatermarkValue,
 } from "./types.js";
+import type { EncodingOptions } from "./encoding-types.js";
 
 export interface ResolvedAssetDeclaration {
   key: string;

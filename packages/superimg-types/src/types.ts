@@ -3,7 +3,12 @@
 
 import type { Stdlib } from "./stdlib.js";
 import type { Checkpoint } from "./checkpoint.js";
+import type { EncodingOptions, OutputFormat } from "./encoding-types.js";
 
+export type TemplateKind = "video" | "image" | "gif" | "svg";
+
+export type DefineSceneInput<TData = Record<string, unknown>> =
+  Omit<TemplateModule<TData>, "kind"> & { kind?: "video" };
 
 /**
  * Define a template module with full type inference.
@@ -23,10 +28,11 @@ import type { Checkpoint } from "./checkpoint.js";
  * ```
  */
 export function defineScene<TData>(
-  module: TemplateModule<TData>
+  module: DefineSceneInput<TData>
 ): TemplateModule<TData> {
-  return module;
+  return { ...module, kind: "video" };
 }
+
 
 // =============================================================================
 // RENDER CONTEXT - Explicit, non-overlapping field names
@@ -140,6 +146,8 @@ export interface CssViewport {
 export interface TemplateModule<
   TData = Record<string, unknown>,
 > {
+  /** Template kind discriminator. */
+  readonly kind: "video";
   /** Render function that returns HTML string */
   render: (ctx: RenderContext<TData>) => string;
   /** Optional configuration */
@@ -155,6 +163,8 @@ export interface OutputPreset {
   height?: number;
   /** FPS override for this output */
   fps?: number;
+  /** Output format override for this preset */
+  format?: OutputFormat;
   /** Directory relative to project root to save the file */
   outDir?: string;
   /** Exact filename or path override to save the file (e.g. "final.mp4") */
@@ -194,6 +204,15 @@ export interface BaseConfig {
   stylesheets?: string[];
   /** Named output presets */
   outputs?: Record<string, OutputPreset>;
+  /**
+   * Automatically generate responsive `@1x` and `@2x` variations
+   * (only applies to image formats like webp/png).
+   */
+  responsive?: boolean;
+  /**
+   * Logical type or tag for this template (e.g. "og" for Open Graph images).
+   */
+  type?: string;
   /**
    * Enable Tailwind v4 Play CDN.
    * - `true`: Enable with defaults
@@ -345,6 +364,7 @@ export interface ResolvedScene {
 
 /** Output of compose() - first-class composed video with scene access */
 export interface ComposedTemplate {
+  readonly kind: "video";
   readonly type: "composed";
   readonly scenes: readonly ResolvedScene[];
   readonly totalFrames: number;
@@ -510,45 +530,4 @@ export interface RenderOptions {
   stylesheets?: string[];
   /** Tailwind v4 Play CDN config */
   tailwind?: boolean | TailwindConfig;
-}
-
-// =============================================================================
-// ENCODING OPTIONS
-// =============================================================================
-
-export type VideoCodecPreference = "avc" | "vp9" | "av1";
-export type AudioCodecPreference = "aac" | "opus";
-export type QualityPreset = "very-low" | "low" | "medium" | "high" | "very-high";
-export type OutputFormat = "mp4" | "webm" | "gif";
-export type BitrateMode = "constant" | "variable";
-export type LatencyMode = "quality" | "realtime";
-export type HardwareAcceleration = "no-preference" | "prefer-hardware" | "prefer-software";
-
-export interface EncodingOptions {
-  format?: OutputFormat;
-  video?: {
-    codec?: VideoCodecPreference | VideoCodecPreference[];
-    bitrate?: number | QualityPreset;
-    bitrateMode?: BitrateMode;
-    keyFrameInterval?: number;
-    alpha?: "discard" | "keep";
-    latencyMode?: LatencyMode;
-    hardwareAcceleration?: HardwareAcceleration;
-  };
-  audio?: {
-    codec?: AudioCodecPreference | AudioCodecPreference[];
-    bitrate?: number | QualityPreset;
-    bitrateMode?: BitrateMode;
-  };
-  mp4?: {
-    fastStart?: false | "in-memory" | "fragmented";
-  };
-  webm?: {
-    minimumClusterDuration?: number;
-  };
-  gif?: {
-    maxColors?: number;
-    loop?: number;
-    dither?: string;
-  };
 }

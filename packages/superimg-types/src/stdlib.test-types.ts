@@ -31,5 +31,4 @@ const _ctxCue = ctx.std.cue.transcript(
   ctx.sceneTimeSeconds,
 );
 
-// @ts-expect-error — removed in the hard rename to cue
-ctx.std["timeline"];
+const _ctxTimeline = ctx.std.timeline;

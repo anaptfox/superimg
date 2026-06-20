@@ -2,6 +2,9 @@
 //! Implementation types (PlayerState, PlayerStore, etc.) live in @superimg/player
 
 import type { Checkpoint } from "./checkpoint.js";
+import type { GifModule } from "./gif-types.js";
+import type { ImageModule } from "./image-types.js";
+import type { SvgModule } from "./svg-types.js";
 import type {
   TemplateModule,
   ComposedTemplate,
@@ -69,11 +72,11 @@ export interface PlayerEvents {
 // =============================================================================
 
 /** What can be passed to player.load() */
-export type PlayerInput = TemplateModule | ComposedTemplate;
+export type PlayerInput = TemplateModule | ImageModule | GifModule | SvgModule | ComposedTemplate;
 
 /** Type guard for ComposedTemplate */
 export function isComposedTemplate(
-  input: PlayerInput
+  input: unknown
 ): input is ComposedTemplate {
-  return "type" in input && input.type === "composed";
+  return typeof input === "object" && input !== null && "type" in input && input.type === "composed";
 }
