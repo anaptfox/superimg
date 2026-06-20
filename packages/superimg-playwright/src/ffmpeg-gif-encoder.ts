@@ -6,10 +6,19 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import type { VideoEncoder, VideoEncoderConfig } from "@superimg/types";
 
+function detectFrameExt(frame: Buffer): string {
+  // JPEG: FF D8 FF
+  if (frame[0] === 0xff && frame[1] === 0xd8 && frame[2] === 0xff) return "jpg";
+  // PNG: 89 50 4E 47
+  if (frame[0] === 0x89 && frame[1] === 0x50 && frame[2] === 0x4e && frame[3] === 0x47) return "png";
+  return "png";
+}
+
 export class FfmpegGifEncoder implements VideoEncoder<Buffer> {
   private frameDir = "";
   private frameCount = 0;
   private fps = 30;
+  private frameExt = "png";
   private gifOptions: { maxColors?: number; loop?: number; dither?: string } = {};
 
   async init(config: VideoEncoderConfig): Promise<void> {
@@ -33,8 +42,11 @@ export class FfmpegGifEncoder implements VideoEncoder<Buffer> {
   }
 
   async addFrame(frame: Buffer, _timestamp: number): Promise<void> {
+    if (this.frameCount === 0) {
+      this.frameExt = detectFrameExt(frame);
+    }
     const padded = String(this.frameCount).padStart(5, "0");
-    writeFileSync(join(this.frameDir, `frame_${padded}.png`), frame);
+    writeFileSync(join(this.frameDir, `frame_${padded}.${this.frameExt}`), frame);
     this.frameCount++;
   }
 
@@ -44,7 +56,7 @@ export class FfmpegGifEncoder implements VideoEncoder<Buffer> {
     const maxColors = this.gifOptions.maxColors ?? 256;
     const dither = this.gifOptions.dither ?? "sierra2_4a";
     const loop = this.gifOptions.loop ?? 0;
-    const inputPattern = join(this.frameDir, "frame_%05d.png");
+    const inputPattern = join(this.frameDir, `frame_%05d.${this.frameExt}`);
 
     // Pass 1: generate optimal color palette from all frames
     await execa("ffmpeg", [

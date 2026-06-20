@@ -17,6 +17,7 @@ import {
 import { PlaywrightFrameRenderer } from "./adapters.js";
 import { FfmpegGifEncoder } from "./ffmpeg-gif-encoder.js";
 import { NodeVideoEncoder } from "./node-encoder.js";
+import { SharpStillEncoder, type StillFormat } from "./sharp-still-encoder.js";
 
 const MIME_TYPES: Record<string, string> = {
   ".mp3": "audio/mpeg",
@@ -220,9 +221,23 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
       throw new Error("PlaywrightEngine not initialized. Call init() first.");
     }
 
+    const fmt = options?.encoding?.format;
+
+    // svg/html formats are pure text — they bypass Playwright entirely and must
+    // never reach createAdapters(). NodeVideoEncoder cannot handle them, so fail
+    // loudly here rather than producing a cryptic error deep in the encode path.
+    if (fmt === "svg" || fmt === "html") {
+      throw new Error(
+        `createAdapters() does not support format="${fmt}". ` +
+        `SVG and HTML outputs bypass the render engine entirely — call render() directly and write the result to disk.`
+      );
+    }
+
     let encoder: VideoEncoder<Buffer>;
-    if (options?.encoding?.format === "gif") {
+    if (fmt === "gif") {
       encoder = new FfmpegGifEncoder();
+    } else if (fmt === "png" || fmt === "webp" || fmt === "jpeg") {
+      encoder = new SharpStillEncoder(fmt as StillFormat);
     } else {
       // Server-side encoding via @mediabunny/server — handles both video-only and audio+video
       encoder = new NodeVideoEncoder();

@@ -9,8 +9,25 @@ const require = createRequire(import.meta.url);
 
 /** Lazy-load chromium to avoid ERR_MODULE_NOT_FOUND when playwright is not installed. */
 async function getChromium(): Promise<typeof import("playwright").chromium> {
-  const pw = await import("playwright");
-  return pw.chromium;
+  try {
+    const pw = await import("playwright");
+    return pw.chromium;
+  } catch (err: any) {
+    console.error("DEBUG: import('playwright') failed:", err);
+    if (err?.code === "ERR_MODULE_NOT_FOUND") {
+      try {
+        const cwdRequire = createRequire(join(process.cwd(), "package.json"));
+        const pwPath = cwdRequire.resolve("playwright");
+        console.error("DEBUG: resolved playwright path from cwd:", pwPath);
+        const pw = await import(pwPath);
+        return pw.chromium;
+      } catch (err2: any) {
+        console.error("DEBUG: fallback import failed:", err2);
+        // Fall through to original throw
+      }
+    }
+    throw err;
+  }
 }
 
 // =============================================================================
@@ -101,7 +118,8 @@ export async function checkBrowserStatus(): Promise<BrowserStatus> {
     executablePath = chromium.executablePath();
     await access(executablePath);
     installed = true;
-  } catch {
+  } catch (err: any) {
+    console.error("DEBUG: checkBrowserStatus failed:", err);
     executablePath = null;
     installed = false;
   }
@@ -153,9 +171,14 @@ export async function installBrowser(options: InstallOptions = {}): Promise<void
   try {
     cliPath = join(require.resolve("playwright/package.json"), "..", "cli.js");
   } catch {
-    throw new Error(
-      "Playwright is not installed. Run 'superimg setup' or 'npm install playwright' first."
-    );
+    try {
+      const cwdRequire = createRequire(join(process.cwd(), "package.json"));
+      cliPath = join(cwdRequire.resolve("playwright/package.json"), "..", "cli.js");
+    } catch {
+      throw new Error(
+        "Playwright is not installed. Run 'superimg setup' or 'npm install playwright' first."
+      );
+    }
   }
 
   try {
