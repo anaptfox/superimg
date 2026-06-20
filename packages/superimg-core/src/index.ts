@@ -4,10 +4,14 @@
 // Re-export types for convenience
 export type {
   RenderContext,
+  ImageRenderContext,
+  SvgRenderContext,
   OutputInfo,
   FitMode,
   CssViewport,
   RenderOptions,
+  TemplateKind,
+  AnyTemplateModule,
   TemplateModule,
   TemplateConfig,
   PlaybackMode,
@@ -30,6 +34,7 @@ export type {
 // Core functionality (browser-safe only)
 export * from "./shared/constants.js";
 export * from "./rendering/wasm.js";
+export * from "./rendering/runtime-info.js";
 export * from "./rendering/compiler.js";
 export * from "./shared/assets.js";
 export * from "./shared/asset-metadata.js";
@@ -42,3 +47,6 @@ export { compose } from "./composition/compose.js";
 export { scene } from "./composition/scene.js";
 export { transitions, renderWithTransition } from "./composition/transitions.js";
 export { parseDuration } from "./shared/utils.js";
+
+// Edge rendering
+export * from "./edge.js";

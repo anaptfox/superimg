@@ -22,7 +22,9 @@ export interface TemplateMetadataConfig {
   inlineCss?: string[];
   stylesheets?: string[];
   tailwind?: boolean | TailwindMetadataConfig;
-  outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
+  outputs?: Record<string, { width?: number; height?: number; fps?: number; format?: string }>;
+  responsive?: boolean;
+  type?: string;
   watermark?: import("@superimg/types").WatermarkValue;
   background?: import("@superimg/types").BackgroundValue;
   audio?: string | AudioMetadataConfig;
@@ -179,7 +181,7 @@ function readConfigObject(expr: any): TemplateMetadataConfig | undefined {
     if (key === "outputs") {
       const outputsExpr = property.value;
       if (outputsExpr.type === "ObjectExpression") {
-        const outputs: Record<string, { width?: number; height?: number; fps?: number }> = {};
+        const outputs: Record<string, { width?: number; height?: number; fps?: number; format?: string }> = {};
         for (const presetProp of outputsExpr.properties) {
           if (presetProp.type !== "Property" && presetProp.type !== "ObjectProperty") continue;
           if (presetProp.computed) continue;
@@ -192,7 +194,7 @@ function readConfigObject(expr: any): TemplateMetadataConfig | undefined {
           if (!presetName) continue;
           const presetExpr = presetProp.value;
           if (presetExpr.type !== "ObjectExpression") continue;
-          const preset: { width?: number; height?: number; fps?: number } = {};
+          const preset: { width?: number; height?: number; fps?: number; format?: string } = {};
           for (const field of presetExpr.properties) {
             if (field.type !== "Property" && field.type !== "ObjectProperty") continue;
             if (field.computed) continue;
@@ -203,6 +205,10 @@ function readConfigObject(expr: any): TemplateMetadataConfig | undefined {
               fieldKey = field.key.value;
             }
             if (!fieldKey) continue;
+            if (fieldKey === "format" && field.value.type === "Literal" && typeof field.value.value === "string") {
+              preset.format = field.value.value;
+              continue;
+            }
             const fieldValue = readPositiveNumberLiteral(field.value);
             if (fieldValue === undefined) continue;
             if (fieldKey === "width") preset.width = fieldValue;
@@ -244,6 +250,20 @@ function readConfigObject(expr: any): TemplateMetadataConfig | undefined {
       continue;
     }
 
+    if (key === "responsive") {
+      if (property.value.type === "Literal" && typeof property.value.value === "boolean") {
+        config.responsive = property.value.value;
+      }
+      continue;
+    }
+
+    if (key === "type") {
+      if (property.value.type === "Literal" && typeof property.value.value === "string") {
+        config.type = property.value.value;
+      }
+      continue;
+    }
+
     const numericValue = readPositiveNumberLiteral(property.value);
     if (numericValue === undefined) continue;
 
@@ -274,6 +294,8 @@ function readConfigObject(expr: any): TemplateMetadataConfig | undefined {
     config.duration === undefined &&
     config.tailwind === undefined &&
     config.outputs === undefined &&
+    config.responsive === undefined &&
+    config.type === undefined &&
     config.watermark === undefined &&
     config.background === undefined &&
     config.audio === undefined
@@ -437,7 +459,7 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
 
   if (!hasDefaultExport) {
     throw new TemplateCompilationError({
-      syntaxError: "Template must use `export default defineScene({ ... })`. Named exports are no longer supported.",
+      syntaxError: "Template must use `export default defineScene({ ... })` (or defineImage / defineGif). Named exports are no longer supported.",
       suggestion: "Change `export const myScene = defineScene(...)` to `export default defineScene(...)`. If you're seeing this on a file with a syntax error, fix the syntax first.",
     });
   }

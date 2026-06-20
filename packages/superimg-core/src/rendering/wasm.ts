@@ -1,6 +1,13 @@
 //! Pure TypeScript implementations (no WASM)
 
-import type { RenderContext, AssetMeta } from "@superimg/types";
+import type {
+  RenderContext,
+  AssetMeta,
+  ImageRenderContext,
+  SvgRenderContext,
+  ImageStdlib,
+  SvgStdlib,
+} from "@superimg/types";
 import { stdlib } from "../shared/stdlib.js";
 import { createTimeline } from "@superimg/stdlib/score";
 import type { PhaseConfig } from "@superimg/stdlib/score";
@@ -14,6 +21,26 @@ function computeOrientationFlags(width: number, height: number) {
   const isLandscape = aspectRatio > 1.0;
   const isSquare = aspectRatio > 0.9 && aspectRatio < 1.1;
   return { aspectRatio, isPortrait, isLandscape, isSquare };
+}
+
+function createStaticStdlib(scale: number): ImageStdlib {
+  const {
+    backgrounds: _backgrounds,
+    montage: _montage,
+    cue: _cue,
+    compose: _compose,
+    oscillate: _oscillate,
+    loop: _loop,
+    pingpong: _pingpong,
+    wiggle: _wiggle,
+    ...still
+  } = stdlib;
+
+  return {
+    ...still,
+    px: (value: number) => `${value * scale}px`,
+    scale,
+  } as ImageStdlib;
 }
 
 /**
@@ -109,5 +136,60 @@ export function createRenderContext(
       height,
       devicePixelRatio: 1,
     },
+  };
+}
+
+export interface StaticContextOptions {
+  data?: Record<string, unknown>;
+  outputName?: string;
+  assets?: Record<string, AssetMeta>;
+  assetResolver?: (filename: string) => string;
+  designWidth?: number;
+}
+
+export function createImageRenderContext(
+  width: number,
+  height: number,
+  options: StaticContextOptions = {}
+): ImageRenderContext {
+  const { aspectRatio, isPortrait, isLandscape, isSquare } =
+    computeOrientationFlags(width, height);
+  const outputName = options.outputName ?? "default";
+  const scale = options.designWidth ? width / options.designWidth : 1;
+
+  return {
+    std: createStaticStdlib(scale),
+    width,
+    height,
+    aspectRatio,
+    isPortrait,
+    isLandscape,
+    isSquare,
+    data: options.data ?? {},
+    assets: options.assets ?? {},
+    asset: options.assetResolver ?? ((filename) => filename),
+    output: {
+      name: outputName,
+      width,
+      height,
+      fit: "stretch",
+    },
+  };
+}
+
+export interface SvgContextOptions extends StaticContextOptions {
+  duration?: number;
+}
+
+export function createSvgRenderContext(
+  width: number,
+  height: number,
+  options: SvgContextOptions = {}
+): SvgRenderContext {
+  const base = createImageRenderContext(width, height, options);
+  return {
+    ...base,
+    std: base.std as SvgStdlib,
+    duration: options.duration,
   };
 }

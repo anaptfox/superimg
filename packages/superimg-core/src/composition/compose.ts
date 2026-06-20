@@ -119,6 +119,7 @@ export function compose(
   };
 
   const result: ComposedTemplate = {
+    kind: "video",
     type: "composed",
     scenes: resolvedScenes,
     totalFrames,

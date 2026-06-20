@@ -17,7 +17,10 @@ const generatedDir = join(srcDir, "generated");
 // Entry code that exports what templates need
 const entryCode = `
 // Identity functions for type inference
-export function defineScene(m) { return m; }
+export function defineScene(m) { return { ...m, kind: "video" }; }
+export function defineImage(m) { return { ...m, kind: "image" }; }
+export function defineGif(m) { return { ...m, kind: "gif" }; }
+export function defineSvg(m) { return { ...m, kind: "svg" }; }
 export function defineConfig(c) { return c; }
 
 // Real implementations from source

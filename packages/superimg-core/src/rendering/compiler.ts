@@ -61,6 +61,7 @@ export function compileTemplate(bundledCode: string): CompileResult {
 
   return {
     template: {
+      kind: def.kind ?? "video",
       render: def.render,
       config: def.config,
       data: def.data,
