@@ -41,7 +41,7 @@ export default defineScene({
     const { std, width, height, isPortrait, data } = ctx;
     const { title, subtitle, accentColor } = data;
 
-    const t = std.score({ enter: 0.375, hold: 0.5, exit: 0.125 });
+    const t = std.timeline({ enter: "1.5s", hold: "2.0s", exit: "0.5s" });
     const anim = t.motion({ y: 30 });
 
     // Responsive sizing

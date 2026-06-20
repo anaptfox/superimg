@@ -27,7 +27,7 @@ export default defineScene({
     const cx = 960;
     const cy = 440;
 
-    const t = std.score({ enter: 0.3, hold: 0.4, exit: 0.3 });
+    const t = std.timeline({ enter: "1.5s", hold: "2.0s", exit: "1.5s" });
     const opacity = t.motion({ y: 0 }).opacity;
 
     // Center polygon — slowly rotates, sides animate

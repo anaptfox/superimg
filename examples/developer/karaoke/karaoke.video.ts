@@ -1,6 +1,6 @@
 // Karaoke Example — canonical std.cue transcript sync
 // Demonstrates: std.cue.fromElevenLabs(), std.cue.transcript(),
-// charProgress(), between(), and std.score() scene-level choreography.
+// charProgress(), between(), and std.timeline() scene-level choreography.
 // Great for lyric videos, captions, and speech-synced animations.
 
 import { defineScene } from "superimg";
@@ -75,8 +75,8 @@ export default defineScene({
     const { std, sceneTimeSeconds: time, width, height, data } = ctx;
     const { transcript: rawTranscript, accentColor, bgColor } = data;
 
-    // score() frames the scene; cue() follows absolute transcript timestamps.
-    const scene = std.score({ enter: 0.15, captions: 0.7, exit: 0.15 });
+    // timeline() frames the scene; cue() follows absolute transcript timestamps.
+    const scene = std.timeline({ enter: "0.6s", captions: "2.8s", exit: "0.6s" });
     const panel = scene.motion({
       during: "enter",
       y: 24,

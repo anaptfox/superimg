@@ -55,14 +55,13 @@ export default defineScene({
 
     const r = std.createResponsive(ctx);
 
-    // === SCORE PHASES ===
+    // === TIMELINE PHASES ===
     // hook: 2s, events: 9s, recap: 2.5s, outro: 1.5s
-    // Total 15s. Fractions: 2/15, 9/15, 2.5/15, 1.5/15
-    const t = std.score({
-      hook: 2/15,
-      events: 9/15,
-      recap: 2.5/15,
-      outro: 1.5/15
+    const t = std.timeline({
+      hook: "2.0s",
+      events: "9.0s",
+      recap: "2.5s",
+      outro: "1.5s"
     });
 
     // Ken Burns background (shared)

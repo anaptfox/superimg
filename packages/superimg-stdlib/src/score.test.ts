@@ -1,32 +1,50 @@
 import { describe, expect, it } from "vitest";
-import { createScore } from "./score.js";
+import { createTimeline, compose } from "./score.js";
 
-function s(sp: number, phases?: Record<string, number>) {
-  return createScore({ sceneProgress: sp, sceneTimeSeconds: sp * 10 }, phases);
+/** Helper: create a timeline at scene progress sp, with 10s total duration. */
+function s(sp: number, phases?: Record<string, string>) {
+  return createTimeline(
+    { sceneProgress: sp, sceneTimeSeconds: sp * 10, sceneDurationSeconds: 10 },
+    phases,
+  );
 }
 
-describe("score — phase normalization", () => {
-  it("validates fractions sum <= 1", () => {
-    expect(() => s(0, { a: 0.6, b: 0.6 })).toThrow(/must sum to <= 1/);
+describe("timeline — phase normalization", () => {
+  it("rejects phases that sum past 100%", () => {
+    expect(() => s(0, { a: "60%", b: "60%" })).toThrow(/exceeds 100%/);
   });
 
-  it("rejects zero or negative fractions", () => {
-    expect(() => s(0, { a: 0, b: 1 })).toThrow(/must be > 0/);
-    expect(() => s(0, { a: -0.1, b: 0.9 })).toThrow(/must be > 0/);
+  it("rejects zero or negative durations", () => {
+    expect(() => s(0, { a: "-1s" })).toThrow(/invalid phase/);
+    expect(() => s(0, { a: "0s" })).toThrow(/invalid phase/);
   });
 
   it("rejects empty layouts", () => {
     expect(() => s(0, {})).toThrow(/at least one phase/);
   });
 
+  it("rejects strings without a valid unit", () => {
+    expect(() => s(0, { a: "foo" })).toThrow(/must end with/);
+  });
+
   it("accepts custom phase names", () => {
-    const t = s(0.5, { intro: 0.2, reveal: 0.5, outro: 0.3 });
+    const t = s(0.5, { intro: "20%", reveal: "50%", outro: "30%" });
     expect(t.active).toBe("reveal");
     expect(t.within("reveal")).toBeCloseTo(0.6, 5);
   });
+
+  it("accepts seconds strings", () => {
+    const t = s(0.5, { enter: "2s", hold: "6s", exit: "2s" });
+    expect(t.active).toBe("hold");
+  });
+
+  it("accepts milliseconds strings", () => {
+    const t = s(0.5, { enter: "2000ms", hold: "6000ms", exit: "2000ms" });
+    expect(t.active).toBe("hold");
+  });
 });
 
-describe("score — probes", () => {
+describe("timeline — probes", () => {
   it("exposes progress and seconds", () => {
     const t = s(0.3);
     expect(t.progress).toBe(0.3);
@@ -41,7 +59,7 @@ describe("score — probes", () => {
   });
 
   it("returns 'idle' in the silent remainder", () => {
-    const t = s(0.6, { enter: 0.1, hold: 0.4 });
+    const t = s(0.6, { enter: "10%", hold: "40%" });
     expect(t.active).toBe("idle");
   });
 
@@ -50,7 +68,7 @@ describe("score — probes", () => {
   });
 
   it("within() maps 0..1 inside a phase", () => {
-    const t = s(0.075, { enter: 0.15, hold: 0.7, exit: 0.15 });
+    const t = s(0.075, { enter: "15%", hold: "70%", exit: "15%" });
     expect(t.within("enter")).toBeCloseTo(0.5, 5);
     expect(t.within("hold")).toBe(0);
     expect(t.within("exit")).toBe(0);
@@ -62,7 +80,7 @@ describe("score — probes", () => {
   });
 });
 
-describe("score — motion enter/exit", () => {
+describe("timeline — motion enter/exit", () => {
   it("opacity 0 at sp=0 (fully entering)", () => {
     const t = s(0);
     const m = t.motion();
@@ -105,18 +123,32 @@ describe("score — motion enter/exit", () => {
     expect(inside.enter).toBeGreaterThan(0.3);
   });
 
-  it("`at` staggers the enter window", () => {
-    const phases = { enter: 0.2, hold: 0.6, exit: 0.2 };
+  it("`at` as fraction staggers the enter window", () => {
+    const phases = { enter: "20%", hold: "60%", exit: "20%" };
     const early = s(0.1, phases).motion({ y: 20, at: 0 });
     const late = s(0.1, phases).motion({ y: 20, at: 0.8 });
-    // Same sp; stagger pushes the late item's enter to later → less entered
     expect(early.enter).toBeGreaterThan(late.enter);
+  });
+
+  it("`at` as seconds string staggers the enter window", () => {
+    const phases = { enter: "2s", hold: "6s", exit: "2s" };
+    const early = s(0.1, phases).motion({ y: 20, at: "0s" });
+    const late = s(0.1, phases).motion({ y: 20, at: "1.6s" });
+    expect(early.enter).toBeGreaterThan(late.enter);
+  });
+
+  it("`for` as seconds string controls animation duration", () => {
+    const phases = { enter: "2s", hold: "6s", exit: "2s" };
+    // At sp=0.05 (0.5s into 10s): for="2s" fills the whole enter phase → halfway
+    const slow = s(0.05, phases).motion({ for: "2s" });
+    // for="0.1s" completes in 0.1s → already fully entered at sp=0.05
+    const fast = s(0.05, phases).motion({ for: "0.1s" });
+    expect(fast.enter).toBeGreaterThan(slow.enter);
   });
 
   it("`window` overrides phase-based timing for enter", () => {
     const t = s(0.5);
     const m = t.motion({ window: [0, 1] });
-    // With window = [0, 1], at sp=0.5 enter should be ~0.5 (cubic easing)
     expect(m.enter).toBeGreaterThan(0.4);
     expect(m.enter).toBeLessThan(1);
   });
@@ -124,7 +156,6 @@ describe("score — motion enter/exit", () => {
   it("exit pose defaults to mirror of enter start", () => {
     const t = s(1);
     const m = t.motion({ y: 30 });
-    // Fully exited: pose should be at (-30) — mirror of +30 start
     expect(m.transform).toContain("translateY(-30px)");
   });
 
@@ -135,17 +166,26 @@ describe("score — motion enter/exit", () => {
   });
 
   it("no exit when the layout has a single phase", () => {
-    const t = s(1, { all: 1 });
+    const t = s(1, { all: "100%" });
     const m = t.motion();
     expect(m.exit).toBe(0);
     expect(m.opacity).toBeCloseTo(1, 3);
   });
 
-  it("builds a ready-to-use style string with opacity + transform", () => {
+  it("exposes structured numeric values on MotionResult", () => {
+    const t = s(0.5);
+    const m = t.motion();
+    expect(typeof m.x).toBe("number");
+    expect(typeof m.y).toBe("number");
+    expect(typeof m.scale).toBe("number");
+    expect(typeof m.rotate).toBe("number");
+    expect(typeof m.blur).toBe("number");
+  });
+
+  it("builds a ready-to-use style string with opacity", () => {
     const t = s(0.5);
     const m = t.motion({ y: 20 });
     expect(m.style).toMatch(/opacity:/);
-    // Steady state has no transform offset
     expect(m.transform).toBe("");
   });
 
@@ -156,17 +196,29 @@ describe("score — motion enter/exit", () => {
     expect(ease.enter).toBeGreaterThan(linear.enter);
   });
 
-  it("spring(stiffness,damping) easing parses", () => {
+  it("spring object easing works", () => {
     const t = s(0.5);
-    const m = t.motion({ easing: "spring(200,20)" });
+    const m = t.motion({ easing: { stiffness: 200, damping: 20 } });
     expect(m.enter).toBeGreaterThan(0);
-    expect(m.enter).toBeLessThanOrEqual(1);
+    expect(m.enter).toBeLessThanOrEqual(1.5); // may overshoot
   });
 
-  it("named spring easing works", () => {
-    const t = s(0.5);
-    const m = t.motion({ easing: "spring" });
-    expect(m.enter).toBeGreaterThan(0);
+  it("all 31 EasingName values resolve without error", () => {
+    const names = [
+      "linear", "easeInQuad", "easeOutQuad", "easeInOutQuad",
+      "easeInSine", "easeOutSine", "easeInOutSine",
+      "easeInCubic", "easeOutCubic", "easeInOutCubic",
+      "easeInQuart", "easeOutQuart", "easeInOutQuart",
+      "easeInQuint", "easeOutQuint", "easeInOutQuint",
+      "easeInExpo", "easeOutExpo", "easeInOutExpo",
+      "easeInCirc", "easeOutCirc", "easeInOutCirc",
+      "easeInBack", "easeOutBack", "easeInOutBack",
+      "easeInElastic", "easeOutElastic", "easeInOutElastic",
+      "easeInBounce", "easeOutBounce", "easeInOutBounce",
+    ] as const;
+    for (const name of names) {
+      expect(() => s(0.5).motion({ easing: name })).not.toThrow();
+    }
   });
 
   it("rejects unknown easing names", () => {
@@ -174,40 +226,41 @@ describe("score — motion enter/exit", () => {
   });
 });
 
-describe("score — tween", () => {
+describe("timeline — tween", () => {
   it("scopes scalar interpolation to a phase", () => {
-    const phases = { enter: 0.2, hold: 0.6, exit: 0.2 };
+    const phases = { enter: "20%", hold: "60%", exit: "20%" };
     expect(s(0, phases).tween(0, 100, { during: "enter" })).toBeCloseTo(0, 5);
-    expect(
-      s(0.2, phases).tween(0, 100, { during: "enter" }),
-    ).toBeCloseTo(100, 5);
-    expect(
-      s(0.1, phases).tween(0, 100, { during: "enter" }),
-    ).toBeGreaterThan(50); // easeOutCubic at halfway
+    expect(s(0.2, phases).tween(0, 100, { during: "enter" })).toBeCloseTo(100, 5);
+    expect(s(0.1, phases).tween(0, 100, { during: "enter" })).toBeGreaterThan(50);
   });
 
-  it("respects `at` offset inside the phase", () => {
-    const early = s(0.05, { enter: 0.2, hold: 0.8 }).tween(0, 1, {
-      during: "enter",
-      at: 0,
+  it("respects `at` fraction offset inside the phase", () => {
+    const early = s(0.05, { enter: "20%", hold: "80%" }).tween(0, 1, {
+      during: "enter", at: 0,
     });
-    const late = s(0.05, { enter: 0.2, hold: 0.8 }).tween(0, 1, {
-      during: "enter",
-      at: 0.8,
+    const late = s(0.05, { enter: "20%", hold: "80%" }).tween(0, 1, {
+      during: "enter", at: 0.8,
     });
     expect(early).toBeGreaterThan(late);
   });
 
+  it("respects `for` seconds string", () => {
+    const v = s(0.05, { enter: "2s", hold: "8s" }).tween(0, 100, {
+      during: "enter", for: "0.5s",
+    });
+    // 0.5s window out of 2s enter → at sp=0.05 (0.5s) we're at the end of the window
+    expect(v).toBeGreaterThan(90);
+  });
+
   it("linear pattern", () => {
-    const v = s(0.1, { enter: 0.2, hold: 0.8 }).tween(0, 100, {
-      during: "enter",
-      pattern: "linear",
+    const v = s(0.1, { enter: "20%", hold: "80%" }).tween(0, 100, {
+      during: "enter", pattern: "linear",
     });
     expect(v).toBeCloseTo(50, 3);
   });
 
   it("sine pattern peaks at midpoint", () => {
-    const phases = { enter: 0.2, hold: 0.8 };
+    const phases = { enter: "20%", hold: "80%" };
     const mid = s(0.1, phases).tween(0, 100, { during: "enter", pattern: "sine" });
     expect(mid).toBeCloseTo(100, 3);
     const early = s(0.01, phases).tween(0, 100, { during: "enter", pattern: "sine" });
@@ -215,7 +268,7 @@ describe("score — tween", () => {
   });
 });
 
-describe("score — value", () => {
+describe("timeline — value", () => {
   it("passes through the value unchanged", () => {
     const t = s(0.5);
     const v = t.value(42, {});
@@ -224,7 +277,7 @@ describe("score — value", () => {
   });
 
   it("fades opacity during fadeOn phase", () => {
-    const phases = { enter: 0.1, hold: 0.8, exit: 0.1 };
+    const phases = { enter: "10%", hold: "80%", exit: "10%" };
     const before = s(0.5, phases).value(0.7, { fadeOn: "exit" });
     const mid = s(0.95, phases).value(0.7, { fadeOn: "exit" });
     expect(before.opacity).toBe(1);
@@ -232,7 +285,7 @@ describe("score — value", () => {
   });
 
   it("restricts visibility to `during` phases", () => {
-    const phases = { a: 0.3, b: 0.4, c: 0.3 };
+    const phases = { a: "30%", b: "40%", c: "30%" };
     const inA = s(0.1, phases).value("x", { during: "b" });
     const inB = s(0.5, phases).value("x", { during: "b" });
     expect(inA.opacity).toBe(0);
@@ -240,7 +293,7 @@ describe("score — value", () => {
   });
 
   it("accepts array of phases for fadeOn / during", () => {
-    const phases = { a: 0.3, b: 0.4, c: 0.3 };
+    const phases = { a: "30%", b: "40%", c: "30%" };
     const inA = s(0.1, phases).value("x", { during: ["a", "b"] });
     const inC = s(0.8, phases).value("x", { during: ["a", "b"] });
     expect(inA.opacity).toBe(1);
@@ -248,27 +301,56 @@ describe("score — value", () => {
   });
 });
 
-describe("score — real migration samples", () => {
-  it("stats-card pattern: y motion with stagger in enter", () => {
-    const t = s(0.03, { enter: 0.3, hold: 0.45, exit: 0.25 });
+describe("timeline — compose()", () => {
+  it("merges two motion results, last-wins per property", () => {
+    const a = s(0.5).motion({ y: 20 });
+    const b = { y: 40 };
+    const merged = compose(a, b);
+    expect(merged.y).toBe(40);
+    expect(merged.opacity).toBe(a.opacity); // from a
+  });
+
+  it("rebuilds transform from merged values", () => {
+    const a = s(0.5).motion();
+    const merged = compose(a, { scale: 1.05 });
+    expect(merged.transform).toContain("scale(1.05)");
+    expect(merged.style).toMatch(/opacity:/);
+  });
+
+  it("visible flag carries through", () => {
+    const m = s(0).motion(); // not yet entered
+    const merged = compose(m, { scale: 1 });
+    expect(merged.visible).toBe(false);
+  });
+});
+
+describe("timeline — real migration samples", () => {
+  it("stats-card pattern: y motion with stagger in enter (fraction at)", () => {
+    const t = s(0.03, { enter: "30%", hold: "45%", exit: "25%" });
     const value = t.motion({ y: 15, at: 0.15 });
     // sp 0.03 < (0.3 × 0.15 = 0.045), still before the staggered start → near-zero enter
     expect(value.enter).toBeLessThan(0.05);
   });
 
+  it("stats-card pattern: y motion with stagger in enter (seconds at)", () => {
+    // enter is 3s (30% of 10s). at "0.45s" = 15% into enter (same as 0.15 fraction)
+    const t = s(0.03, { enter: "30%", hold: "45%", exit: "25%" });
+    const value = t.motion({ y: 15, at: "0.45s" });
+    expect(value.enter).toBeLessThan(0.05);
+  });
+
   it("speaker window pattern: window timing", () => {
-    const t = s(0.04, { enter: 0.08, hold: 0.83, exit: 0.09 });
+    const t = s(0.04, { enter: "8%", hold: "83%", exit: "9%" });
     const photo = t.motion({ window: [0, 0.08] });
     expect(photo.enter).toBeGreaterThan(0.1);
     expect(photo.exit).toBe(0);
   });
 
   it("list stagger: 5-item iteration via at = i/n", () => {
-    const t = s(0.05, { enter: 0.2, hold: 0.6, exit: 0.2 });
+    const t = s(0.05, { enter: "20%", hold: "60%", exit: "20%" });
     const opacities = [0, 1, 2, 3, 4].map((i) =>
       t.motion({ at: i / 5, easing: "easeOutElastic" }).opacity,
     );
-    // Items with smaller `at` are more entered
     for (let i = 0; i < opacities.length - 1; i++) {
       expect(opacities[i]!).toBeGreaterThanOrEqual(opacities[i + 1]!);
     }

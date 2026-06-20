@@ -64,14 +64,14 @@ console.log(result); // 5`,
   render(ctx) {
     const { std, width, height, data } = ctx;
 
-    // Timeline: 1s Enter | 3s Hold | 1s Exit (on a 5s duration)
-    const t = std.score({ enter: 0.2, hold: 0.6, exit: 0.2 });
+    // Timeline: 1s Enter | 3s Hold | 1s Exit
+    const t = std.timeline({ enter: "1.0s", hold: "3.0s", exit: "1.0s" });
 
     // Static code animation
-    const staticAnim = t.motion({ at: 0, duration: 0.8, y: 30 });
+    const staticAnim = t.motion({ at: 0, for: 0.8, y: 30 });
 
     // Dynamic code animation (staggered +0.3 in the 1s enter phase = 0.3s)
-    const dynamicAnim = t.motion({ at: 0.3, duration: 0.8, y: 30 });
+    const dynamicAnim = t.motion({ at: 0.3, for: 0.8, y: 30 });
 
     // Dynamic highlighting: via ctx.std.code (same function, different access)
     const dynamicCodeHtml = std.code.highlight(data.dynamicCode, {

@@ -1,5 +1,5 @@
 // Hello World Example — Animated Title Card
-// Demonstrates: std.score, gradients, and cinematic animation logic
+// Demonstrates: std.timeline, gradients, and cinematic animation logic
 
 import { defineScene } from "superimg";
 
@@ -44,12 +44,12 @@ export default defineScene({
     const { title, subtitle, accentColor } = data;
 
     // Timeline: 1.5s Enter | 2s Hold | 0.5s Exit
-    const t = std.score({ enter: 0.375, hold: 0.5, exit: 0.125 });
+    const t = std.timeline({ enter: "1.5s", hold: "2.0s", exit: "0.5s" });
 
     // Animations with more overlapping/organic timings
-    const lineAnim     = t.motion({ at: 0.05, duration: 0.7, easing: "easeOutCubic" });
-    const titleAnim    = t.motion({ at: 0.1,  duration: 0.8, y: 40, scale: 0.96, easing: "easeOutCubic" });
-    const subtitleAnim = t.motion({ at: 0.25, duration: 0.7, y: 20, easing: "easeOutCubic" });
+    const lineAnim     = t.motion({ at: 0.05, for: 0.7, easing: "easeOutCubic" });
+    const titleAnim    = t.motion({ at: 0.1,  for: 0.8, y: 40, scale: 0.96, easing: "easeOutCubic" });
+    const subtitleAnim = t.motion({ at: 0.25, for: 0.7, y: 20, easing: "easeOutCubic" });
 
     // Cinematic "Camera" Scale: slowly zooms in over the entire scene
     const cameraScale = std.interpolate(t.progress, [0, 1], [1, 1.04]);

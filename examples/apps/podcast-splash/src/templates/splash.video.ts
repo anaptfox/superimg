@@ -44,7 +44,7 @@ export default defineScene({
     const r = std.createResponsive(ctx);
 
     // Phases: enter (1.8s) | hold (3s) | exit (1.2s)
-    const t = std.score({ enter: 0.3, hold: 0.5, exit: 0.2 });
+    const t = std.timeline({ enter: "1.8s", hold: "3.0s", exit: "1.2s" });
 
     // Local helper: progress within a sub-window of a phase, eased.
     const win = (phase: "enter" | "hold" | "exit", at: number, dur: number) => {

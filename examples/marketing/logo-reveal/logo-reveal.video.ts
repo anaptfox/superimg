@@ -55,13 +55,13 @@ export default defineScene<LogoRevealVideoData>({
           : "#ffffff";
     const textColor = theme === "dark" || theme === "custom" ? "#ffffff" : "#0a0a0a";
 
-    const score = std.score({
-      buildUp: 0.15,
-      reveal: 0.35,
-      settle: 0.1,
-      tagline: 0.15,
-      hold: 0.15,
-      outro: 0.1,
+    const score = std.timeline({
+      buildUp: "0.6s",
+      reveal: "1.4s",
+      settle: "0.4s",
+      tagline: "0.6s",
+      hold: "0.6s",
+      outro: "0.4s",
     });
     const buildUpP = score.tween(0, 1, { during: "buildUp", easing: "easeOutCubic" });
     const revealP = score.within("reveal");

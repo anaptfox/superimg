@@ -47,10 +47,10 @@ export default defineScene({
     const r = std.createResponsive(ctx);
 
     // Phases: Intro | Chunks (Content) | Outro
-    const t = std.score({
-      intro: 0.1,    // 2.2s
-      content: 0.75, // 16.5s
-      outro: 0.15    // 3.3s
+    const t = std.timeline({
+      intro: "2.2s",
+      content: "16.5s",
+      outro: "3.3s"
     });
 
     // Diagonal wipe (first 1.5s)
@@ -58,9 +58,9 @@ export default defineScene({
     const wipeOffset = std.interpolate(wipeEased, [0, 1], [-50, 100], "easeInOutCubic");
 
     // Header + photo animations
-    const headerAnim = t.motion({ at: 0.6, duration: 0.4, exit: false });
-    const photoAnim = t.motion({ at: 0.7, duration: 0.5, scale: 0.2 });
-    const footerAnim = t.motion({ at: 0.8, duration: 0.5 });
+    const headerAnim = t.motion({ at: 0.6, for: 0.4, exit: false });
+    const photoAnim = t.motion({ at: 0.7, for: 0.5, scale: 0.2 });
+    const footerAnim = t.motion({ at: 0.8, for: 0.5 });
 
     // Closing animation
     const closingAnim = t.motion({ during: "outro", y: 30 });

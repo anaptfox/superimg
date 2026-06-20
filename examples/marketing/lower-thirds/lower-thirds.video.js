@@ -1,5 +1,5 @@
 // Lower Thirds Example — Broadcast-style speaker identification
-// Demonstrates: std.css(), std.css.stack(), std.stagger(), std.score(), color.alpha()
+// Demonstrates: std.css(), std.css.stack(), std.stagger(), std.timeline(), color.alpha()
 // Customize by passing data or editing the defaults!
 
 import { defineScene } from "superimg";
@@ -49,7 +49,7 @@ export default defineScene({
 
     const offScreenX = -(width * 0.45);
 
-    const t = std.score({ enter: 0.1875, hold: 0.625, exit: 0.1875 });
+    const t = std.timeline({ enter: "0.75s", hold: "2.5s", exit: "0.75s" });
     const phaseEnterP = t.within("enter");
     const phaseExitP = t.within("exit");
 

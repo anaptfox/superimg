@@ -36,21 +36,21 @@ export default defineScene({
     const r = std.createResponsive(ctx);
 
     // Timeline for a 24s scene
-    const t = std.score({
-      enter: 0.0625, // 1.5s
-      hold: 0.875,   // 21s
-      exit: 0.0625   // 1.5s
+    const t = std.timeline({
+      enter: "1.5s",
+      hold: "21.0s",
+      exit: "1.5s"
     });
 
     // Frame animation
     const frameAnim = t.motion({ scale: 0.2 });
 
     // Header animation (starts after frame enter)
-    const headerAnim = t.motion({ at: 0.2, duration: 0.8 });
+    const headerAnim = t.motion({ at: 0.2, for: 0.8 });
 
     // Photo + attribution (starts after header)
-    const photoAnim = t.motion({ at: 0.4, duration: 0.8, x: 100 });
-    const attrAnim = t.motion({ at: 0.5, duration: 0.6, exit: false });
+    const photoAnim = t.motion({ at: 0.4, for: 0.8, x: 100 });
+    const attrAnim = t.motion({ at: 0.5, for: 0.6, exit: false });
 
     // Typewriter timing (manual progress over the hold phase)
     const typeStart = 4;

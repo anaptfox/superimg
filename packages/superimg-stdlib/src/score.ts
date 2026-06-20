@@ -1,61 +1,40 @@
 /**
- * score() — unified scene-local timing primitive.
+ * timeline() — unified scene-local timing primitive.
  *
- * Given a phase layout, returns an object for declaring motions, tweens, and
- * values scoped to those phases with auto enter + auto exit and stagger.
- * See `packages/superimg-stdlib/DESIGN_score.md` for the full design.
+ * Given a phase layout in seconds/percentages, returns an object for declaring
+ * motions, tweens, and values scoped to those phases.
  *
  * ```ts
- * const t = std.score({ enter: 0.15, hold: 0.70, exit: 0.15 });
- * const card = t.motion();                       // auto enter + exit
- * const val  = t.motion({ y: 15, at: 0.15 });    // stagger in enter phase
+ * const t = std.timeline({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
+ * const card = t.motion();                            // auto enter + exit
+ * const val  = t.motion({ y: 15, at: "0.1s" });       // stagger 0.1s into enter
  * const cnt  = t.tween(0, target, { during: "enter" });
  * const bar  = t.value(value / target, { fadeOn: "exit" });
  * ```
  */
 
-import { clamp01 } from "./easing.js";
+import { clamp01, type EasingFn, type EasingName } from "./easing.js";
 import * as easing from "./easing.js";
-import type { EasingFn } from "./easing.js";
 import { lerp } from "./math.js";
+import { type SpringConfig, springCurve } from "./spring.js";
 
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
 
-/** Phase layout. Values are fractions of the scene (0..1). Must sum to <= 1. */
-export type PhaseConfig = Record<string, number>;
+/**
+ * Phase layout in time units. Values are duration strings ("0.6s", "600ms")
+ * or percentages ("15%") of the scene duration. Must sum to <= 100% / scene.
+ */
+export type PhaseConfig = Record<string, string>;
 
-/** Default phase split used when `std.score()` is called with no argument. */
-export interface DefaultPhases {
-  enter: 0.15;
-  hold: 0.7;
-  exit: 0.15;
-}
-
-/** Named easing or a custom function that maps [0,1] → [0,1]. */
-export type EasingSpec =
-  | "linear"
-  | "easeIn"
-  | "easeOut"
-  | "easeInOut"
-  | "easeInQuad"
-  | "easeOutQuad"
-  | "easeInOutQuad"
-  | "easeInCubic"
-  | "easeOutCubic"
-  | "easeInOutCubic"
-  | "easeInQuart"
-  | "easeOutQuart"
-  | "easeInOutQuart"
-  | "easeInExpo"
-  | "easeOutExpo"
-  | "easeOutBack"
-  | "easeOutElastic"
-  | "easeOutBounce"
-  | "spring"
-  | `spring(${number},${number})`
-  | ((t: number) => number);
+/**
+ * Easing for motion and tween calls. Accepts:
+ * - Named easing: `"easeOutCubic"`, `"easeInBack"`, etc.
+ * - Custom function: `(t: number) => number`
+ * - Spring config: `{ stiffness: 180, damping: 18 }`
+ */
+export type MotionEasing = EasingName | EasingFn | SpringConfig;
 
 export interface MotionOpts<P extends string = string> {
   x?: number;
@@ -66,34 +45,43 @@ export interface MotionOpts<P extends string = string> {
   fromOpacity?: number;
 
   during?: P;
-  at?: number;
-  duration?: number;
-  window?: [start: number, end: number];
+  at?: number | string;  // fraction of phase OR absolute time e.g. "0.28s"
+  for?: number | string; // fraction of phase OR absolute time e.g. "0.5s"
+  window?: [start: number, end: number]; // absolute scene [0,1] fractions
 
-  easing?: EasingSpec;
-  exitEasing?: EasingSpec;
+  easing?: MotionEasing;
+  exitEasing?: MotionEasing;
 
   exit?: boolean | Partial<MotionOpts<P>>;
 }
 
 export interface MotionResult {
+  // Structured values — compose these before serializing to CSS
+  x: number;
+  y: number;
+  scale: number;
+  rotate: number;
+  blur: number;
+  opacity: number;
   enter: number;
   exit: number;
   visible: boolean;
   phase: "before" | "entering" | "steady" | "exiting" | "after";
 
-  opacity: number;
+  // Derived CSS — built from the structured values above
   transform: string;
   filter: string;
-
   style: string;
 }
 
+/** Partial motion values for use with compose(). */
+export type MotionValue = Partial<Pick<MotionResult, "x" | "y" | "scale" | "rotate" | "blur" | "opacity">>;
+
 export interface TweenOpts<P extends string = string> {
   during?: P;
-  at?: number;
-  duration?: number;
-  easing?: EasingSpec;
+  at?: number | string;
+  for?: number | string;
+  easing?: MotionEasing;
   pattern?: "linear" | "sine" | "pulse" | "bounce";
 }
 
@@ -107,7 +95,7 @@ export interface ValueResult<T> {
   opacity: number;
 }
 
-export interface Score<P extends string = string> {
+export interface Timeline<P extends string = string> {
   readonly progress: number;
   readonly seconds: number;
   readonly active: P | "idle";
@@ -118,97 +106,68 @@ export interface Score<P extends string = string> {
   value<T extends number | string>(v: T, opts?: ValueOpts<P>): ValueResult<T>;
 }
 
-export type ScoreOf<P extends PhaseConfig | undefined> =
+export type TimelineOf<P extends PhaseConfig | undefined> =
   P extends PhaseConfig
-    ? Score<Extract<keyof P, string>>
-    : Score<Extract<keyof DefaultPhases, string>>;
+    ? Timeline<Extract<keyof P, string>>
+    : Timeline<"enter" | "hold" | "exit">;
+
+/** Minimal surface timeline() needs from the per-frame render context. */
+export interface TimelineContext {
+  sceneProgress: number;
+  sceneTimeSeconds: number;
+  sceneDurationSeconds: number;
+}
+
+// Kept for any code that referenced ScoreContext by name.
+export type ScoreContext = TimelineContext;
 
 // -----------------------------------------------------------------------------
 // Defaults
 // -----------------------------------------------------------------------------
 
-const DEFAULT_PHASES: PhaseConfig = { enter: 0.15, hold: 0.7, exit: 0.15 };
+const DEFAULT_PHASES: PhaseConfig = { enter: "15%", hold: "70%", exit: "15%" };
 const DEFAULT_ENTER_EASING: EasingFn = easing.easeOutCubic;
 const DEFAULT_EXIT_EASING: EasingFn = easing.easeInCubic;
 
 // -----------------------------------------------------------------------------
-// Easing resolution — combines named, spring, and function specs
+// Easing
 // -----------------------------------------------------------------------------
 
 const NAMED_EASINGS: Record<string, EasingFn> = {
   linear: easing.linear,
-  easeIn: easing.easeInCubic,
-  easeOut: easing.easeOutCubic,
-  easeInOut: easing.easeInOutCubic,
-  easeInQuad: easing.easeInQuad,
-  easeOutQuad: easing.easeOutQuad,
-  easeInOutQuad: easing.easeInOutQuad,
-  easeInCubic: easing.easeInCubic,
-  easeOutCubic: easing.easeOutCubic,
-  easeInOutCubic: easing.easeInOutCubic,
-  easeInQuart: easing.easeInQuart,
-  easeOutQuart: easing.easeOutQuart,
-  easeInOutQuart: easing.easeInOutQuart,
-  easeInExpo: easing.easeInExpo,
-  easeOutExpo: easing.easeOutExpo,
-  easeOutBack: easing.easeOutBack,
-  easeOutElastic: easing.easeOutElastic,
-  easeOutBounce: easing.easeOutBounce,
+  easeInQuad: easing.easeInQuad,     easeOutQuad: easing.easeOutQuad,     easeInOutQuad: easing.easeInOutQuad,
+  easeInSine: easing.easeInSine,     easeOutSine: easing.easeOutSine,     easeInOutSine: easing.easeInOutSine,
+  easeInCubic: easing.easeInCubic,   easeOutCubic: easing.easeOutCubic,   easeInOutCubic: easing.easeInOutCubic,
+  easeInQuart: easing.easeInQuart,   easeOutQuart: easing.easeOutQuart,   easeInOutQuart: easing.easeInOutQuart,
+  easeInQuint: easing.easeInQuint,   easeOutQuint: easing.easeOutQuint,   easeInOutQuint: easing.easeInOutQuint,
+  easeInExpo: easing.easeInExpo,     easeOutExpo: easing.easeOutExpo,     easeInOutExpo: easing.easeInOutExpo,
+  easeInCirc: easing.easeInCirc,     easeOutCirc: easing.easeOutCirc,     easeInOutCirc: easing.easeInOutCirc,
+  easeInBack: easing.easeInBack,     easeOutBack: easing.easeOutBack,     easeInOutBack: easing.easeInOutBack,
+  easeInElastic: easing.easeInElastic, easeOutElastic: easing.easeOutElastic, easeInOutElastic: easing.easeInOutElastic,
+  easeInBounce: easing.easeInBounce, easeOutBounce: easing.easeOutBounce, easeInOutBounce: easing.easeInOutBounce,
 };
 
-// Mirrors an enter easing to a natural exit counterpart.
 const EXIT_MIRROR: Record<string, EasingFn> = {
-  easeOut: easing.easeInCubic,
-  easeOutQuad: easing.easeInQuad,
-  easeOutCubic: easing.easeInCubic,
-  easeOutQuart: easing.easeInQuart,
-  easeOutExpo: easing.easeInExpo,
-  easeOutBack: easing.easeInQuad,
-  easeOutElastic: easing.easeInQuad,
-  easeOutBounce: easing.easeInQuad,
-  easeInOut: easing.easeInOutCubic,
-  easeInOutQuad: easing.easeInOutQuad,
-  easeInOutCubic: easing.easeInOutCubic,
-  easeInOutQuart: easing.easeInOutQuart,
+  easeOutQuad: easing.easeInQuad,       easeOutCubic: easing.easeInCubic,
+  easeOutQuart: easing.easeInQuart,     easeOutQuint: easing.easeInQuint,
+  easeOutSine: easing.easeInSine,       easeOutExpo: easing.easeInExpo,
+  easeOutCirc: easing.easeInCirc,       easeOutBack: easing.easeInQuad,
+  easeOutElastic: easing.easeInQuad,    easeOutBounce: easing.easeInQuad,
+  easeInOutQuad: easing.easeInOutQuad,  easeInOutCubic: easing.easeInOutCubic,
+  easeInOutQuart: easing.easeInOutQuart, easeInOutSine: easing.easeInOutSine,
+  easeInOutExpo: easing.easeInOutExpo,
 };
 
-const SPRING_RE = /^spring\(([\d.]+),\s*([\d.]+)\)$/;
-
-function makeSpring(stiffness: number, damping: number): EasingFn {
-  // Simple critically-damped-ish spring approximation in [0, 1].
-  // Not physically accurate; produces a single overshoot for k>50 d<20.
-  const omega = Math.sqrt(Math.max(stiffness, 1));
-  const zeta = damping / (2 * Math.sqrt(Math.max(stiffness, 1)));
-  return (t: number) => {
-    const x = clamp01(t);
-    if (x === 0 || x === 1) return x;
-    if (zeta < 1) {
-      const wd = omega * Math.sqrt(Math.max(1 - zeta * zeta, 1e-6));
-      const decay = Math.exp(-zeta * omega * x);
-      return 1 - decay * Math.cos(wd * x);
-    }
-    return 1 - Math.exp(-omega * x) * (1 + omega * x);
-  };
-}
-
-function resolveEasing(
-  spec: EasingSpec | undefined,
-  fallback: EasingFn,
-): EasingFn {
+function resolveEasing(spec: MotionEasing | undefined, fallback: EasingFn): EasingFn {
   if (spec === undefined) return fallback;
   if (typeof spec === "function") return spec;
-  if (spec === "spring") return makeSpring(180, 18);
-  const m = SPRING_RE.exec(spec);
-  if (m) return makeSpring(Number(m[1]), Number(m[2]));
+  if (typeof spec === "object") return (t: number) => springCurve(t, spec);
   const fn = NAMED_EASINGS[spec];
-  if (!fn) throw new Error(`Unknown easing: ${spec}`);
+  if (!fn) throw new Error(`Unknown easing: "${spec}"`);
   return fn;
 }
 
-function mirrorExitEasing(
-  spec: EasingSpec | undefined,
-  fallback: EasingFn,
-): EasingFn {
+function mirrorExitEasing(spec: MotionEasing | undefined, fallback: EasingFn): EasingFn {
   if (spec === undefined) return fallback;
   if (typeof spec === "string") {
     const mirrored = EXIT_MIRROR[spec];
@@ -228,28 +187,38 @@ interface NormalizedPhase {
   fraction: number;
 }
 
-function normalizePhases(cfg: PhaseConfig): NormalizedPhase[] {
-  const entries = Object.entries(cfg);
-  if (entries.length === 0) {
-    throw new Error("score(): phase layout must have at least one phase");
+function parsePhaseDuration(value: string, totalSeconds: number): number {
+  const s = value.trim();
+  if (s.endsWith("%")) {
+    const pct = parseFloat(s);
+    if (!Number.isFinite(pct) || pct <= 0)
+      throw new Error(`timeline(): invalid phase "%": "${value}"`);
+    return pct / 100;
   }
-  let total = 0;
-  for (const [name, fraction] of entries) {
-    if (!Number.isFinite(fraction) || fraction <= 0) {
-      throw new Error(
-        `score(): phase "${name}" has invalid fraction ${fraction}; must be > 0`,
-      );
-    }
-    total += fraction;
+  if (s.endsWith("ms")) {
+    const ms = parseFloat(s);
+    if (!Number.isFinite(ms) || ms <= 0)
+      throw new Error(`timeline(): invalid phase duration: "${value}"`);
+    return ms / 1000 / totalSeconds;
   }
-  if (total > 1.0000001) {
-    throw new Error(
-      `score(): phase fractions must sum to <= 1 (got ${total.toFixed(3)})`,
-    );
+  if (s.endsWith("s")) {
+    const sec = parseFloat(s);
+    if (!Number.isFinite(sec) || sec <= 0)
+      throw new Error(`timeline(): invalid phase duration: "${value}"`);
+    return sec / totalSeconds;
   }
+  throw new Error(`timeline(): phase "${value}" must end with "s", "ms", or "%" (e.g. "0.6s", "15%")`);
+}
 
+function normalizePhases(cfg: PhaseConfig, totalSeconds: number): NormalizedPhase[] {
+  const entries = Object.entries(cfg);
+  if (entries.length === 0) throw new Error("timeline(): phase layout must have at least one phase");
+  const fractions = entries.map(([name, v]) => ({ name, fraction: parsePhaseDuration(v, totalSeconds) }));
+  const total = fractions.reduce((s, f) => s + f.fraction, 0);
+  if (total > 1.0000001)
+    throw new Error(`timeline(): phases sum to ${(total * 100).toFixed(1)}% which exceeds 100%`);
   let acc = 0;
-  return entries.map(([name, fraction]) => {
+  return fractions.map(({ name, fraction }) => {
     const start = acc;
     const end = acc + fraction;
     acc = end;
@@ -257,20 +226,22 @@ function normalizePhases(cfg: PhaseConfig): NormalizedPhase[] {
   });
 }
 
+/** Convert an at/for value to a scene-fraction offset within the phase. */
+function parseMotionTime(value: number | string, phaseSpan: number, totalSeconds: number): number {
+  if (typeof value === "number") return value * phaseSpan;
+  const s = value.trim();
+  if (s.endsWith("ms")) return parseFloat(s) / 1000 / totalSeconds;
+  if (s.endsWith("s")) return parseFloat(s) / totalSeconds;
+  throw new Error(`timeline(): time "${value}" must be "Xs" or "Xms"`);
+}
+
 // -----------------------------------------------------------------------------
 // Style assembly
 // -----------------------------------------------------------------------------
 
-function approxZero(v: number): boolean {
-  return Math.abs(v) < 1e-4;
-}
+function approxZero(v: number): boolean { return Math.abs(v) < 1e-4; }
 
-function buildTransform(
-  x: number,
-  y: number,
-  scale: number,
-  rotate: number,
-): string {
+function buildTransform(x: number, y: number, scale: number, rotate: number): string {
   const parts: string[] = [];
   if (!approxZero(x)) parts.push(`translateX(${x}px)`);
   if (!approxZero(y)) parts.push(`translateY(${y}px)`);
@@ -283,40 +254,42 @@ function buildFilter(blur: number): string {
   return !approxZero(blur) ? `blur(${blur}px)` : "";
 }
 
-function buildStyle(
-  opacity: number,
-  transform: string,
-  filter: string,
-): string {
-  const parts: string[] = [`opacity:${opacity}`];
+function buildStyle(opacity: number, transform: string, filter: string): string {
+  const parts = [`opacity:${opacity}`];
   if (transform) parts.push(`transform:${transform}`);
   if (filter) parts.push(`filter:${filter}`);
   return parts.join(";");
 }
 
-// -----------------------------------------------------------------------------
-// RenderContext bridge (avoids a circular type import)
-// -----------------------------------------------------------------------------
-
-/** Minimal surface score() needs from the per-frame render context. */
-export interface ScoreContext {
-  sceneProgress: number;
-  sceneTimeSeconds: number;
+function makeResult(
+  x: number, y: number, scale: number, rotate: number, blur: number,
+  opacity: number, enter: number, exitEased: number,
+): MotionResult {
+  let phase: MotionResult["phase"];
+  if (enter <= 0) phase = "before";
+  else if (exitEased >= 1) phase = "after";
+  else if (exitEased > 0) phase = "exiting";
+  else if (enter < 1) phase = "entering";
+  else phase = "steady";
+  const transform = buildTransform(x, y, scale, rotate);
+  const filter = buildFilter(blur);
+  return { x, y, scale, rotate, blur, opacity, enter, exit: exitEased,
+    visible: enter > 0 && exitEased < 1, phase, transform, filter,
+    style: buildStyle(opacity, transform, filter) };
 }
 
 // -----------------------------------------------------------------------------
 // Factory
 // -----------------------------------------------------------------------------
 
-export function createScore<P extends PhaseConfig | undefined = undefined>(
-  ctx: ScoreContext,
+export function createTimeline<P extends PhaseConfig | undefined = undefined>(
+  ctx: TimelineContext,
   phases?: P,
-): ScoreOf<P> {
+): TimelineOf<P> {
   const cfg = (phases ?? DEFAULT_PHASES) as PhaseConfig;
-  const ordered = normalizePhases(cfg);
-  const phaseMap = new Map<string, NormalizedPhase>(
-    ordered.map((p) => [p.name, p]),
-  );
+  const totalSeconds = ctx.sceneDurationSeconds > 0 ? ctx.sceneDurationSeconds : 1;
+  const ordered = normalizePhases(cfg, totalSeconds);
+  const phaseMap = new Map<string, NormalizedPhase>(ordered.map((p) => [p.name, p]));
   const sp = ctx.sceneProgress;
   const secs = ctx.sceneTimeSeconds;
 
@@ -325,35 +298,22 @@ export function createScore<P extends PhaseConfig | undefined = undefined>(
 
   const activeName: string = (() => {
     if (sp >= 1) return lastPhase.name;
-    for (const p of ordered) {
-      if (sp >= p.start && sp < p.end) return p.name;
-    }
+    for (const p of ordered) if (sp >= p.start && sp < p.end) return p.name;
     return "idle";
   })();
 
-  function within(name: string): number {
-    const p = phaseMap.get(name);
-    if (!p) {
-      throw new Error(
-        `score.within(): unknown phase "${name}". Known: ${ordered
-          .map((o) => o.name)
-          .join(", ")}`,
-      );
-    }
-    if (p.start === p.end) return sp >= p.start ? 1 : 0;
-    return clamp01((sp - p.start) / (p.end - p.start));
-  }
-
   function phaseOf(name: string): NormalizedPhase {
     const p = phaseMap.get(name);
-    if (!p) {
-      throw new Error(
-        `score: unknown phase "${name}". Known: ${ordered
-          .map((o) => o.name)
-          .join(", ")}`,
-      );
-    }
+    if (!p) throw new Error(
+      `timeline: unknown phase "${name}". Known: ${ordered.map((o) => o.name).join(", ")}`
+    );
     return p;
+  }
+
+  function within(name: string): number {
+    const p = phaseOf(name);
+    if (p.start === p.end) return sp >= p.start ? 1 : 0;
+    return clamp01((sp - p.start) / (p.end - p.start));
   }
 
   function motion(opts: MotionOpts = {}): MotionResult {
@@ -366,218 +326,160 @@ export function createScore<P extends PhaseConfig | undefined = undefined>(
       fromOpacity = 0,
       during,
       at = 0,
-      duration = 1,
+      for: forOpt = 1,
       window,
       easing: easingSpec,
       exitEasing: exitEasingSpec,
       exit = true,
     } = opts;
 
-    // --- Enter window ---
-    let enterStart: number;
-    let enterEnd: number;
+    // Enter window
+    let enterStart: number, enterEnd: number;
     if (window) {
       [enterStart, enterEnd] = window;
     } else {
       const phase = during ? phaseOf(during) : firstPhase;
       const span = phase.end - phase.start;
-      const localStart = at * span;
-      enterStart = phase.start + localStart;
-      enterEnd = enterStart + duration * span;
+      const atFrac = parseMotionTime(at, span, totalSeconds);
+      const forFrac = parseMotionTime(forOpt, span, totalSeconds);
+      enterStart = phase.start + atFrac;
+      enterEnd = enterStart + forFrac;
     }
     const enterSpan = enterEnd - enterStart;
-    const enterRaw =
-      enterSpan <= 0
-        ? sp >= enterStart
-          ? 1
-          : 0
-        : clamp01((sp - enterStart) / enterSpan);
-
+    const enterRaw = enterSpan <= 0 ? (sp >= enterStart ? 1 : 0)
+      : clamp01((sp - enterStart) / enterSpan);
     const enterEasingFn = resolveEasing(easingSpec, DEFAULT_ENTER_EASING);
     const enter = enterEasingFn(enterRaw);
 
-    // --- Exit window + pose ---
+    // Exit window + pose
     const exitOff = exit === false;
-    const exitOpts: Partial<MotionOpts> =
-      typeof exit === "object" ? exit : {};
-
-    let exitStart: number;
-    let exitEnd: number;
-    let exitActive: boolean;
+    const exitOpts: Partial<MotionOpts> = typeof exit === "object" ? exit : {};
+    let exitStart: number, exitEnd: number, exitActive: boolean;
     if (exitOff) {
-      exitActive = false;
-      exitStart = 0;
-      exitEnd = 0;
+      exitActive = false; exitStart = 0; exitEnd = 0;
     } else if (exitOpts.window) {
-      [exitStart, exitEnd] = exitOpts.window;
-      exitActive = true;
+      [exitStart, exitEnd] = exitOpts.window; exitActive = true;
     } else if (ordered.length >= 2 && lastPhase.name !== firstPhase.name) {
-      exitStart = lastPhase.start;
-      exitEnd = lastPhase.end;
-      exitActive = true;
+      exitStart = lastPhase.start; exitEnd = lastPhase.end; exitActive = true;
     } else {
-      exitActive = false;
-      exitStart = 0;
-      exitEnd = 0;
+      exitActive = false; exitStart = 0; exitEnd = 0;
     }
-
     const exitSpan = exitEnd - exitStart;
-    const exitRaw =
-      !exitActive || exitSpan <= 0
-        ? 0
-        : clamp01((sp - exitStart) / exitSpan);
-
-    const exitEasingFn = mirrorExitEasing(
-      exitEasingSpec ?? easingSpec,
-      DEFAULT_EXIT_EASING,
-    );
+    const exitRaw = !exitActive || exitSpan <= 0 ? 0
+      : clamp01((sp - exitStart) / exitSpan);
+    const exitEasingFn = mirrorExitEasing(exitEasingSpec ?? easingSpec, DEFAULT_EXIT_EASING);
     const exitEased = exitEasingFn(exitRaw);
 
-    // Exit pose defaults: mirror the enter start (negate translations + rotation).
     const exitToX = exitOpts.x ?? -startX;
     const exitToY = exitOpts.y ?? -startY;
     const exitToScale = exitOpts.scale ?? startScale;
     const exitToRotate = exitOpts.rotate ?? -startRotate;
     const exitToBlur = exitOpts.blur ?? startBlur;
 
-    // Compose pose: start → rest (via enter), then rest → exit pose (via exit)
-    const afterEnterX = lerp(startX, 0, enter);
-    const afterEnterY = lerp(startY, 0, enter);
-    const afterEnterScale = lerp(startScale, 1, enter);
-    const afterEnterRotate = lerp(startRotate, 0, enter);
-    const afterEnterBlur = lerp(startBlur, 0, enter);
+    const ax = lerp(lerp(startX, 0, enter), exitToX, exitEased);
+    const ay = lerp(lerp(startY, 0, enter), exitToY, exitEased);
+    const aScale = lerp(lerp(startScale, 1, enter), exitToScale, exitEased);
+    const aRotate = lerp(lerp(startRotate, 0, enter), exitToRotate, exitEased);
+    const aBlur = lerp(lerp(startBlur, 0, enter), exitToBlur, exitEased);
+    const opacity = lerp(fromOpacity, 1, enter) * (1 - exitEased);
 
-    const finalX = lerp(afterEnterX, exitToX, exitEased);
-    const finalY = lerp(afterEnterY, exitToY, exitEased);
-    const finalScale = lerp(afterEnterScale, exitToScale, exitEased);
-    const finalRotate = lerp(afterEnterRotate, exitToRotate, exitEased);
-    const finalBlur = lerp(afterEnterBlur, exitToBlur, exitEased);
-
-    const enterOpacity = lerp(fromOpacity, 1, enter);
-    const opacity = enterOpacity * (1 - exitEased);
-
-    const visible = enter > 0 && exitEased < 1;
-    let phase: MotionResult["phase"];
-    if (enter <= 0) phase = "before";
-    else if (exitEased >= 1) phase = "after";
-    else if (exitEased > 0) phase = "exiting";
-    else if (enter < 1) phase = "entering";
-    else phase = "steady";
-
-    const transform = buildTransform(finalX, finalY, finalScale, finalRotate);
-    const filter = buildFilter(finalBlur);
-    const style = buildStyle(opacity, transform, filter);
-
-    return {
-      enter,
-      exit: exitEased,
-      visible,
-      phase,
-      opacity,
-      transform,
-      filter,
-      style,
-    };
+    return makeResult(ax, ay, aScale, aRotate, aBlur, opacity, enter, exitEased);
   }
 
   function tween(from: number, to: number, opts: TweenOpts = {}): number {
-    const {
-      during,
-      at = 0,
-      duration = 1,
-      easing: easingSpec,
-      pattern,
-    } = opts;
-
+    const { during, at = 0, for: forOpt = 1, easing: easingSpec, pattern } = opts;
     const phase = during ? phaseOf(during) : firstPhase;
     const span = phase.end - phase.start;
-    const localStart = phase.start + at * span;
-    const localEnd = localStart + duration * span;
+    const atFrac = parseMotionTime(at, span, totalSeconds);
+    const forFrac = parseMotionTime(forOpt, span, totalSeconds);
+    const localStart = phase.start + atFrac;
+    const localEnd = localStart + forFrac;
     const localSpan = localEnd - localStart;
-    const raw =
-      localSpan <= 0
-        ? sp >= localStart
-          ? 1
-          : 0
-        : clamp01((sp - localStart) / localSpan);
+    const raw = localSpan <= 0 ? (sp >= localStart ? 1 : 0)
+      : clamp01((sp - localStart) / localSpan);
 
     let eased: number;
-    if (pattern === "sine") {
-      eased = Math.sin(raw * Math.PI);
-    } else if (pattern === "pulse") {
-      eased = 0.5 + 0.5 * Math.sin(raw * Math.PI * 6 - Math.PI / 2);
-    } else if (pattern === "bounce") {
-      eased = easing.easeOutBounce(raw);
-    } else if (pattern === "linear") {
-      eased = raw;
-    } else {
-      eased = resolveEasing(easingSpec, DEFAULT_ENTER_EASING)(raw);
-    }
+    if (pattern === "sine") eased = Math.sin(raw * Math.PI);
+    else if (pattern === "pulse") eased = 0.5 + 0.5 * Math.sin(raw * Math.PI * 6 - Math.PI / 2);
+    else if (pattern === "bounce") eased = easing.easeOutBounce(raw);
+    else if (pattern === "linear") eased = raw;
+    else eased = resolveEasing(easingSpec, DEFAULT_ENTER_EASING)(raw);
     return lerp(from, to, eased);
   }
 
-  function value<T extends number | string>(
-    v: T,
-    opts: ValueOpts = {},
-  ): ValueResult<T> {
+  function value<T extends number | string>(v: T, opts: ValueOpts = {}): ValueResult<T> {
     let opacity = 1;
-
     if (opts.during) {
-      const names = Array.isArray(opts.during)
-        ? (opts.during as string[])
-        : [opts.during as string];
-      const anyActive = names.some((name) => {
-        const p = phaseOf(name);
-        return sp >= p.start && sp < p.end;
-      });
-      if (!anyActive) opacity = 0;
+      const names = Array.isArray(opts.during) ? (opts.during as string[]) : [opts.during as string];
+      if (!names.some((n) => { const p = phaseOf(n); return sp >= p.start && sp < p.end; }))
+        opacity = 0;
     }
-
     if (opts.fadeOn) {
-      const names = Array.isArray(opts.fadeOn)
-        ? (opts.fadeOn as string[])
-        : [opts.fadeOn as string];
-      for (const name of names) {
-        const p = phaseOf(name);
+      const names = Array.isArray(opts.fadeOn) ? (opts.fadeOn as string[]) : [opts.fadeOn as string];
+      for (const n of names) {
+        const p = phaseOf(n);
         if (sp >= p.start) {
           const span = p.end - p.start;
-          const local = span <= 0 ? 1 : clamp01((sp - p.start) / span);
-          opacity *= 1 - local;
+          opacity *= 1 - (span <= 0 ? 1 : clamp01((sp - p.start) / span));
         }
       }
     }
-
     return { current: v, opacity };
   }
 
-  const score: Score = {
-    progress: sp,
-    seconds: secs,
-    active: activeName,
-    within,
-    motion,
-    tween,
-    value,
-  };
-
-  return score as unknown as ScoreOf<P>;
+  const result: Timeline = { progress: sp, seconds: secs, active: activeName, within, motion, tween, value };
+  return result as unknown as TimelineOf<P>;
 }
 
 /**
- * The public `score()` runtime stub. `std.score()` on `ctx.std` is a bound
- * variant of this factory created per-render by the stdlib assembler. Importing
- * this directly works too if you pass an object with `sceneProgress` +
- * `sceneTimeSeconds`.
+ * The public `timeline()` runtime stub. `std.timeline()` on `ctx.std` is a
+ * bound variant created per-render by the stdlib assembler. Importing and
+ * calling `createTimeline(ctx, phases)` directly also works.
  */
-export function score<P extends PhaseConfig | undefined = undefined>(
-  this: ScoreContext | void,
+export function timeline<P extends PhaseConfig | undefined = undefined>(
+  this: TimelineContext | void,
   phases?: P,
-): ScoreOf<P> {
+): TimelineOf<P> {
   if (this && typeof this.sceneProgress === "number") {
-    return createScore(this, phases);
+    return createTimeline(this, phases);
   }
   throw new Error(
-    "score(): must be invoked through ctx.std.score() — the stdlib binds it to the render context. " +
-      "For direct use, call createScore(ctx, phases).",
+    "timeline(): must be invoked through ctx.std.timeline() — the stdlib binds it to the render context. " +
+      "For direct use, call createTimeline(ctx, phases).",
   );
+}
+
+/**
+ * Merge multiple motion values into a single MotionResult.
+ * Last-wins per property; transforms combine into one CSS string.
+ *
+ * @example
+ * const card = t.motion({ y: 20 });
+ * const idle = { scale: std.oscillate(time, { period: "1s", from: 0.98, to: 1.02 }) };
+ * return `<div style="${std.css(std.compose(card, idle))}">`;
+ */
+export function compose(...motions: Array<MotionValue | MotionResult>): MotionResult {
+  let x = 0, y = 0, scale = 1, rotate = 0, blur = 0, opacity = 1;
+  let enter = 1, exitVal = 0;
+  let visible = true;
+  let phase: MotionResult["phase"] = "steady";
+
+  for (const m of motions) {
+    if (m.x !== undefined) x = m.x;
+    if (m.y !== undefined) y = m.y;
+    if (m.scale !== undefined) scale = m.scale;
+    if (m.rotate !== undefined) rotate = m.rotate;
+    if (m.blur !== undefined) blur = m.blur;
+    if (m.opacity !== undefined) opacity = m.opacity;
+    const r = m as MotionResult;
+    if (r.enter !== undefined) enter = r.enter;
+    if (r.exit !== undefined) exitVal = r.exit;
+    if (r.visible !== undefined) visible = r.visible;
+    if (r.phase !== undefined) phase = r.phase;
+  }
+
+  const transform = buildTransform(x, y, scale, rotate);
+  const filter = buildFilter(blur);
+  return { x, y, scale, rotate, blur, opacity, enter, exit: exitVal,
+    visible, phase, transform, filter, style: buildStyle(opacity, transform, filter) };
 }

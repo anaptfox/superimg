@@ -57,12 +57,12 @@ export default defineScene({
     const { std, width, height, isPortrait, data } = ctx;
     const { title, subtitle, accentColor } = data;
 
-    // Timeline: 1.5s Enter | 1.5s Hold | 1.0s Exit (on a 4s duration)
-    const t = std.score({ enter: 0.375, hold: 0.375, exit: 0.25 });
+    // Timeline: 1.5s Enter | 1.5s Hold | 1.0s Exit
+    const t = std.timeline({ enter: "1.5s", hold: "1.5s", exit: "1.0s" });
 
-    const lineAnim     = t.motion({ at: 0,    duration: 0.8,  easing: "easeOutCubic" });
-    const titleAnim    = t.motion({ at: 0.15, duration: 0.85, y: 40, easing: "easeOutCubic" });
-    const subtitleAnim = t.motion({ at: 0.3,  duration: 0.85, y: 30, easing: "easeOutCubic" });
+    const lineAnim     = t.motion({ at: 0,    for: 0.8,  easing: "easeOutCubic" });
+    const titleAnim    = t.motion({ at: 0.15, for: 0.85, y: 40, easing: "easeOutCubic" });
+    const subtitleAnim = t.motion({ at: 0.3,  for: 0.85, y: 30, easing: "easeOutCubic" });
 
     // Responsive sizing
     const titleSize = isPortrait ? 64 : 88;

@@ -42,7 +42,7 @@ export default defineScene({
       `M ${cx + size},${cy} L ${cx + gap - size},${cy}`,
     ];
 
-    const t = std.score({ enter: 0.6, hold: 0.2, exit: 0.2 });
+    const t = std.timeline({ enter: "3.0s", hold: "1.0s", exit: "1.0s" });
     const enterP = t.within("enter");
     const holdP = t.within("hold");
     const exitP = t.within("exit");

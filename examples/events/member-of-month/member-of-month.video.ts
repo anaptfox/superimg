@@ -35,10 +35,10 @@ export default defineScene({
     const { name, role, location, photoUrl, quote, techlahomaSvg, ctaUrl, brandColor } = data;
 
     // Timeline for a 15s scene
-    const t = std.score({
-      build: 0.2,    // 3s (Frame + Photo)
-      content: 0.5,  // 7.5s (Name + Role + Quote)
-      poster: 0.3    // 4.5s (Final Badge + CTA)
+    const t = std.timeline({
+      build: "3.0s",
+      content: "7.5s",
+      poster: "4.5s"
     });
 
     // Build animations

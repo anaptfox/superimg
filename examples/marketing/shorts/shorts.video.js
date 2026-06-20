@@ -17,7 +17,7 @@ export default defineScene({
   render(ctx) {
     const { std, data } = ctx;
 
-    const t = std.score();
+    const t = std.timeline();
     const titleAnim = t.motion({ scale: 0.9, exit: false });
     const subtitleAnim = t.motion({ at: 0.3, exit: false, fromOpacity: 0 });
 

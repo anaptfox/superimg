@@ -87,10 +87,10 @@ createApp(App).mount('#app')`,
       }
     }
 
-    const t = std.score({
-      window: 0.08,
-      lines: 0.77,
-      hold: 0.15
+    const t = std.timeline({
+      window: "0.26s",
+      lines: "2.46s",
+      hold: "0.48s"
     });
 
     const windowProgress = t.within("window", { easing: "easeOutCubic" });

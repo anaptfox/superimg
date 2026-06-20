@@ -57,11 +57,11 @@ export default defineScene<NpmStatsVideoData>({
     const gridColor = theme === "dark" ? "#2a2a2a" : "#e5e5e5";
     const areaOpacity = theme === "dark" ? "0.2" : "0.15";
 
-    const t = std.score({
-      title: 0.08,
-      chart: 0.77,
-      pause: 0.07,
-      exit: 0.08
+    const t = std.timeline({
+      title: "0.56s",
+      chart: "5.39s",
+      pause: "0.49s",
+      exit: "0.56s"
     });
 
     const titleProgress = t.within("title", { easing: "easeOutCubic" });

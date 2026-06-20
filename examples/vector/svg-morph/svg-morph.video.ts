@@ -35,7 +35,7 @@ export default defineScene({
     const decagon = std.svg.shape.polygon(cx, cy, r, 10);
     const starShape = std.svg.shape.star(cx, cy, r * 1.2, r * 0.5, 5);
 
-    const t = std.score({ enter: 0.5, hold: 0.5 });
+    const t = std.timeline({ enter: "2.5s", hold: "2.5s" });
     const morphInP = t.within("enter");
     const morphOutP = t.within("hold");
     const morphInDone = morphInP >= 1;

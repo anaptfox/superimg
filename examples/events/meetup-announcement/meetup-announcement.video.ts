@@ -40,14 +40,14 @@ export default defineScene({
     const r = std.createResponsive(ctx);
     const mainDur = 9.0;
     
-    // score: main (0-9s) → outro (9-12s)
-    const t = std.score({ main: 0.75, outro: 0.25 });
+    // timeline: main (0-9s) → outro (9-12s)
+    const t = std.timeline({ main: "9.0s", outro: "3.0s" });
 
     // === OUTRO PHASE ===
     if (t.active === "outro") {
       const logoWidth = r({ portrait: 500, square: 400, default: 480 });
       // Use motion() in the outro phase
-      const logoAnim = t.motion({ during: "outro", scale: 0.1, duration: 1/3, exit: false });
+      const logoAnim = t.motion({ during: "outro", scale: 0.1, for: "1.0s", exit: false });
 
       return `
         <div style="${std.css({ width, height, background: "#000", display: "flex", alignItems: "center", justifyContent: "center" })}">
@@ -65,12 +65,12 @@ export default defineScene({
     const subP = t.tween(0, 1, { during: "main", at: 2.7/9, duration: 0.8/9 });
     
     const expandP = t.tween(0, 1, { during: "main", at: 4.0/9, duration: 0.5/9, easing: "easeInOutCubic" });
-    const groupAnim = t.motion({ during: "main", at: 4.2/9, duration: 0.4/9, y: -20 });
-    const titleAnim = t.motion({ during: "main", at: 4.4/9, duration: 0.4/9, y: 20 });
-    const logisticsAnim = t.motion({ during: "main", at: 4.7/9, duration: 0.4/9, y: 20 });
-    const ctaAnim = t.motion({ during: "main", at: 6.5/9, duration: 0.4/9, y: 15 });
-    
-    const cardAnim = t.motion({ during: "main", at: 0, duration: 0.5/9, scale: 0.05, exit: { during: "main", at: 8.5/9, duration: 0.5/9, y: 0 } });
+    const groupAnim = t.motion({ during: "main", at: "4.2s", for: "0.4s", y: -20 });
+    const titleAnim = t.motion({ during: "main", at: "4.4s", for: "0.4s", y: 20 });
+    const logisticsAnim = t.motion({ during: "main", at: "4.7s", for: "0.4s", y: 20 });
+    const ctaAnim = t.motion({ during: "main", at: "6.5s", for: "0.4s", y: 15 });
+
+    const cardAnim = t.motion({ during: "main", at: 0, for: "0.5s", scale: 0.05, exit: { during: "main", at: "8.5s", for: "0.5s", y: 0 } });
 
     // Animations logic
     const hook1Visible = std.text.type(hook, hook1P).visible;

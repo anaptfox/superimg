@@ -103,10 +103,10 @@ console.log(greet("World"));`,
       }
     }
 
-    const t = std.score({
-      header: 0.1,
-      code: 0.75,
-      pulse: 0.15
+    const t = std.timeline({
+      header: "0.5s",
+      code: "3.72s",
+      pulse: "0.74s"
     });
 
     const headerProgress = t.within("header", { easing: "easeOutCubic" });

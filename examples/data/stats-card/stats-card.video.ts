@@ -79,28 +79,28 @@ export default defineScene({
       high, low, sparkline, upColor, downColor
     } = data;
 
-    // score: enter (0.6s) -> hold (2.2s) -> exit (1.2s)
-    const t = std.score({ enter: 0.15, hold: 0.55, exit: 0.3 });
+    // timeline: enter (0.6s) -> hold (2.2s) -> exit (1.2s)
+    const t = std.timeline({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
 
     // === MOTIONS ===
     const identityAnim = t.motion({
-      during: "enter", at: 0.08/0.6, duration: 0.5/0.6, easing: "easeOutQuart",
-      exit: { during: "exit", at: 0.3/1.2, duration: 0.4/1.2, easing: "easeInQuad" }
+      during: "enter", at: "0.08s", for: "0.5s", easing: "easeOutQuart",
+      exit: { during: "exit", at: "0.3s", for: "0.4s", easing: "easeInQuad" }
     });
 
     const heroAnim = t.motion({
-      during: "enter", at: 0.28/0.6, duration: 0.5/0.6, easing: "easeOutBack",
-      exit: { during: "exit", at: 0.2/1.2, duration: 0.4/1.2, easing: "easeInBack" }
+      during: "enter", at: "0.28s", for: "0.5s", easing: "easeOutBack",
+      exit: { during: "exit", at: "0.2s", for: "0.4s", easing: "easeInBack" }
     });
 
     const chartAnim = t.motion({
-      during: "enter", at: 0.50/0.6, duration: 0.5/0.6,
-      exit: { during: "exit", at: 0.1/1.2, duration: 0.4/1.2 }
+      during: "enter", at: "0.5s", for: "0.5s",
+      exit: { during: "exit", at: "0.1s", for: "0.4s" }
     });
 
     const detailAnim = t.motion({
-      during: "enter", at: 1.00/0.6, duration: 0.4/0.6,
-      exit: { during: "exit", at: 0, duration: 0.4/1.2 }
+      during: "enter", at: "1.0s", for: "0.4s",
+      exit: { during: "exit", at: 0, for: "0.4s" }
     });
 
     // Determine up/down state

@@ -40,9 +40,9 @@ export default defineScene({
     const isHorizontalSplit = !isPortrait;
 
     // Timeline: Content (0-9s) | Outro (9-12s)
-    const t = std.score({
-      content: 0.75, // 9s
-      outro: 0.25    // 3s
+    const t = std.timeline({
+      content: "9.0s",
+      outro: "3.0s"
     });
 
     if (t.active === "outro") {

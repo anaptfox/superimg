@@ -8,9 +8,15 @@ Programmatic video generation. TypeScript in, MP4 out.
 
 ## Quick Start
 
-```bash
-npm install superimg
-```
+Install with your package manager of choice:
+
+| | Install | Run CLI |
+|---|---|---|
+| npm | `npm install superimg` | `npx superimg` |
+| pnpm | `pnpm add superimg` | `pnpm dlx superimg` |
+| yarn | `yarn add superimg` | `yarn dlx superimg` |
+| bun | `bun add superimg` | `bunx superimg` |
+| deno | `deno add npm:superimg` | `deno run npm:superimg/cli` |
 
 > **Note:** Rendering requires Chromium. Run `npx superimg setup` once to download it.
 
@@ -40,6 +46,14 @@ Render it:
 
 ```bash
 npx superimg render hello.video.ts -o hello.mp4
+```
+
+Or use the programmatic API directly — SuperImg is lib-first:
+
+```typescript
+import { renderVideo } from 'superimg/server'
+
+const mp4 = await renderVideo('./hello.video.ts', { output: './hello.mp4' })
 ```
 
 That's it. A function that returns HTML → an MP4 file.
