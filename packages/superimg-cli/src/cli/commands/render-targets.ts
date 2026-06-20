@@ -55,6 +55,16 @@ export interface RenderOptions {
    * Composes with `--presets` so N entries × M presets = N×M MP4s.
    */
   data?: string;
+  /** Exit non-zero if any video fails when using --all. Default: best-effort (exit 1 only after all complete). */
+  failOnError?: boolean;
+  /** Resolve and print render targets without rendering. */
+  dryRun?: boolean;
+  /**
+   * Comma-separated list of container endpoint URLs for distributed chunk rendering.
+   * When set, the render is split into chunks and sent to these endpoints in parallel,
+   * then stitched locally with ffmpeg. Example: "https://render-a.example.com,https://render-b.example.com"
+   */
+  distributed?: string;
 }
 
 export interface RenderTarget {

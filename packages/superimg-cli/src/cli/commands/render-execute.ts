@@ -5,16 +5,17 @@
 //! disk. Throws on any failure — never calls process.exit. The CLI surface
 //! catches throws at one centralized boundary.
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 import { bundleTemplateCodeWithMap } from "@superimg/core/bundler";
-import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
+import { createRenderPlan, executeRenderPlan, executeRenderPlanParallel } from "@superimg/core/engine";
 import { PlaywrightEngine } from "@superimg/playwright";
 import type { RenderProgress, TemplateBundle } from "@superimg/types";
 import { discoverTemplateAssets } from "../utils/asset-discovery.js";
 import { loadCompanionData } from "../utils/load-companion-data.js";
 import { mergeEncoding } from "../utils/merge-encoding.js";
 import { buildRenderJob } from "../../utils/build-render-job.js";
+import { renderDistributed } from "../../render-distributed.js";
 import {
   buildEncodingOptions,
   type RenderOptions,
@@ -114,24 +115,62 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         job.audio = undefined;
       }
 
+      // Distributed path: delegate chunk rendering to remote container endpoints.
+      if (options.distributed) {
+        const endpoints = options.distributed.split(",").map((e) => e.trim()).filter(Boolean);
+        const templateName = basename(resolvedTemplate).replace(/\.video\.(ts|js|tsx|jsx)$/, "");
+        mkdirSync(dirname(target.outputPath), { recursive: true });
+        await renderDistributed({
+          endpoints,
+          templateName,
+          data: targetData as Record<string, unknown> | undefined,
+          encoding,
+          audio: job.audio,
+          outputPath: target.outputPath,
+          onProgress: (chunksComplete, totalChunks) => {
+            onProgress?.(target, { frame: chunksComplete, totalFrames: totalChunks, fps: 0 });
+          },
+        });
+        const bytes = readFileSync(target.outputPath);
+        onTargetComplete?.(target, bytes);
+        continue;
+      }
+
       const plan = createRenderPlan(job, {
         assetBaseUrl,
         resolvedAssets,
         templateDir,
       });
 
-      const { renderer, encoder } = engine.createAdapters({ encoding: job.encoding, audio: job.audio });
-      const result = await executeRenderPlan(plan, renderer, encoder, {
-        onProgress: (p) => {
-          if (isCancelled?.()) return;
-          onProgress?.(target, p);
-        },
-        onFrameRendered: (frame, _html, compositeHtml) => {
-          if (options.debugHtml) {
-            writeDebugHtmlFrame(target, frame, compositeHtml);
-          }
-        },
-      });
+      const parallelN = Math.max(1, parseInt(process.env.SUPERIMG_PARALLEL ?? "1", 10) || 1);
+      let result: Uint8Array;
+
+      if (parallelN > 1) {
+        const { encoder } = engine.createAdapters({ encoding: job.encoding, audio: job.audio });
+        const renderers = await engine.createParallelRenderers(parallelN);
+        result = await executeRenderPlanParallel(plan, renderers, encoder, {
+          onProgress: (p) => {
+            if (isCancelled?.()) return;
+            onProgress?.(target, p);
+          },
+          onFrameRendered: (frame, _html, compositeHtml) => {
+            if (options.debugHtml) writeDebugHtmlFrame(target, frame, compositeHtml);
+          },
+        });
+      } else {
+        const { renderer, encoder } = engine.createAdapters({ encoding: job.encoding, audio: job.audio });
+        result = await executeRenderPlan(plan, renderer, encoder, {
+          onProgress: (p) => {
+            if (isCancelled?.()) return;
+            onProgress?.(target, p);
+          },
+          onFrameRendered: (frame, _html, compositeHtml) => {
+            if (options.debugHtml) {
+              writeDebugHtmlFrame(target, frame, compositeHtml);
+            }
+          },
+        });
+      }
 
       mkdirSync(dirname(target.outputPath), { recursive: true });
       writeFileSync(target.outputPath, result);

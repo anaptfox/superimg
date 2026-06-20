@@ -67,7 +67,7 @@ program
   .command("dev")
   .description("Start development server with live preview")
   .argument("[template]", "Video name or path (omit for home page with all videos)")
-  .option("-p, --port <port>", "Port number", "8080")
+  .option("-p, --port <port>", "Port number", "4747")
   .option("--no-open", "Don't open browser automatically")
   .action(async (template: string | undefined, options: { port: string; open: boolean }) => {
     const { devCommand } = await import("./commands/dev.js");
@@ -104,6 +104,9 @@ program
   .option("--gif-loop <n>", "GIF loop count (0=infinite, -1=no loop)")
   .option("--gif-dither <algorithm>", "GIF dither algorithm (e.g. sierra2_4a, bayer, none)")
   .option("--debug-html", "Save the underlying HTML of each frame next to the resolved output in .superimg/debug/")
+  .option("--fail-on-error", "Exit non-zero if any video fails (useful in CI). Default: best-effort for --all.")
+  .option("--dry-run", "Resolve and print render targets without actually rendering.")
+  .option("--distributed <endpoints>", "Comma-separated container URLs for distributed chunk rendering (e.g. https://a.example.com,https://b.example.com).")
   .action(async (template: string | undefined, options) => {
     const mod = await import("./commands/render.js");
 
@@ -140,6 +143,16 @@ program
   .action(async () => {
     const { listCommand } = await import("./commands/list.js");
     await listCommand();
+  });
+
+program
+  .command("validate")
+  .description("Validate a template by rendering sample frames and checking for errors")
+  .argument("<template>", "Video name or path to validate")
+  .option("--frames <count>", "Number of sample frames to render (default: 5)", "5")
+  .action(async (template: string, options: { frames: string }) => {
+    const { validateCommand } = await import("./commands/validate.js");
+    await validateCommand(template, options);
   });
 
 program
@@ -208,6 +221,18 @@ skill
   .action(async (options) => {
     const { removeCommand } = await import("./commands/skill/remove.js");
     await removeCommand(options);
+  });
+
+program
+  .command("deploy")
+  .argument("[template]", "Template to verify render parity after deploy")
+  .description("Deploy templates to Cloudflare Containers")
+  .option("--worker <name>", "Override CF Worker name")
+  .option("--dry-run", "Generate artifacts only, skip Docker and wrangler")
+  .option("--verify", "After deploy, verify local vs container render parity")
+  .action(async (template, options) => {
+    const { deployCommand } = await import("./commands/deploy.js");
+    await deployCommand(template, options);
   });
 
 program.parse();

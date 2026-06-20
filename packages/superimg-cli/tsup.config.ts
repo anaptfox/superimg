@@ -17,6 +17,7 @@ export default defineConfig({
   entry: {
     cli: "src/cli/index.ts",
     server: "src/server.ts",
+    container: "src/container/handler.ts",
   },
   format: ["esm"],
   dts: true,
@@ -35,6 +36,12 @@ export default defineConfig({
     "hono",
     "@hono/node-server",
     "zod",
+    // @babel/code-frame is CJS; keeping it external causes dynamic-require failures
+    // in the ESM bundle. Bundle it + its small CJS deps inline instead.
+    "@babel/code-frame",
+    "@babel/helper-validator-identifier",
+    "js-tokens",
+    "picocolors",
   ],
   external: [
     "zustand",
@@ -53,6 +60,14 @@ export default defineConfig({
     "ws",
     "oxc-parser",
     /^@oxc-parser\//,
+    // mediabunny + node-av have native bindings (@seydx/node-av-*) — can't bundle.
+    // Container Dockerfile installs them explicitly; server.js consumers have them
+    // in their own node_modules via @superimg/playwright transitive deps.
+    "mediabunny",
+    "@mediabunny/server",
+    "node-av",
+    /^@seydx\//,
+    "sharp",
   ],
   onSuccess: "cd dev-ui && vite build",
 });

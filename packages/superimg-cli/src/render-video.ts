@@ -5,7 +5,7 @@ import { bundleTemplateWithMap } from "@superimg/core/bundler";
 import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 import { PlaywrightEngine } from "@superimg/playwright";
 import { parseTemplate } from "./cli/utils/template-config.js";
-import type { EncodingOptions } from "@superimg/types";
+import type { EncodingOptions, RenderEngine } from "@superimg/types";
 import { mergeEncoding } from "./cli/utils/merge-encoding.js";
 import { loadCompanionData } from "./cli/utils/load-companion-data.js";
 import { discoverTemplateAssets } from "./cli/utils/asset-discovery.js";
@@ -31,6 +31,8 @@ export interface RenderVideoOptions {
   onProgress?: (frame: number, totalFrames: number) => void;
   /** Called with the raw scene HTML and final composite HTML for each frame */
   onFrameRendered?: (frame: number, html: string, compositeHtml: string) => void;
+  /** Pre-initialized engine to reuse (skips init/dispose). Caller owns lifecycle. */
+  engine?: RenderEngine;
 }
 
 /**
@@ -53,9 +55,10 @@ export async function renderVideo(
 
   const templateBundle = await bundleTemplateWithMap(resolvedPath);
 
-  const engine = new PlaywrightEngine();
+  const ownsEngine = !options.engine;
+  const engine = options.engine ?? new PlaywrightEngine();
   try {
-    await engine.init();
+    if (ownsEngine) await engine.init();
     const encoding = mergeEncoding(
       templateData.templateConfig?.encoding,
       options.encoding
@@ -96,6 +99,6 @@ export async function renderVideo(
 
     return result;
   } finally {
-    await engine.dispose();
+    if (ownsEngine) await engine.dispose();
   }
 }

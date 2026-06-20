@@ -79,6 +79,12 @@ export async function renderCommand(template: string, options: RenderOptions) {
       console.error("Error: No *.video.ts files found in project.");
       process.exit(1);
     }
+    if (options.dryRun) {
+      console.log(`\nDry run — ${videos.length} video(s) found:\n`);
+      for (const v of videos) console.log(`  - ${v.name} (${v.relativePath})`);
+      console.log("\nNo renders executed.\n");
+      return;
+    }
     return runRenderAll(videos, options, outputFormat, projectRoot);
   }
 
@@ -89,6 +95,14 @@ export async function renderCommand(template: string, options: RenderOptions) {
   } catch (err) {
     process.stderr.write(formatError(err).ansi + "\n");
     process.exit(1);
+  }
+
+  if (options.dryRun) {
+    const { targets } = resolved;
+    console.log(`\nDry run — ${targets.length} render target(s):\n`);
+    for (const t of targets) console.log(`  - ${t.outputPath}  (${t.width}x${t.height} ${t.fps}fps)`);
+    console.log("\nNo renders executed.\n");
+    return;
   }
 
   if (process.stdout.isTTY) {
@@ -176,6 +190,10 @@ async function runRenderAll(
       hasOutputs = !!declared && Object.keys(declared).length > 0;
     } catch (err) {
       console.error(`  ✗ ${video.name}: ${err instanceof Error ? err.message : err}`);
+      if (options.failOnError) {
+        console.error("\nAborting: --fail-on-error is set.\n");
+        process.exit(1);
+      }
       failures.push({ name: video.name, relativePath: video.relativePath, error: err });
       continue;
     }
@@ -192,6 +210,10 @@ async function runRenderAll(
       await runRenderTargetsPlain(resolved, perVideoOptions);
     } catch (err) {
       console.error(`  ✗ ${video.name}: ${err instanceof Error ? err.message : err}`);
+      if (options.failOnError) {
+        console.error("\nAborting: --fail-on-error is set.\n");
+        process.exit(1);
+      }
       failures.push({ name: video.name, relativePath: video.relativePath, error: err });
     }
   }
@@ -208,6 +230,8 @@ async function runRenderAll(
   for (const f of failures) {
     console.log(`  - ${f.name} (${f.relativePath})`);
   }
+  // Always exit 1 when there are failures; --fail-on-error has no effect here
+  // because we already stop early per-video on error (the flag was a no-op pre-existing behavior).
   process.exit(1);
 }
 

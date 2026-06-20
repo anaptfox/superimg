@@ -1,0 +1,8 @@
+name = "{{WORKER_NAME}}"
+main = "worker.js"
+compatibility_date = "{{COMPAT_DATE}}"
+
+[[containers]]
+class_name = "SuperImgContainer"
+image = "{{IMAGE}}"
+max_instances = 5

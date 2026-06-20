@@ -1,5 +1,11 @@
 //! Private server implementation exports used by superimg/server.
 
+export { renderFromBundle } from "./render-from-bundle.js";
+export type { ManifestEntry, RenderFromBundleOptions } from "./render-from-bundle.js";
+export { renderDistributed } from "./render-distributed.js";
+export type { DistributedRenderOptions } from "./render-distributed.js";
+export type { Manifest } from "./container/handler.js";
+
 export { bundleTemplate, bundleTemplateCode } from "@superimg/core/bundler";
 export { extractTemplateMetadata } from "@superimg/core/template-metadata";
 export { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
@@ -25,3 +31,8 @@ export type {
   BatchProgressEvent,
 } from "./render-batch.js";
 export type { LoadedTemplate, LoadedTemplateRenderOptions } from "./load-template.js";
+
+export { startDevServer } from "./dev-server.js";
+export type { DevServerOptions, DevServer } from "./dev-server.js";
+export { listVideos } from "./list-videos.js";
+export type { VideoSummary } from "./list-videos.js";
