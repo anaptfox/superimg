@@ -1,0 +1,33 @@
+{
+  "name": "@superimg/runtime-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser DOM runtime for SuperImg templates",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --outDir dist",
+    "dev": "tsup src/index.ts --format esm --dts --outDir dist --watch",
+    "test": "vitest --run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@superimg/core": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "morphdom": "^2.7.8"
+  },
+  "devDependencies": {
+    "happy-dom": "^15.0.0",
+    "vitest": "^4.0.18"
+  }
+}
