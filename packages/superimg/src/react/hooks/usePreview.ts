@@ -1,13 +1,14 @@
-//! React hook for preview rendering with HtmlPresenter
+//! React hook for preview rendering with runtime-web
 
 import { useEffect, useState, useCallback, useLayoutEffect, type RefObject } from "react";
-import { HtmlPresenter, type RenderContext, type FramePresenter } from "../../index.browser.js";
+import { IframePresenter, type DomPresenter } from "@superimg/runtime-web";
+import type { RenderContext } from "../../index.browser.js";
 
 export type RenderFn = (ctx: RenderContext) => string;
 
 export interface UsePreviewReturn {
   /** The presenter instance (null until ready) */
-  sink: FramePresenter | null;
+  sink: DomPresenter | null;
   /** Whether the preview is ready for rendering */
   ready: boolean;
   /** Render a frame to the preview */
@@ -19,7 +20,7 @@ export interface UsePreviewReturn {
 }
 
 /**
- * Hook for managing preview rendering with HtmlPresenter.
+ * Hook for managing preview rendering with runtime-web's iframe presenter.
  *
  * Uses CSS transform scaling - templates render at logical dimensions
  * and scale to fit the container while maintaining aspect ratio.
@@ -27,7 +28,7 @@ export interface UsePreviewReturn {
 export function usePreview(
   containerRef: RefObject<HTMLElement | null>
 ): UsePreviewReturn {
-  const [sink, setSink] = useState<FramePresenter | null>(null);
+  const [sink, setSink] = useState<DomPresenter | null>(null);
   const [ready, setReady] = useState(false);
 
   // Track container element in state to avoid ref.current in deps
@@ -46,23 +47,12 @@ export function usePreview(
       return;
     }
 
-    // Create HtmlPresenter (CSS transform scaling handles dimensions)
-    const newSink = new HtmlPresenter(container);
-
-    // Start warmup (pre-cache fonts), then set ready
-    let cancelled = false;
-
-    const warmupPromise = newSink.warmup ? newSink.warmup() : Promise.resolve();
-
-    warmupPromise.then(() => {
-      if (!cancelled) {
-        setSink(newSink);
-        setReady(true);
-      }
-    });
+    const newSink = new IframePresenter();
+    newSink.attach(container);
+    setSink(newSink);
+    setReady(true);
 
     return () => {
-      cancelled = true;
       setReady(false);
       newSink.dispose();
     };
@@ -72,16 +62,15 @@ export function usePreview(
     async (render: RenderFn, ctx: RenderContext): Promise<void> => {
       if (!sink) return;
       const html = render(ctx);
-      await sink.present(html, ctx);
+      sink.present(html, ctx.width, ctx.height);
     },
     [sink]
   );
 
   const setLogicalSize = useCallback(
     (width: number, height: number) => {
-      if (sink?.setLogicalSize) {
-        sink.setLogicalSize(width, height);
-      }
+      void width;
+      void height;
     },
     [sink]
   );

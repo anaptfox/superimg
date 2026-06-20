@@ -2,11 +2,11 @@
 
 import { useRef, forwardRef, useImperativeHandle, useSyncExternalStore, useState } from "react";
 import { useTimeline, type UseTimelineReturn } from "../hooks/useTimeline.js";
-import type { PlayerStore, Checkpoint } from "../../index.browser.js";
+import type { RuntimeStore, Checkpoint } from "../../index.browser.js";
 
 export interface TimelineProps {
   /** The player store to control */
-  store: PlayerStore;
+  store: RuntimeStore;
   /** Optional CSS class name for the container */
   className?: string;
   /** Optional inline styles for the container */

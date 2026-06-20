@@ -81,12 +81,11 @@ export type {
   TemplateConfig,
 
   // Player types
-  PlayerConfig,
-  PlayerState,
-  PlayerStore,
   PlayerOptions,
   PlayerInput,
   LoadResult,
+  RuntimeState,
+  RuntimeStore,
 
   // Mode types
   PlaybackMode,

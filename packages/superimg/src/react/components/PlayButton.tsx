@@ -1,11 +1,11 @@
 //! PlayButton - Reusable play/pause button component
 
 import { useSyncExternalStore } from "react";
-import type { PlayerStore } from "../../index.browser.js";
+import type { RuntimeStore } from "../../index.browser.js";
 
 export interface PlayButtonProps {
   /** The player store to control */
-  store: PlayerStore;
+  store: RuntimeStore;
   /** Optional CSS class name */
   className?: string;
   /** Button size preset */
@@ -56,7 +56,7 @@ export function PlayButton({ store, className, size = "md" }: PlayButtonProps) {
 
   return (
     <button
-      onClick={() => store.getState().togglePlayPause()}
+      onClick={() => store.togglePlayPause()}
       aria-label={state.isPlaying ? "Pause" : "Play"}
       className={className}
       style={{

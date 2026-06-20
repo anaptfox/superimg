@@ -1,5 +1,5 @@
 //! SuperImg - Browser-specific exports
-//! Player, runtime rendering, and playback utilities for client-side usage
+//! Runtime-web, Player, rendering, and export utilities for client-side usage
 
 export * from "./index.shared.js";
 
@@ -7,10 +7,16 @@ export * from "./index.shared.js";
 // PLAYER (main browser export)
 // =============================================================================
 
-export { Player, HtmlPresenter, CanvasPresenter, resolveFormat } from "@superimg/player";
+export { Player, resolveFormat } from "@superimg/player";
 
 // =============================================================================
-// RUNTIME (for advanced usage)
+// RUNTIME-WEB (canonical display runtime)
+// =============================================================================
+
+export { createRuntime, mount } from "@superimg/runtime-web";
+
+// =============================================================================
+// EXPORT/CAPTURE RUNTIME (advanced usage)
 // =============================================================================
 
 export {
@@ -27,13 +33,23 @@ export {
 // =============================================================================
 
 export {
-  createPlayerStore,
-  createPlaybackController,
-  createTimelineController,
   formatTime,
 } from "@superimg/player";
 
-// Runtime types
+// Runtime-web types
+export type {
+  RuntimeInput,
+  RuntimeOptions,
+  RuntimeUpdate,
+  RuntimeState,
+  RuntimeEvents,
+  RuntimeStore,
+  RuntimeRenderedPayload,
+  RuntimePlaybackMode,
+  WebRuntime,
+} from "@superimg/runtime-web";
+
+// Export/capture runtime types
 export type {
   ExportConfig,
   ExportOptions,
@@ -41,17 +57,11 @@ export type {
 
 // Player types
 export type {
-  PlayerStore,
-  PlayerConfig,
-  PlayerState,
-  PlayerStoreCallbacks,
-  PlaybackController,
-  PlaybackCallbacks,
-  TimelineController,
-  TimelineElements,
   LoadOptions,
   FormatOption,
+  PlayerOptions,
+  PlayerEvents,
+  PlayerInput,
+  PlayerUpdate,
+  LoadResult,
 } from "@superimg/player";
-
-export type { PlayerOptions, PlayerEvents, PlayerInput } from "@superimg/types";
-export { PlayerNotReadyError } from "@superimg/types";

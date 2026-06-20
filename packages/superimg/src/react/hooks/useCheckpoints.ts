@@ -55,16 +55,15 @@ export function useCheckpoints(playerRef: RefObject<PlayerRef | null>): UseCheck
   // Get player instance
   const player = playerRef.current?.player;
 
-  // Subscribe to store changes for current frame
+  // Subscribe to runtime state changes for current frame
   useEffect(() => {
-    if (!player?.store) return;
+    if (!player?.isReady) return;
 
-    const unsubscribe = player.store.subscribe((state) => {
-      setCurrentFrame(state.currentFrame);
+    const unsubscribe = player.subscribe(() => {
+      setCurrentFrame(player.getState().currentFrame);
     });
 
-    // Initial state
-    setCurrentFrame(player.store.getState().currentFrame);
+    setCurrentFrame(player.getState().currentFrame);
 
     return () => unsubscribe();
   }, [player]);

@@ -17,6 +17,8 @@ export type {
   FitMode,
 
   // Template types
+  TemplateKind,
+  AnyTemplateModule,
   TemplateModule,
   TemplateConfig,
   ProjectConfig,
@@ -34,6 +36,7 @@ export type {
 
   // Encoding options
   EncodingOptions,
+  OutputFormat,
   VideoCodecPreference,
   AudioCodecPreference,
   QualityPreset,
@@ -61,6 +64,22 @@ export type {
 
   // Stdlib type
   Stdlib,
+  ImageStdlib,
+  SvgStdlib,
+
+  // Image types
+  ImageModule,
+  ImageConfig,
+  ImageRenderContext,
+
+  // Gif types
+  GifModule,
+  GifConfig,
+
+  // SVG types
+  SvgModule,
+  SvgConfig,
+  SvgRenderContext,
 
   // Engine contract types
   RenderJob,
@@ -75,7 +94,7 @@ export type {
 } from "@superimg/types";
 
 // Template helpers
-export { defineScene, defineConfig } from "@superimg/types";
+export { defineScene, defineImage, defineGif, defineSvg, defineConfig } from "@superimg/types";
 
 // Error classes
 export {
@@ -93,6 +112,9 @@ export {
 
 export {
   createRenderContext,
+  createImageRenderContext,
+  createSvgRenderContext,
+  resolveRuntimeTemplateInfo,
   compileTemplate,
   validateTemplate,
   CheckpointResolver,

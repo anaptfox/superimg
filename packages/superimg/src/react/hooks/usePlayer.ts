@@ -1,13 +1,7 @@
-//! React hook for player state management
+//! React hook for lightweight playback state
 
-import { useRef, useCallback, useSyncExternalStore } from "react";
-import { createPlayerStore, createPlaybackController } from "../../index.browser.js";
-import type {
-  PlayerConfig,
-  PlayerState,
-  PlayerStore,
-  PlayerStoreCallbacks,
-} from "../../index.browser.js";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import type { RuntimeState, RuntimeStore } from "../../index.browser.js";
 
 export interface UsePlayerConfig {
   /** Frames per second */
@@ -20,7 +14,7 @@ export interface UsePlayerConfig {
 
 export interface UsePlayerReturn {
   /** Current player state */
-  state: PlayerState;
+  state: RuntimeState;
   /** Start playback */
   play: () => void;
   /** Pause playback */
@@ -30,109 +24,161 @@ export interface UsePlayerReturn {
   /** Seek to a specific frame */
   seek: (frame: number) => void;
   /** Update player configuration (fps and/or duration) */
-  updateConfig: (config: Partial<PlayerConfig>) => void;
+  updateConfig: (config: Partial<Pick<RuntimeState, "fps" | "duration">>) => void;
   /** Clear the frame cache */
   clearCache: () => void;
-  /** The underlying store (for advanced usage) */
-  store: PlayerStore;
+  /** The underlying runtime-compatible store */
+  store: RuntimeStore;
 }
 
-/**
- * Hook for managing video player state and playback.
- *
- * @example
- * ```tsx
- * const { state, play, pause, seek } = usePlayer({
- *   fps: 30,
- *   duration: 10,
- *   onFrameChange: (frame) => renderFrame(frame),
- * });
- * ```
- */
+type Listener = () => void;
+
+function createInitialState(fps: number, duration: number): RuntimeState {
+  const totalFrames = Math.max(1, Math.ceil(duration * fps));
+  return {
+    kind: "video",
+    isReady: true,
+    isPlaying: false,
+    isScrubbing: false,
+    currentFrame: 0,
+    totalFrames,
+    fps,
+    duration,
+    width: 0,
+    height: 0,
+    progress: 0,
+  };
+}
+
+function withFrame(state: RuntimeState, frame: number): RuntimeState {
+  const currentFrame = Math.max(0, Math.min(Math.floor(frame), state.totalFrames - 1));
+  return {
+    ...state,
+    currentFrame,
+    progress: state.totalFrames > 1 ? currentFrame / (state.totalFrames - 1) : 0,
+  };
+}
+
 export function usePlayer(config: UsePlayerConfig): UsePlayerReturn {
   const configRef = useRef(config);
   configRef.current = config;
 
-  // Create store and playback controller once
-  const storeRef = useRef<PlayerStore | null>(null);
-  const controllerRef = useRef<ReturnType<typeof createPlaybackController> | null>(null);
+  const stateRef = useRef<RuntimeState>(createInitialState(config.fps, config.duration));
+  const listenersRef = useRef(new Set<Listener>());
+  const rafRef = useRef<number | null>(null);
+  const startedAtRef = useRef(0);
+  const startFrameRef = useRef(0);
+  const storeRef = useRef<RuntimeStore | null>(null);
+
+  const emit = useCallback(() => {
+    listenersRef.current.forEach((listener) => listener());
+  }, []);
+
+  const setState = useCallback((next: RuntimeState) => {
+    stateRef.current = next;
+    emit();
+  }, [emit]);
+
+  const setFrame = useCallback((frame: number) => {
+    const next = withFrame(stateRef.current, frame);
+    stateRef.current = next;
+    configRef.current.onFrameChange?.(next.currentFrame);
+    emit();
+  }, [emit]);
+
+  const pauseInternal = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (stateRef.current.isPlaying) {
+      setState({ ...stateRef.current, isPlaying: false });
+    }
+  }, [setState]);
+
+  const tick = useCallback(() => {
+    if (!stateRef.current.isPlaying) {
+      rafRef.current = null;
+      return;
+    }
+    const elapsedSeconds = (performance.now() - startedAtRef.current) / 1000;
+    const nextFrame = startFrameRef.current + Math.floor(elapsedSeconds * stateRef.current.fps);
+    if (nextFrame >= stateRef.current.totalFrames) {
+      setFrame(stateRef.current.totalFrames - 1);
+      pauseInternal();
+      return;
+    }
+    setFrame(nextFrame);
+    rafRef.current = requestAnimationFrame(tick);
+  }, [pauseInternal, setFrame]);
 
   if (!storeRef.current) {
-    const callbacks: PlayerStoreCallbacks = {
-      onPlay: () => {
-        const store = storeRef.current;
-        const controller = controllerRef.current;
-        if (store && controller) {
-          controller.play(store.getState().currentFrame);
-        }
+    storeRef.current = {
+      getState: () => stateRef.current,
+      subscribe: (listener) => {
+        listenersRef.current.add(listener);
+        return () => listenersRef.current.delete(listener);
       },
-      onPause: () => {
-        controllerRef.current?.pause();
+      play: () => {
+        if (stateRef.current.isPlaying) return;
+        startedAtRef.current = performance.now();
+        startFrameRef.current =
+          stateRef.current.currentFrame >= stateRef.current.totalFrames - 1
+            ? 0
+            : stateRef.current.currentFrame;
+        setState({ ...withFrame(stateRef.current, startFrameRef.current), isPlaying: true });
+        rafRef.current = requestAnimationFrame(tick);
       },
-      onFrameChange: (frame) => {
-        configRef.current.onFrameChange?.(frame);
+      pause: pauseInternal,
+      togglePlayPause: () => {
+        stateRef.current.isPlaying ? pauseInternal() : storeRef.current?.play();
+      },
+      seekFrame: setFrame,
+      seekProgress: (progress) => {
+        const clamped = Math.max(0, Math.min(1, progress));
+        setFrame(Math.floor(clamped * Math.max(0, stateRef.current.totalFrames - 1)));
       },
     };
-
-    storeRef.current = createPlayerStore(
-      { fps: config.fps, duration: config.duration },
-      callbacks
-    );
-
-    controllerRef.current = createPlaybackController(storeRef.current, {
-      onFrame: (frame) => {
-        storeRef.current?.getState().setFrame(frame);
-      },
-      onEnd: () => {
-        const store = storeRef.current;
-        if (store) {
-          store.getState().pause();
-          store.getState().setFrame(store.getState().totalFrames - 1);
-        }
-      },
-    });
   }
 
-  // After initialization block, store is guaranteed to exist
-  const store = storeRef.current!;
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
-  // Subscribe to store changes
-  const state = useSyncExternalStore(
-    store.subscribe,
-    store.getState,
-    store.getState
+  const store = storeRef.current;
+  const state = useSyncExternalStore(store.subscribe, store.getState, store.getState);
+
+  const updateConfig = useCallback(
+    (nextConfig: Partial<Pick<RuntimeState, "fps" | "duration">>) => {
+      const fps = nextConfig.fps ?? stateRef.current.fps;
+      const duration = nextConfig.duration ?? stateRef.current.duration;
+      const totalFrames = Math.max(1, Math.ceil(duration * fps));
+      const next = withFrame(
+        {
+          ...stateRef.current,
+          fps,
+          duration,
+          totalFrames,
+        },
+        stateRef.current.currentFrame
+      );
+      setState(next);
+    },
+    [setState]
   );
 
-  const play = useCallback(() => {
-    store.getState().play();
-  }, [store]);
-
-  const pause = useCallback(() => {
-    store.getState().pause();
-  }, [store]);
-
-  const togglePlayPause = useCallback(() => {
-    store.getState().togglePlayPause();
-  }, [store]);
-
-  const seek = useCallback((frame: number) => {
-    store.getState().setFrame(frame);
-  }, [store]);
-
-  const updateConfig = useCallback((newConfig: Partial<PlayerConfig>) => {
-    store.getState().updateConfig(newConfig);
-  }, [store]);
-
   const clearCache = useCallback(() => {
-    // No-op, cache is managed by presenter now
+    // Preview rendering is runtime-owned in vNext; no frame cache is maintained here.
   }, []);
 
   return {
     state,
-    play,
-    pause,
-    togglePlayPause,
-    seek,
+    play: store.play,
+    pause: store.pause,
+    togglePlayPause: store.togglePlayPause,
+    seek: store.seekFrame,
     updateConfig,
     clearCache,
     store,

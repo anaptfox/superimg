@@ -35,6 +35,11 @@
       "import": "./dist/index.player.js",
       "default": "./dist/index.player.js"
     },
+    "./runtime-web": {
+      "types": "./dist/index.runtime-web.d.ts",
+      "import": "./dist/index.runtime-web.js",
+      "default": "./dist/index.runtime-web.js"
+    },
     "./bundler": {
       "types": "./dist/index.bundler.d.ts",
       "import": "./dist/index.bundler.js",
@@ -241,6 +246,7 @@
     "@superimg/player": "workspace:*",
     "@superimg/playwright": "workspace:*",
     "@superimg/runtime": "workspace:*",
+    "@superimg/runtime-web": "workspace:*",
     "@superimg/skill": "workspace:*",
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",

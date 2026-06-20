@@ -11,6 +11,7 @@ export type {
   LoadOptions,
   LoadResult,
   FormatOption,
+  PlayerUpdate,
 } from "@superimg/player";
 
 export type {

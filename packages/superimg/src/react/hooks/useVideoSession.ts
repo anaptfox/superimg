@@ -12,7 +12,7 @@ import {
   createRenderContext,
   resolveFormat,
   isComposedTemplate,
-  type PlayerStore,
+  type RuntimeStore,
   type TemplateModule,
   type ComposedTemplate,
   type ResolvedScene,
@@ -107,7 +107,7 @@ export interface VideoSessionReturn {
 
   // For Timeline component
   /** Underlying player store for Timeline component */
-  store: PlayerStore;
+  store: RuntimeStore;
 
   // Container management (for VideoCanvas component)
   /** Set the container element (used by VideoCanvas component) */

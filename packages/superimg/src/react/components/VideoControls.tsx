@@ -1,7 +1,7 @@
 //! VideoControls - Composite component for PlayButton + Timeline + ExportButton
 
 import { useState, useCallback } from "react";
-import type { PlayerStore, FormatOption } from "../../index.browser.js";
+import type { RuntimeStore, FormatOption } from "../../index.browser.js";
 import { useIsMobile } from "../hooks/useMediaQuery.js";
 import { PlayButton } from "./PlayButton.js";
 import { Timeline } from "./Timeline.js";
@@ -11,7 +11,7 @@ import { FormatSelector } from "./FormatSelector.js";
 
 export interface VideoControlsProps {
   /** The player store to control */
-  store: PlayerStore;
+  store: RuntimeStore;
   /** Show timeline (default: true) */
   showTimeline?: boolean;
   /** Show time labels on timeline (default: false) */

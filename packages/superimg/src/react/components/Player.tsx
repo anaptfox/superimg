@@ -18,7 +18,7 @@ import {
   type HoverBehavior,
   type FormatOption,
 } from "../../index.player.js";
-import type { PlayerStore, CompileError } from "../../index.browser.js";
+import type { RuntimeStore, CompileError } from "../../index.browser.js";
 import { VideoControls } from "./VideoControls.js";
 import { useCompiledTemplate } from "../hooks/useCompiledTemplate.js";
 
@@ -63,8 +63,6 @@ export interface PlayerProps {
    * "pause": pauses at current frame.
    */
   hoverResetBehavior?: "reset" | "pause";
-  /** Maximum frames to cache (default: 30) */
-  maxCacheFrames?: number;
   /** Optional CSS class */
   className?: string;
   /** Optional inline styles */
@@ -92,16 +90,14 @@ export interface PlayerRef {
   play: () => void;
   /** Pause */
   pause: () => void;
-  /** Stop and reset to frame 0 */
-  stop: () => void;
   /** Seek to specific frame */
-  seekToFrame: (frame: number) => void;
+  seekFrame: (frame: number) => void;
   /** Seek to progress (0-1) */
-  seekToProgress: (progress: number) => void;
+  seekProgress: (progress: number) => void;
   /** Seek to time in seconds */
-  seekToTimeSeconds: (seconds: number) => void;
-  /** Change the format */
-  setFormat: (format: FormatOption) => void;
+  seekTimeSeconds: (seconds: number) => void;
+  /** Update runtime data or dimensions */
+  update: (update: { data?: Record<string, unknown>; format?: FormatOption }) => void;
   /** Whether player is ready */
   isReady: boolean;
   /** Whether currently playing */
@@ -156,7 +152,7 @@ export interface PlayerRef {
  * />
  *
  * <button onClick={() => playerRef.current?.play()}>Play</button>
- * <button onClick={() => playerRef.current?.seekToFrame(0)}>Reset</button>
+ * <button onClick={() => playerRef.current?.seekFrame(0)}>Reset</button>
  * ```
  */
 export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
@@ -172,7 +168,6 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     hoverBehavior = "none",
     hoverDelayMs = 200,
     hoverResetBehavior = "reset",
-    maxCacheFrames = 30,
     className,
     style,
     controls,
@@ -190,7 +185,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   const hoverTimeoutRef = useRef<number | undefined>(undefined);
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [store, setStore] = useState<PlayerStore | null>(null);
+  const [store, setStore] = useState<RuntimeStore | null>(null);
 
   // Store callbacks in refs to avoid recreation when they change
   // This prevents the player/iframe from being destroyed and recreated on every parent render
@@ -250,7 +245,6 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
       loadMode,
       hoverBehavior: "none", // We handle hover manually for React
       hoverDelayMs,
-      maxCacheFrames,
     });
 
     playerRef.current = player;
@@ -278,8 +272,8 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     const loadPlayer = async () => {
       const result = await player.load(template);
       setIsReady(result.status === "success");
-      if (result.status === "success" && player.store) {
-        setStore(player.store);
+      if (result.status === "success") {
+        setStore(player.getRuntimeStore());
         if (autoPlay) {
           player.play();
         }
@@ -301,7 +295,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
       observer.observe(containerRef.current);
       return () => {
         observer.disconnect();
-        player.destroy();
+        player.dispose();
         playerRef.current = null;
         setStore(null);
         setIsReady(false);
@@ -312,7 +306,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     }
 
     return () => {
-      player.destroy();
+      player.dispose();
       playerRef.current = null;
       setStore(null);
       setIsReady(false);
@@ -325,7 +319,6 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     loadMode,
     hoverBehavior,
     hoverDelayMs,
-    maxCacheFrames,
     autoPlay,
     // Callbacks removed - using refs instead to avoid iframe recreation
   ]);
@@ -348,7 +341,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     if (playerRef.current?.isReady) {
       playerRef.current.pause();
       if (hoverResetBehavior === "reset") {
-        playerRef.current.seekToFrame(0);
+        playerRef.current.seekFrame(0);
       }
     }
   }, [hoverBehavior, hoverResetBehavior]);
@@ -356,7 +349,7 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
   // Click-to-play/pause — only when hoverBehavior="none" (hover owns state otherwise)
   const handleClick = useCallback(() => {
     if (hoverBehavior !== "none" || !isReady || !store) return;
-    store.getState().togglePlayPause();
+    store.togglePlayPause();
   }, [hoverBehavior, isReady, store]);
 
   // Expose ref API
@@ -374,14 +367,12 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
       },
       play: () => playerRef.current?.play(),
       pause: () => playerRef.current?.pause(),
-      stop: () => playerRef.current?.stop(),
-      seekToFrame: (frame: number) => playerRef.current?.seekToFrame(frame),
-      seekToProgress: (progress: number) =>
-        playerRef.current?.seekToProgress(progress),
-      seekToTimeSeconds: (seconds: number) =>
-        playerRef.current?.seekToTimeSeconds(seconds),
-      setFormat: (newFormat: FormatOption) =>
-        playerRef.current?.setFormat(newFormat),
+      seekFrame: (frame: number) => playerRef.current?.seekFrame(frame),
+      seekProgress: (progress: number) =>
+        playerRef.current?.seekProgress(progress),
+      seekTimeSeconds: (seconds: number) =>
+        playerRef.current?.seekTimeSeconds(seconds),
+      update: (update) => playerRef.current?.update(update),
     }),
     [isReady, isPlaying]
   );
