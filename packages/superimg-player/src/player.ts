@@ -1,44 +1,38 @@
-//! Player - Browser player for SuperImg templates
-//! Renders templates to canvas with playback controls, seeking, and caching
+//! Player - high-level browser controller for SuperImg runtime-web
 
-import type {
-  RenderContext,
-  TemplateModule,
-  ComposedTemplate,
-  ResolvedScene,
-  Checkpoint,
-  Marker,
-  PlaybackMode,
-  LoadMode,
-  HoverBehavior,
-  FramePresenter,
-  AssetMeta,
-} from "@superimg/types";
-import { isComposedTemplate } from "@superimg/types";
-import { SuperImgError, TemplateRuntimeError } from "@superimg/types";
-import { enrichError } from "@superimg/core/errors";
+import { CheckpointResolver } from "@superimg/core";
+import {
+  createRuntime,
+  type RuntimeInput,
+  type RuntimeRenderedPayload,
+  type RuntimeState,
+  type RuntimeStore,
+  type WebRuntime,
+} from "@superimg/runtime-web";
 import { getPreset } from "@superimg/stdlib";
-
-// =============================================================================
-// PLAYER-SPECIFIC TYPES (defined here, exported from this module)
-// =============================================================================
+import { HoverController } from "./player-hover.js";
+import {
+  isComposedTemplate,
+  SuperImgError,
+  type AssetMeta,
+  type Checkpoint,
+  type ComposedTemplate,
+  type HoverBehavior,
+  type LoadMode,
+  type Marker,
+  type PlaybackMode,
+  type ResolvedScene,
+} from "@superimg/types";
 
 /** Simple format aliases that map to stdlib presets */
 const SIMPLE_ALIASES: Record<string, string> = {
-  vertical: "instagram.video.reel", // 1080x1920
-  horizontal: "youtube.video.long", // 1920x1080
-  square: "instagram.video.feed", // 1080x1080
+  vertical: "instagram.video.reel",
+  horizontal: "youtube.video.long",
+  square: "instagram.video.feed",
 } as const;
 
 /**
  * Format option: simple alias, stdlib preset path, or custom dimensions.
- *
- * Examples:
- * - "vertical" → 1080x1920
- * - "horizontal" → 1920x1080
- * - "square" → 1080x1080
- * - "youtube.video.short" → 1080x1920
- * - { width: 800, height: 600 } → custom dimensions
  */
 export type FormatOption =
   | "vertical"
@@ -47,49 +41,43 @@ export type FormatOption =
   | string
   | { width: number; height: number };
 
-/**
- * Resolve a format option to width/height dimensions.
- */
 export function resolveFormat(format: FormatOption): { width: number; height: number } {
-  if (typeof format === "object") {
-    return format;
-  }
+  if (typeof format === "object") return format;
 
   const presetPath = SIMPLE_ALIASES[format] ?? format;
   const preset = getPreset(presetPath);
-
   if (!preset) {
     throw new Error(`Unknown format: ${format}`);
   }
-
   return { width: preset.width, height: preset.height };
 }
 
-/**
- * Options for creating a Player instance
- */
 export interface PlayerOptions {
   /** Container element or CSS selector */
   container: string | HTMLElement;
   /** Format for rendering - simple alias, stdlib preset path, or custom dimensions */
   format?: FormatOption;
-  /** Playback mode when video ends (default: 'once') */
+  /** Playback mode when video ends (default: "once") */
   playbackMode?: PlaybackMode;
-  /** When to load/compile the template (default: 'eager') */
+  /** When the caller should load the template (default: "eager") */
   loadMode?: LoadMode;
-  /** Behavior on hover (default: 'none') */
+  /** Behavior on hover (default: "none") */
   hoverBehavior?: HoverBehavior;
-  /** Delay before hover behavior triggers, in milliseconds (default: 200) */
+  /** Delay before hover playback triggers, in milliseconds (default: 200) */
   hoverDelayMs?: number;
-  /** Maximum frames to cache (default: 30) */
-  maxCacheFrames?: number;
-  /** Show built-in controls (default: false) */
-  showControls?: boolean;
 }
 
-/**
- * Result of loading a template into a player
- */
+export interface LoadOptions {
+  /** Runtime data merged over template defaults */
+  data?: Record<string, unknown>;
+  /** Explicit markers for checkpoint navigation */
+  markers?: Marker[];
+  /** Runtime asset metadata */
+  assets?: Record<string, AssetMeta>;
+  /** Resolve co-located asset filenames to URLs */
+  assetResolver?: (filename: string) => string;
+}
+
 export type LoadResult =
   | {
       status: "success";
@@ -107,33 +95,31 @@ export type LoadResult =
       details?: Record<string, unknown>;
     };
 
-/** What can be passed to player.load() */
-export type PlayerInput = TemplateModule | ComposedTemplate;
+export type PlayerInput = RuntimeInput;
+
+export interface PlayerUpdate {
+  data?: Record<string, unknown>;
+  format?: FormatOption;
+  width?: number;
+  height?: number;
+  fps?: number;
+  duration?: number;
+  assets?: Record<string, AssetMeta>;
+  assetResolver?: (filename: string) => string;
+}
 
 export interface PlayerEvents {
-  /** Fired on each frame render */
-  frame: (frame: number) => void;
-  /** Fired on each frame render with the raw HTML payload for debugging */
-  frameRendered: (frame: number, html: string, compositeHtml: string) => void;
-  /** Fired when playback starts */
+  frame: (frame: number, totalFrames: number) => void;
+  rendered: (payload: RuntimeRenderedPayload) => void;
   play: () => void;
-  /** Fired when playback pauses */
   pause: () => void;
-  /** Fired when playback reaches the end */
   ended: () => void;
-  /** Fired when player is ready (loaded) */
   ready: () => void;
-  /** Fired on error */
   error: (error: Error) => void;
-  /** Fired when passing a checkpoint */
   checkpoint: (checkpoint: Checkpoint) => void;
-  /** Fired when the current scene changes (composed templates only) */
   scenechange: (scene: ResolvedScene) => void;
 }
 
-/**
- * Player not ready error
- */
 class PlayerNotReadyError extends SuperImgError {
   constructor(operation: string) {
     super(
@@ -146,918 +132,351 @@ class PlayerNotReadyError extends SuperImgError {
     this.name = "PlayerNotReadyError";
   }
 }
-import { CheckpointResolver, createRenderContext, resolveConfigAssets, parseDuration } from "@superimg/core";
-import { BrowserRenderer } from "@superimg/runtime";
-import { buildCompositeHtml } from "@superimg/core/html";
-import { loadAllAssetsWithMetadata } from "@superimg/runtime";
-import { createPlayerStore, type PlayerStore, type PlayerConfig } from "./state.js";
-import { createPlaybackController, type PlaybackController } from "./playback.js";
-import { HtmlPresenter } from "./html-presenter.js";
-import { CanvasPresenter } from "./canvas-presenter.js";
 
-export interface LoadOptions {
-  /** Explicit markers for non-scene checkpoints */
-  markers?: Marker[];
-  /**
-   * Parsed sourcemap for the template's bundle, used to map runtime errors
-   * back to the user's `.video.ts` source. Required for rich error overlays
-   * in the dev UI.
-   */
-  sourceMap?: import("@superimg/types").TemplateSourceMap;
-  /** Logical path of the entry source (paired with sourceMap). */
-  sourceFile?: string;
-}
-
-/**
- * Options for capturing a frame as an image
- */
-export interface CaptureOptions {
-  /** Frame to capture. Omit for smart thumbnail frame selection. */
-  frame?: number;
-  /** Output format (default: 'dataUrl') */
-  format?: "blob" | "dataUrl" | "canvas" | "imageData";
-  /** MIME type for blob/dataUrl output (default: 'image/png') */
-  mimeType?: "image/png" | "image/webp" | "image/jpeg";
-  /** Quality for lossy formats (0-1, default: 0.92) */
-  quality?: number;
-}
-
-/**
- * Result of capturing a frame
- */
-export interface CapturedFrame {
-  /** Blob (if format is 'blob') */
-  blob?: Blob;
-  /** Data URL (if format is 'dataUrl') */
-  dataUrl?: string;
-  /** Canvas element (if format is 'canvas') */
-  canvas?: HTMLCanvasElement;
-  /** Raw ImageData (if format is 'imageData') */
-  imageData?: ImageData;
-  /** Width in pixels */
-  width: number;
-  /** Height in pixels */
-  height: number;
-}
-
-/**
- * Player - Embeddable player for SuperImg templates
- *
- * @example
- * ```typescript
- * import { Player } from 'superimg/browser';
- * import myTemplate from './templates/my-template';
- *
- * const player = new Player({
- *   container: '#player',
- *   width: 1280,
- *   height: 720,
- *   playbackMode: 'loop',
- *   loadMode: 'eager',
- * });
- *
- * const result = await player.load(myTemplate);
- * if (result.status === 'success') {
- *   player.play();
- * }
- * ```
- */
 export class Player {
   private container: HTMLElement;
-  private presenter: FramePresenter;
-  private _store: PlayerStore | null = null;
-  private playbackController: PlaybackController | null = null;
-  private _checkpointResolver: CheckpointResolver | null = null;
-  private template: TemplateModule | ComposedTemplate | null = null;
-  private _composedTemplate: ComposedTemplate | null = null;
-  private _lastSceneIndex: number = -1;
-  private _totalFrames: number = 0;
-  private _fps: number = 30;
-  private _format: FormatOption | undefined;
-  private _renderWidth: number = 1920;
-  private _renderHeight: number = 1080;
-  private options: Required<Omit<PlayerOptions, "container" | "format">>;
-  private events: Partial<PlayerEvents> = {};
-  private _isReady = false;
-  private _data: Record<string, unknown> = {};
-  private _assetsMap: Record<string, AssetMeta> = {};
-  private _sourceMap: import("@superimg/types").TemplateSourceMap | undefined;
-  private _sourceFile: string | undefined;
+  private runtime: WebRuntime | null = null;
+  private runtimeStore: RuntimeStore | null = null;
+  private template: PlayerInput | null = null;
+  private checkpointResolverInstance: CheckpointResolver | null = null;
+  private markerList: Marker[] = [];
+  private format: FormatOption | undefined;
+  private readonly options: {
+    playbackMode: PlaybackMode;
+    loadMode: LoadMode;
+    hoverBehavior: HoverBehavior;
+    hoverDelayMs: number;
+  };
+  private events: Partial<{ [K in keyof PlayerEvents]: Set<PlayerEvents[K]> }> = {};
+  private hoverController!: HoverController;
+  private lastCheckpointId: string | null = null;
 
   constructor(options: PlayerOptions) {
-    // Resolve container
     if (typeof options.container === "string") {
-      const el = document.querySelector(options.container);
-      if (!el) {
-        throw new Error(`Container not found: ${options.container}`);
-      }
-      this.container = el as HTMLElement;
+      const element = document.querySelector(options.container);
+      if (!element) throw new Error(`Container not found: ${options.container}`);
+      this.container = element as HTMLElement;
     } else {
       this.container = options.container;
     }
 
-    // Store format option
-    this._format = options.format;
-
-    // Resolve initial dimensions from format if provided
-    if (this._format) {
-      const dims = resolveFormat(this._format);
-      this._renderWidth = dims.width;
-      this._renderHeight = dims.height;
-    }
-
-    // Set defaults
+    this.format = options.format;
     this.options = {
       playbackMode: options.playbackMode ?? "once",
       loadMode: options.loadMode ?? "eager",
       hoverBehavior: options.hoverBehavior ?? "none",
       hoverDelayMs: options.hoverDelayMs ?? 200,
-      maxCacheFrames: options.maxCacheFrames ?? 30,
-      showControls: options.showControls ?? false,
     };
 
-    // Always use HtmlPresenter for preview (CSS transform scaling)
-    this.presenter = new HtmlPresenter(this.container);
+    this.hoverController = new HoverController(
+      this.container,
+      { behavior: this.options.hoverBehavior, delayMs: this.options.hoverDelayMs },
+      () => this.runtime
+    );
+    this.hoverController.install();
   }
 
-  /**
-   * Load a template module
-   *
-   * @param input - Template module to load
-   * @param loadOptions - Optional load options
-   * @returns LoadResult with success/error status
-   */
-  async load(
-    input: TemplateModule | ComposedTemplate,
-    loadOptions?: LoadOptions
-  ): Promise<LoadResult> {
+  async load(input: PlayerInput, options: LoadOptions = {}): Promise<LoadResult> {
     try {
-      // Store template
+      this.runtime?.dispose();
       this.template = input;
-      this._composedTemplate = isComposedTemplate(input) ? input : null;
-      // Capture sourcemap context for runtime error enrichment
-      this._sourceMap = loadOptions?.sourceMap;
-      this._sourceFile = loadOptions?.sourceFile;
+      this.markerList = options.markers ?? [];
+      this.lastCheckpointId = null;
 
-      // Get config from template (both TemplateModule and ComposedTemplate have config)
-      const fps = this._composedTemplate
-        ? this._composedTemplate.fps
-        : (this.template.config?.fps ?? 30);
-      const duration = this._composedTemplate
-        ? this._composedTemplate.duration
-        : parseDuration(this.template.config?.duration, "duration", fps);
-      const totalFrames = this._composedTemplate
-        ? this._composedTemplate.totalFrames
-        : Math.ceil(duration * fps);
-
-      // Resolve dimensions with precedence: format > template config > default
-      const { width, height } = this.resolveDimensions(this.template);
-      this._renderWidth = width;
-      this._renderHeight = height;
-
-      // Set presenter logical size
-      if (this.presenter.setLogicalSize) {
-        this.presenter.setLogicalSize(width, height);
-      }
-
-      this._totalFrames = totalFrames;
-      this._fps = fps;
-
-      // Load assets with metadata for ctx.assets
-      const assetDeclarations = resolveConfigAssets(this.template.config?.assets);
-      if (assetDeclarations.length > 0) {
-        this._assetsMap = await loadAllAssetsWithMetadata(assetDeclarations);
-      } else {
-        this._assetsMap = {};
-      }
-
-      // Create checkpoint resolver: scene boundaries + explicit markers
-      const markers: Marker[] = [];
-      if (this._composedTemplate) {
-        for (const s of this._composedTemplate.scenes) {
-          markers.push({
-            id: s.id,
-            at: { type: "frame", value: s.startFrame },
-            label: s.label,
-          });
-        }
-      }
-      if (loadOptions?.markers?.length) {
-        markers.push(...loadOptions.markers);
-      }
-      if (markers.length > 0) {
-        this._checkpointResolver = new CheckpointResolver(
-          markers,
-          totalFrames,
-          fps
-        );
-      }
-
-      // Create player store
-      const config: PlayerConfig = {
-        fps,
-        duration,
-      };
-
-      this._store = createPlayerStore(
-        config,
-        {
-          onPlay: () => {
-            this.events.play?.();
-            if (this.playbackController) {
-              this.playbackController.play(this._store!.getState().currentFrame);
-            }
-          },
-          onPause: () => {
-            this.events.pause?.();
-            this.playbackController?.pause();
-          },
-          onFrameChange: (frame) => {
-            this.renderFrame(frame);
-            // Fire scenechange when crossing scene boundary
-            if (this._composedTemplate) {
-              const scene = this._composedTemplate.getSceneAtFrame(frame);
-              if (scene.index !== this._lastSceneIndex) {
-                this._lastSceneIndex = scene.index;
-                this.events.scenechange?.(scene);
-              }
-            }
-          },
-          onCheckpoint: (checkpoint) => {
-            this.events.checkpoint?.(checkpoint);
-          },
-          maxCacheSize: this.options.maxCacheFrames,
-        },
-        this._checkpointResolver ?? undefined
-      );
-
-      // Create playback controller
-      this.playbackController = createPlaybackController(this._store, {
-        onFrame: (frame) => {
-          this._store!.getState().setFrame(frame);
-          this.events.frame?.(frame);
-        },
-        onEnd: () => {
-          if (this.options.playbackMode === "loop") {
-            this._store!.getState().setFrame(0);
-            this._store!.getState().play();
-          } else if (this.options.playbackMode === "ping-pong") {
-            // TODO: Implement ping-pong
-            this._store!.getState().setFrame(0);
-            this._store!.getState().play();
-          } else {
-            this._store!.getState().pause();
-            this.events.ended?.();
-          }
-        },
+      const dimensions = this.format ? resolveFormat(this.format) : {};
+      this.runtime = createRuntime(input, {
+        ...dimensions,
+        data: options.data,
+        assets: options.assets,
+        assetResolver: options.assetResolver,
+        playbackMode: this.options.playbackMode,
       });
+      this.runtimeStore = this.runtime.asStore();
+      this.checkpointResolverInstance = null;
+      this.wireRuntimeEvents(this.runtime);
+      this.runtime.attach(this.container);
+      this.rebuildCheckpointResolver();
 
-      // Inject template CSS (inlineCss, stylesheets) into presenter
-      const templateConfig = this._composedTemplate?.config ?? this.template?.config;
-      if (this.presenter.injectStyles && templateConfig) {
-        this.presenter.injectStyles(
-          templateConfig.inlineCss ?? [],
-          templateConfig.stylesheets ?? []
-        );
-      }
-
-      // Warmup presenter
-      if (this.presenter.warmup) {
-        await this.presenter.warmup();
-      }
-
-      // Render first frame
-      await this.renderFrame(0);
-
-      // Initialize scene tracking for composed templates
-      if (this._composedTemplate) {
-        this._lastSceneIndex = this._composedTemplate.getSceneAtFrame(0).index;
-      }
-
-      this._isReady = true;
-      this.events.ready?.();
-
+      const state = this.runtime.getState();
       return {
         status: "success",
-        totalFrames,
-        duration,
-        width,
-        height,
-        fps,
+        totalFrames: state.totalFrames,
+        duration: state.duration,
+        width: state.width,
+        height: state.height,
+        fps: state.fps,
       };
-    } catch (error) {
-      const enriched = enrichError(error, {
-        sourceMap: this._sourceMap,
-        sourceFile: this._sourceFile,
-      });
-      this.events.error?.(enriched);
-
-      return {
-        status: "error",
-        errorType: "compilation",
-        message: enriched.message,
-        suggestion: enriched.suggestion,
-        details: enriched.toJSON() as unknown as Record<string, unknown>,
-      };
-    }
-  }
-
-  /**
-   * Render a specific frame. Public for export and advanced usage.
-   */
-  async renderFrame(frame: number): Promise<void> {
-    if (!this.template || !this._store) {
-      return;
-    }
-
-    // Build context: merge template.data with external data (ComposedTemplate has no data field)
-    const templateData =
-      "data" in this.template ? this.template.data : undefined;
-    const mergedData = {
-      ...(templateData ?? {}),
-      ...this._data,
-    };
-    const templateConfig = this._composedTemplate?.config ?? this.template?.config;
-    const ctx = createRenderContext(
-      frame,
-      this._fps,
-      this._totalFrames,
-      this._renderWidth,
-      this._renderHeight,
-      mergedData,
-      "default",
-      this._assetsMap,
-      undefined,
-      templateConfig?.width
-    );
-
-    try {
-      // Render HTML string
-      const html = this.template.render(ctx);
-      // Compose with template's background (if any)
-      const compositeHtml = buildCompositeHtml(
-        html,
-        templateConfig?.background,
-        templateConfig?.watermark,
-        this._renderWidth,
-        this._renderHeight
-      );
-      // Present frame
-      await this.presenter.present(compositeHtml, ctx);
-      // Fire debugging event
-      this.events.frameRendered?.(frame, html, compositeHtml);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      // Build a TemplateRuntimeError with frame + time context, then enrich
-      // via sourcemap so dev UI / consumers get a mapped source location and code frame.
-      const tre = new TemplateRuntimeError({
-        frame,
-        originalError: err.message,
-        timeContext: {
-          sceneFrame: ctx.sceneFrame,
-          sceneTimeSeconds: ctx.sceneTimeSeconds,
-          sceneProgress: ctx.sceneProgress,
-          globalTimeSeconds: ctx.globalTimeSeconds,
-        },
-      });
-      if (err.stack) tre.stack = err.stack;
-      const enriched = enrichError(tre, {
-        sourceMap: this._sourceMap,
-        sourceFile: this._sourceFile,
-      });
-      this.events.error?.(enriched);
+      this.emit("error", err);
+      return {
+        status: "error",
+        errorType: "validation",
+        message: err.message,
+        suggestion: "Verify the template was created with defineScene(), defineImage(), defineGif(), or defineSvg().",
+        details: { error: err.name },
+      };
     }
   }
 
-  /**
-   * Resolve dimensions with precedence: format > template config > default
-   */
-  private resolveDimensions(
-    template: TemplateModule | ComposedTemplate
-  ): { width: number; height: number } {
-    // 1. format option (highest priority)
-    if (this._format) {
-      return resolveFormat(this._format);
+  update(update: PlayerUpdate): void {
+    const runtime = this.requireRuntime("update");
+    const next = { ...update };
+    if (next.format) {
+      this.format = next.format;
+      const dimensions = resolveFormat(next.format);
+      next.width = dimensions.width;
+      next.height = dimensions.height;
+      delete next.format;
     }
-    // 2. template config
-    if (template.config?.width && template.config?.height) {
-      return { width: template.config.width, height: template.config.height };
-    }
-    // 3. default fallback
-    return { width: 1920, height: 1080 };
+    runtime.update(next);
+    this.rebuildCheckpointResolver();
   }
 
-  // ==========================================================================
-  // PLAYBACK CONTROLS
-  // ==========================================================================
+  render(frame?: number): Promise<void> {
+    return this.requireRuntime("render").render(frame);
+  }
 
-  /**
-   * Start playback
-   */
   play(): void {
-    if (!this._store) {
-      throw new PlayerNotReadyError("play");
-    }
-    this._store.getState().play();
+    this.requireRuntime("play").play();
   }
 
-  /**
-   * Pause playback
-   */
   pause(): void {
-    if (!this._store) {
-      throw new PlayerNotReadyError("pause");
+    this.requireRuntime("pause").pause();
+  }
+
+  seekFrame(frame: number): void {
+    this.requireRuntime("seekFrame").seekFrame(frame);
+  }
+
+  seekProgress(progress: number): void {
+    this.requireRuntime("seekProgress").seekProgress(progress);
+  }
+
+  seekTimeSeconds(seconds: number): void {
+    this.requireRuntime("seekTimeSeconds").seekTimeSeconds(seconds);
+  }
+
+  getState(): RuntimeState {
+    return this.requireRuntime("getState").getState();
+  }
+
+  subscribe(listener: () => void): () => void {
+    return this.requireRuntime("subscribe").subscribe(listener);
+  }
+
+  getRuntimeStore(): RuntimeStore {
+    if (!this.runtimeStore) throw new PlayerNotReadyError("getRuntimeStore");
+    return this.runtimeStore;
+  }
+
+  on<K extends keyof PlayerEvents>(event: K, callback: PlayerEvents[K]): () => void {
+    const set = (this.events[event] ??= new Set() as any);
+    set.add(callback);
+    return () => this.off(event, callback);
+  }
+
+  off<K extends keyof PlayerEvents>(event: K, callback?: PlayerEvents[K]): void {
+    if (!callback) {
+      this.events[event]?.clear();
+      return;
     }
-    this._store.getState().pause();
+    this.events[event]?.delete(callback as never);
   }
 
-  /**
-   * Stop playback and reset to start
-   */
-  stop(): void {
-    if (!this._store) {
-      throw new PlayerNotReadyError("stop");
-    }
-    this._store.getState().pause();
-    this._store.getState().setFrame(0);
-  }
-
-  // ==========================================================================
-  // SEEKING - Explicit methods for each unit type
-  // ==========================================================================
-
-  /**
-   * Seek to a specific frame number
-   * @param frame - Frame number (0-indexed)
-   */
-  seekToFrame(frame: number): void {
-    if (!this._store) {
-      throw new PlayerNotReadyError("seekToFrame");
-    }
-    const totalFrames = this._store.getState().totalFrames;
-    const clampedFrame = Math.max(0, Math.min(frame, totalFrames - 1));
-    this._store.getState().setFrame(Math.floor(clampedFrame));
-  }
-
-  /**
-   * Seek to a specific progress value
-   * @param progressValue - Progress (0-1)
-   */
-  seekToProgress(progressValue: number): void {
-    if (!this._store) {
-      throw new PlayerNotReadyError("seekToProgress");
-    }
-    const clampedProgress = Math.max(0, Math.min(progressValue, 1));
-    const totalFrames = this._store.getState().totalFrames;
-    const frame = Math.floor(clampedProgress * (totalFrames - 1));
-    this._store.getState().setFrame(frame);
-  }
-
-  /**
-   * Seek to a specific time in seconds
-   * @param seconds - Time in seconds
-   */
-  seekToTimeSeconds(seconds: number): void {
-    if (!this._store) {
-      throw new PlayerNotReadyError("seekToTimeSeconds");
-    }
-    const fps = this._store.getState().fps;
-    const totalFrames = this._store.getState().totalFrames;
-    const frame = Math.floor(seconds * fps);
-    const clampedFrame = Math.max(0, Math.min(frame, totalFrames - 1));
-    this._store.getState().setFrame(clampedFrame);
-  }
-
-  /**
-   * Change the format and re-render at the new dimensions.
-   */
-  setFormat(format: FormatOption): void {
-    const { width, height } = resolveFormat(format);
-    this._format = format;
-    this._renderWidth = width;
-    this._renderHeight = height;
-
-    if (this.presenter.setLogicalSize) {
-      this.presenter.setLogicalSize(width, height);
-    }
-
-    // Re-render current frame at new dimensions
-    if (this._store) {
-      this.renderFrame(this._store.getState().currentFrame);
-    }
-  }
-
-  /**
-   * Set template data (merged with template.data, overrides on conflict).
-   * Re-renders the current frame.
-   */
-  setData(data: Record<string, unknown>): void {
-    this._data = { ...this._data, ...data };
-    if (this._store) {
-      void this.renderFrame(this._store.getState().currentFrame);
-    }
-  }
-
-  /**
-   * Get checkpoints (from scene boundaries or markers)
-   */
-  getCheckpoints(): Checkpoint[] {
-    if (this._composedTemplate) {
-      return this._composedTemplate.getCheckpoints();
-    }
-    return this._checkpointResolver?.getAll() ?? [];
-  }
-
-  /**
-   * Get the current format option.
-   */
-  get format(): FormatOption | undefined {
-    return this._format;
-  }
-
-  /**
-   * Get the current playback mode.
-   */
-  get playbackMode(): PlaybackMode {
-    return this.options.playbackMode;
-  }
-
-  /**
-   * Set the playback mode.
-   */
-  set playbackMode(mode: PlaybackMode) {
-    this.options.playbackMode = mode;
-  }
-
-  /**
-   * Get the current render width.
-   */
-  get renderWidth(): number {
-    return this._renderWidth;
-  }
-
-  /**
-   * Get the current render height.
-   */
-  get renderHeight(): number {
-    return this._renderHeight;
-  }
-
-  // ==========================================================================
-  // STATE PROPERTIES
-  // ==========================================================================
-
-  /** Current frame number (0-indexed) */
-  get currentFrame(): number {
-    return this._store?.getState().currentFrame ?? 0;
-  }
-
-  /** Current time in seconds */
-  get currentTimeSeconds(): number {
-    if (!this._store) return 0;
-    return this._store.getState().currentFrame / this._store.getState().fps;
-  }
-
-  /** Current progress (0-1) */
-  get currentProgress(): number {
-    if (!this._store) return 0;
-    const state = this._store.getState();
-    return state.currentFrame / Math.max(1, state.totalFrames - 1);
-  }
-
-  /** Total frames */
-  get totalFrames(): number {
-    return this._store?.getState().totalFrames ?? 0;
-  }
-
-  /** Total duration in seconds */
-  get totalDurationSeconds(): number {
-    return this._store?.getState().duration ?? 0;
-  }
-
-  /** Whether currently playing */
-  get isPlaying(): boolean {
-    return this._store?.getState().isPlaying ?? false;
-  }
-
-  /** Whether player is ready (loaded) */
-  get isReady(): boolean {
-    return this._isReady;
-  }
-
-  /** FPS */
-  get fps(): number {
-    return this._store?.getState().fps ?? 30;
-  }
-
-  /** The player store (for advanced usage) */
-  get store(): PlayerStore | null {
-    return this._store;
-  }
-
-  /** The presenter element (for advanced usage) */
-  get element(): HTMLElement {
-    return this.presenter.getElement();
-  }
-
-  /** The checkpoint resolver (for timeline marker rendering) */
-  get checkpointResolver(): CheckpointResolver | null {
-    return this._checkpointResolver;
-  }
-
-  /** Whether the loaded template is a ComposedTemplate */
-  get isComposed(): boolean {
-    return this._composedTemplate !== null;
-  }
-
-  /** The composed template (null if single template) */
-  get composedTemplate(): ComposedTemplate | null {
-    return this._composedTemplate;
-  }
-
-  /** Get scenes (composed templates only) */
-  getScenes(): ResolvedScene[] {
-    return this._composedTemplate
-      ? [...this._composedTemplate.scenes]
-      : [];
-  }
-
-  /** Get current scene (composed templates only) */
-  getCurrentScene(): ResolvedScene | null {
-    if (!this._composedTemplate || !this._store) return null;
-    return this._composedTemplate.getSceneAtFrame(
-      this._store.getState().currentFrame
-    );
-  }
-
-  /** Seek to scene by index or id */
-  seekToScene(indexOrId: number | string): void {
-    if (!this._composedTemplate || !this._store) {
-      throw new PlayerNotReadyError("seekToScene");
-    }
+  seekScene(indexOrId: number | string): void {
+    const template = this.requireComposedTemplate("seekScene");
     const scene =
       typeof indexOrId === "number"
-        ? this._composedTemplate.getScene(indexOrId)
-        : this._composedTemplate.getSceneById(indexOrId);
-    if (!scene) {
-      throw new Error(`Scene not found: ${indexOrId}`);
-    }
-    this._store.getState().setFrame(scene.startFrame);
+        ? template.getScene(indexOrId)
+        : template.getSceneById(indexOrId);
+    if (scene) this.seekFrame(scene.startFrame);
   }
 
-  /** Go to next scene */
   nextScene(): void {
-    if (!this._composedTemplate || !this._store) {
-      throw new PlayerNotReadyError("nextScene");
-    }
-    const current = this._composedTemplate.getSceneAtFrame(
-      this._store.getState().currentFrame
-    );
-    const next = this._composedTemplate.getScene(current.index + 1);
-    if (next) {
-      this._store.getState().setFrame(next.startFrame);
-    }
+    const scene = this.currentScene;
+    const template = this.requireComposedTemplate("nextScene");
+    if (!scene) return;
+    const next = template.getScene(scene.index + 1);
+    if (next) this.seekFrame(next.startFrame);
   }
 
-  /** Go to previous scene */
   previousScene(): void {
-    if (!this._composedTemplate || !this._store) {
-      throw new PlayerNotReadyError("previousScene");
-    }
-    const current = this._composedTemplate.getSceneAtFrame(
-      this._store.getState().currentFrame
-    );
-    const prev = this._composedTemplate.getScene(current.index - 1);
-    if (prev) {
-      this._store.getState().setFrame(prev.startFrame);
-    }
+    const scene = this.currentScene;
+    const template = this.requireComposedTemplate("previousScene");
+    if (!scene) return;
+    const previous = template.getScene(scene.index - 1);
+    if (previous) this.seekFrame(previous.startFrame);
   }
 
-  // ==========================================================================
-  // CHECKPOINT NAVIGATION
-  // ==========================================================================
-
-  /**
-   * Navigate to a checkpoint by ID
-   */
-  goToCheckpoint(id: string): void {
-    if (!this._store) {
-      throw new PlayerNotReadyError("goToCheckpoint");
-    }
-    this._store.getState().goToCheckpoint?.(id);
+  getCheckpoints(): Checkpoint[] {
+    const checkpoints = this.checkpointResolverInstance?.getAll() ?? [];
+    const sceneCheckpoints =
+      this.template && isComposedTemplate(this.template) ? this.template.getCheckpoints() : [];
+    return [...sceneCheckpoints, ...checkpoints].sort((a, b) => a.frame - b.frame);
   }
 
-  /**
-   * Navigate to the next checkpoint
-   */
-  nextCheckpoint(): void {
-    if (!this._store) {
-      throw new PlayerNotReadyError("nextCheckpoint");
-    }
-    this._store.getState().goToNextCheckpoint?.();
-  }
-
-  /**
-   * Navigate to the previous checkpoint
-   */
-  prevCheckpoint(): void {
-    if (!this._store) {
-      throw new PlayerNotReadyError("prevCheckpoint");
-    }
-    this._store.getState().goToPreviousCheckpoint?.();
-  }
-
-  /**
-   * Get the current checkpoint (at or before current frame)
-   */
   getCurrentCheckpoint(): Checkpoint | undefined {
-    return this._store?.getState().getCurrentCheckpoint?.();
+    const frame = this.currentFrame;
+    let current: Checkpoint | undefined;
+    for (const checkpoint of this.getCheckpoints()) {
+      if (checkpoint.frame <= frame) current = checkpoint;
+      else break;
+    }
+    return current;
   }
 
-  /**
-   * Add a checkpoint at runtime
-   */
+  goToCheckpoint(id: string): void {
+    const checkpoint = this.getCheckpoints().find((item) => item.id === id);
+    if (checkpoint) this.seekFrame(checkpoint.frame);
+  }
+
+  nextCheckpoint(): void {
+    const checkpoint = this.getCheckpoints().find((item) => item.frame > this.currentFrame);
+    if (checkpoint) this.seekFrame(checkpoint.frame);
+  }
+
+  prevCheckpoint(): void {
+    let previous: Checkpoint | undefined;
+    for (const checkpoint of this.getCheckpoints()) {
+      if (checkpoint.frame >= this.currentFrame) break;
+      previous = checkpoint;
+    }
+    if (previous) this.seekFrame(previous.frame);
+  }
+
   addCheckpoint(
     id: string,
-    frame?: number,
+    frame: number = this.currentFrame,
     options?: { label?: string; metadata?: Record<string, unknown> }
-  ): Checkpoint | undefined {
-    if (!this._checkpointResolver) return undefined;
-    const targetFrame = frame ?? this.currentFrame;
-    return this._checkpointResolver.add(id, targetFrame, options);
+  ): Checkpoint {
+    const resolver = this.requireCheckpointResolver("addCheckpoint");
+    return resolver.add(id, frame, options);
   }
 
-  /**
-   * Remove a runtime checkpoint
-   */
   removeCheckpoint(id: string): boolean {
-    return this._checkpointResolver?.remove(id) ?? false;
+    return this.checkpointResolverInstance?.remove(id) ?? false;
   }
 
-  // ==========================================================================
-  // FRAME CAPTURE
-  // ==========================================================================
-
-  /**
-   * Get the best frame to use for thumbnail.
-   * Priority: config.thumbnailAt > scene boundary (skip intro) > 25% fallback
-   */
-  private getThumbnailFrame(): number {
-    const config = this._composedTemplate?.config ?? this.template?.config;
-
-    // 1. Explicit config.thumbnailAt
-    if (config?.thumbnailAt !== undefined) {
-      const at = config.thumbnailAt;
-      // If 0 < at <= 1, treat as progress; else treat as frame number
-      if (at > 0 && at <= 1) {
-        return Math.floor(at * this._totalFrames);
-      }
-      return Math.floor(at);
-    }
-
-    // 2. Scene boundary - use second scene start (skip intro)
-    if (this._composedTemplate && this._composedTemplate.scenes.length > 1) {
-      return this._composedTemplate.scenes[1].startFrame;
-    }
-
-    // 3. Fallback to 25% of duration
-    return Math.floor(this._totalFrames * 0.25);
-  }
-
-  /**
-   * Capture a frame as an image.
-   *
-   * @example
-   * ```typescript
-   * // Smart thumbnail (recommended) - auto-selects best frame
-   * const { dataUrl } = await player.captureFrame();
-   * img.src = dataUrl;
-   *
-   * // Specific frame with options
-   * const { blob } = await player.captureFrame({ frame: 30, format: 'blob', mimeType: 'image/webp' });
-   * ```
-   *
-   * @param options - Capture options (frame, format, mimeType, quality)
-   * @returns CapturedFrame with the requested format
-   */
-  async captureFrame(options?: CaptureOptions): Promise<CapturedFrame> {
-    if (!this.template || !this._store) {
-      throw new PlayerNotReadyError("captureFrame");
-    }
-
-    const targetFrame = options?.frame ?? this.getThumbnailFrame();
-    const format = options?.format ?? "dataUrl";
-    const mimeType = options?.mimeType ?? "image/png";
-    const quality = options?.quality ?? 0.92;
-
-    // Build render context for this frame
-    const templateData = "data" in this.template ? this.template.data : undefined;
-    const mergedData = { ...(templateData ?? {}), ...this._data };
-    const thumbTemplateConfig = this._composedTemplate?.config ?? this.template?.config;
-    const ctx = createRenderContext(
-      targetFrame,
-      this._fps,
-      this._totalFrames,
-      this._renderWidth,
-      this._renderHeight,
-      mergedData,
-      "default",
-      this._assetsMap,
-      undefined,
-      thumbTemplateConfig?.width
-    );
-
-    // Render HTML
-    const html = this.template.render(ctx);
-    const templateConfig = this._composedTemplate?.config ?? this.template?.config;
-    const { buildCompositeHtml } = await import("@superimg/core/html");
-    const compositeHtml = buildCompositeHtml(
-      html,
-      templateConfig?.background,
-      templateConfig?.watermark,
-      this._renderWidth,
-      this._renderHeight
-    );
-
-    // Use BrowserRenderer to capture to ImageData
-    const renderer = new BrowserRenderer();
-    const imageData = await renderer.render(compositeHtml, {
-      width: this._renderWidth,
-      height: this._renderHeight,
-      fonts: templateConfig?.fonts,
-      stylesheets: templateConfig?.stylesheets,
-      inlineCss: templateConfig?.inlineCss,
-      tailwind: templateConfig?.tailwind,
-    });
-
-    // Create canvas with the captured frame
-    const canvas = document.createElement("canvas");
-    canvas.width = this._renderWidth;
-    canvas.height = this._renderHeight;
-    const canvasCtx = canvas.getContext("2d")!;
-    canvasCtx.putImageData(imageData, 0, 0);
-
-    // Build result based on requested format
-    const result: CapturedFrame = {
-      width: this._renderWidth,
-      height: this._renderHeight,
-    };
-
-    if (format === "imageData") {
-      result.imageData = imageData;
-    } else if (format === "canvas") {
-      result.canvas = canvas;
-    } else if (format === "blob") {
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error("Failed to create blob"))),
-          mimeType,
-          quality
-        );
-      });
-      result.blob = blob;
-    } else {
-      // dataUrl (default)
-      result.dataUrl = canvas.toDataURL(mimeType, quality);
-    }
-
-    return result;
-  }
-
-  // ==========================================================================
-  // EVENTS
-  // ==========================================================================
-
-  /**
-   * Register event listener
-   */
-  on<K extends keyof PlayerEvents>(event: K, callback: PlayerEvents[K]): void {
-    this.events[event] = callback as PlayerEvents[K];
-  }
-
-  /**
-   * Remove event listener
-   */
-  off<K extends keyof PlayerEvents>(event: K): void {
-    delete this.events[event];
-  }
-
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
-  /**
-   * Destroy player and clean up resources
-   */
-  destroy(): void {
-    this.playbackController?.destroy();
-    this.playbackController = null;
-    this._store = null;
-    this._checkpointResolver = null;
+  dispose(): void {
+    this.hoverController.dispose();
+    this.runtime?.dispose();
+    this.runtime = null;
+    this.runtimeStore = null;
     this.template = null;
-    this._assetsMap = {};
-    this.presenter.dispose();
+    this.checkpointResolverInstance = null;
     this.events = {};
-    this._isReady = false;
+  }
+
+  get isReady(): boolean {
+    return this.runtime?.getState().isReady ?? false;
+  }
+
+  get isPlaying(): boolean {
+    return this.runtime?.getState().isPlaying ?? false;
+  }
+
+  get currentFrame(): number {
+    return this.runtime?.getState().currentFrame ?? 0;
+  }
+
+  get totalFrames(): number {
+    return this.runtime?.getState().totalFrames ?? 0;
+  }
+
+  get fps(): number {
+    return this.runtime?.getState().fps ?? 30;
+  }
+
+  get currentProgress(): number {
+    return this.runtime?.getState().progress ?? 0;
+  }
+
+  get currentTimeSeconds(): number {
+    return this.currentFrame / this.fps;
+  }
+
+  get totalDurationSeconds(): number {
+    return this.runtime?.getState().duration ?? 0;
+  }
+
+  get renderWidth(): number {
+    return this.runtime?.getState().width ?? 0;
+  }
+
+  get renderHeight(): number {
+    return this.runtime?.getState().height ?? 0;
+  }
+
+  get scenes(): readonly ResolvedScene[] {
+    return this.template && isComposedTemplate(this.template) ? this.template.scenes : [];
+  }
+
+  get currentScene(): ResolvedScene | null {
+    if (!this.template || !isComposedTemplate(this.template)) return null;
+    return this.template.getSceneAtFrame(this.currentFrame);
+  }
+
+  get checkpointResolver(): CheckpointResolver | null {
+    return this.checkpointResolverInstance;
+  }
+
+  private wireRuntimeEvents(runtime: WebRuntime): void {
+    runtime.on("ready", () => this.emit("ready"));
+    runtime.on("rendered", (payload) => this.emit("rendered", payload));
+    runtime.on("play", () => this.emit("play"));
+    runtime.on("pause", () => this.emit("pause"));
+    runtime.on("ended", () => this.emit("ended"));
+    runtime.on("error", (error) => this.emit("error", error));
+    runtime.on("scenechange", (scene) => this.emit("scenechange", scene));
+    runtime.on("frame", (frame, totalFrames) => {
+      this.emit("frame", frame, totalFrames);
+      this.emitCheckpoint(frame);
+    });
+  }
+
+  private rebuildCheckpointResolver(): void {
+    const state = this.runtime?.getState();
+    if (!state) {
+      this.checkpointResolverInstance = null;
+      return;
+    }
+    this.checkpointResolverInstance = new CheckpointResolver(
+      this.markerList,
+      state.totalFrames,
+      state.fps
+    );
+  }
+
+  private emitCheckpoint(frame: number): void {
+    const checkpoint = this.getCheckpoints().find((item) => item.frame === frame);
+    if (!checkpoint || checkpoint.id === this.lastCheckpointId) return;
+    this.lastCheckpointId = checkpoint.id;
+    this.emit("checkpoint", checkpoint);
+  }
+
+
+
+  private requireRuntime(operation: string): WebRuntime {
+    if (!this.runtime) throw new PlayerNotReadyError(operation);
+    return this.runtime;
+  }
+
+  private requireCheckpointResolver(operation: string): CheckpointResolver {
+    if (!this.checkpointResolverInstance) throw new PlayerNotReadyError(operation);
+    return this.checkpointResolverInstance;
+  }
+
+  private requireComposedTemplate(operation: string): ComposedTemplate {
+    if (!this.template || !isComposedTemplate(this.template)) {
+      throw new PlayerNotReadyError(operation);
+    }
+    return this.template;
+  }
+
+  private emit<K extends keyof PlayerEvents>(event: K, ...args: Parameters<PlayerEvents[K]>): void {
+    this.events[event]?.forEach((callback) => {
+      (callback as (...a: Parameters<PlayerEvents[K]>) => void)(...args);
+    });
   }
 }
