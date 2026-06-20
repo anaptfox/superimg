@@ -106,5 +106,6 @@ export function createMotionPath(d: string): ParsedPath {
   };
 }
 
-// Attach parse as a static property for std.path.parse() syntax
-(path as any).parse = createMotionPath;
+// Attach parse as a static property for std.path.parse() syntax.
+// The interface is defined in stdlib.ts as `typeof path & { parse: typeof createMotionPath }`.
+(path as typeof path & { parse: typeof createMotionPath }).parse = createMotionPath;

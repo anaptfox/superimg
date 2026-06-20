@@ -2,7 +2,7 @@
 
 import type { RenderContext, AssetMeta } from "@superimg/types";
 import { stdlib } from "../shared/stdlib.js";
-import { createScore } from "@superimg/stdlib/score";
+import { createTimeline } from "@superimg/stdlib/score";
 import type { PhaseConfig } from "@superimg/stdlib/score";
 
 /**
@@ -50,9 +50,9 @@ export function createRenderContext(
       ...stdlib,
       px: (value: number) => `${value * scale}px`,
       scale,
-      score: <P extends PhaseConfig | undefined = undefined>(phases?: P) =>
-        createScore(
-          { sceneProgress: progress, sceneTimeSeconds: timeSeconds },
+      timeline: <P extends PhaseConfig | undefined = undefined>(phases?: P) =>
+        createTimeline(
+          { sceneProgress: progress, sceneTimeSeconds: timeSeconds, sceneDurationSeconds: durationSeconds },
           phases,
         ),
     },

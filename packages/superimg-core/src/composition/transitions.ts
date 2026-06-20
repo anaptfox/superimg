@@ -2,6 +2,7 @@
 
 import type {
   Duration,
+  EasingName,
   ResolvedTransition,
   Transition,
 } from "@superimg/types";
@@ -86,27 +87,27 @@ function applyEasing(t: number, easingName?: string): number {
 
 /** Transition presets for common enter/exit effects */
 export const transitions = {
-  fade: (duration: Duration, easing?: string): Transition => ({
+  fade: (duration: Duration, easing?: EasingName): Transition => ({
     type: "fade",
     duration,
     easing,
   }),
-  slideLeft: (duration: Duration, easing?: string): Transition => ({
+  slideLeft: (duration: Duration, easing?: EasingName): Transition => ({
     type: "slide-left",
     duration,
     easing,
   }),
-  slideRight: (duration: Duration, easing?: string): Transition => ({
+  slideRight: (duration: Duration, easing?: EasingName): Transition => ({
     type: "slide-right",
     duration,
     easing,
   }),
-  slideUp: (duration: Duration, easing?: string): Transition => ({
+  slideUp: (duration: Duration, easing?: EasingName): Transition => ({
     type: "slide-up",
     duration,
     easing,
   }),
-  slideDown: (duration: Duration, easing?: string): Transition => ({
+  slideDown: (duration: Duration, easing?: EasingName): Transition => ({
     type: "slide-down",
     duration,
     easing,

@@ -4,6 +4,7 @@ import type { BackgroundValue } from "@superimg/types";
 import { resolveBackground } from "../shared/assets.js";
 import { escapeHtmlAttr, escapeCssUrl } from "./sanitize.js";
 import { buildHeadStyles, type CssConfig } from "./css.js";
+import { katexStyle as _katexStyle } from "./katex-css.node.js";
 
 /**
  * Build composite HTML from template output and background
@@ -116,7 +117,7 @@ function buildWatermarkHtml(watermark: import("@superimg/types").WatermarkValue)
  * Injected once per render session, not per frame.
  */
 export function buildPageShell(config: CssConfig): string {
-  const headStyles = buildHeadStyles(config);
+  const headStyles = buildHeadStyles(config, _katexStyle);
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">${headStyles}</head><body><div id="frame" style="position:relative;width:100%;height:100%;"></div></body></html>`;
 }

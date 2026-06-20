@@ -13,6 +13,8 @@ import * as subtitle from "@superimg/stdlib/subtitle";
 import * as presets from "@superimg/stdlib/presets";
 import * as code from "@superimg/stdlib/code";
 import * as cue from "@superimg/stdlib/cue";
+import { compose } from "@superimg/stdlib/score";
+import { oscillate, loop, pingpong, wiggle } from "@superimg/stdlib/oscillate";
 import * as backgrounds from "@superimg/stdlib/backgrounds";
 import { montage } from "@superimg/stdlib/montage";
 import { spring } from "@superimg/stdlib/spring";
@@ -22,13 +24,14 @@ import { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
 import { path, createMotionPath } from "@superimg/stdlib/path";
 import { draw, filter, morph, reveal, shape, textPath } from "@superimg/stdlib/svg";
 import * as layout from "@superimg/stdlib/layout";
+import * as viz from "@superimg/stdlib/viz";
 
 const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
 ) as Omit<typeof math, "lerp">;
 
-/** Per-frame parts bound by createRenderContext: score, px, scale. */
-export type StaticStdlib = Omit<Stdlib, "score" | "px" | "scale">;
+/** Per-frame parts bound by createRenderContext: timeline, px, scale. */
+export type StaticStdlib = Omit<Stdlib, "timeline" | "px" | "scale">;
 
 export const stdlib: StaticStdlib = {
   math: mathWithoutLerp,
@@ -52,4 +55,10 @@ export const stdlib: StaticStdlib = {
   path: Object.assign(path, { parse: createMotionPath }),
   svg: { draw, filter, morph, reveal, shape, textPath },
   layout,
+  compose,
+  oscillate,
+  loop,
+  pingpong,
+  wiggle,
+  viz,
 };

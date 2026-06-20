@@ -94,9 +94,18 @@
     "./layout": {
       "import": "./dist/layout.js",
       "types": "./dist/layout.d.ts"
+    },
+    "./oscillate": {
+      "import": "./dist/oscillate.js",
+      "types": "./dist/oscillate.d.ts"
+    },
+    "./viz": {
+      "import": "./dist/viz/index.js",
+      "types": "./dist/viz/index.d.ts"
     }
   },
   "scripts": {
+    "prebuild": "node scripts/gen-katex-css.mjs",
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest --run",
@@ -115,6 +124,7 @@
   "license": "MIT",
   "dependencies": {
     "@emotion/unitless": "^0.10.0",
+    "katex": "^0.16.11",
     "@shikijs/langs": "^4.0.2",
     "@shikijs/themes": "^4.0.2",
     "colord": "^2.9.3",

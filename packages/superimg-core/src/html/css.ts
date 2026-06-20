@@ -58,8 +58,9 @@ export function buildInlineStyles(userCss: string[]): string {
   return `<style>${layered}</style>`;
 }
 
-export function buildHeadStyles(config: CssConfig): string {
+export function buildHeadStyles(config: CssConfig, extraStyles = ""): string {
   return (
+    extraStyles +
     buildTailwindScript(config.tailwind) +
     buildFontLinks(config.fonts ?? []) +
     buildStylesheetLinks(config.stylesheets ?? []) +

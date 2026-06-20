@@ -232,20 +232,25 @@ export class NodeVideoEncoder implements VideoEncoder<Buffer> {
     const { sink, source, sampleRate, numberOfChannels, sourceDuration, opts, videoDuration = this.videoDuration } = audio;
     const { loop = true, volume = 1, fadeIn = 0, fadeOut = 0 } = opts;
 
-    // Decode all source audio samples into per-channel Float32 arrays
-    const srcChannels: Float32Array[] = Array.from({ length: numberOfChannels }, () => new Float32Array(0));
+    // Decode all source audio samples into per-channel Float32 arrays.
+    // Collect chunks first, then concat once to avoid O(n²) re-allocation per sample.
+    const chunks: Float32Array[][] = Array.from({ length: numberOfChannels }, () => []);
     for await (const sample of sink.samples()) {
       for (let ch = 0; ch < numberOfChannels; ch++) {
         const size = sample.allocationSize({ planeIndex: ch, format: "f32-planar" });
         const plane = new Float32Array(size / 4);
         sample.copyTo(plane, { planeIndex: ch, format: "f32-planar" });
-        const merged = new Float32Array(srcChannels[ch].length + plane.length);
-        merged.set(srcChannels[ch]);
-        merged.set(plane, srcChannels[ch].length);
-        srcChannels[ch] = merged;
+        chunks[ch].push(plane);
       }
       sample.close();
     }
+    const srcChannels: Float32Array[] = chunks.map((chunkList) => {
+      const totalLen = chunkList.reduce((sum, c) => sum + c.length, 0);
+      const out = new Float32Array(totalLen);
+      let offset = 0;
+      for (const chunk of chunkList) { out.set(chunk, offset); offset += chunk.length; }
+      return out;
+    });
 
     const srcTotalFrames = srcChannels[0].length;
     const totalOutputFrames = Math.ceil(this.videoDuration * sampleRate);

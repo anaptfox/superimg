@@ -25,7 +25,7 @@ export interface SpringConfig {
 }
 
 /** Map 0..1 progress to a spring-driven 0..1 curve (overshoots, then settles). */
-function springCurve(progress: number, config?: SpringConfig): number {
+export function springCurve(progress: number, config?: SpringConfig): number {
   if (progress <= 0) return 0;
   if (progress >= 1) return 1;
 

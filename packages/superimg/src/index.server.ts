@@ -45,3 +45,8 @@ export type {
   BatchProgressEvent,
 } from "@superimg/cli/server";
 export type { LoadedTemplate, LoadedTemplateRenderOptions } from "@superimg/cli/server";
+
+export { startDevServer } from "@superimg/cli/server";
+export type { DevServerOptions, DevServer } from "@superimg/cli/server";
+export { listVideos } from "@superimg/cli/server";
+export type { VideoSummary } from "@superimg/cli/server";

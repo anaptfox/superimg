@@ -12,7 +12,10 @@ import type * as code from "@superimg/stdlib/code";
 import type * as cue from "@superimg/stdlib/cue";
 import type {
   PhaseConfig,
-  ScoreOf,
+  TimelineOf,
+  MotionResult,
+  MotionValue,
+  compose,
 } from "@superimg/stdlib/score";
 import type * as backgrounds from "@superimg/stdlib/backgrounds";
 import type { montage } from "@superimg/stdlib/montage";
@@ -23,6 +26,8 @@ import type { interpolate, interpolateColor } from "@superimg/stdlib/interpolate
 import type { path, createMotionPath } from "@superimg/stdlib/path";
 import type { draw, filter, morph, reveal, shape, textPath } from "@superimg/stdlib/svg";
 import type * as layout from "@superimg/stdlib/layout";
+import type { oscillate, loop, pingpong, wiggle } from "@superimg/stdlib/oscillate";
+import type * as viz from "@superimg/stdlib/viz";
 
 /**
  * Standard library available via `ctx.std` in render functions.
@@ -69,21 +74,30 @@ export interface Stdlib {
   /** @core Absolute-time cue helpers: transcript(), markers(), script(), fromElevenLabs(), fromWhisper() */
   cue: typeof cue;
   /**
-   * @core Unified scene-local timing primitive. Pass a phase layout; returns
-   * an object for declaring motions, tweens, and values scoped to those phases
-   * with auto enter + auto exit and stagger. See DESIGN_score.md for details.
+   * @core Unified scene-local timing primitive. Pass a phase layout in seconds
+   * or percentages; returns an object for declaring motions, tweens, and values
+   * scoped to those phases with auto enter + auto exit and stagger.
    *
    * ```ts
-   * const t = std.score({ enter: 0.15, hold: 0.70, exit: 0.15 });
-   * const card = t.motion();                      // auto enter + auto exit
-   * const val  = t.motion({ y: 15, at: 0.15 });   // stagger within enter
+   * const t = std.timeline({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
+   * const card = t.motion();                           // auto enter + auto exit
+   * const val  = t.motion({ y: 15, at: "0.1s" });      // stagger 0.1s into enter
    * const cnt  = t.tween(0, target, { during: "enter" });
    * const bar  = t.value(value / target, { fadeOn: "exit" });
    * ```
    */
-  score: <P extends PhaseConfig | undefined = undefined>(
-    phases?: P,
-  ) => ScoreOf<P>;
+  timeline: <P extends PhaseConfig | undefined = undefined>(phases?: P) => TimelineOf<P>;
+  /**
+   * @core Merge multiple motion values into a single MotionResult.
+   * Last-wins per property; transforms combine into one `transform:` string.
+   *
+   * ```ts
+   * const card = t.motion({ y: 20 });
+   * const idle = { scale: std.oscillate(time, { period: "1s", from: 0.98, to: 1.02 }) };
+   * return `<div style="${std.css(std.compose(card, idle))}">`;
+   * ```
+   */
+  compose: typeof compose;
   /** @core Ken Burns background effects: std.backgrounds.kenBurns({ src, progress }) */
   backgrounds: typeof backgrounds;
   /** @core Image montage with crossfades: std.montage({ images, progress }) */
@@ -113,6 +127,16 @@ export interface Stdlib {
   };
   /** @core Box-math layout primitives: std.layout.stack(area, rows, opts?) returns Box[]; std.layout.inset(area, pad) returns Box. No HTML — pair with std.css. */
   layout: typeof layout;
+  /** @core Smooth sine oscillation between from/to over a period. `std.oscillate(time, { period: "1s", from: 0.98, to: 1.02 })` */
+  oscillate: typeof oscillate;
+  /** @core Sawtooth 0→1 that resets each period. `std.loop(time, { period: "2s" })` */
+  loop: typeof loop;
+  /** @core Triangle 0→1→0 that bounces each period. `std.pingpong(time, { period: "2s" })` */
+  pingpong: typeof pingpong;
+  /** @core Seeded smooth noise — deterministic. `std.wiggle(time, seed, { freq: 2, amp: 8 })` */
+  wiggle: typeof wiggle;
+  /** @extended Math visualization: coordinate systems, function plots, vectors, LaTeX, canvas */
+  viz: typeof viz;
   /** @core Scale a design-resolution pixel value to the actual render size. Returns CSS string e.g. "60px". Scale = renderWidth / config.width. */
   px: (value: number) => string;
   /** @core Raw scale factor (renderWidth / config.width). Use for JS math (animation offsets), not CSS strings. */

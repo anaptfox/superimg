@@ -21,7 +21,11 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
   private height = 0;
   private mode: 'frame' | 'animation' = 'frame';
 
-  constructor(private readonly page: Page) {}
+  constructor(
+    private readonly page: Page,
+    /** When true, dispose() closes the browser context so per-render pages don't leak. */
+    private readonly closeContextOnDispose = false,
+  ) {}
 
   async init(config: FrameRendererConfig): Promise<void> {
     this.width = config.width;
@@ -46,14 +50,11 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
   }
 
   async captureFrame(html: string, options?: { alpha?: boolean }): Promise<Buffer> {
-    await this.page.evaluate(
-      (h: string) => {
-        const el = document.getElementById("frame");
-        if (el) el.innerHTML = h;
-      },
-      html
-    );
-    await this.page.evaluate(() => document.fonts.ready);
+    await this.page.evaluate(async (h: string) => {
+      const el = document.getElementById("frame");
+      if (el) el.innerHTML = h;
+      await document.fonts.ready;
+    }, html);
 
     // Use JPEG for speed unless alpha channel is needed (JPEG doesn't support transparency)
     const useAlpha = options?.alpha === true;
@@ -68,7 +69,9 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
   }
 
   async dispose(): Promise<void> {
-    // No-op
+    if (this.closeContextOnDispose) {
+      await this.page.context().close();
+    }
   }
 
   async preloadAssets(

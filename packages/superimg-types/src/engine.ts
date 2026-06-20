@@ -119,6 +119,8 @@ export interface VideoEncoder<TFrame = unknown> {
 
 export interface RenderEngine<TFrame = unknown> {
   init(): Promise<void>;
+  /** Returns the base URL of the engine's local asset server (used to resolve asset URLs for the renderer). */
+  getBaseUrl(): string;
   createAdapters(options?: { encoding?: EncodingOptions; audio?: AudioValue }): { renderer: FrameRenderer<TFrame>; encoder: VideoEncoder<TFrame> };
   dispose(): Promise<void>;
 }
@@ -150,6 +152,10 @@ export interface RenderPlan {
   resolvedAssets: ResolvedAssetDeclaration[];
   /** Rendering mode — 'frame' (default) or 'animation' (fake clock per frame) */
   mode: 'frame' | 'animation';
+  /** First frame to render, inclusive. Default: 0. Used for distributed chunk rendering. */
+  startFrame?: number;
+  /** Last frame to render, exclusive. Default: totalFrames. Used for distributed chunk rendering. */
+  endFrame?: number;
 }
 
 export interface FramePresenter {

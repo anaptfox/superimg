@@ -9,6 +9,7 @@ import type {
   ResolvedTransition,
   ComposedTemplate,
   Duration,
+  EasingName,
 } from "@superimg/types";
 import type { Checkpoint } from "@superimg/types";
 import { parseDuration } from "../shared/utils.js";
@@ -31,7 +32,7 @@ function normalizeToSceneDefinitions(
 }
 
 function resolveTransition(
-  t: { type: string; duration: Duration; easing?: string } | undefined,
+  t: { type: string; duration: Duration; easing?: EasingName } | undefined,
   fps: number
 ): ResolvedTransition | undefined {
   if (!t || t.type === "none") return undefined;

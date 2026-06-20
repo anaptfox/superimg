@@ -23,6 +23,8 @@ export default defineConfig({
     "src/path.ts",
     "src/svg/index.ts",
     "src/layout.ts",
+    "src/oscillate.ts",
+    "src/viz/index.ts",
     "src/index.ts",
   ],
   format: ["esm"],
@@ -34,5 +36,5 @@ export default defineConfig({
   // Bundle everything into each file (including dependencies)
   bundle: true,
   // Don't mark dependencies as external - we want them bundled
-  noExternal: ["date-fns", "colord", "simplex-noise", "shiki", "@shikijs/themes", "@shikijs/langs", "path-data-parser"],
+  noExternal: ["date-fns", "colord", "simplex-noise", "shiki", "@shikijs/themes", "@shikijs/langs", "path-data-parser", "katex"],
 });

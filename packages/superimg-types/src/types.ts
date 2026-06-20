@@ -217,6 +217,13 @@ export interface BaseConfig {
   audio?: AudioValue;
 }
 
+export interface DeployConfig {
+  /** Deployment target. Defaults to "cloudflare-container". */
+  target?: "cloudflare-container";
+  /** CF Worker name. Defaults to the project directory name. */
+  workerName?: string;
+}
+
 /**
  * Project-level or folder-level config from _config.ts.
  * Cascades from parent to child directories.
@@ -224,6 +231,8 @@ export interface BaseConfig {
 export interface ProjectConfig extends BaseConfig {
   /** Default output directory for all templates relative to project root */
   outDir?: string;
+  /** Cloudflare deployment configuration. */
+  deploy?: DeployConfig;
 }
 
 /**
@@ -280,8 +289,19 @@ export type TransitionType =
   | "slide-up"
   | "slide-down";
 
-/** Easing name for transitions (matches stdlib EasingName) */
-export type EasingName = string;
+/** Easing name for transitions. Must be one of the named easings from the stdlib easing map. */
+export type EasingName =
+  | "linear"
+  | "easeInQuad" | "easeOutQuad" | "easeInOutQuad"
+  | "easeInSine" | "easeOutSine" | "easeInOutSine"
+  | "easeInCubic" | "easeOutCubic" | "easeInOutCubic"
+  | "easeInQuart" | "easeOutQuart" | "easeInOutQuart"
+  | "easeInQuint" | "easeOutQuint" | "easeInOutQuint"
+  | "easeInExpo" | "easeOutExpo" | "easeInOutExpo"
+  | "easeInCirc" | "easeOutCirc" | "easeInOutCirc"
+  | "easeInBack" | "easeOutBack" | "easeInOutBack"
+  | "easeInElastic" | "easeOutElastic" | "easeInOutElastic"
+  | "easeInBounce" | "easeOutBounce" | "easeInOutBounce";
 
 /** Transition definition for scene enter/exit */
 export interface Transition {
