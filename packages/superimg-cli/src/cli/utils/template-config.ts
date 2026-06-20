@@ -171,7 +171,17 @@ export async function parseTemplate(
 
   const templateConfig = options?.cascadingConfig
     ? mergeCascadingIntoRenderConfig(rawTemplateConfig, options.cascadingConfig)
-    : rawTemplateConfig;
+    : (rawTemplateConfig ?? {});
+
+  if (templateConfig.responsive) {
+    const baseW = templateConfig.width ?? options?.cascadingConfig?.width ?? DEFAULT_WIDTH;
+    const baseH = templateConfig.height ?? options?.cascadingConfig?.height ?? DEFAULT_HEIGHT;
+    templateConfig.outputs = {
+      ...templateConfig.outputs,
+      "@1x": { width: baseW, height: baseH },
+      "@2x": { width: baseW * 2, height: baseH * 2 },
+    };
+  }
 
   const resolvedConfig = resolveRenderConfig({
     templateConfig,
@@ -198,7 +208,7 @@ export function resolvePresetConfig(
   presetName: string,
   outputs: Record<string, OutputPreset>,
   baseConfig: RenderConfigDefaults
-): { name: string; width: number; height: number; fps: number; outDir?: string; outFile?: string } {
+): { name: string; width: number; height: number; fps: number; format?: string; outDir?: string; outFile?: string } {
   const preset = outputs[presetName];
   if (!preset) {
     const candidates = Object.keys(outputs);
@@ -218,6 +228,7 @@ export function resolvePresetConfig(
     width: preset.width ?? baseConfig.width,
     height: preset.height ?? baseConfig.height,
     fps: preset.fps ?? baseConfig.fps,
+    format: preset.format,
     outDir: preset.outDir,
     outFile: preset.outFile,
   };
@@ -229,6 +240,6 @@ export function resolvePresetConfig(
 export function resolveAllPresets(
   outputs: Record<string, OutputPreset>,
   baseConfig: RenderConfigDefaults
-): Array<{ name: string; width: number; height: number; fps: number; outDir?: string; outFile?: string }> {
+): Array<{ name: string; width: number; height: number; fps: number; format?: string; outDir?: string; outFile?: string }> {
   return Object.keys(outputs).map((name) => resolvePresetConfig(name, outputs, baseConfig));
 }

@@ -48,9 +48,12 @@ export async function renderVideo(
 
   // Load companion .data.{ts,js,json} file, merge with explicit options.data
   const companionData = await loadCompanionData(resolvedPath);
+  if (Array.isArray(companionData)) {
+    throw new Error("renderVideo does not support array companion data. Use renderBatch instead.");
+  }
   const mergedData =
     companionData || options.data
-      ? { ...companionData, ...options.data }
+      ? { ...(companionData as Record<string, unknown> | undefined), ...options.data }
       : undefined;
 
   const templateBundle = await bundleTemplateWithMap(resolvedPath);

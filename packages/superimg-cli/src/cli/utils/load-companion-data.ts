@@ -22,6 +22,21 @@ function findCompanionDataFile(templatePath: string): string | undefined {
 }
 
 /**
+ * Assert that companion data is a plain object or array — not a primitive.
+ * Primitive exports (string, number, boolean, null) cannot be merged into
+ * ctx.data and would silently corrupt the render context.
+ */
+function assertCompanionDataShape(value: unknown, dataFile: string): void {
+  if (value === null || (typeof value !== "object" && typeof value !== "function")) {
+    throw new Error(
+      `Companion data file "${dataFile}" exported a ${value === null ? "null" : typeof value} — ` +
+      `expected a plain object (e.g. { title: "..." }) or an array of objects. ` +
+      `Primitive exports cannot be merged into the render context.`
+    );
+  }
+}
+
+/**
  * Load companion data for a video template.
  *
  * Looks for `<name>.data.{ts,js,json}` next to `<name>.video.{ts,js}`.
@@ -30,30 +45,32 @@ function findCompanionDataFile(templatePath: string): string | undefined {
  * - If the export is a function, it is called (supports async)
  *
  * Returns `undefined` if no companion file is found.
+ * Throws if the resolved value is a primitive (not an object or array).
  */
 export async function loadCompanionData(
   templatePath: string
-): Promise<Record<string, unknown> | undefined> {
+): Promise<unknown | undefined> {
   const dataFile = findCompanionDataFile(resolve(templatePath));
   if (!dataFile) return undefined;
 
   if (dataFile.endsWith(".json")) {
     const raw = readFileSync(dataFile, "utf-8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    assertCompanionDataShape(parsed, dataFile);
+    return parsed;
   }
 
   const exported = await loadDataScript(dataFile);
 
+  let result: unknown;
   if (typeof exported === "function") {
-    const result = await exported();
-    return result as Record<string, unknown>;
+    result = await exported();
+  } else {
+    result = exported;
   }
 
-  if (typeof exported === "object" && exported !== null) {
-    return exported as Record<string, unknown>;
-  }
-
-  return undefined;
+  assertCompanionDataShape(result, dataFile);
+  return result;
 }
 
 export { findCompanionDataFile };

@@ -12,10 +12,14 @@ export function isDirectory(path: string): boolean {
   }
 }
 
-/** Extract video name from template path (e.g., "intro.video.ts" -> "intro") */
+/** Extract template name from template path (e.g., "intro.video.ts" -> "intro") */
 export function deriveVideoName(templatePath: string): string {
   const base = basename(templatePath);
-  return base.replace(/\.video\.(ts|js|jsx|tsx)$/, "");
+  return base
+    .replace(/\.video\.(ts|js|jsx|tsx)$/, "")
+    .replace(/\.image\.ts$/, "")
+    .replace(/\.gif\.ts$/, "")
+    .replace(/\.svg\.ts$/, "");
 }
 
 interface ResolveOutputOptions {
@@ -74,7 +78,10 @@ export function resolveOutputPath({
   const videoName = deriveVideoName(templatePath);
   const entry = entrySuffix ? `-${entrySuffix}` : "";
   const preset = presetSuffix ? `-${presetSuffix}` : "";
-  const ext = format === "gif" ? ".gif" : format === "webm" ? ".webm" : ".mp4";
+  const extMap: Record<string, string> = {
+    gif: ".gif", webm: ".webm", png: ".png", webp: ".webp", jpeg: ".jpg", svg: ".svg", html: ".html",
+  };
+  const ext = format ? (extMap[format] ?? ".mp4") : ".mp4";
   const filename = `${videoName}${entry}${preset}${ext}`;
 
   // 2. CLI exact-file override.

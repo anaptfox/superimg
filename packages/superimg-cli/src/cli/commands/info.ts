@@ -5,23 +5,46 @@ import { findProjectRoot } from "../utils/find-project-root.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";
 import { parseTemplate, resolveRenderConfig } from "../utils/template-config.js";
 
-export async function infoCommand(template: string) {
+import { formatError } from "@superimg/core/errors";
+
+export async function infoCommand(template: string, options: { json?: boolean } = {}) {
   let resolvedPath: string;
   try {
     resolvedPath = resolveTemplatePath(template);
   } catch (err) {
-    console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    const formatted = formatError(err);
+    if (options.json) {
+      console.log(JSON.stringify({ error: formatted.json }));
+      process.exit(1);
+    }
+    console.error(`Error: ${formatted.plain}`);
     process.exit(1);
   }
 
-  const projectRoot = findProjectRoot();
+  let projectRoot: string;
+  try {
+    projectRoot = findProjectRoot();
+  } catch (err) {
+    const formatted = formatError(err);
+    if (options.json) {
+      console.log(JSON.stringify({ error: formatted.json }));
+      process.exit(1);
+    }
+    console.error(`Error: ${formatted.plain}`);
+    process.exit(1);
+  }
   const cascadingConfig = await loadCascadingConfig(resolvedPath, projectRoot);
 
   let templateData!: Awaited<ReturnType<typeof parseTemplate>>;
   try {
     templateData = await parseTemplate(resolvedPath, { cascadingConfig });
   } catch (err) {
-    console.error(`Error parsing template: ${err instanceof Error ? err.message : String(err)}`);
+    const formatted = formatError(err);
+    if (options.json) {
+      console.log(JSON.stringify({ error: formatted.json }));
+      process.exit(1);
+    }
+    console.error(`Error parsing template: ${formatted.plain}`);
     process.exit(1);
   }
 
@@ -32,6 +55,16 @@ export async function infoCommand(template: string) {
   const { fps } = resolvedConfig;
   const totalFrames = Math.ceil(resolvedConfig.duration * fps);
   const duration = resolvedConfig.duration;
+
+  if (options.json) {
+    console.log(JSON.stringify({
+      path: resolvedPath,
+      config: resolvedConfig,
+      totalFrames,
+      duration,
+    }, null, 2));
+    return;
+  }
 
   console.log("\n  Template Information");
   console.log("  ===================\n");

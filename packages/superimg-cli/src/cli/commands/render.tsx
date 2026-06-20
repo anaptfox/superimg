@@ -19,10 +19,9 @@ import { loadCascadingConfig } from "../utils/config-loader.js";
 import { discoverVideos, type DiscoveredVideo } from "../utils/discover-videos.js";
 import { parseTemplate } from "../utils/template-config.js";
 import { resolveOutputPath } from "../utils/resolve-output-path.js";
+import { resolveFormat, type OutputFormat } from "./render-encoding.js";
 import {
-  resolveFormat,
   resolveRenderTargets,
-  type OutputFormat,
   type RenderOptions,
   type RenderTarget,
   type ResolvedTargets,
@@ -55,6 +54,10 @@ async function checkPlaywrightAvailable(): Promise<{ available: boolean; message
 export async function renderCommand(template: string, options: RenderOptions) {
   const pwCheck = await checkPlaywrightAvailable();
   if (!pwCheck.available) {
+    if (options.json) {
+      console.log(JSON.stringify({ error: { message: pwCheck.message, code: "PLAYWRIGHT_NOT_INSTALLED" } }));
+      process.exit(1);
+    }
     console.error(`\nError: ${pwCheck.message}\n`);
     console.error("To render videos locally, you need to install Playwright browsers:");
     console.error("  superimg setup\n");
@@ -66,6 +69,10 @@ export async function renderCommand(template: string, options: RenderOptions) {
   const outputFormat = resolveFormat(options);
 
   if (options.all && options.data) {
+    if (options.json) {
+      console.log(JSON.stringify({ error: { message: "--all and --data cannot be combined.", code: "INVALID_OPTIONS" } }));
+      process.exit(1);
+    }
     console.error(
       "Error: --all and --data cannot be combined. --all selects N templates; --data selects N data entries for one template.",
     );
@@ -76,10 +83,18 @@ export async function renderCommand(template: string, options: RenderOptions) {
     const projectRoot = findProjectRoot();
     const videos = discoverVideos(projectRoot);
     if (videos.length === 0) {
+      if (options.json) {
+        console.log(JSON.stringify({ error: { message: "No *.video.ts files found in project.", code: "NO_VIDEOS_FOUND" } }));
+        process.exit(1);
+      }
       console.error("Error: No *.video.ts files found in project.");
       process.exit(1);
     }
     if (options.dryRun) {
+      if (options.json) {
+        console.log(JSON.stringify({ videos: videos.map(v => ({ name: v.name, path: v.relativePath })) }, null, 2));
+        return;
+      }
       console.log(`\nDry run — ${videos.length} video(s) found:\n`);
       for (const v of videos) console.log(`  - ${v.name} (${v.relativePath})`);
       console.log("\nNo renders executed.\n");
@@ -93,19 +108,28 @@ export async function renderCommand(template: string, options: RenderOptions) {
   try {
     resolved = await resolveRenderTargets(template, options, outputFormat);
   } catch (err) {
-    process.stderr.write(formatError(err).ansi + "\n");
+    const formatted = formatError(err);
+    if (options.json) {
+      console.log(JSON.stringify({ error: formatted.json }));
+      process.exit(1);
+    }
+    process.stderr.write(formatted.ansi + "\n");
     process.exit(1);
   }
 
   if (options.dryRun) {
     const { targets } = resolved;
+    if (options.json) {
+      console.log(JSON.stringify({ targets }, null, 2));
+      return;
+    }
     console.log(`\nDry run — ${targets.length} render target(s):\n`);
     for (const t of targets) console.log(`  - ${t.outputPath}  (${t.width}x${t.height} ${t.fps}fps)`);
     console.log("\nNo renders executed.\n");
     return;
   }
 
-  if (process.stdout.isTTY) {
+  if (process.stdout.isTTY && !options.json) {
     render(<RenderUI resolved={resolved} options={options} />);
     return;
   }
@@ -114,7 +138,12 @@ export async function renderCommand(template: string, options: RenderOptions) {
   try {
     await runRenderTargetsPlain(resolved, options);
   } catch (err) {
-    process.stderr.write("\n" + formatError(err).ansi + "\n");
+    const formatted = formatError(err);
+    if (options.json) {
+      console.log(JSON.stringify({ event: "error", error: formatted.json }));
+      process.exit(1);
+    }
+    process.stderr.write("\n" + formatted.ansi + "\n");
     process.exit(1);
   }
 }
@@ -126,6 +155,10 @@ async function runRenderTargetsPlain(resolved: ResolvedTargets, options: RenderO
     resolved,
     options,
     onTargetStart: (target, index) => {
+      if (options.json) {
+        console.log(JSON.stringify({ event: "start", target: target.name, outputPath: target.outputPath }));
+        return;
+      }
       const prefix = total > 1 ? `[${index + 1}/${total}] ` : "";
       const label = target.entryLabel ? `${target.entryLabel} (${target.name}) — ` : "";
       console.log(`${prefix}${label}Rendering ${target.outputPath}...`);
@@ -134,11 +167,19 @@ async function runRenderTargetsPlain(resolved: ResolvedTargets, options: RenderO
       }
     },
     onProgress: (_target, p) => {
+      if (options.json) {
+        console.log(JSON.stringify({ event: "progress", target: _target.name, frame: p.frame, totalFrames: p.totalFrames }));
+        return;
+      }
       process.stdout.write(
         `\r  Frame ${p.frame}/${p.totalFrames} (${Math.round((p.frame / p.totalFrames) * 100)}%)`
       );
     },
     onTargetComplete: (target) => {
+      if (options.json) {
+        console.log(JSON.stringify({ event: "complete", target: target.name, outputPath: target.outputPath }));
+        return;
+      }
       process.stdout.write("\n");
       console.log(`  Saved to ${target.outputPath}`);
     },
@@ -157,20 +198,22 @@ async function runRenderAll(
   outputFormat: OutputFormat,
   projectRoot: string,
 ) {
-  console.log(`Found ${videos.length} video(s) to render:\n`);
-  for (const video of videos) {
-    console.log(`  - ${video.name} (${video.relativePath})`);
+  if (!options.json) {
+    console.log(`Found ${videos.length} video(s) to render:\n`);
+    for (const video of videos) {
+      console.log(`  - ${video.name} (${video.relativePath})`);
+    }
+    console.log("");
   }
-  console.log("");
 
   const failures: { name: string; relativePath: string; error: unknown }[] = [];
 
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i];
-    console.log(`\n[${i + 1}/${videos.length}] ${video.name}`);
+    if (!options.json) {
+      console.log(`\n[${i + 1}/${videos.length}] ${video.name}`);
+    }
 
-    // If user passed -o, treat it as a directory so per-template outputs land
-    // alongside each template (a single -o file would clobber across N renders).
     const cliOutput = options.output
       ? (isDirectory(options.output) ? options.output : dirname(options.output) + "/")
       : undefined;
@@ -180,8 +223,6 @@ async function runRenderAll(
       format: outputFormat,
     });
 
-    // Pre-flight parse so we can decide whether to render every preset or
-    // just the default. A parse failure is recorded and the video is skipped.
     let hasOutputs = false;
     try {
       const cascading = await loadCascadingConfig(video.entrypoint, projectRoot);
@@ -189,12 +230,17 @@ async function runRenderAll(
       const declared = parsed.templateConfig?.outputs;
       hasOutputs = !!declared && Object.keys(declared).length > 0;
     } catch (err) {
-      console.error(`  ✗ ${video.name}: ${err instanceof Error ? err.message : err}`);
+      const formatted = formatError(err);
+      if (options.json) {
+        console.log(JSON.stringify({ event: "error", video: video.name, error: formatted.json }));
+      } else {
+        console.error(`  ✗ ${video.name}: ${formatted.plain}`);
+      }
       if (options.failOnError) {
-        console.error("\nAborting: --fail-on-error is set.\n");
+        if (!options.json) console.error("\nAborting: --fail-on-error is set.\n");
         process.exit(1);
       }
-      failures.push({ name: video.name, relativePath: video.relativePath, error: err });
+      failures.push({ name: video.name, relativePath: video.relativePath, error: formatted.json });
       continue;
     }
 
@@ -209,18 +255,30 @@ async function runRenderAll(
       const resolved = await resolveRenderTargets(video.entrypoint, perVideoOptions, outputFormat);
       await runRenderTargetsPlain(resolved, perVideoOptions);
     } catch (err) {
-      console.error(`  ✗ ${video.name}: ${err instanceof Error ? err.message : err}`);
+      const formatted = formatError(err);
+      if (options.json) {
+        console.log(JSON.stringify({ event: "error", video: video.name, error: formatted.json }));
+      } else {
+        console.error(`  ✗ ${video.name}: ${formatted.plain}`);
+      }
       if (options.failOnError) {
-        console.error("\nAborting: --fail-on-error is set.\n");
+        if (!options.json) console.error("\nAborting: --fail-on-error is set.\n");
         process.exit(1);
       }
-      failures.push({ name: video.name, relativePath: video.relativePath, error: err });
+      failures.push({ name: video.name, relativePath: video.relativePath, error: formatted.json });
     }
   }
 
   const total = videos.length;
   const failed = failures.length;
   const succeeded = total - failed;
+  
+  if (options.json) {
+    console.log(JSON.stringify({ event: "all_complete", total, succeeded, failed, failures }));
+    if (failed > 0) process.exit(1);
+    return;
+  }
+
   console.log("");
   if (failed === 0) {
     console.log(`✓ Rendered ${total}/${total} video(s)`);
@@ -230,8 +288,6 @@ async function runRenderAll(
   for (const f of failures) {
     console.log(`  - ${f.name} (${f.relativePath})`);
   }
-  // Always exit 1 when there are failures; --fail-on-error has no effect here
-  // because we already stop early per-video on error (the flag was a no-op pre-existing behavior).
   process.exit(1);
 }
 

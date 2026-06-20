@@ -4,6 +4,7 @@ import { execa } from "execa";
 import { existsSync, readFileSync, readdirSync, writeFileSync, unlinkSync, mkdirSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { join } from "node:path";
+import pc from "picocolors";
 import { findProjectRoot } from "../utils/find-project-root.js";
 import { discoverVideos } from "../utils/discover-videos.js";
 
@@ -17,18 +18,10 @@ interface Check {
   hint?: string;
 }
 
-const COLORS = {
-  reset: "\x1b[0m",
-  green: "\x1b[32m",
-  yellow: "\x1b[33m",
-  red: "\x1b[31m",
-  dim: "\x1b[2m",
-};
-
 const ICONS: Record<Status, string> = {
-  ok: `${COLORS.green}✓${COLORS.reset}`,
-  warn: `${COLORS.yellow}⚠${COLORS.reset}`,
-  fail: `${COLORS.red}✗${COLORS.reset}`,
+  ok: pc.green("✓"),
+  warn: pc.yellow("⚠"),
+  fail: pc.red("✗"),
 };
 
 async function checkNode(): Promise<Check> {
@@ -160,22 +153,28 @@ function checkOutputWritable(projectRoot: string): Check {
 }
 
 function printRow(check: Check) {
-  const detail = check.detail ? ` ${COLORS.dim}${check.detail}${COLORS.reset}` : "";
+  const detail = check.detail ? ` ${pc.dim(check.detail)}` : "";
   console.log(`  ${ICONS[check.status]} ${check.label}${detail}`);
   if (check.hint && check.status !== "ok") {
-    console.log(`      ${COLORS.dim}${check.hint}${COLORS.reset}`);
+    console.log(`      ${pc.dim(check.hint)}`);
   }
 }
 
-export async function doctorCommand() {
-  console.log("\nSuperImg doctor\n");
+export async function doctorCommand(options: { json?: boolean } = {}) {
+  if (!options.json) {
+    console.log("\nSuperImg doctor\n");
+  }
 
   let projectRoot: string;
   try {
     projectRoot = findProjectRoot();
   } catch {
-    console.log(`  ${ICONS.fail} project root  ${COLORS.dim}no package.json found${COLORS.reset}`);
-    console.log(`      ${COLORS.dim}Run from a project directory or 'superimg init' first.${COLORS.reset}\n`);
+    if (options.json) {
+      console.log(JSON.stringify({ error: { message: "no package.json found", code: "NO_PROJECT_ROOT" } }));
+      process.exit(1);
+    }
+    console.log(`  ${ICONS.fail} project root  ${pc.dim("no package.json found")}`);
+    console.log(`      ${pc.dim("Run from a project directory or 'superimg init' first.")}\n`);
     process.exit(1);
   }
 
@@ -188,18 +187,25 @@ export async function doctorCommand() {
     checkOutputWritable(projectRoot),
   ];
 
-  for (const c of checks) printRow(c);
-
   const fails = checks.filter((c) => c.status === "fail").length;
   const warns = checks.filter((c) => c.status === "warn").length;
+
+  if (options.json) {
+    console.log(JSON.stringify({ checks, summary: { fails, warns } }, null, 2));
+    if (fails > 0) process.exit(1);
+    return;
+  }
+
+  for (const c of checks) printRow(c);
+
   console.log("");
   if (fails > 0) {
-    console.log(`  ${COLORS.red}${fails} blocker${fails === 1 ? "" : "s"}${COLORS.reset}, ${warns} warning${warns === 1 ? "" : "s"}\n`);
+    console.log(`  ${pc.red(`${fails} blocker${fails === 1 ? "" : "s"}`)}, ${warns} warning${warns === 1 ? "" : "s"}\n`);
     process.exit(1);
   }
   if (warns > 0) {
-    console.log(`  ${COLORS.yellow}${warns} warning${warns === 1 ? "" : "s"}${COLORS.reset}, no blockers\n`);
+    console.log(`  ${pc.yellow(`${warns} warning${warns === 1 ? "" : "s"}`)}, no blockers\n`);
     return;
   }
-  console.log(`  ${COLORS.green}all good${COLORS.reset}\n`);
+  console.log(`  ${pc.green("all good")}\n`);
 }

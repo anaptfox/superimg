@@ -5,12 +5,17 @@ import { validateAITemplate, formatValidationForAI } from "@superimg/core/valida
 import { resolveTemplatePath } from "../utils/resolve-template.js";
 import { formatError } from "@superimg/core/errors";
 
-export async function validateCommand(template: string, options: { frames: string }) {
+export async function validateCommand(template: string, options: { frames: string; json?: boolean }) {
   let templatePath: string;
   try {
     templatePath = resolveTemplatePath(template);
   } catch (err) {
-    console.error(`\n  Error: ${formatError(err).plain}\n`);
+    const formatted = formatError(err);
+    if (options.json) {
+      console.log(JSON.stringify({ error: formatted.json }));
+      process.exit(1);
+    }
+    console.error(`\n  Error: ${formatted.plain}\n`);
     process.exit(1);
   }
 
@@ -23,18 +28,36 @@ export async function validateCommand(template: string, options: { frames: strin
   try {
     code = readFileSync(templatePath, "utf-8");
   } catch (err) {
-    console.error(`\n  Error: cannot read template: ${formatError(err).plain}\n`);
+    const formatted = formatError(err);
+    if (options.json) {
+      console.log(JSON.stringify({ error: formatted.json }));
+      process.exit(1);
+    }
+    console.error(`\n  Error: cannot read template: ${formatted.plain}\n`);
     process.exit(1);
   }
 
-  console.log(`\n  Validating ${template}...\n`);
+  if (!options.json) {
+    console.log(`\n  Validating ${template}...\n`);
+  }
 
   let result: Awaited<ReturnType<typeof validateAITemplate>>;
   try {
     result = await validateAITemplate(code, { sampleFrames });
   } catch (err) {
-    console.error(`  ✗ Validation failed: ${formatError(err).plain}\n`);
+    const formatted = formatError(err);
+    if (options.json) {
+      console.log(JSON.stringify({ error: formatted.json }));
+      process.exit(1);
+    }
+    console.error(`  ✗ Validation failed: ${formatted.plain}\n`);
     process.exit(1);
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify(result, null, 2));
+    if (!result.valid) process.exit(1);
+    return;
   }
 
   if (result.valid) {

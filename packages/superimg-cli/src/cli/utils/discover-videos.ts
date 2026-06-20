@@ -1,4 +1,4 @@
-//! Discover all *.video.ts and *.video.js files under the project root
+//! Discover all *.video.ts, *.image.ts, and *.gif.ts files under the project root
 
 import { join, relative } from "node:path";
 import { readdirSync, existsSync } from "node:fs";
@@ -12,14 +12,18 @@ const EXCLUDE_DIRS = new Set([
   ".git",
   "build",
   ".turbo",
+  ".claude",
+  ".superimg",
 ]);
+
+export type TemplateKind = "video" | "image" | "gif" | "svg";
 
 export interface DiscoveredVideo {
   /** e.g. "summer-campaign/promo" (relative path minus .video.ts) */
   name: string;
   /** Short name extracted from pattern (e.g. "hello-world" from hello-world/hello-world.video.ts) */
   shortName: string;
-  /** Absolute path to the .video.ts file */
+  /** Absolute path to the template file */
   entrypoint: string;
   /** Absolute path to the containing folder */
   directory: string;
@@ -27,18 +31,37 @@ export interface DiscoveredVideo {
   relativePath: string;
   /** true if folder contains its own _config.ts */
   hasLocalConfig: boolean;
+  /** Template kind inferred from file extension */
+  kind: TemplateKind;
+  /** Absolute path to the companion data file, if it exists */
+  companionPath?: string;
+}
+
+function stripTemplateExtension(filename: string): string {
+  return filename
+    .replace(/\.video\.(ts|js)$/, "")
+    .replace(/\.image\.ts$/, "")
+    .replace(/\.gif\.ts$/, "")
+    .replace(/\.svg\.ts$/, "");
+}
+
+function inferKind(filename: string): TemplateKind {
+  if (filename.endsWith(".image.ts")) return "image";
+  if (filename.endsWith(".gif.ts")) return "gif";
+  if (filename.endsWith(".svg.ts")) return "svg";
+  return "video";
 }
 
 /**
- * Extract a short name from a video file path.
+ * Extract a short name from a template file path.
  * - {folder}/{folder}.video.ts → folder name
  * - {any}/index.video.ts → parent folder name
- * - Fallback: filename without .video.ts
+ * - Fallback: filename without extension
  */
-function extractShortName(relPath: string): string {
+export function extractShortName(relPath: string): string {
   const parts = relPath.replace(/\\/g, "/").split("/");
   const filename = parts[parts.length - 1];
-  const baseName = filename.replace(/\.video\.(ts|js)$/, "");
+  const baseName = stripTemplateExtension(filename);
   const parentFolder = parts.length > 1 ? parts[parts.length - 2] : "";
 
   // Pattern: {folder}/{folder}.video.ts
@@ -95,17 +118,24 @@ export function discoverVideos(projectRoot: string): DiscoveredVideo[] {
           walk(fullPath);
         }
       } else if (entry.isFile()) {
-        const isVideoTs = entry.name.endsWith(".video.ts");
-        const isVideoJs = entry.name.endsWith(".video.js");
-        if (isVideoTs || isVideoJs) {
+        const isTemplate =
+          entry.name.endsWith(".video.ts") ||
+          entry.name.endsWith(".video.js") ||
+          entry.name.endsWith(".image.ts") ||
+          entry.name.endsWith(".gif.ts") ||
+          entry.name.endsWith(".svg.ts");
+        if (isTemplate) {
           const relPath = relative(projectRoot, fullPath);
-          const name = relPath
-            .replace(/\.video\.(ts|js)$/, "")
-            .replace(/\\/g, "/");
+          const name = stripTemplateExtension(relPath.replace(/\\/g, "/"));
           const shortName = extractShortName(relPath);
           const directory = join(dir);
           const configPath = join(directory, "_config.ts");
           const hasLocalConfig = existsSync(configPath);
+          const kind = inferKind(entry.name);
+
+          const baseFilename = entry.name.replace(/\.(video|image|gif|svg)\.(ts|js)$/, "");
+          const dataPath = join(directory, `${baseFilename}.data.ts`);
+          const companionPath = existsSync(dataPath) ? dataPath : undefined;
 
           results.push({
             name,
@@ -114,6 +144,8 @@ export function discoverVideos(projectRoot: string): DiscoveredVideo[] {
             directory,
             relativePath: relPath.replace(/\\/g, "/"),
             hasLocalConfig,
+            kind,
+            companionPath,
           });
         }
       }

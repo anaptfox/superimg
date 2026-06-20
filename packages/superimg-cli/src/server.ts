@@ -32,7 +32,19 @@ export type {
 } from "./render-batch.js";
 export type { LoadedTemplate, LoadedTemplateRenderOptions } from "./load-template.js";
 
+export { resolveRenderTargets } from "./cli/commands/render-targets.js";
+export type { RenderOptions, RenderTarget, ResolvedTargets } from "./cli/commands/render-targets.js";
+export { executeRenderTargets } from "./cli/commands/render-execute.js";
+export type { ExecuteRenderOptions } from "./cli/commands/render-execute.js";
+export { loadCompanionData } from "./cli/utils/load-companion-data.js";
+
 export { startDevServer } from "./dev-server.js";
 export type { DevServerOptions, DevServer } from "./dev-server.js";
 export { listVideos } from "./list-videos.js";
 export type { VideoSummary } from "./list-videos.js";
+export { discoverVideos, extractShortName, checkDuplicateVideoNames } from "./cli/utils/discover-videos.js";
+export type { DiscoveredVideo, TemplateKind } from "./cli/utils/discover-videos.js";
+export { RENDER_EVENT_VERSION } from "@superimg/types";
+export type { RenderEvent } from "@superimg/types";
+export { renderTemplates } from "./render-templates.js";
+export type { RenderTemplatesOptions } from "./render-templates.js";

@@ -106,6 +106,7 @@ program
   .option("--debug-html", "Save the underlying HTML of each frame next to the resolved output in .superimg/debug/")
   .option("--fail-on-error", "Exit non-zero if any video fails (useful in CI). Default: best-effort for --all.")
   .option("--dry-run", "Resolve and print render targets without actually rendering.")
+  .option("--json", "Output machine-readable JSON instead of human text")
   .option("--distributed <endpoints>", "Comma-separated container URLs for distributed chunk rendering (e.g. https://a.example.com,https://b.example.com).")
   .action(async (template: string | undefined, options) => {
     const mod = await import("./commands/render.js");
@@ -132,17 +133,28 @@ program
   .command("info")
   .description("Show template information")
   .argument("<template>", "Path to template file")
-  .action(async (template: string) => {
+  .option("--json", "Output machine-readable JSON instead of human text")
+  .action(async (template: string, options: { json?: boolean }) => {
     const { infoCommand } = await import("./commands/info.js");
-    await infoCommand(template);
+    await infoCommand(template, options);
   });
 
 program
   .command("list")
   .description("List all discovered videos in the project")
-  .action(async () => {
+  .option("--json", "Output machine-readable JSON instead of human text")
+  .action(async (options: { json?: boolean }) => {
     const { listCommand } = await import("./commands/list.js");
-    await listCommand();
+    await listCommand(options);
+  });
+
+program
+  .command("discover")
+  .description("Fast template discovery — lists all templates with no template parsing (for build tools)")
+  .option("--json", "Output machine-readable JSON instead of human text")
+  .action(async (options: { json?: boolean }) => {
+    const { discoverCommand } = await import("./commands/discover.js");
+    await discoverCommand(options);
   });
 
 program
@@ -150,7 +162,8 @@ program
   .description("Validate a template by rendering sample frames and checking for errors")
   .argument("<template>", "Video name or path to validate")
   .option("--frames <count>", "Number of sample frames to render (default: 5)", "5")
-  .action(async (template: string, options: { frames: string }) => {
+  .option("--json", "Output machine-readable JSON instead of human text")
+  .action(async (template: string, options: { frames: string; json?: boolean }) => {
     const { validateCommand } = await import("./commands/validate.js");
     await validateCommand(template, options);
   });
@@ -166,9 +179,10 @@ program
 program
   .command("doctor")
   .description("Check environment health and surface drift before render")
-  .action(async () => {
+  .option("--json", "Output machine-readable JSON instead of human text")
+  .action(async (options: { json?: boolean }) => {
     const { doctorCommand } = await import("./commands/doctor.js");
-    await doctorCommand();
+    await doctorCommand(options);
   });
 
 const skill = program

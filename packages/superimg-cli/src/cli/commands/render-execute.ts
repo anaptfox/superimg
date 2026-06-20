@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { bundleTemplateCodeWithMap } from "@superimg/core/bundler";
 import { createRenderPlan, executeRenderPlan, executeRenderPlanParallel } from "@superimg/core/engine";
+import { compileTemplate, createRenderContext } from "@superimg/core";
 import { PlaywrightEngine } from "@superimg/playwright";
 import type { RenderProgress, TemplateBundle } from "@superimg/types";
 import { discoverTemplateAssets } from "../utils/asset-discovery.js";
@@ -16,11 +17,11 @@ import { loadCompanionData } from "../utils/load-companion-data.js";
 import { mergeEncoding } from "../utils/merge-encoding.js";
 import { buildRenderJob } from "../../utils/build-render-job.js";
 import { renderDistributed } from "../../render-distributed.js";
-import {
-  buildEncodingOptions,
-  type RenderOptions,
-  type RenderTarget,
-  type ResolvedTargets,
+import { buildEncodingOptions } from "./render-encoding.js";
+import type {
+  RenderOptions,
+  RenderTarget,
+  ResolvedTargets,
 } from "./render-targets.js";
 
 export interface ExecuteRenderOptions {
@@ -38,6 +39,13 @@ export interface ExecuteRenderOptions {
   isCancelled?: () => boolean;
 }
 
+/** Validate that a string is SVG markup. Returns null if valid, warning string if not. */
+function validateSvgMarkup(content: string, targetName: string): string | null {
+  const trimmed = content.trimStart();
+  if (trimmed.startsWith("<svg") || trimmed.startsWith("<?xml")) return null;
+  return `Warning: ${targetName} — render() did not return SVG markup (got ${JSON.stringify(trimmed.slice(0, 60))}...). Output may be invalid.`;
+}
+
 /** Write an HTML frame next to the output, for --debug-html. */
 export function writeDebugHtmlFrame(target: RenderTarget, frame: number, compositeHtml: string) {
   if (!existsSync(target.debugHtmlDir)) {
@@ -45,6 +53,31 @@ export function writeDebugHtmlFrame(target: RenderTarget, frame: number, composi
   }
   const frameStr = String(frame).padStart(5, "0");
   writeFileSync(join(target.debugHtmlDir, `frame_${frameStr}.html`), compositeHtml);
+}
+
+/**
+ * Render a single SVG/HTML bypass target: call render(), validate, write to disk,
+ * then notify the caller. Shared between the all-bypass and mixed-target paths.
+ */
+function renderBypassTarget(
+  target: RenderTarget,
+  template: { render: (ctx: ReturnType<typeof createRenderContext>) => string },
+  companionData: unknown,
+  assetResolver: (filename: string) => string,
+  onTargetComplete?: (target: RenderTarget, result: Uint8Array) => void
+): void {
+  const fallbackData = Array.isArray(companionData) ? undefined : companionData;
+  const targetData = target.data ?? fallbackData ?? {};
+  const ctx = createRenderContext(0, 1, 1, target.width, target.height, targetData as Record<string, unknown>, target.name, {}, assetResolver);
+  const output = template.render(ctx);
+  if (target.format === "svg") {
+    const warn = validateSvgMarkup(output, target.name);
+    if (warn) console.warn(warn);
+  }
+  mkdirSync(dirname(target.outputPath), { recursive: true });
+  writeFileSync(target.outputPath, output, "utf-8");
+  const bytes = Buffer.from(output, "utf-8");
+  onTargetComplete?.(target, bytes);
 }
 
 /**
@@ -73,6 +106,35 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
   const companionData = await loadCompanionData(resolvedTemplate);
   const autoDiscovered = discoverTemplateAssets(templateDir);
 
+  // Simple file-path asset resolver for bypass (no browser server).
+  const bypassAssetResolver = (filename: string) => join(templateDir, "assets", filename);
+
+  // Check if all targets are SVG/HTML (bypass Playwright entirely).
+  const allBypass = targets.every((t) => t.format === "svg" || t.format === "html");
+
+  if (allBypass) {
+    const compiled = compileTemplate(templateBundle.code);
+    if (compiled.error || !compiled.template) throw compiled.error ?? new Error("Template compilation failed");
+    const template = compiled.template;
+
+    for (let i = 0; i < targets.length; i++) {
+      if (isCancelled?.()) return;
+      const target = targets[i];
+      onTargetStart?.(target, i, targets.length);
+      renderBypassTarget(target, template, companionData, bypassAssetResolver, onTargetComplete);
+    }
+    return;
+  }
+
+  // Hoist compile for mixed paths that include svg/html targets (B5).
+  let bypassTemplate: ReturnType<typeof compileTemplate>["template"] | null = null;
+  const hasBypassTargets = targets.some((t) => t.format === "svg" || t.format === "html");
+  if (hasBypassTargets) {
+    const compiled = compileTemplate(templateBundle.code);
+    if (compiled.error || !compiled.template) throw compiled.error ?? new Error("Template compilation failed");
+    bypassTemplate = compiled.template;
+  }
+
   const engine = new PlaywrightEngine();
   try {
     await engine.init();
@@ -81,19 +143,32 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
     for (let i = 0; i < targets.length; i++) {
       if (isCancelled?.()) return;
       const target = targets[i];
+
+      // SVG/HTML targets mixed in with Playwright targets — handle inline.
+      if (target.format === "svg" || target.format === "html") {
+        if (!bypassTemplate) throw new Error("bypass template not compiled");
+        onTargetStart?.(target, i, targets.length);
+        renderBypassTarget(target, bypassTemplate, companionData, bypassAssetResolver, onTargetComplete);
+        continue;
+      }
+
       onTargetStart?.(target, i, targets.length);
 
+      // Merge target format into encoding so the right encoder is selected.
+      const targetFormatEncoding = target.format ? { format: target.format as string } : {};
+      const templateEncoding = templateData.templateConfig?.encoding ?? {};
       const encoding = mergeEncoding(
-        templateData.templateConfig?.encoding,
+        { ...templateEncoding, ...targetFormatEncoding } as typeof templateEncoding,
         buildEncodingOptions(options),
       );
       if (encoding?.format === "gif" && templateData.templateConfig?.audio) {
         console.warn("Warning: GIF format does not support audio. Audio track will be ignored.");
       }
 
-      // Per-target data (from --data) takes precedence over the template's
-      // companion data. Companion data still applies when --data is absent.
-      const targetData = target.data ?? companionData;
+      // Companion data still applies when --data is absent, unless it's an array
+      // (array companion data is handled by resolveRenderTargets into target.data).
+      const fallbackData = Array.isArray(companionData) ? undefined : companionData;
+      const targetData = target.data ?? fallbackData;
 
       const { job, resolvedAssets } = buildRenderJob({
         parsed: templateData,
@@ -105,8 +180,9 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
           width: target.width,
           height: target.height,
           fps: target.fps,
+          duration: target.duration,
           encoding,
-          data: targetData,
+          data: targetData as Record<string, unknown> | undefined,
           outputName: target.outputName,
         },
       });

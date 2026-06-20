@@ -14,6 +14,7 @@ import { ValidationError } from "@superimg/types";
 import { resolveTemplatePath } from "../utils/resolve-template.js";
 import { findProjectRoot } from "../utils/find-project-root.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";
+import type { TemplateKind } from "../utils/discover-videos.js";
 import {
   parseTemplate,
   resolveRenderConfig,
@@ -23,6 +24,7 @@ import {
 import { resolveDebugHtmlDir, resolveOutputPath } from "../utils/resolve-output-path.js";
 import { loadDataInput } from "../utils/data-loader.js";
 import { deriveEntrySlug } from "../utils/slug.js";
+import { resolveFormat, buildEncodingOptions, type OutputFormat } from "./render-encoding.js";
 
 export interface RenderOptions {
   output?: string;
@@ -59,6 +61,8 @@ export interface RenderOptions {
   failOnError?: boolean;
   /** Resolve and print render targets without rendering. */
   dryRun?: boolean;
+  /** Output machine-readable JSON instead of human text. */
+  json?: boolean;
   /**
    * Comma-separated list of container endpoint URLs for distributed chunk rendering.
    * When set, the render is split into chunks and sent to these endpoints in parallel,
@@ -72,9 +76,13 @@ export interface RenderTarget {
   width: number;
   height: number;
   fps: number;
+  /** Duration override in seconds. Set for image templates (1 frame). */
+  duration?: number;
   outputPath: string;
   outputName: string;
   debugHtmlDir: string;
+  /** Resolved output format for this target (png, webp, jpeg, svg, html, gif, mp4, webm). */
+  format?: OutputFormat;
   /** Per-target data override. Set when --data supplied an entry for this target. */
   data?: Record<string, unknown>;
   /** Human-readable label for progress logs, e.g. "jane-doe". */
@@ -87,177 +95,19 @@ export interface ResolvedTargets {
   resolvedConfig: ReturnType<typeof resolveRenderConfig>;
   cascadingConfig: Awaited<ReturnType<typeof loadCascadingConfig>>;
   targets: RenderTarget[];
+  kind: TemplateKind;
 }
 
-export type OutputFormat = "mp4" | "webm" | "gif" | undefined;
 
-export function resolveFormat(opts: RenderOptions): OutputFormat {
-  if (opts.format) {
-    const f = opts.format.toLowerCase();
-    if (f === "mp4" || f === "webm" || f === "gif") return f;
-    console.warn(`Warning: Unknown format "${opts.format}". Valid: mp4, webm, gif. Using default.`);
-    return undefined;
-  }
-  if (opts.output?.endsWith(".webm")) return "webm";
-  if (opts.output?.endsWith(".gif")) return "gif";
-  return undefined;
-}
-
-export function buildEncodingOptions(opts: RenderOptions): EncodingOptions | undefined {
-  const format = resolveFormat(opts);
-  const hasEncoding =
-    format ||
-    opts.quality ||
-    opts.videoCodec ||
-    opts.videoBitrate ||
-    opts.audioCodec ||
-    opts.audioBitrate ||
-    opts.keyframeInterval ||
-    opts.bitrateMode ||
-    opts.latencyMode ||
-    opts.hardwareAccel ||
-    opts.audioBitrateMode ||
-    opts.fastStart ||
-    opts.clusterDuration ||
-    opts.maxColors ||
-    opts.gifLoop ||
-    opts.gifDither;
-
-  if (!hasEncoding) return undefined;
-
-  const encoding: EncodingOptions = {};
-  if (format) encoding.format = format;
-  const validVideoCodecs = ["avc", "vp9", "av1"];
-  const validAudioCodecs = ["aac", "opus"];
-  const validQuality = ["very-low", "low", "medium", "high", "very-high"];
-  const validBitrateModes = ["constant", "variable"];
-  const validLatencyModes = ["quality", "realtime"];
-  const validHwAccel = ["no-preference", "prefer-hardware", "prefer-software"];
-  const validFastStart = ["false", "in-memory", "fragmented"];
-
-  if (opts.quality || opts.videoCodec || opts.videoBitrate || opts.keyframeInterval || opts.bitrateMode || opts.latencyMode || opts.hardwareAccel) {
-    encoding.video = {};
-    if (opts.videoCodec) {
-      const codec = opts.videoCodec.toLowerCase();
-      if (validVideoCodecs.includes(codec)) {
-        encoding.video.codec = codec as "avc" | "vp9" | "av1";
-      } else {
-        console.warn(`Warning: Unknown video codec "${opts.videoCodec}". Valid: ${validVideoCodecs.join(", ")}. Using default.`);
-      }
-    }
-    if (opts.videoBitrate) {
-      const bps = parseInt(opts.videoBitrate, 10);
-      if (!isNaN(bps)) encoding.video.bitrate = bps;
-    } else if (opts.quality) {
-      if (validQuality.includes(opts.quality)) {
-        encoding.video.bitrate = opts.quality as "very-low" | "low" | "medium" | "high" | "very-high";
-      } else {
-        console.warn(`Warning: Unknown quality "${opts.quality}". Valid: ${validQuality.join(", ")}. Using default.`);
-      }
-    }
-    if (opts.keyframeInterval) {
-      const sec = parseFloat(opts.keyframeInterval);
-      if (!isNaN(sec)) encoding.video.keyFrameInterval = sec;
-    }
-    if (opts.bitrateMode) {
-      const mode = opts.bitrateMode.toLowerCase();
-      if (validBitrateModes.includes(mode)) {
-        encoding.video.bitrateMode = mode as "constant" | "variable";
-      } else {
-        console.warn(`Warning: Unknown bitrate mode "${opts.bitrateMode}". Valid: ${validBitrateModes.join(", ")}. Using default.`);
-      }
-    }
-    if (opts.latencyMode) {
-      const mode = opts.latencyMode.toLowerCase();
-      if (validLatencyModes.includes(mode)) {
-        encoding.video.latencyMode = mode as "quality" | "realtime";
-      } else {
-        console.warn(`Warning: Unknown latency mode "${opts.latencyMode}". Valid: ${validLatencyModes.join(", ")}. Using default.`);
-      }
-    }
-    if (opts.hardwareAccel) {
-      const hint = opts.hardwareAccel.toLowerCase();
-      if (validHwAccel.includes(hint)) {
-        encoding.video.hardwareAcceleration = hint as "no-preference" | "prefer-hardware" | "prefer-software";
-      } else {
-        console.warn(`Warning: Unknown hardware acceleration "${opts.hardwareAccel}". Valid: ${validHwAccel.join(", ")}. Using default.`);
-      }
-    }
-  }
-
-  if (opts.audioCodec || opts.audioBitrate || opts.audioBitrateMode) {
-    encoding.audio = {};
-    if (opts.audioCodec) {
-      const codec = opts.audioCodec.toLowerCase();
-      if (validAudioCodecs.includes(codec)) {
-        encoding.audio.codec = codec as "aac" | "opus";
-      } else {
-        console.warn(`Warning: Unknown audio codec "${opts.audioCodec}". Valid: ${validAudioCodecs.join(", ")}. Using default.`);
-      }
-    }
-    if (opts.audioBitrate) {
-      const bps = parseInt(opts.audioBitrate, 10);
-      if (!isNaN(bps)) encoding.audio.bitrate = bps;
-    }
-    if (opts.audioBitrateMode) {
-      const mode = opts.audioBitrateMode.toLowerCase();
-      if (validBitrateModes.includes(mode)) {
-        encoding.audio.bitrateMode = mode as "constant" | "variable";
-      } else {
-        console.warn(`Warning: Unknown audio bitrate mode "${opts.audioBitrateMode}". Valid: ${validBitrateModes.join(", ")}. Using default.`);
-      }
-    }
-  }
-
-  if (opts.fastStart) {
-    const mode = opts.fastStart.toLowerCase();
-    if (validFastStart.includes(mode)) {
-      encoding.mp4 = {
-        fastStart: mode === "false" ? false : mode as "in-memory" | "fragmented",
-      };
-    } else {
-      console.warn(`Warning: Unknown fast start mode "${opts.fastStart}". Valid: ${validFastStart.join(", ")}. Using default.`);
-    }
-  }
-
-  if (opts.clusterDuration) {
-    const sec = parseFloat(opts.clusterDuration);
-    if (!isNaN(sec)) {
-      encoding.webm = { minimumClusterDuration: sec };
-    }
-  }
-
-  if (opts.maxColors || opts.gifLoop || opts.gifDither) {
-    encoding.gif = {};
-    if (opts.maxColors) {
-      const n = parseInt(opts.maxColors, 10);
-      if (!isNaN(n) && n >= 2 && n <= 256) encoding.gif.maxColors = n;
-      else console.warn(`Warning: --max-colors must be 2-256. Using default (256).`);
-    }
-    if (opts.gifLoop) {
-      const n = parseInt(opts.gifLoop, 10);
-      if (!isNaN(n)) encoding.gif.loop = n;
-    }
-    if (opts.gifDither) {
-      encoding.gif.dither = opts.gifDither;
-    }
-  }
-
-  // Apply WebM smart defaults when no explicit video options were set
-  if (format === "webm") {
-    if (!encoding.video) encoding.video = {};
-    if (!encoding.video.codec) encoding.video.codec = ["vp9", "av1"];
-  }
-
-  return encoding;
-}
 
 export function buildRenderTarget(args: {
   name: string;
   width: number;
   height: number;
   fps: number;
+  duration?: number;
   outputPath: string;
+  format?: OutputFormat;
   data?: Record<string, unknown>;
   entryLabel?: string;
 }): RenderTarget {
@@ -266,12 +116,14 @@ export function buildRenderTarget(args: {
     width: args.width,
     height: args.height,
     fps: args.fps,
+    duration: args.duration,
     outputPath: args.outputPath,
     outputName: args.name,
     debugHtmlDir: resolveDebugHtmlDir({
       outputPath: args.outputPath,
       outputName: args.name,
     }),
+    format: args.format,
     data: args.data,
     entryLabel: args.entryLabel,
   };
@@ -281,12 +133,20 @@ export function buildRenderTarget(args: {
  * Resolve a template + CLI options into the concrete render targets.
  * Throws on parse / validation failure. Callers handle exit codes.
  */
+function inferKindFromPath(p: string): TemplateKind {
+  if (p.endsWith(".image.ts")) return "image";
+  if (p.endsWith(".gif.ts")) return "gif";
+  if (p.endsWith(".svg.ts")) return "svg";
+  return "video";
+}
+
 export async function resolveRenderTargets(
   template: string,
   options: RenderOptions,
   outputFormat: OutputFormat,
 ): Promise<ResolvedTargets> {
   const resolvedTemplate = resolveTemplatePath(template);
+  const kind = inferKindFromPath(resolvedTemplate);
   const projectRoot = findProjectRoot(dirname(resolvedTemplate));
   const cascadingConfig = await loadCascadingConfig(resolvedTemplate, projectRoot);
   const templateData = await parseTemplate(resolvedTemplate, { cascadingConfig });
@@ -300,6 +160,7 @@ export async function resolveRenderTargets(
     });
   }
 
+  const stillDefaults = (kind === "image" || kind === "svg") ? { fps: 1, duration: 1 } : undefined;
   const resolvedConfig = resolveRenderConfig({
     cli: {
       width: options.width,
@@ -308,6 +169,9 @@ export async function resolveRenderTargets(
     },
     templateConfig: templateData.templateConfig,
     cascadingConfig,
+    defaults: stillDefaults
+      ? { ...{ width: 1920, height: 1080, fps: 1, duration: 1 }, ...stillDefaults }
+      : undefined,
   });
 
   // Build the list of preset specs (one per target dimension/preset).
@@ -318,6 +182,7 @@ export async function resolveRenderTargets(
     width: number;
     height: number;
     fps: number;
+    format?: OutputFormat;
     outFile?: string;
     outDir?: string;
     /** Whether this is the no-preset default. Skips the preset suffix in filenames. */
@@ -340,6 +205,7 @@ export async function resolveRenderTargets(
       width: p.width,
       height: p.height,
       fps: p.fps,
+      format: p.format as OutputFormat,
       outFile: p.outFile,
       outDir: p.outDir,
       isDefault: false,
@@ -359,16 +225,19 @@ export async function resolveRenderTargets(
       width: preset.width,
       height: preset.height,
       fps: preset.fps,
+      format: preset.format as OutputFormat,
       outFile: preset.outFile,
       outDir: preset.outDir,
       isDefault: false,
     }];
   } else {
+    const defaultFormat: OutputFormat = kind === "image" ? "png" : kind === "gif" ? "gif" : kind === "svg" ? "svg" : undefined;
     presetSpecs = [{
       name: "default",
       width: resolvedConfig.width,
       height: resolvedConfig.height,
       fps: resolvedConfig.fps,
+      format: outputFormat ?? defaultFormat,
       isDefault: true,
     }];
   }
@@ -401,7 +270,28 @@ export async function resolveRenderTargets(
       };
     });
   } else {
-    entrySpecs = [{ slug: "" }];
+    // If --data is absent, check companion data for an array to enable implicit batch mode.
+    // (Single object companion data is handled later in executeRenderTargets).
+    const { loadCompanionData } = await import("../utils/load-companion-data.js");
+    const companionData = await loadCompanionData(resolvedTemplate);
+    if (Array.isArray(companionData)) {
+      entrySpecs = companionData.map((entry, index) => {
+        if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+          throw new ValidationError({
+            field: "companion data file",
+            expectedType: "array of objects",
+            receivedValue: typeof entry,
+            suggestion: "Each array entry in the companion data file must be a plain object.",
+          });
+        }
+        return {
+          data: entry as Record<string, unknown>,
+          slug: deriveEntrySlug(entry, index, companionData.length),
+        };
+      });
+    } else {
+      entrySpecs = [{ slug: "" }];
+    }
   }
 
   // Multi-target output coercion: a single `-o <path>` is destructive when
@@ -426,6 +316,7 @@ export async function resolveRenderTargets(
   const targets: RenderTarget[] = [];
   for (const entry of entrySpecs) {
     for (const preset of presetSpecs) {
+      const effectiveFormat = preset.format ?? outputFormat;
       const outputPath = resolveOutputPath({
         outputArg: coercedOutput,
         templatePath: resolvedTemplate,
@@ -434,14 +325,16 @@ export async function resolveRenderTargets(
         presetOutFile: preset.outFile,
         presetOutDir: preset.outDir,
         entrySuffix: entry.slug || undefined,
-        format: outputFormat,
+        format: effectiveFormat,
       });
       targets.push(buildRenderTarget({
         name: preset.name,
         width: preset.width,
         height: preset.height,
         fps: preset.fps,
+        duration: (kind === "image" || kind === "svg") ? 1 : undefined,
         outputPath,
+        format: effectiveFormat,
         data: entry.data,
         entryLabel: entry.slug || undefined,
       }));
@@ -454,5 +347,6 @@ export async function resolveRenderTargets(
     resolvedConfig,
     cascadingConfig,
     targets,
+    kind,
   };
 }

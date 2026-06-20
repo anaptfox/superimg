@@ -41,21 +41,30 @@ export function resolveTemplatePath(input: string, cwd = process.cwd()): string 
         originalError: "ENOENT",
       });
     }
-    if (!resolved.endsWith(".video.ts") && !resolved.endsWith(".video.js")) {
+    const validExt =
+      resolved.endsWith(".video.ts") ||
+      resolved.endsWith(".video.js") ||
+      resolved.endsWith(".image.ts") ||
+      resolved.endsWith(".gif.ts") ||
+      resolved.endsWith(".svg.ts");
+    if (!validExt) {
       throw new ValidationError({
         field: "template",
-        expectedType: ".video.ts or .video.js file",
+        expectedType: ".video.ts, .image.ts, .gif.ts, or .svg.ts file",
         receivedValue: trimmed,
-        suggestion: "Rename the file to end in `.video.ts` (or `.video.js`).",
+        suggestion: "Rename the file to end in `.video.ts`, `.image.ts`, `.gif.ts`, or `.svg.ts`.",
       });
     }
     return resolved;
   }
 
-  // Bare name: strip .video.ts / .video.js if present
+  // Bare name: strip template extensions if present
   const baseName = trimmed
     .replace(/\.video\.ts$/, "")
     .replace(/\.video\.js$/, "")
+    .replace(/\.image\.ts$/, "")
+    .replace(/\.gif\.ts$/, "")
+    .replace(/\.svg\.ts$/, "")
     .replace(/\.ts$/, "")
     .replace(/\.js$/, "");
 
