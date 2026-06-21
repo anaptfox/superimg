@@ -12,7 +12,7 @@ function singleSceneTS(name: string, tailwind: boolean): string {
     return `import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     title: "${titleCase(name)}",
     subtitle: "Built with SuperImg",
   },
@@ -47,7 +47,7 @@ export default defineScene({
   return `import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     title: "${titleCase(name)}",
     subtitle: "Built with SuperImg",
   },
@@ -107,8 +107,8 @@ function composeIntroTS(tailwind: boolean): string {
     return `import { defineScene } from "superimg";
 
 export default defineScene({
-  config: { duration: "2s", tailwind: true },
-  data: { title: "Welcome" },
+  config: { duration: "5s", tailwind: true },
+  sample: { title: "Welcome" },
   render(ctx) {
     const t = ctx.std.score();
     const anim = t.motion({ scale: 0.8 });
@@ -137,7 +137,7 @@ export default defineScene({
       .title { font-size: 96px; font-weight: 700; text-shadow: 0 8px 32px rgba(0,0,0,0.3); }
     \`],
   },
-  data: { title: "Welcome" },
+  sample: { title: "Welcome" },
   render(ctx) {
     const t = ctx.std.score();
     const anim = t.motion({ scale: 0.8 });
@@ -160,7 +160,7 @@ function composeContentTS(tailwind: boolean): string {
 
 export default defineScene({
   config: { duration: "3s", tailwind: true },
-  data: {
+  sample: {
     heading: "Main Content",
     body: "Add your content here.",
   },
@@ -195,7 +195,7 @@ export default defineScene({
       .body { font-size: 28px; opacity: 0.7; }
     \`],
   },
-  data: {
+  sample: {
     heading: "Main Content",
     body: "Add your content here.",
   },
@@ -220,7 +220,7 @@ function composeOutroTS(tailwind: boolean): string {
 
 export default defineScene({
   config: { duration: "2s", tailwind: true },
-  data: { cta: "Thanks for watching!" },
+  sample: { cta: "Call to Action" },
   render(ctx) {
     const t = ctx.std.score();
     const anim = t.motion();
@@ -248,7 +248,7 @@ export default defineScene({
       .cta { font-size: 64px; font-weight: 700; }
     \`],
   },
-  data: { cta: "Thanks for watching!" },
+  sample: { cta: "Call to Action" },
   render(ctx) {
     const t = ctx.std.score();
     const anim = t.motion();

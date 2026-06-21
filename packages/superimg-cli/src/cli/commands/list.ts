@@ -18,7 +18,9 @@ export async function listCommand(options: { json?: boolean } = {}) {
   }
 
   if (options.json) {
-    console.log(JSON.stringify(videos, null, 2));
+    const { buildManifest } = await import("../../integration/manifest.js");
+    const manifest = await buildManifest(process.cwd());
+    console.log(JSON.stringify(manifest, null, 2));
     return;
   }
 

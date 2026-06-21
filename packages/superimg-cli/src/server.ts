@@ -32,12 +32,10 @@ export type {
 } from "./render-batch.js";
 export type { LoadedTemplate, LoadedTemplateRenderOptions } from "./load-template.js";
 
-export { resolveRenderTargets } from "./cli/commands/render-targets.js";
+export { resolveRenderTargets, buildRenderTarget } from "./cli/commands/render-targets.js";
 export type { RenderOptions, RenderTarget, ResolvedTargets } from "./cli/commands/render-targets.js";
 export { executeRenderTargets } from "./cli/commands/render-execute.js";
 export type { ExecuteRenderOptions } from "./cli/commands/render-execute.js";
-export { loadCompanionData } from "./cli/utils/load-companion-data.js";
-
 export { startDevServer } from "./dev-server.js";
 export type { DevServerOptions, DevServer } from "./dev-server.js";
 export { listVideos } from "./list-videos.js";

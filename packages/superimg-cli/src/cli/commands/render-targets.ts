@@ -57,6 +57,7 @@ export interface RenderOptions {
    * Composes with `--presets` so N entries × M presets = N×M MP4s.
    */
   data?: string;
+  batchEntries?: import("@superimg/types").BatchEntry[];
   /** Exit non-zero if any video fails when using --all. Default: best-effort (exit 1 only after all complete). */
   failOnError?: boolean;
   /** Resolve and print render targets without rendering. */
@@ -251,7 +252,12 @@ export async function resolveRenderTargets(
   };
   let entrySpecs: EntrySpec[];
 
-  if (options.data) {
+  if (options.batchEntries) {
+    entrySpecs = options.batchEntries.map((e) => ({
+      slug: e.slug,
+      data: e.data as Record<string, unknown>,
+    }));
+  } else if (options.data) {
     const parsed = await loadDataInput(options.data, dirname(resolvedTemplate));
     const isBatch = Array.isArray(parsed);
     const entries = isBatch ? (parsed as unknown[]) : [parsed];
@@ -270,28 +276,7 @@ export async function resolveRenderTargets(
       };
     });
   } else {
-    // If --data is absent, check companion data for an array to enable implicit batch mode.
-    // (Single object companion data is handled later in executeRenderTargets).
-    const { loadCompanionData } = await import("../utils/load-companion-data.js");
-    const companionData = await loadCompanionData(resolvedTemplate);
-    if (Array.isArray(companionData)) {
-      entrySpecs = companionData.map((entry, index) => {
-        if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
-          throw new ValidationError({
-            field: "companion data file",
-            expectedType: "array of objects",
-            receivedValue: typeof entry,
-            suggestion: "Each array entry in the companion data file must be a plain object.",
-          });
-        }
-        return {
-          data: entry as Record<string, unknown>,
-          slug: deriveEntrySlug(entry, index, companionData.length),
-        };
-      });
-    } else {
-      entrySpecs = [{ slug: "" }];
-    }
+    entrySpecs = [{ slug: "" }];
   }
 
   // Multi-target output coercion: a single `-o <path>` is destructive when

@@ -12,7 +12,6 @@ export interface VideoSummary {
   shortName: string;
   relativePath: string;
   entrypoint: string;
-  companionPath?: string;
   hasLocalConfig: boolean;
   kind: TemplateKind;
   config?: string;
@@ -65,7 +64,6 @@ export async function listVideos(projectRoot?: string): Promise<VideoSummary[]> 
           shortName: video.shortName,
           relativePath: video.relativePath,
           entrypoint: video.entrypoint,
-          companionPath: video.companionPath,
           hasLocalConfig: video.hasLocalConfig,
           kind: video.kind,
           config,
@@ -79,7 +77,6 @@ export async function listVideos(projectRoot?: string): Promise<VideoSummary[]> 
           shortName: video.shortName,
           relativePath: video.relativePath,
           entrypoint: video.entrypoint,
-          companionPath: video.companionPath,
           hasLocalConfig: video.hasLocalConfig,
           kind: video.kind,
           config,

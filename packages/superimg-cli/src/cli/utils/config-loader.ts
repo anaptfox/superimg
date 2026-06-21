@@ -1,6 +1,6 @@
 //! Load and merge cascading _config.ts files from video path up to project root
 
-import * as esbuild from "esbuild";
+import { rolldown } from "rolldown";
 import { dirname, join } from "node:path";
 import { existsSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -57,17 +57,21 @@ export async function loadCascadingConfig(
 
 async function loadSingleConfig(configPath: string): Promise<ProjectConfig | null> {
   try {
-    const result = await esbuild.build({
-      entryPoints: [configPath],
-      bundle: true,
-      write: false,
-      format: "esm",
-      platform: "node",
-      target: "es2020",
+    const bundle = await rolldown({
+      input: configPath,
       plugins: [createSuperimgPlugin()],
     });
 
-    const code = result.outputFiles[0]?.text;
+    let code: string;
+    try {
+      const { output } = await bundle.generate({
+        format: "es",
+      });
+      code = output[0]!.code;
+    } finally {
+      await bundle.close();
+    }
+
     if (!code) return null;
 
     const tmpDir = mkdtempSync(join(tmpdir(), "superimg-config-"));

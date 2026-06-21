@@ -36,7 +36,7 @@ export function metadataToTemplateConfig(
 
 export interface ParsedTemplate {
   templateCode: string;
-  metadata: {
+  metasample: {
     hasRenderExport: boolean;
     hasDefaultExport: boolean;
   };
@@ -190,7 +190,7 @@ export async function parseTemplate(
 
   return {
     templateCode,
-    metadata: {
+    metasample: {
       hasRenderExport: metadata.hasRenderExport,
       hasDefaultExport: metadata.hasDefaultExport,
     },

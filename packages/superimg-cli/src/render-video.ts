@@ -7,7 +7,6 @@ import { PlaywrightEngine } from "@superimg/playwright";
 import { parseTemplate } from "./cli/utils/template-config.js";
 import type { EncodingOptions, RenderEngine } from "@superimg/types";
 import { mergeEncoding } from "./cli/utils/merge-encoding.js";
-import { loadCompanionData } from "./cli/utils/load-companion-data.js";
 import { discoverTemplateAssets } from "./cli/utils/asset-discovery.js";
 import { buildRenderJob } from "./utils/build-render-job.js";
 import { writeFileRecursive } from "./utils/fs.js";
@@ -45,17 +44,6 @@ export async function renderVideo(
 ): Promise<Uint8Array> {
   const resolvedPath = resolve(templatePath);
   const templateData = await parseTemplate(resolvedPath);
-
-  // Load companion .data.{ts,js,json} file, merge with explicit options.data
-  const companionData = await loadCompanionData(resolvedPath);
-  if (Array.isArray(companionData)) {
-    throw new Error("renderVideo does not support array companion data. Use renderBatch instead.");
-  }
-  const mergedData =
-    companionData || options.data
-      ? { ...(companionData as Record<string, unknown> | undefined), ...options.data }
-      : undefined;
-
   const templateBundle = await bundleTemplateWithMap(resolvedPath);
 
   const ownsEngine = !options.engine;
@@ -77,7 +65,7 @@ export async function renderVideo(
       autoDiscovered: discoverTemplateAssets(templateDir),
       overrides: {
         ...options,
-        data: mergedData,
+        data: options.data,
         encoding,
       },
     });

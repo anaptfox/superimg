@@ -46,7 +46,7 @@ function makeManifestEntry(): ManifestEntry {
   };
   const parsed: ParsedTemplate = {
     templateCode: "",
-    metadata: { hasRenderExport: true, hasDefaultExport: false },
+    metasample: { hasRenderExport: true, hasDefaultExport: false },
     templateConfig: { fps: 30, duration: 4 },
     resolvedAssets: [],
     config: { width: 1920, height: 1080 },

@@ -32,7 +32,7 @@ vi.mock("@superimg/core/engine", () => ({
 vi.mock("../cli/utils/template-config.js", () => ({
   parseTemplate: vi.fn().mockResolvedValue({
     templateCode: "",
-    metadata: { hasRenderExport: true, hasDefaultExport: false },
+    metasample: { hasRenderExport: true, hasDefaultExport: false },
     templateConfig: {},
     resolvedAssets: [],
     config: {},

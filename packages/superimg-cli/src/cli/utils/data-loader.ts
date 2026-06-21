@@ -13,7 +13,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
-import * as esbuild from "esbuild";
+import { rolldown } from "rolldown";
 
 /**
  * Bundle and execute a `.ts` / `.js` data file, returning its default export.
@@ -23,19 +23,31 @@ import * as esbuild from "esbuild";
  */
 export async function loadDataScript(filePath: string): Promise<unknown> {
   const fileUrl = pathToFileURL(resolve(filePath)).href;
-  const result = await esbuild.build({
-    entryPoints: [filePath],
-    bundle: true,
-    write: false,
-    format: "esm",
-    platform: "node",
-    target: "es2020",
-    define: {
-      "import.meta.url": JSON.stringify(fileUrl),
-    },
+  const bundle = await rolldown({
+    input: filePath,
+    plugins: [
+      {
+        name: "define-import-meta-url",
+        transform(code, id) {
+          if (code.includes("import.meta.url")) {
+            return code.replaceAll("import.meta.url", JSON.stringify(fileUrl));
+          }
+          return null;
+        }
+      }
+    ]
   });
 
-  const code = result.outputFiles[0]!.text;
+  let code: string;
+  try {
+    const { output } = await bundle.generate({
+      format: "es",
+    });
+    code = output[0]!.code;
+  } finally {
+    await bundle.close();
+  }
+
   const tmpFile = join(tmpdir(), `superimg-data-${randomBytes(8).toString("hex")}.mjs`);
 
   try {

@@ -8,16 +8,16 @@
 //! Composes with the template's `config.outputs` via `presets: true`, so a
 //! 10-entry dataset on a template with 2 presets produces 20 MP4s in one run.
 
-import type { EncodingOptions, RenderProgress } from "@superimg/types";
+import type { EncodingOptions, RenderProgress, BatchEntry } from "@superimg/types";
 import { resolveRenderTargets, type RenderOptions, type RenderTarget } from "./cli/commands/render-targets.js";
 import { executeRenderTargets } from "./cli/commands/render-execute.js";
 
-export interface RenderBatchOptions {
+export interface RenderBatchOptions<TData = Record<string, unknown>> {
   /**
    * Array of data entries. Each entry produces one render per target preset.
    * Each entry's fields are passed to the template as `data`.
    */
-  dataset: Record<string, unknown>[];
+  dataset: BatchEntry<TData>[];
 
   /** Render every preset declared in the template's `config.outputs`. */
   presets?: boolean;
@@ -54,9 +54,9 @@ export interface BatchProgressEvent {
   progress: RenderProgress;
 }
 
-export interface RenderBatchResultEntry {
+export interface RenderBatchResultEntry<TData = Record<string, unknown>> {
   /** The original entry data. */
-  entry: Record<string, unknown>;
+  entry: BatchEntry<TData>;
   /** 0-based index in the input dataset. */
   entryIndex: number;
   /** One result per preset/target rendered for this entry. */
@@ -75,10 +75,10 @@ export interface RenderBatchResultEntry {
  * declared output preset. Files are written to disk; bytes are also returned
  * so callers don't need to re-read from disk.
  */
-export async function renderBatch(
+export async function renderBatch<TData>(
   templatePath: string,
-  options: RenderBatchOptions,
-): Promise<RenderBatchResultEntry[]> {
+  options: RenderBatchOptions<TData>,
+): Promise<RenderBatchResultEntry<TData>[]> {
   if (!Array.isArray(options.dataset) || options.dataset.length === 0) {
     throw new Error("renderBatch: `dataset` must be a non-empty array of objects.");
   }
@@ -93,7 +93,7 @@ export async function renderBatch(
     preset: options.preset,
     presets: options.presets,
     debugHtml: options.debugHtml,
-    data: JSON.stringify(options.dataset),
+    batchEntries: options.dataset as import("@superimg/types").BatchEntry[],
   };
 
   const outputFormat = options.encoding?.format;
@@ -104,7 +104,7 @@ export async function renderBatch(
   // loop, presets the inner, so chunks of `presetCount` targets share an
   // entry.
   const presetCount = resolved.targets.length / options.dataset.length;
-  const results: RenderBatchResultEntry[] = options.dataset.map((entry, entryIndex) => ({
+  const results: RenderBatchResultEntry<TData>[] = options.dataset.map((entry, entryIndex) => ({
     entry,
     entryIndex,
     outputs: [],

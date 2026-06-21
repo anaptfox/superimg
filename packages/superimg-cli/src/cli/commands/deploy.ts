@@ -3,7 +3,6 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { execa } from "execa";
 import { bundleTemplateWithMap } from "@superimg/core/bundler";
 import { parseTemplate } from "../utils/template-config.js";
-import { loadCompanionData } from "../utils/load-companion-data.js";
 import { discoverVideos } from "../utils/discover-videos.js";
 import { loadTemplate, renderTemplate } from "../../deploy/template-utils.js";
 import type { ManifestEntry } from "../../render-from-bundle.js";
@@ -46,10 +45,6 @@ export async function deployCommand(templateArg: string | undefined, options: De
   for (const video of discovered) {
     const bundle = await bundleTemplateWithMap(video.entrypoint);
     const parsed = await parseTemplate(video.entrypoint);
-    const companionData = await loadCompanionData(video.entrypoint);
-    if (companionData && parsed.templateConfig) {
-      parsed.templateConfig = { ...parsed.templateConfig };
-    }
     manifest[video.name] = { bundle, parsed };
   }
 

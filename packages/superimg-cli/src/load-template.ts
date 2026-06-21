@@ -90,7 +90,7 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
 
   return {
     get data() {
-      return template.data;
+      return template.sample;
     },
     get config() {
       return template.config;

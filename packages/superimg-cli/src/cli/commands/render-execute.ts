@@ -13,7 +13,6 @@ import { compileTemplate, createRenderContext } from "@superimg/core";
 import { PlaywrightEngine } from "@superimg/playwright";
 import type { RenderProgress, TemplateBundle } from "@superimg/types";
 import { discoverTemplateAssets } from "../utils/asset-discovery.js";
-import { loadCompanionData } from "../utils/load-companion-data.js";
 import { mergeEncoding } from "../utils/merge-encoding.js";
 import { buildRenderJob } from "../../utils/build-render-job.js";
 import { renderDistributed } from "../../render-distributed.js";
@@ -62,12 +61,10 @@ export function writeDebugHtmlFrame(target: RenderTarget, frame: number, composi
 function renderBypassTarget(
   target: RenderTarget,
   template: { render: (ctx: ReturnType<typeof createRenderContext>) => string },
-  companionData: unknown,
   assetResolver: (filename: string) => string,
   onTargetComplete?: (target: RenderTarget, result: Uint8Array) => void
 ): void {
-  const fallbackData = Array.isArray(companionData) ? undefined : companionData;
-  const targetData = target.data ?? fallbackData ?? {};
+  const targetData = target.data ?? {};
   const ctx = createRenderContext(0, 1, 1, target.width, target.height, targetData as Record<string, unknown>, target.name, {}, assetResolver);
   const output = template.render(ctx);
   if (target.format === "svg") {
@@ -103,7 +100,6 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
     throw new Error("Template bundle missing — parseTemplate did not produce templateCode.");
   }
 
-  const companionData = await loadCompanionData(resolvedTemplate);
   const autoDiscovered = discoverTemplateAssets(templateDir);
 
   // Simple file-path asset resolver for bypass (no browser server).
@@ -121,7 +117,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       if (isCancelled?.()) return;
       const target = targets[i];
       onTargetStart?.(target, i, targets.length);
-      renderBypassTarget(target, template, companionData, bypassAssetResolver, onTargetComplete);
+      renderBypassTarget(target, template, bypassAssetResolver, onTargetComplete);
     }
     return;
   }
@@ -148,7 +144,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       if (target.format === "svg" || target.format === "html") {
         if (!bypassTemplate) throw new Error("bypass template not compiled");
         onTargetStart?.(target, i, targets.length);
-        renderBypassTarget(target, bypassTemplate, companionData, bypassAssetResolver, onTargetComplete);
+        renderBypassTarget(target, bypassTemplate, bypassAssetResolver, onTargetComplete);
         continue;
       }
 
@@ -165,10 +161,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         console.warn("Warning: GIF format does not support audio. Audio track will be ignored.");
       }
 
-      // Companion data still applies when --data is absent, unless it's an array
-      // (array companion data is handled by resolveRenderTargets into target.data).
-      const fallbackData = Array.isArray(companionData) ? undefined : companionData;
-      const targetData = target.data ?? fallbackData;
+      const targetData = target.data;
 
       const { job, resolvedAssets } = buildRenderJob({
         parsed: templateData,

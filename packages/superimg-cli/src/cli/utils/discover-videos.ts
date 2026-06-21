@@ -33,8 +33,6 @@ export interface DiscoveredVideo {
   hasLocalConfig: boolean;
   /** Template kind inferred from file extension */
   kind: TemplateKind;
-  /** Absolute path to the companion data file, if it exists */
-  companionPath?: string;
 }
 
 function stripTemplateExtension(filename: string): string {
@@ -133,10 +131,6 @@ export function discoverVideos(projectRoot: string): DiscoveredVideo[] {
           const hasLocalConfig = existsSync(configPath);
           const kind = inferKind(entry.name);
 
-          const baseFilename = entry.name.replace(/\.(video|image|gif|svg)\.(ts|js)$/, "");
-          const dataPath = join(directory, `${baseFilename}.data.ts`);
-          const companionPath = existsSync(dataPath) ? dataPath : undefined;
-
           results.push({
             name,
             shortName,
@@ -145,7 +139,6 @@ export function discoverVideos(projectRoot: string): DiscoveredVideo[] {
             relativePath: relPath.replace(/\\/g, "/"),
             hasLocalConfig,
             kind,
-            companionPath,
           });
         }
       }

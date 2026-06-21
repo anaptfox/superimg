@@ -44,7 +44,7 @@ export default defineConfig({
 const TEMPLATE_TS = `import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     message: "Hello, SuperImg!",
   },
 
@@ -76,7 +76,7 @@ export default defineScene({
 const TEMPLATE_JS = `import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     message: "Hello, SuperImg!",
   },
 
