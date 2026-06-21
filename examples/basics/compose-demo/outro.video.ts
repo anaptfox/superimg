@@ -12,7 +12,7 @@ export default defineScene({
       .cta { font-size: 64px; font-weight: 700; }
     `],
   },
-  data: { cta: "Thanks for watching!" },
+  sample: { cta: "Thanks for watching!" },
   render(ctx) {
     const opacity = ctx.std.interpolate(ctx.sceneProgress * 2, [0, 1], [0, 1], "easeOutCubic");
     return `

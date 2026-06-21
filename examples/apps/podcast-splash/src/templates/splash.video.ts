@@ -1,8 +1,8 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
-    podcastName: "The Build Log",
+  sample: {
+    podcastName: "Design Details",
     episodeNumber: "042",
     episodeTitle: "Why we ditched microservices",
     speakerName: "Jane Doe",

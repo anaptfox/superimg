@@ -1,7 +1,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     title: "Shorts",
     subtitle: "Built with SuperImg",
   },

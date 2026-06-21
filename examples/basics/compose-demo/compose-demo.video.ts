@@ -5,6 +5,6 @@ import outro from "./outro.video.js";
 
 export default compose([
   intro,
-  scene(content, { data: { brandName: "Acme Corp" } }),
+  scene(content, { sample: { brandName: "Acme Corp" } }),
   outro,
 ]);

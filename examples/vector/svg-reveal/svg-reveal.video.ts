@@ -4,7 +4,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {},
+  sample: {},
 
   config: {
     width: 1920,

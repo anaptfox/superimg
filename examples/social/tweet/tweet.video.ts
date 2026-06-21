@@ -16,7 +16,7 @@ export interface TweetVideoData extends Record<string, unknown> {
 }
 
 export default defineScene<TweetVideoData>({
-  data: {
+  sample: {
     text: "Twitter is the digital town square.",
     author: { name: "Elon Musk", handle: "elonmusk", avatar: "https://pbs.twimg.com/profile_images/1845482317545750528/o8XKEI-E_400x400.jpg" },
     createdAt: "2022-10-28T00:00:00.000Z",

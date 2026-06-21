@@ -18,7 +18,7 @@ export interface ListVideoData extends Record<string, unknown> {
 }
 
 export default defineScene<ListVideoData>({
-  data: {
+  sample: {
     title: "Top 5 Reasons to Use TypeScript",
     items: [
       { title: "Type Safety", subtitle: "Catch errors at compile time" },

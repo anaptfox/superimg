@@ -97,6 +97,11 @@ async function main() {
     process.exit(1);
   }
 
+  const batchEntries = dataset.map((d, i) => ({
+    slug: typeof d.slug === "string" ? d.slug : (typeof d.speakerName === "string" ? d.speakerName.toLowerCase().replace(/\s+/g, '-') : `entry-${i}`),
+    data: d
+  }));
+
   const templatePath = resolve(__dirname, "templates", "splash.video.ts");
 
   const isBoth = args.format === "both";
@@ -106,7 +111,7 @@ async function main() {
   console.log(`  podcast-splash — ${dataset.length} speaker(s) × ${isBoth ? "2 formats" : "1 format"}`);
 
   const results = await renderBatch(templatePath, {
-    dataset,
+    dataset: batchEntries,
     presets: useAllPresets,
     preset: singlePreset,
     output: args.output ?? resolve(APP_ROOT, "output") + "/",
@@ -120,7 +125,7 @@ async function main() {
 
   process.stdout.write("\n");
   for (const r of results) {
-    const name = (r.entry.speakerName as string | undefined) ?? r.entry.slug ?? `entry ${r.entryIndex}`;
+    const name = (r.entry.data.speakerName as string | undefined) ?? r.entry.slug ?? `entry ${r.entryIndex}`;
     console.log(`  ✓ ${name}`);
     for (const out of r.outputs) {
       console.log(`      ${out.name.padEnd(8)} → ${out.outputPath}`);

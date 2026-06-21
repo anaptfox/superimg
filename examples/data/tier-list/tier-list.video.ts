@@ -28,7 +28,7 @@ const DEFAULT_TIER_COLORS: Record<Tier, string> = {
 const TIERS: Tier[] = ["S", "A", "B", "C", "D", "F"];
 
 export default defineScene<TierListVideoData>({
-  data: {
+  sample: {
     title: "Programming Languages Tier List",
     items: [
       { id: "1", name: "TypeScript", tier: "S" as Tier },

@@ -16,7 +16,7 @@ const TIMING = {
 };
 
 export default defineScene<MarkdownVideoData>({
-  data: {
+  sample: {
     html: "<h1>🚀 Version 2.0 Released</h1><p>We've completely redesigned the dashboard with new features including <strong>real-time analytics</strong>, <code>API v2</code> support, and improved performance.</p>",
     raw: "# 🚀 Version 2.0 Released\n\nWe've completely redesigned the dashboard with new features including **real-time analytics**, `API v2` support, and improved performance.",
     wordCount: 24,

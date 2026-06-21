@@ -30,7 +30,7 @@ const TIMING = {
 };
 
 export default defineScene<ChangelogVideoData>({
-  data: {
+  sample: {
     version: "2.0.0",
     date: "2025-01-15",
     title: "Major Release",

@@ -38,7 +38,7 @@ const THEME_CONFIG: Record<WrappedTheme, { bg: string; card: string; text: strin
 };
 
 export default defineScene<GitHubWrappedVideoData>({
-  data: {
+  sample: {
     username: "devmaster",
     year: 2025,
     totalCommits: 2847,

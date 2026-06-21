@@ -1,7 +1,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     hook: "OKC has a tech scene.",
     hookLine2: "We saved you a seat.",
     subheader: "Laptops welcome. Beginners too.",

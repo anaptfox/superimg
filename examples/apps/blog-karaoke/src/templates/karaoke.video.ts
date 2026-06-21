@@ -31,7 +31,7 @@ function escapeHtml(value: string): string {
 }
 
 export default defineScene({
-  data: {
+  sample: {
     title: "Automating blog read-alongs",
     source: "sample.txt",
     duration: 10,

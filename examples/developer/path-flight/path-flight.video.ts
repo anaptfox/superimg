@@ -4,7 +4,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     emoji: "🚀",
     trailCount: 8,
   },

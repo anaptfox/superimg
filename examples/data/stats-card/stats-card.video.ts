@@ -1,7 +1,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     symbol: "AAPL",
     companyName: "Apple Inc.",
     price: 230.50,

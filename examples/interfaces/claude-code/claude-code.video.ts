@@ -100,7 +100,7 @@ function claudeMark(color: string, cellSize: number): string {
 }
 
 export default defineScene<ClaudeCodeData>({
-  data: {
+  sample: {
     userName: "Andrew",
     version: "2.0.33",
     modelLine: "Sonnet 4.5 - Claude Max",

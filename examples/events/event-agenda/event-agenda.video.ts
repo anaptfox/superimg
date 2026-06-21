@@ -21,7 +21,7 @@ const THEMES: Record<string, { bg: string; text: string; muted: string; cardBg: 
 };
 
 export default defineScene<EventAgendaVideoData>({
-  data: {
+  sample: {
     eventName: "DevConf 2025",
     date: "March 15, 2025",
     sessions: [

@@ -11,7 +11,7 @@ interface TechlahomEvent {
 }
 
 export default defineScene({
-  data: {
+  sample: {
     month: "March",
     year: "2026",
     hookLine1: "5 meetups.",

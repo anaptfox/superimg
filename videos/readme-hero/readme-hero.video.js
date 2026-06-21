@@ -11,7 +11,7 @@ export default defineScene({
 })`;
 
 export default defineScene({
-  data: {
+  sample: {
     tagline: "TypeScript in, MP4 out.",
   },
 

@@ -4,7 +4,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     title: "Responsive Design",
     subtitle: "One template, multiple formats",
     accentColor: "#667eea",

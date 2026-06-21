@@ -1,7 +1,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     name: "Luigi Polvani",
     role: "Software Engineer",
     location: "Norman, OK",

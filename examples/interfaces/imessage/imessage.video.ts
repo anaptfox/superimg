@@ -30,7 +30,7 @@ const TIMING_PRESETS = {
 };
 
 export default defineScene<iMessageData>({
-  data: {
+  sample: {
     contactName: "Rex",
     messages: [
       { id: "1", text: "Hey, did you see Rex Render?", sender: "contact" },

@@ -28,7 +28,7 @@ function generateParticles(count: number, seed: number) {
 }
 
 export default defineScene<LogoRevealVideoData>({
-  data: {
+  sample: {
     logoText: "ACME",
     logoUrl: null,
     tagline: "Building the future",

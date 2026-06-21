@@ -78,7 +78,7 @@ function renderUIWindow(
 }
 
 export default defineScene<BeforeAfterUIData>({
-  data: {
+  sample: {
     title: "Modern UI Components",
     before: { 
       html: "<button style='padding:10px 20px; background:#eee; border:1px solid #ccc; border-radius:4px; font-family:sans-serif;'>Click Me</button>",

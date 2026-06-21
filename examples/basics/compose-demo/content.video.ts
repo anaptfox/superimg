@@ -12,7 +12,7 @@ export default defineScene({
       .brand { font-size: 18px; text-transform: uppercase; letter-spacing: 4px; opacity: 0.6; }
     `],
   },
-  data: {
+  sample: {
     heading: "Main Content",
     body: "Shared data flows via compose().",
     brandName: undefined as string | undefined,

@@ -7,7 +7,7 @@ export default defineScene({
     width: 1920,
     height: 1080,
   },
-  data: {
+  sample: {
     title: "Project Timeline",
     events: [] as { date: string; title: string; description: string }[],
     accentColor: "#38bdf8",

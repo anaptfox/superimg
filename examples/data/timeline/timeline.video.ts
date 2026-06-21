@@ -76,7 +76,7 @@ const THEMES: Record<TimelineTheme, ThemeConfig> = {
 };
 
 export default defineScene<TimelineVideoData>({
-  data: {
+  sample: {
     title: "Product Roadmap",
     subtitle: "What is next for our company",
     events: [

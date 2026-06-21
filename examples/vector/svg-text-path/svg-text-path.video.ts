@@ -4,7 +4,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     line1: "SUPERIMG — PROGRAMMATIC VIDEO —",
     line2: "HTML TO MP4 — CREATE STUNNING VIDEOS —",
     accentColor: "#667eea",

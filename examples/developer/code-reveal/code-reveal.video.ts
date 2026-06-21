@@ -41,7 +41,7 @@ function getShikiTheme(theme: "dark" | "light"): SupportedTheme {
 }
 
 export default defineScene<CodeRevealData>({
-  data: {
+  sample: {
     code: `import { createApp } from 'vue'
 import App from './App.vue'
 

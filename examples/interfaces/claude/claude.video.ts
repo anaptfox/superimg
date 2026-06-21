@@ -22,7 +22,7 @@ const TIMING_PRESETS = {
 };
 
 export default defineScene<ClaudeData>({
-  data: {
+  sample: {
     messages: [
       { id: "1", text: "What's the best way to learn programming?", role: "user" },
       { id: "2", text: "Start with a project you care about. The motivation to build something real will carry you through the frustrating parts.", role: "assistant" },

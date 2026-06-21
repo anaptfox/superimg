@@ -48,7 +48,7 @@ function getShikiTheme(theme: "dark" | "light"): SupportedTheme {
 }
 
 export default defineScene<CodeTypingData>({
-  data: {
+  sample: {
     code: `function greet(name: string): string {
   return \`Hello, \${name}!\`;
 }

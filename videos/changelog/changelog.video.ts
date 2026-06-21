@@ -9,7 +9,7 @@ interface ChangelogEntry {
 }
 
 export default defineScene<{ title: string; entries: ChangelogEntry[] }>({
-  data: {
+  sample: {
     title: "What's New",
     entries: [
       {

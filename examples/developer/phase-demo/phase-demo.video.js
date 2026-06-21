@@ -4,7 +4,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     message: "Hello, Phases!",
     accentColor: "#8b5cf6",
   },

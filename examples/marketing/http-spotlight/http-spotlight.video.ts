@@ -78,7 +78,7 @@ const TIMING = {
 };
 
 export default defineScene<HttpSpotlightData>({
-  data: {
+  sample: {
     apiBrand: {
       name: "Acme",
       domain: "api.acme.dev",

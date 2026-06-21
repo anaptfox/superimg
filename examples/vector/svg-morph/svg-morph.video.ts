@@ -4,7 +4,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     colorA: "#667eea",
     colorB: "#f093fb",
     colorC: "#4fd1c5",

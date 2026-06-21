@@ -33,7 +33,7 @@ const TIMING = {
 };
 
 export default defineScene<UrlVideoData>({
-  data: {
+  sample: {
     url: "https://producthunt.com/posts/superimg",
     title: "SuperImg - Create stunning videos from templates",
     description: "Generate beautiful videos using HTML/CSS templates. Perfect for social media, marketing, and more.",

@@ -46,7 +46,7 @@ function renderImageCard(
 }
 
 export default defineScene<BeforeAfterImageData>({
-  data: {
+  sample: {
     title: "Website Redesign",
     before: { 
       url: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&q=80&w=1920",

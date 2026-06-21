@@ -1,7 +1,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     question: "Why do you love Techlahoma?",
     quoteSentences: [
       "I love Techlahoma because it creates real opportunities for connection, growth, and giving back.",

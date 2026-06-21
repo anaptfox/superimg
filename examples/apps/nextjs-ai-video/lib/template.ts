@@ -13,7 +13,7 @@ export const timelineTemplate = defineScene<TimelineData>({
     width: 1920,
     height: 1080,
   },
-  data: {
+  sample: {
     title: "Timeline",
     events: [
       { date: "2020", title: "Event One", description: "Description here" },

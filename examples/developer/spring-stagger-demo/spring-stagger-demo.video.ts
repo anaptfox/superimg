@@ -3,7 +3,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     items: ["Design", "Build", "Test", "Ship", "Scale", "Iterate"],
   },
 

@@ -38,7 +38,7 @@ const RESPONSE_PAUSE_SECONDS = 0.42;
 const OUTPUT_BURST_SECONDS = 0.22;
 
 export default defineScene<TerminalVideoData>({
-  data: {
+  sample: {
     title: "Terminal",
     commands: [
       {

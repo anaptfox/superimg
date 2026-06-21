@@ -21,7 +21,7 @@ const COLORS: Record<string, { bg: string; border: string }> = {
 };
 
 export default defineScene<ScheduleVideoData>({
-  data: {
+  sample: {
     schedule: {
       Mon: [{ start: 9, duration: 2, type: "deep", label: "Standup" }],
       Tue: [{ start: 14, duration: 1, type: "meeting", label: "Code Review" }],

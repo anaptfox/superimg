@@ -86,7 +86,7 @@ function renderTerminalWindow(
 }
 
 export default defineScene<BeforeAfterTerminalData>({
-  data: {
+  sample: {
     title: "Cleaner CLI Output",
     before: { 
       text: "Error: Uncaught TypeError: Cannot read property 'map' of undefined\n  at processData (index.js:42:12)\n  at async handleRequest (server.js:15:5)\n  at ... 12 more internal lines",

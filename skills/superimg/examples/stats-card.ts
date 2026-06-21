@@ -2,7 +2,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     label: "Conversion Rate",
     value: 94,
     unit: "%",

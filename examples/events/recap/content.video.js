@@ -14,7 +14,7 @@ export default defineScene({
       .body { font-size: 28px; opacity: 0.7; }
     `],
   },
-  data: {
+  sample: {
     heading: "Main Content",
     body: "Add your content here.",
   },

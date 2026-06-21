@@ -17,7 +17,7 @@ const sampleTranscript = [
 ];
 
 export default defineScene({
-  data: {
+  sample: {
     transcript: sampleTranscript,
     accentColor: "#00d4ff",
     bgColor: "#0a0a1a",

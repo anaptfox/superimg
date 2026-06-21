@@ -1,7 +1,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     title: "Tailwind v4",
     features: ["Utility-First", "Grid Layout", "Flexbox", "Gradients"],
   },

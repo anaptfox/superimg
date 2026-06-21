@@ -86,7 +86,7 @@ function shikiCss(): string {
 }
 
 export default defineScene<HttpTraceData>({
-  data: {
+  sample: {
     method: "POST",
     endpoint: "/v1/users",
     summary: "Create a new user with one call.",

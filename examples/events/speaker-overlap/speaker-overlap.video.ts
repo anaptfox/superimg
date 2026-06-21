@@ -1,7 +1,7 @@
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     speakerName: "Jane Doe",
     speakerTitle: "Principal Engineer @ TechCo",
     speakerPhoto: "https://i.pravatar.cc/500?img=47",

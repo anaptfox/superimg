@@ -23,7 +23,7 @@ export interface ThreadData extends Record<string, unknown> {
 }
 
 export default defineScene<ThreadData>({
-  data: {
+  sample: {
     author: {
       name: "Thread Master",
       handle: "threadmaster",

@@ -6,7 +6,7 @@ interface QuoteChunk {
 }
 
 export default defineScene({
-  data: {
+  sample: {
     question: "Why do you love Techlahoma?",
     quote: `I love Techlahoma because it creates real opportunities for connection, growth, and giving back. As a Techlahoma Ambassador, I've seen firsthand how this community uplifts individuals at every stage of their tech journey and brings resources to places, like my rural hometown, that might otherwise be overlooked.`,
     quoteChunks: [

@@ -88,7 +88,7 @@ function renderCodeWindow(
 }
 
 export default defineScene<BeforeAfterCodeData>({
-  data: {
+  sample: {
     title: "Simplify your Code",
     before: { 
       code: "const res = await fetch('/api/user');\nconst data = await res.json();\nif (!res.ok) throw new Error();\nconsole.log(data.name);", 

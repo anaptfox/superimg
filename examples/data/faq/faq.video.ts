@@ -19,7 +19,7 @@ const THEMES: Record<string, { bg: string; cardBg: string; text: string; muted: 
 };
 
 export default defineScene<FaqVideoData>({
-  data: {
+  sample: {
     topic: "TypeScript Myths Busted",
     items: [
       { question: "TypeScript is slow?", answer: "Types are removed at compile time. Zero runtime cost." },

@@ -13,7 +13,7 @@ export default defineScene({
       .title { font-size: 96px; font-weight: 700; text-shadow: 0 8px 32px rgba(0,0,0,0.3); }
     `],
   },
-  data: { title: "Welcome" },
+  sample: { title: "Welcome" },
   render(ctx) {
     const opacity = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], "easeOutCubic");
     const scale = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0.8, 1], "easeOutCubic");

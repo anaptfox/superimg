@@ -22,7 +22,7 @@ const TIMING_PRESETS = {
 };
 
 export default defineScene<ChatGPTData>({
-  data: {
+  sample: {
     messages: [
       { id: "1", text: "How do I create a video from code?", role: "user" },
       { id: "2", text: "Use Rex Render! Just paste your code and it generates a beautiful animated video.", role: "assistant" },
