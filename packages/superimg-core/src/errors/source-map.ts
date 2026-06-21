@@ -145,6 +145,21 @@ function classifyFrame(file: string, isAnon: boolean): FrameKind {
   return "user";
 }
 
+/**
+ * V8 evaluates template bundles via `new Function(code)` (see compiler.ts).
+ * That wraps the body in a 2-line header — `(function anonymous(\n) {` — so the
+ * line numbers V8 reports for `<anonymous>` frames are offset by +2 relative to
+ * the bundle the sourcemap was generated against. Subtract it before mapping.
+ *
+ * Only `<anonymous>` frames (the `eval at ... <anonymous>` form) carry this
+ * offset; `blob:`/`data:` frames are real modules with no wrapper.
+ */
+const NEW_FUNCTION_LINE_OFFSET = 2;
+
+function generatedLineOffset(frame: StackFrame): number {
+  return frame.file === "<anonymous>" ? NEW_FUNCTION_LINE_OFFSET : 0;
+}
+
 let _consumerCache: WeakMap<RawSourceMap, SourceMapConsumer> | null = null;
 
 function getConsumer(map: RawSourceMap): SourceMapConsumer {
@@ -175,7 +190,7 @@ export function mapFrame(
 ): MappedFrame | null {
   const consumer = getConsumer(map);
   const original = consumer.originalPositionFor({
-    line: frame.line,
+    line: frame.line - generatedLineOffset(frame),
     column: Math.max(0, frame.column - 1),
   });
   if (!original.source || original.line == null) return null;

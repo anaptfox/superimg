@@ -1,5 +1,5 @@
-//! Shared esbuild plugin for superimg template bundling
-//! Used by both server (esbuild) and browser (esbuild-wasm) bundlers
+//! Shared plugin for superimg template bundling
+//! Used by both server (rolldown) and browser (@rolldown/browser) bundlers
 //!
 //! This plugin handles:
 //! 1. "superimg" - provides defineScene, defineConfig, compose, scene
@@ -7,57 +7,43 @@
 
 import { RUNTIME_CODE } from "../generated/runtime-code.js";
 
-interface EsbuildPlugin {
-  name: string;
-  setup(build: { onResolve: Function; onLoad: Function }): void;
-}
-
 /**
- * Creates the esbuild plugin that provides the `superimg` virtual module
+ * Creates the plugin that provides the `superimg` virtual module
  * and handles private stdlib imports used by templates. Public
  * `superimg/stdlib/*` imports are aliased to these private paths by the
  * bundler options before this plugin runs.
  */
-export function createSuperimgPlugin(namespace = "superimg-virtual"): EsbuildPlugin {
+export function createSuperimgPlugin(): any {
   return {
     name: "superimg-resolve",
-    setup(build) {
-      // Resolve "superimg" to virtual module
-      build.onResolve({ filter: /^superimg$/ }, () => ({
-        path: "superimg",
-        namespace,
-      }));
-
-      // Load the virtual "superimg" module (generated from compose, scene, etc.)
-      build.onLoad({ filter: /^superimg$/, namespace }, () => ({
-        contents: RUNTIME_CODE,
-        loader: "js",
-      }));
-
-      // Strip most stdlib imports (accessed via ctx.std at runtime)
-      // EXCEPT certain modules that need to be bundled:
-      // - @superimg/stdlib/code: for static syntax highlighting
-      // - @superimg/stdlib/cue: for direct cue helpers imports
-      // - @superimg/stdlib/text: for module-level formatting helpers
-      build.onResolve({ filter: /^@superimg\/stdlib/ }, (args: { path: string }) => {
+    
+    resolveId(source: string) {
+      if (source === "superimg") {
+        return "\0superimg-virtual";
+      }
+      
+      if (source.startsWith("@superimg/stdlib")) {
         const bundledModules = [
           "@superimg/stdlib/code",
           "@superimg/stdlib/cue",
           "@superimg/stdlib/text",
         ];
-        if (bundledModules.includes(args.path)) {
-          return null; // Let esbuild handle it normally
+        if (bundledModules.includes(source)) {
+          return null; // Let the normal resolver handle it
         }
-        return {
-          path: "stdlib-noop",
-          namespace,
-        };
-      });
-
-      build.onLoad({ filter: /^stdlib-noop$/, namespace }, () => ({
-        contents: "export {}",
-        loader: "js",
-      }));
+        return "\0stdlib-noop";
+      }
+      return null;
     },
+
+    load(id: string) {
+      if (id === "\0superimg-virtual") {
+        return RUNTIME_CODE;
+      }
+      if (id === "\0stdlib-noop") {
+        return "export {}";
+      }
+      return null;
+    }
   };
 }

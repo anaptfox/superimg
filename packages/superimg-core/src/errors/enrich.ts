@@ -55,68 +55,50 @@ function isLikelyUserTemplate(file: string): boolean {
 }
 
 /**
- * Esbuild's BuildFailure shape — structurally typed so we don't import esbuild
- * here (this module is browser-safe and esbuild is server-only).
+ * Rolldown/Rollup error shape — structurally typed so we don't import rolldown here.
  */
-interface EsbuildLocation {
-  file: string;
-  line: number; // 1-indexed
-  column: number; // 0-indexed
-  length?: number;
-  lineText?: string;
+interface RollupLocation {
+  file?: string;
+  line?: number;
+  column?: number;
 }
-interface EsbuildMessage {
-  text: string;
-  location: EsbuildLocation | null;
+
+interface RollupError extends Error {
+  loc?: RollupLocation;
+  frame?: string;
+  id?: string;
 }
 
 /**
- * Build a synthetic 1-line code frame from esbuild's `lineText` + column.
- * Esbuild only gives us the offending line; we render it Vite-style with a
- * caret beneath the column.
+ * If `err` looks like a RollupError, extract location + code frame.
+ * Returns null for non-rollup errors.
  */
-function syntheticEsbuildCodeFrame(loc: EsbuildLocation): string | undefined {
-  if (!loc.lineText) return undefined;
-  const lineNum = String(loc.line);
-  const gutter = " ".repeat(lineNum.length);
-  const caretIndent = " ".repeat(loc.column);
-  const caretLen = Math.max(1, loc.length ?? 1);
-  const caret = "^".repeat(caretLen);
-  return [
-    `> ${lineNum} | ${loc.lineText}`,
-    `  ${gutter} | ${caretIndent}${caret}`,
-  ].join("\n");
-}
-
-/**
- * If `err` looks like an esbuild BuildFailure, extract location + code frame
- * from the first error message. Returns null for non-esbuild errors.
- */
-function locateFromEsbuild(
+function locateFromRolldown(
   err: Error,
   ctx?: EnrichContext,
 ): { location?: SourceLocation; codeFrame?: string } | null {
-  const errors = (err as Error & { errors?: EsbuildMessage[] }).errors;
-  if (!Array.isArray(errors) || errors.length === 0) return null;
-  const first = errors[0]!;
-  const loc = first.location;
-  if (!loc) return { location: undefined, codeFrame: undefined };
+  const rollupErr = err as RollupError;
+  const loc = rollupErr.loc;
+  // If no location, it might just be a generic rollup error.
+  if (!loc && !rollupErr.frame && !rollupErr.id) return null;
+
+  const file = loc?.file || rollupErr.id || "";
+  const line = loc?.line;
+  const column = loc?.column;
 
   // Prefer the user's source from the cache (richer multi-line frame) over
-  // esbuild's single-line lineText when we have it.
-  let codeFrame: string | undefined;
-  const cached = ctx?.sourceCache?.get(loc.file);
-  if (cached) {
-    codeFrame = getCodeFrame(cached, loc.line, loc.column);
-  } else {
-    codeFrame = syntheticEsbuildCodeFrame(loc);
+  // rolldown's frame when we have it.
+  let codeFrame: string | undefined = rollupErr.frame;
+  const cached = ctx?.sourceCache?.get(file);
+  if (cached && line !== undefined && column !== undefined) {
+    codeFrame = getCodeFrame(cached, line, column) || codeFrame;
   }
 
   return {
     location: {
-      file: loc.file,
-      line: loc.line,
-      column: loc.column,
+      file,
+      line: line ?? 1,
+      column: column ?? 0,
     },
     codeFrame,
   };
@@ -127,10 +109,10 @@ function locateFromError(
   err: Error,
   ctx?: EnrichContext,
 ): { location?: SourceLocation; codeFrame?: string } {
-  // Esbuild failures arrive before any sourcemap can be produced; pull the
-  // location straight from `err.errors[0].location` instead of the stack.
-  const fromEsbuild = locateFromEsbuild(err, ctx);
-  if (fromEsbuild?.location) return fromEsbuild;
+  // Rolldown failures arrive before any sourcemap can be produced; pull the
+  // location straight from `err.loc` instead of the stack.
+  const fromRolldown = locateFromRolldown(err, ctx);
+  if (fromRolldown?.location) return fromRolldown;
 
   const frames = parseStackTrace(err);
   const found = findUserFrame(frames, ctx?.sourceMap);
@@ -173,8 +155,8 @@ function locateFromError(
  */
 function classifyUntypedError(err: Error): "compilation" | "runtime" | "io" | "generic" {
   const msg = err.message;
-  // esbuild errors carry `errors: BuildFailure[]` and message contains "ERROR:"
-  if ((err as any).errors || /^Build failed/i.test(msg) || /^Transform failed/i.test(msg)) {
+  // Rolldown errors usually carry `loc` and `frame`, or contain "Transform failed"
+  if ((err as any).loc || (err as any).frame || /^Build failed/i.test(msg) || /^Transform failed/i.test(msg) || /^Unexpected token/i.test(msg)) {
     return "compilation";
   }
   // Common Node fs errors
@@ -220,14 +202,9 @@ export function enrichError(
 
   let wrapped: SuperImgError;
   if (kind === "compilation") {
-    // Prefer esbuild's specific `errors[0].text` over the generic
-    // "Build failed with N errors" parent message — it points at the actual
-    // syntax problem, not the count.
-    const esbuildErrors = (e as Error & { errors?: EsbuildMessage[] }).errors;
-    const specificText =
-      Array.isArray(esbuildErrors) && esbuildErrors[0]?.text
-        ? esbuildErrors[0].text
-        : e.message;
+    // Prefer rolldown's specific message over the generic ones
+    const rollupErr = e as RollupError;
+    const specificText = rollupErr.message || e.message;
     wrapped = new TemplateCompilationError({
       file: located.location?.file ?? ctx?.sourceFile,
       line: located.location?.line,

@@ -96,7 +96,7 @@ export function compose(
       endFrame: currentFrame + totalFrames,
       totalFrames,
       duration: durationSeconds,
-      data: { ...template.data, ...def.data } as Record<string, unknown>,
+      data: { ...template.sample, ...def.data } as Record<string, unknown>,
       enterTransition,
       exitTransition,
     });
@@ -204,7 +204,7 @@ export function compose(
         frame: s.startFrame,
         time: s.startFrame / fps,
         label: s.label,
-        metadata: { sceneIndex: s.index },
+        metasample: { sceneIndex: s.index },
         source: { type: "scene" as const, sceneId: s.id },
       }));
     },

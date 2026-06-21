@@ -189,7 +189,7 @@ describe("validateAITemplate", () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
         export default defineScene({
-          data: { title: 'Test' },
+          sample: { title: 'Test' },
           render(ctx) { return '<div>' + ctx.data.title + '</div>'; }
         });
       `),
@@ -198,7 +198,7 @@ describe("validateAITemplate", () => {
         height: 600,
         fps: 24,
         duration: 2,
-        data: { title: "Custom" },
+        sample: { title: "Custom" },
       }
     );
     expect(result.valid).toBe(true);
@@ -288,11 +288,11 @@ describe("validateAITemplate", () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
         export default defineScene({
-          data: { name: 'Default' },
+          sample: { name: 'Default' },
           render(ctx) { return '<div>' + ctx.data.name + '</div>'; }
         });
       `),
-      { data: { name: "Override" } }
+      { sample: { name: "Override" } }
     );
     expect(result.samples?.[0]?.html).toContain("Override");
   });

@@ -289,7 +289,7 @@ export async function validateAITemplate(
   // Phase 5: Multi-frame render validation
   const resolvedDuration = typeof opts.duration === "string" ? parseFloat(opts.duration) || 3 : opts.duration;
   const totalFrames = Math.ceil(resolvedDuration * opts.fps);
-  const mergedData = { ...(template.data ?? {}), ...(opts.data ?? {}) };
+  const mergedData = { ...(template.sample ?? {}), ...(opts.data ?? {}) };
 
   for (const progress of opts.sampleFrames) {
     const frame = Math.min(

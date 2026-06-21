@@ -1,6 +1,6 @@
-//! Server-side template bundling with esbuild (Node/Bun/Deno)
+//! Server-side template bundling with Rolldown (Node/Bun/Deno)
 
-import * as esbuild from "esbuild";
+import { rolldown } from "rolldown";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createSuperimgPlugin } from "./plugin.js";
@@ -48,20 +48,22 @@ export function extractInlineSourceMap(code: string): RawSourceMap | null {
  * `{ code, sourceMap, sourceFile }`.
  */
 export async function bundleTemplate(entryPoint: string): Promise<string> {
-  const result = await esbuild.build({
-    entryPoints: [entryPoint],
-    bundle: true,
-    write: false,
-    format: "iife",
-    globalName: "__template",
-    platform: "node",
-    target: "es2020",
-    sourcemap: "inline",
-    alias: templateImportAliases,
-    nodePaths: stdlibNodePath ? [stdlibNodePath] : [],
+  const bundle = await rolldown({
+    input: entryPoint,
+    resolve: { alias: templateImportAliases },
     plugins: [createSuperimgPlugin()],
   });
-  return result.outputFiles[0]!.text;
+  try {
+    const { output } = await bundle.generate({
+      format: "iife",
+      name: "__template",
+      exports: "named",
+      sourcemap: "inline",
+    });
+    return output[0]!.code;
+  } finally {
+    await bundle.close();
+  }
 }
 
 /**
@@ -71,45 +73,62 @@ export async function bundleTemplate(entryPoint: string): Promise<string> {
 export async function bundleTemplateWithMap(
   entryPoint: string,
 ): Promise<BundledTemplate> {
-  const code = await bundleTemplate(entryPoint);
-  const sourceMap = extractInlineSourceMap(code);
-  if (!sourceMap) {
-    throw new Error(
-      `bundleTemplateWithMap: esbuild did not emit an inline sourcemap for ${entryPoint}`,
-    );
+  const bundle = await rolldown({
+    input: entryPoint,
+    resolve: { alias: templateImportAliases },
+    plugins: [createSuperimgPlugin()],
+  });
+  try {
+    const { output } = await bundle.generate({
+      format: "iife",
+      name: "__template",
+      exports: "named",
+      sourcemap: true,
+    });
+    const map = output[0]!.map || { version: 3, sources: [], mappings: "" };
+    return { code: output[0]!.code, sourceMap: map as any, sourceFile: resolve(entryPoint) };
+  } finally {
+    await bundle.close();
   }
-  return { code, sourceMap, sourceFile: resolve(entryPoint) };
 }
 
 /** Bundle a template file as ESM for browser dynamic import. Server-side only. */
 export async function bundleTemplateESM(entryPoint: string): Promise<string> {
-  const result = await esbuild.build({
-    entryPoints: [entryPoint],
-    bundle: true,
-    write: false,
-    format: "esm",
-    platform: "node",
-    target: "es2020",
-    sourcemap: "inline",
-    alias: templateImportAliases,
-    nodePaths: stdlibNodePath ? [stdlibNodePath] : [],
+  const bundle = await rolldown({
+    input: entryPoint,
+    resolve: { alias: templateImportAliases },
     plugins: [createSuperimgPlugin()],
   });
-  return result.outputFiles[0]!.text;
+  try {
+    const { output } = await bundle.generate({
+      format: "es",
+      sourcemap: "inline",
+    });
+    return output[0]!.code;
+  } finally {
+    await bundle.close();
+  }
 }
 
 /** Bundle a template file as ESM and return code + parsed sourcemap + source path. */
 export async function bundleTemplateESMWithMap(
   entryPoint: string,
 ): Promise<BundledTemplate> {
-  const code = await bundleTemplateESM(entryPoint);
-  const sourceMap = extractInlineSourceMap(code);
-  if (!sourceMap) {
-    throw new Error(
-      `bundleTemplateESMWithMap: esbuild did not emit an inline sourcemap for ${entryPoint}`,
-    );
+  const bundle = await rolldown({
+    input: entryPoint,
+    resolve: { alias: templateImportAliases },
+    plugins: [createSuperimgPlugin()],
+  });
+  try {
+    const { output } = await bundle.generate({
+      format: "es",
+      sourcemap: true,
+    });
+    const map = output[0]!.map || { version: 3, sources: [], mappings: "" };
+    return { code: output[0]!.code, sourceMap: map as any, sourceFile: resolve(entryPoint) };
+  } finally {
+    await bundle.close();
   }
-  return { code, sourceMap, sourceFile: resolve(entryPoint) };
 }
 
 /** Options for bundling a string of template code. */
@@ -117,11 +136,42 @@ export interface BundleTemplateCodeOptions {
   /** Directory used to resolve relative imports inside the template code. */
   resolveDir?: string;
   /**
-   * Logical filename for the source code. Used by esbuild to label the
-   * source in the sourcemap (instead of the default `<stdin>`). Strongly
-   * recommended when the caller has a real path on disk for the code.
+   * Logical filename for the source code. Used to label the source in the
+   * sourcemap (instead of an anonymous `stdin.ts`). Strongly recommended when
+   * the caller has a real path on disk for the code.
    */
   sourcefile?: string;
+}
+
+/**
+ * Build the virtual-entry plugin for bundling code held only as a string.
+ *
+ * Rolldown has no esbuild-style `stdin` input, so we feed the code through a
+ * plugin's `resolveId`/`load` hooks. Critically, the virtual id is a *real*
+ * path (derived from `sourcefile`/`resolveDir`), NOT a `\0`-prefixed id:
+ * Rolldown (like Rollup) treats `\0`-prefixed modules as synthetic and omits
+ * them from the sourcemap, which would leave `sources`/`mappings` empty and
+ * break runtime error mapping. Using a real path also lets relative imports in
+ * the code resolve against `resolveDir`.
+ */
+function createStdinEntry(code: string, opts: BundleTemplateCodeOptions): {
+  id: string;
+  plugin: import("rolldown").Plugin;
+} {
+  const dir = opts.resolveDir ?? process.cwd();
+  const id = resolve(dir, opts.sourcefile ?? "stdin.ts");
+  return {
+    id,
+    plugin: {
+      name: "stdin",
+      resolveId(source) {
+        return source === id ? id : null;
+      },
+      load(loadId) {
+        return loadId === id ? code : null;
+      },
+    },
+  };
 }
 
 /**
@@ -139,29 +189,24 @@ export async function bundleTemplateCode(
       ? { resolveDir: resolveDirOrOptions }
       : (resolveDirOrOptions ?? {});
 
-  const result = await esbuild.build({
-    stdin: {
-      contents: code,
-      loader: "ts",
-      resolveDir:
-        opts.resolveDir ??
-        (globalThis.process?.cwd?.() ??
-          (globalThis as any).Deno?.cwd?.() ??
-          "/"),
-      sourcefile: opts.sourcefile,
-    },
-    bundle: true,
-    write: false,
-    format: "iife",
-    globalName: "__template",
-    platform: "node",
-    target: "es2020",
-    sourcemap: "inline",
-    alias: templateImportAliases,
-    nodePaths: stdlibNodePath ? [stdlibNodePath] : [],
-    plugins: [createSuperimgPlugin()],
+  const { id, plugin } = createStdinEntry(code, opts);
+
+  const bundle = await rolldown({
+    input: id,
+    resolve: { alias: templateImportAliases },
+    plugins: [plugin, createSuperimgPlugin()],
   });
-  return result.outputFiles[0]!.text;
+  try {
+    const { output } = await bundle.generate({
+      format: "iife",
+      name: "__template",
+      exports: "named",
+      sourcemap: "inline",
+    });
+    return output[0]!.code;
+  } finally {
+    await bundle.close();
+  }
 }
 
 /** Bundle template code from a string and return code + parsed sourcemap + source path. */
@@ -169,16 +214,27 @@ export async function bundleTemplateCodeWithMap(
   code: string,
   options: BundleTemplateCodeOptions = {},
 ): Promise<BundledTemplate> {
-  const bundled = await bundleTemplateCode(code, options);
-  const sourceMap = extractInlineSourceMap(bundled);
-  if (!sourceMap) {
-    throw new Error(
-      `bundleTemplateCodeWithMap: esbuild did not emit an inline sourcemap`,
-    );
+  const { id, plugin } = createStdinEntry(code, options);
+
+  const bundle = await rolldown({
+    input: id,
+    resolve: { alias: templateImportAliases },
+    plugins: [plugin, createSuperimgPlugin()],
+  });
+  try {
+    const { output } = await bundle.generate({
+      format: "iife",
+      name: "__template",
+      exports: "named",
+      sourcemap: true,
+    });
+    const map = output[0]!.map || { version: 3, sources: [], mappings: "" };
+    return {
+      code: output[0]!.code,
+      sourceMap: map as any,
+      sourceFile: options.sourcefile ?? "<stdin>",
+    };
+  } finally {
+    await bundle.close();
   }
-  return {
-    code: bundled,
-    sourceMap,
-    sourceFile: options.sourcefile ?? "<stdin>",
-  };
 }

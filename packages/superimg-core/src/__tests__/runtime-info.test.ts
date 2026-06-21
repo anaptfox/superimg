@@ -6,16 +6,17 @@ import {
   createSvgRenderContext,
   resolveRuntimeTemplateInfo,
 } from "../index.js";
+import type { AnyTemplateModule } from "@superimg/types";
 
 describe("runtime template info", () => {
   it("resolves still image defaults without temporal frames", () => {
     const template = defineImage({
-      data: { title: "default" },
+      sample: { title: "default" },
       config: { width: 1200, height: 630 },
       render: () => "<div />",
     });
 
-    const info = resolveRuntimeTemplateInfo(template, { data: { title: "override" } });
+    const info = resolveRuntimeTemplateInfo(template, { sample: { title: "override" } });
 
     expect(info.kind).toBe("image");
     expect(info.isAnimated).toBe(false);
@@ -61,6 +62,98 @@ describe("runtime template info", () => {
       duration: 2,
       totalFrames: 48,
     });
+  });
+});
+
+describe("sample field in resolveRuntimeTemplateInfo", () => {
+  it("uses template.sample as default data when no options.data is provided", () => {
+    const template = defineImage({
+      sample: { title: "from sample" },
+      config: { width: 800, height: 600 },
+      render: () => "<div />",
+    });
+
+    const info = resolveRuntimeTemplateInfo(template);
+
+    expect(info.data).toEqual({ title: "from sample" });
+  });
+
+  it("options.data fully overrides template.sample", () => {
+    const template = defineImage({
+      sample: { title: "sample value", extra: "keep" },
+      config: { width: 800, height: 600 },
+      render: () => "<div />",
+    });
+
+    const info = resolveRuntimeTemplateInfo(template, { sample: { title: "override" } });
+
+    // options.data spreads over sample — only explicitly supplied keys override
+    expect(info.data.title).toBe("override");
+  });
+
+  it("merges sample and options.data — sample provides base, options.data overrides", () => {
+    const template = defineScene({
+      sample: { title: "default title", color: "#000" },
+      config: { width: 1920, height: 1080, fps: 30, duration: 2 },
+      render: () => "<div />",
+    });
+
+    const info = resolveRuntimeTemplateInfo(template, {
+      sample: { title: "override title" },
+    });
+
+    expect(info.data.title).toBe("override title");
+    expect(info.data.color).toBe("#000");
+  });
+
+  it("produces empty data object when neither sample nor options.data is supplied", () => {
+    const template = defineImage({
+      config: { width: 400, height: 400 },
+      render: () => "<div />",
+    });
+
+    const info = resolveRuntimeTemplateInfo(template);
+
+    expect(info.data).toEqual({});
+  });
+
+  it("works correctly for gif templates with sample", () => {
+    const template = defineGif({
+      sample: { text: "animated" } as any,
+      config: { width: 320, height: 180, fps: 10, duration: 1 },
+      render: () => "<div />",
+    });
+
+    const info = resolveRuntimeTemplateInfo(template);
+
+    expect(info.data).toEqual({ text: "animated" });
+    expect(info.kind).toBe("gif");
+  });
+
+  it("works correctly for svg templates with sample", () => {
+    const template = defineSvg({
+      sample: { label: "svg sample" } as any,
+      config: { width: 400, height: 300 },
+      render: () => "<svg />",
+    });
+
+    const info = resolveRuntimeTemplateInfo(template);
+
+    expect(info.data).toEqual({ label: "svg sample" });
+    expect(info.kind).toBe("svg");
+  });
+
+  it("handles a template without a sample field (no own property)", () => {
+    // Build a raw module object that truly lacks the sample property
+    const template: AnyTemplateModule = {
+      kind: "image",
+      config: { width: 200, height: 200 },
+      render: () => "<div />",
+    };
+
+    const info = resolveRuntimeTemplateInfo(template);
+
+    expect(info.data).toEqual({});
   });
 });
 

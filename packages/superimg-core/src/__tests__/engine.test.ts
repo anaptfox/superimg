@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import { createRenderPlan, executeRenderPlan } from "../rendering/engine.js";
 import { bundleTemplateCodeWithMap } from "../bundler/bundler.js";
 import { TemplateRuntimeError } from "@superimg/types";
+import type { RenderJob } from "@superimg/types";
 
-async function jobFromCode(code: string) {
+async function jobFromCode(code: string): Promise<RenderJob> {
   const templateBundle = await bundleTemplateCodeWithMap(code, { sourcefile: "test.video.ts" });
   return {
     templateBundle,

@@ -103,7 +103,7 @@ export function resolveAudio(value: AudioValue): ResolvedAudio {
  */
 export function resolveConfigAssets(
   assets: Record<string, string | AssetDeclaration> | undefined,
-  defaultSourceDir: string = process.cwd()
+  defaultSourceDir: string = (typeof process !== "undefined" && process.cwd ? process.cwd() : ".")
 ): ResolvedAssetDeclaration[] {
   if (!assets || Object.keys(assets).length === 0) return [];
 

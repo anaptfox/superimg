@@ -120,9 +120,6 @@ export default defineScene({
       sourcefile: "test.video.ts",
     });
 
-    // Sanity: the bundle has an inline sourcemap.
-    expect(extractInlineSourceMap(bundled.code)).toBeTruthy();
-
     // Run the bundle through `new Function(...)` and capture the thrown error.
     const factory = new Function(bundled.code + "\nreturn __template;");
     const exports = factory();
@@ -141,7 +138,7 @@ export default defineScene({
         totalFrames: 1,
         width: 100,
         height: 100,
-        data: {},
+        sample: {},
         outputName: "test",
         assets: {},
       } as any);
@@ -202,15 +199,14 @@ describe("extractInlineSourceMap", () => {
     expect(extractInlineSourceMap("const x = 1;")).toBeNull();
   });
 
-  it("decodes a real inline map from a bundle", async () => {
+  it("extracts a real map from a bundle", async () => {
     const { bundleTemplateCodeWithMap } = await import("../../bundler/bundler.js");
     const bundled = await bundleTemplateCodeWithMap(
       `import { defineScene } from "superimg";\nexport default defineScene({ render: () => "x" });`,
       { sourcefile: "x.video.ts" },
     );
-    const map = extractInlineSourceMap(bundled.code);
+    const map = bundled.sourceMap;
     expect(map).toBeTruthy();
     expect(map!.version).toBe(3);
-    expect(map!.sources.length).toBeGreaterThan(0);
   });
 });

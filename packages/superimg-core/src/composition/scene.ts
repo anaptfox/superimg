@@ -23,7 +23,7 @@ export interface SceneOptions<TData = Record<string, unknown>> {
  * ```typescript
  * compose([
  *   scene(intro, { id: "intro", duration: "3s", exit: { type: "fade", duration: "500ms" } }),
- *   scene(content, { id: "main", duration: "10s", data: { highlightColor: "#ff0000" } }),
+ *   scene(content, { id: "main", duration: "10s", sample: { highlightColor: "#ff0000" } }),
  * ]);
  * ```
  */

@@ -5,10 +5,12 @@ import { makeTestContext } from "./__test-utils__/index.js";
 describe("compose", () => {
   it("scene transitions at exact frame boundary", () => {
     const scene1 = {
+      kind: "video" as const,
       config: { duration: 1 },
       render: () => "scene1",
     };
     const scene2 = {
+      kind: "video" as const,
       config: { duration: 1 },
       render: () => "scene2",
     };
@@ -31,6 +33,7 @@ describe("compose", () => {
 
   it("sceneProgress is 0 at scene start, ~1 at scene end", () => {
     const scene = {
+      kind: "video" as const,
       config: { duration: 1 },
       render: (ctx: { sceneProgress: number }) => String(ctx.sceneProgress),
     };
@@ -53,13 +56,14 @@ describe("compose", () => {
 
   it("data merges with correct precedence: data < scene data < CLI", () => {
     const scene = {
-      data: { a: 1, b: 1, c: 1 },
+      kind: "video" as const,
+      sample: { a: 1, b: 1, c: 1 },
       config: { duration: 1 },
-      render: (ctx: { data: Record<string, number> }) =>
+      render: (ctx: { data: Record<string, unknown> }) =>
         JSON.stringify(ctx.data),
     };
-    const composed = compose([{ template: scene, data: { b: 2, c: 2 } }]);
-    const ctx = makeTestContext({ data: { c: 3 } });
+    const composed = compose([{ template: scene, sample: { b: 2, c: 2 } }]);
+    const ctx = makeTestContext({ sample: { c: 3 } });
 
     expect(JSON.parse(composed.render(ctx))).toEqual({ a: 1, b: 2, c: 3 });
   });
@@ -67,10 +71,12 @@ describe("compose", () => {
   it("warns on dimension mismatch", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const scene1 = {
+      kind: "video" as const,
       config: { width: 1920, duration: 1 },
       render: () => "",
     };
     const scene2 = {
+      kind: "video" as const,
       config: { width: 1080, duration: 1 },
       render: () => "",
     };
@@ -86,10 +92,12 @@ describe("compose", () => {
   it("warns on FPS mismatch", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const scene1 = {
+      kind: "video" as const,
       config: { fps: 30, duration: 1 },
       render: () => "",
     };
     const scene2 = {
+      kind: "video" as const,
       config: { fps: 60, duration: 1 },
       render: () => "",
     };
@@ -108,6 +116,7 @@ describe("compose", () => {
 
   it("applies easing to transitions", () => {
     const scene = {
+      kind: "video" as const,
       config: { duration: 1 },
       render: () => "<div>content</div>",
     };

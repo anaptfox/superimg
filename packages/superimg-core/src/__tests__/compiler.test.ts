@@ -30,15 +30,15 @@ describe("compileTemplate (with bundled code)", () => {
     expect(result.template?.config).toEqual({ fps: 30 });
   });
 
-  it("compiles template with data export", async () => {
+  it("compiles template with sample export", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
       export default defineScene({
-        data: { title: 'Hello', count: 42 },
+        sample: { title: 'Hello', count: 42 },
         render(ctx) { return '<div>' + ctx.data.title + '</div>'; }
       });
     `));
     expect(result.error).toBeUndefined();
-    expect(result.template?.data).toEqual({ title: "Hello", count: 42 });
+    expect(result.template?.sample).toEqual({ title: "Hello", count: 42 });
   });
 
   it("provides stdlib access via ctx.std", async () => {
@@ -253,7 +253,7 @@ describe("compileTemplate (with bundled code)", () => {
   it("compiles export default object with render method", async () => {
     const code = `
       export default {
-        data: { title: 'Object default' },
+        sample: { title: 'Object default' },
         render(ctx) {
           return '<div>' + ctx.data.title + '</div>';
         }
@@ -263,33 +263,33 @@ describe("compileTemplate (with bundled code)", () => {
     const result = await compileFromString(code);
     expect(result.error).toBeUndefined();
     expect(result.template?.render).toBeInstanceOf(Function);
-    expect(result.template?.data).toEqual({ title: "Object default" });
+    expect(result.template?.sample).toEqual({ title: "Object default" });
 
     const html = result.template!.render(
-      makeTestContext({ data: { title: "Object default" } })
+      makeTestContext({ sample: { title: "Object default" } })
     );
     expect(html).toBe("<div>Object default</div>");
   });
 
-  it("compiles export default defineScene({ render, config, data })", async () => {
+  it("compiles export default defineScene({ render, config, sample })", async () => {
     const code = `
       import { defineScene } from 'superimg';
       function render(ctx) {
         return '<div>' + ctx.data.title + '</div>';
       }
       const config = { fps: 24 };
-      const data = { title: 'Define default' };
-      export default defineScene({ render, config, data });
+      const sample = { title: 'Define default' };
+      export default defineScene({ render, config, sample });
     `;
 
     const result = await compileFromString(code);
     expect(result.error).toBeUndefined();
     expect(result.template?.render).toBeInstanceOf(Function);
     expect(result.template?.config).toEqual({ fps: 24 });
-    expect(result.template?.data).toEqual({ title: "Define default" });
+    expect(result.template?.sample).toEqual({ title: "Define default" });
 
     const html = result.template!.render(
-      makeTestContext({ data: { title: "Define default" } })
+      makeTestContext({ sample: { title: "Define default" } })
     );
     expect(html).toBe("<div>Define default</div>");
   });

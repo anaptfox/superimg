@@ -1,8 +1,12 @@
-//! Node-only error helpers. Imports node:fs — must NOT be pulled into browser bundles.
+//! Node-only error helpers. Imports fs — must NOT be pulled into browser bundles.
 //!
 //! Pair with `@superimg/core/errors` for browser-safe primitives.
 
-import { readFileSync } from "node:fs";
+import {
+  SuperImgError,
+  type SourceLocation,
+} from "@superimg/types";
+import { readFileSync } from "fs";
 
 /**
  * Read source text from disk for a stack-frame file path.

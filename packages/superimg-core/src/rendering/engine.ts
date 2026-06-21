@@ -303,7 +303,7 @@ export async function executeRenderPlan<TFrame>(
 
   try {
     for (let frame = frameStart; frame < frameEnd; frame++) {
-      const mergedData = { ...(template.data ?? {}), ...(data ?? {}) };
+      const mergedData = { ...(template.sample ?? {}), ...(data ?? {}) };
       const ctx = createRenderContext(
         frame,
         fps,
@@ -469,7 +469,7 @@ export async function executeRenderPlanParallel<TFrame>(
         let prevCapturedFrame: TFrame | null = null;
 
         for (let frame = pFrameStart + rendererIdx; frame < pFrameEnd; frame += N) {
-          const mergedData = { ...(template.data ?? {}), ...(data ?? {}) };
+          const mergedData = { ...(template.sample ?? {}), ...(data ?? {}) };
           const ctx = createRenderContext(
             frame, fps, totalFrames, width, height, mergedData, outputName, assetsMap, assetResolver, template.config?.width
           );

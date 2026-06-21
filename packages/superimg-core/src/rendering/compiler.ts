@@ -48,13 +48,13 @@ export function compileTemplate(bundledCode: string): CompileResult {
     };
   }
 
-  // Migration guard: helpful error if using old `defaults` field
-  if (def.defaults && !def.data) {
+  // Migration guard: helpful error if using old `data` field
+  if (def.data && !def.sample) {
     return {
       error: new TemplateCompilationError({
-        syntaxError: "`defaults` has been renamed to `data` in defineScene().",
+        syntaxError: "`data` has been renamed to `sample` in defineScene().",
         suggestion:
-          "Rename `defaults` to `data`. Before: `defineScene({ defaults: { ... } })`. After: `defineScene({ data: { ... } })`.",
+          "Rename `data` to `sample`. Before: `defineScene({ sample: { ... } })`. After: `defineScene({ sample: { ... } })`.",
       }),
     };
   }
@@ -64,7 +64,7 @@ export function compileTemplate(bundledCode: string): CompileResult {
       kind: def.kind ?? "video",
       render: def.render,
       config: def.config,
-      data: def.data,
+      sample: def.sample,
     },
   };
 }

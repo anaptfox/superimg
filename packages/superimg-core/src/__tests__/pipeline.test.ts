@@ -27,12 +27,12 @@ describe("render pipeline integration", () => {
     const code = `
       import { defineScene } from 'superimg';
       export default defineScene({
-        data: { title: 'Default' },
+        sample: { title: 'Default' },
         render(ctx) { return '<div>' + ctx.data.title + '</div>'; }
       });
     `;
     const { template } = await compileFromString(code);
-    const ctx = makeTestContext({ data: { title: "Override" } });
+    const ctx = makeTestContext({ sample: { title: "Override" } });
     const html = template!.render(ctx);
     expect(html).toContain("Override");
   });

@@ -40,7 +40,7 @@ export default defineScene({
         totalFrames: 1,
         width: 100,
         height: 100,
-        data: {},
+        sample: {},
         outputName: "test",
         assets: {},
       } as any);
@@ -69,65 +69,52 @@ export default defineScene({
     expect(enriched.codeFrame).toContain("kaboom");
   });
 
-  it("wraps an untyped esbuild-shaped error as TemplateCompilationError", () => {
-    const fake = new Error('Build failed: ERROR: Unexpected ")"');
-    (fake as any).errors = [{ text: 'Unexpected ")"' }];
+  it("wraps an untyped rolldown-shaped error as TemplateCompilationError", () => {
+    const fake = new Error('Transform failed: Unexpected ")"');
+    (fake as any).loc = { file: "test.ts", line: 1, column: 1 };
     const enriched = enrichError(fake);
     expect(enriched).toBeInstanceOf(TemplateCompilationError);
     expect(enriched.message).toContain("Template compilation failed");
   });
 
-  it("extracts location + synthetic code frame from esbuild errors[].location.lineText", () => {
-    // Mirrors what esbuild throws on Build failure: BuildFailure with errors[]
-    // whose `location` carries file/line/column/lineText/length.
-    const fake = new Error('Build failed with 1 error');
-    (fake as any).errors = [
-      {
-        text: "Unexpected token \"return\"",
-        location: {
-          file: "/abs/path/to/demo.video.ts",
-          line: 7,
-          column: 4,
-          length: 6,
-          lineText: "    return '<div>oops</div>';",
-        },
-      },
-    ];
+  it("extracts location + synthetic code frame from rolldown error loc and frame", () => {
+    // Mirrors what rolldown throws on Build failure
+    const fake = new Error('Unexpected token "return"');
+    (fake as any).loc = {
+      file: "/abs/path/to/demo.video.ts",
+      line: 7,
+      column: 4,
+    };
+    (fake as any).frame = "> 7 |     return '<div>oops</div>';\n    |    ^";
 
     const enriched = enrichError(fake);
     expect(enriched).toBeInstanceOf(TemplateCompilationError);
-    // Specific text wins over the parent "Build failed with 1 error" string.
     expect(enriched.message).toContain('Unexpected token "return"');
     expect(enriched.location).toEqual({
       file: "/abs/path/to/demo.video.ts",
       line: 7,
       column: 4,
     });
-    // Synthetic 2-line code frame: gutter line + caret line under the column.
+    // Synthetic code frame comes directly from rolldown's frame.
     expect(enriched.codeFrame).toBeTruthy();
     expect(enriched.codeFrame).toContain("> 7 |     return '<div>oops</div>';");
-    expect(enriched.codeFrame).toContain("^^^^^^"); // length: 6
+    expect(enriched.codeFrame).toContain("^");
   });
 
-  it("prefers full source from sourceCache over single-line lineText for esbuild errors", () => {
+  it("prefers full source from sourceCache over rolldown frame", () => {
     const sourceCache = new Map<string, string>();
     sourceCache.set(
       "/demo.video.ts",
       Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n"),
     );
 
-    const fake = new Error("Build failed");
-    (fake as any).errors = [
-      {
-        text: "syntax",
-        location: {
-          file: "/demo.video.ts",
-          line: 5,
-          column: 0,
-          lineText: "line 5", // would produce a 2-line frame
-        },
-      },
-    ];
+    const fake = new Error("Transform failed");
+    (fake as any).loc = {
+      file: "/demo.video.ts",
+      line: 5,
+      column: 0,
+    };
+    (fake as any).frame = "> 5 | line 5\n    | ^"; // single line frame
 
     const enriched = enrichError(fake, { sourceCache });
     // With cache, we render multi-line context (default linesAbove/linesBelow=2).
@@ -154,27 +141,28 @@ export default defineScene({
       sourcefile: "blob-demo.video.ts",
     });
 
-    // Use the consumer to find any (line, col) pair that maps back to user source.
+    // Find a (line, col) pair that maps back to user source. The bundle size is
+    // implementation-defined — Rolldown inlines dependencies, so the user-mapped
+    // region can sit thousands of lines in. Anchor the search on the generated
+    // line of the `throw` rather than assuming it lands in the first N lines.
     const { mapFrame, parseStackTrace } = await import("../source-map.js");
-    // Walk a few generated lines until we get a non-null mapping.
-    let genLine = 1;
+    const genLines = bundled.code.split("\n");
+    const genLine = genLines.findIndex((l) => l.includes("from blob")) + 1;
+    expect(genLine).toBeGreaterThan(0);
     let genCol = 0;
     let mapped: ReturnType<typeof mapFrame> = null;
-    for (let l = 1; l < 100 && !mapped; l++) {
-      for (let c = 0; c < 80 && !mapped; c++) {
-        const fakeFrame = {
-          file: "blob:http://localhost:3000/abc",
-          line: l,
-          column: c + 1,
-          fnName: "",
-          kind: "eval" as const,
-          isEval: true,
-        };
-        mapped = mapFrame(fakeFrame, bundled.sourceMap);
-        if (mapped) {
-          genLine = l;
-          genCol = c + 1;
-        }
+    for (let c = 0; c < 200 && !mapped; c++) {
+      const fakeFrame = {
+        file: "blob:http://localhost:3000/abc",
+        line: genLine,
+        column: c + 1,
+        fnName: "",
+        kind: "eval" as const,
+        isEval: true,
+      };
+      mapped = mapFrame(fakeFrame, bundled.sourceMap);
+      if (mapped) {
+        genCol = c + 1;
       }
     }
     expect(mapped).toBeTruthy();

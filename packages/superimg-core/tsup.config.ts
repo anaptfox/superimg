@@ -18,5 +18,5 @@ export default defineConfig({
   clean: true,
   outDir: "dist",
   splitting: false,
-  external: ["esbuild", "esbuild-wasm"],
+  external: ["rolldown", "@rolldown/browser"],
 });

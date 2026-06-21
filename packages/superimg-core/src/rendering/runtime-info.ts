@@ -9,7 +9,12 @@ import { isComposedTemplate } from "@superimg/types";
 import { DEFAULT_FPS, DEFAULT_HEIGHT, DEFAULT_WIDTH } from "../shared/constants.js";
 import { parseDuration } from "../shared/utils.js";
 
-export type RuntimeTemplate = AnyTemplateModule | ComposedTemplate;
+// Accept templates of any data shape: callers pass strongly-typed modules
+// (e.g. ImageModule<{ title: string }>) and a narrow TData is not assignable to
+// the Record<string, unknown> default through the module's contravariant render
+// signature. `any` keeps the public entry point permissive without widening the
+// data each template renders with.
+export type RuntimeTemplate = AnyTemplateModule<any> | ComposedTemplate;
 
 export interface ResolveRuntimeTemplateInfoOptions {
   width?: number;
@@ -90,7 +95,7 @@ export function resolveRuntimeTemplateInfo(
     duration,
     totalFrames,
     data: {
-      ...("data" in template ? template.data ?? {} : {}),
+      ...("sample" in template ? template.sample ?? {} : {}),
       ...(options.data ?? {}),
     } as Record<string, unknown>,
     fonts: config.fonts ?? [],
