@@ -30,7 +30,7 @@ class TestPresenter implements DomPresenter {
 describe("runtime-web", () => {
   it("mounts image templates and updates data without recreating the presenter", () => {
     const template = defineImage({
-      data: { label: "initial" },
+      sample: { label: "initial" },
       config: { width: 800, height: 600 },
       render: (ctx) => `<main>${ctx.data.label}:${ctx.width}x${ctx.height}</main>`,
     });
@@ -44,7 +44,7 @@ describe("runtime-web", () => {
     expect(runtime.getState().kind).toBe("image");
     expect(presenter.records.at(-1)?.html).toContain("initial:800x600");
 
-    runtime.update({ data: { label: "updated" } });
+    runtime.update({ sample: { label: "updated" } });
 
     expect(runtime.getElement()).toBe(element);
     expect(presenter.records.at(-1)?.html).toContain("updated:800x600");

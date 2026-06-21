@@ -8,7 +8,7 @@ describe("Player vNext runtime-web integration", () => {
   it("loads, seeks, updates, and disposes through runtime-web", async () => {
     const container = document.createElement("div");
     const template = defineScene({
-      data: { label: "initial" },
+      sample: { label: "initial" },
       config: { width: 320, height: 180, fps: 10, duration: 1 },
       render: (ctx) => `<div>${ctx.globalFrame}:${ctx.data.label}</div>`,
     });
@@ -22,7 +22,7 @@ describe("Player vNext runtime-web integration", () => {
     player.seekFrame(999);
     expect(player.currentFrame).toBe(9);
 
-    player.update({ data: { label: "updated" } });
+    player.update({ sample: { label: "updated" } });
     expect(player.getState().currentFrame).toBe(9);
 
     player.dispose();

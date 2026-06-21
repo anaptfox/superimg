@@ -72,7 +72,7 @@ async function getTemplateInfo(templatePath: string): Promise<TemplateInfo> {
       duration: config.duration ?? durationSeconds,
       fonts: config.fonts,
     },
-    data: template.data ?? {},
+    data: ("sample" in template ? template.sample : undefined) ?? {},
     totalFrames,
     durationSeconds,
   };
