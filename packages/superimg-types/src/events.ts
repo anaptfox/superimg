@@ -57,4 +57,17 @@ export type RenderEvent =
       failed: number;
       /** Per-format counts for rendered outputs. */
       byFormat: Partial<Record<OutputFormat, number>>;
+    }
+  | {
+      v: 1;
+      event: "fatal";
+      message: string;
+      stack?: string;
+    }
+  | {
+      v: 1;
+      event: "validation-error";
+      name: string;
+      message: string;
+      issues: Array<{ path?: string; message: string; }>;
     };

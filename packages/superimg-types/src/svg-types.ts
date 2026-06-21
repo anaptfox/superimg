@@ -40,11 +40,12 @@ export interface SvgModule<TData = Record<string, unknown>> {
   readonly kind: "svg";
   render: (ctx: SvgRenderContext<TData>) => string;
   config?: SvgConfig;
-  data?: Partial<TData>;
+  /** Sample/preview data — the template renders from this when no external data is provided. */
+  sample?: TData;
 }
 
 export type DefineSvgInput<TData = Record<string, unknown>> =
-  Omit<SvgModule<TData>, "kind"> & { kind?: "svg" };
+  Omit<SvgModule<TData>, "kind" | "sample"> & { kind?: "svg"; sample?: TData };
 
 export function defineSvg<TData>(m: DefineSvgInput<TData>): SvgModule<TData> {
   return { ...m, kind: "svg" };

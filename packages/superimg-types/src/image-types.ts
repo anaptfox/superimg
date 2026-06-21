@@ -42,11 +42,12 @@ export interface ImageModule<TData = Record<string, unknown>> {
   readonly kind: "image";
   render: (ctx: ImageRenderContext<TData>) => string;
   config?: ImageConfig;
-  data?: Partial<TData>;
+  /** Sample/preview data — the template renders from this when no external data is provided. */
+  sample?: TData;
 }
 
 export type DefineImageInput<TData = Record<string, unknown>> =
-  Omit<ImageModule<TData>, "kind"> & { kind?: "image" };
+  Omit<ImageModule<TData>, "kind" | "sample"> & { kind?: "image"; sample?: TData };
 
 export function defineImage<TData>(m: DefineImageInput<TData>): ImageModule<TData> {
   return { ...m, kind: "image" };

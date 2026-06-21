@@ -8,7 +8,7 @@ import type { EncodingOptions, OutputFormat } from "./encoding-types.js";
 export type TemplateKind = "video" | "image" | "gif" | "svg";
 
 export type DefineSceneInput<TData = Record<string, unknown>> =
-  Omit<TemplateModule<TData>, "kind"> & { kind?: "video" };
+  Omit<TemplateModule<TData>, "kind" | "sample"> & { kind?: "video"; sample?: TData };
 
 /**
  * Define a template module with full type inference.
@@ -19,7 +19,7 @@ export type DefineSceneInput<TData = Record<string, unknown>> =
  * import { defineScene } from 'superimg';
  *
  * export default defineScene({
- *   data: { title: 'Hello', color: '#fff' },
+ *   sample: { title: 'Hello', color: '#fff' },
  *   config: { width: 1920, height: 1080, fps: 30, duration: 5 },
  *   render(ctx) {
  *     return `<div style="color: ${ctx.data.color}">${ctx.data.title}</div>`;
@@ -141,7 +141,7 @@ export interface CssViewport {
 // =============================================================================
 
 /**
- * A template module exports a render function and optional config/data.
+ * A template module exports a render function and optional config/sample.
  */
 export interface TemplateModule<
   TData = Record<string, unknown>,
@@ -152,8 +152,8 @@ export interface TemplateModule<
   render: (ctx: RenderContext<TData>) => string;
   /** Optional configuration */
   config?: TemplateConfig;
-  /** Static data values (merged with companion .data.ts and incoming data) */
-  data?: Partial<TData>;
+  /** Sample/preview data — the template renders from this when no external data is provided. */
+  sample?: TData;
 }
 
 export interface OutputPreset {

@@ -6,11 +6,11 @@ import type { ImageModule } from "./image-types.js";
 import type { GifModule } from "./gif-types.js";
 import type { SvgModule } from "./svg-types.js";
 
-export type AnyTemplateModule =
-  | TemplateModule
-  | ImageModule
-  | GifModule
-  | SvgModule;
+export type AnyTemplateModule<TData = Record<string, unknown>> =
+  | TemplateModule<TData>
+  | ImageModule<TData>
+  | GifModule<TData>
+  | SvgModule<TData>;
 
 // =============================================================================
 // CORE TYPES
@@ -179,3 +179,9 @@ export type {
 
 export { RENDER_EVENT_VERSION } from "./events.js";
 export type { RenderEvent } from "./events.js";
+
+// =============================================================================
+// BATCH TYPES
+// =============================================================================
+
+export { defineBatch, type BatchEntry, type BatchProvider } from "./batch-types.js";

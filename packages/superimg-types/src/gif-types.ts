@@ -24,11 +24,12 @@ export interface GifModule<TData = Record<string, unknown>> {
   readonly kind: "gif";
   render: (ctx: RenderContext<TData>) => string;
   config?: GifConfig;
-  data?: Partial<TData>;
+  /** Sample/preview data — the template renders from this when no external data is provided. */
+  sample?: TData;
 }
 
 export type DefineGifInput<TData = Record<string, unknown>> =
-  Omit<GifModule<TData>, "kind"> & { kind?: "gif" };
+  Omit<GifModule<TData>, "kind" | "sample"> & { kind?: "gif"; sample?: TData };
 
 export function defineGif<TData>(m: DefineGifInput<TData>): GifModule<TData> {
   return { ...m, kind: "gif" };
