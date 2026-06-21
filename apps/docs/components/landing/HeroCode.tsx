@@ -7,7 +7,7 @@ import { oneDark } from "@codemirror/theme-one-dark";
 const HERO_CODE = `import { defineScene } from 'superimg'
 
 export default defineScene({
-  data: {
+  sample: {
     title: 'This video was made with',
     highlight: '100% code',
     accentColor: '#a78bfa',

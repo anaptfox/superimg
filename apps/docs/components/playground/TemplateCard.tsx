@@ -32,7 +32,7 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    playerRef.current?.stop();
+    playerRef.current?.pause();
   };
 
   const handleClick = () => {

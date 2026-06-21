@@ -58,7 +58,7 @@ Video is a pure function of time. \`render(ctx)\` is called once per frame, retu
 const TEMPLATE_EXAMPLE = `import { defineScene } from "superimg";
 
 export default defineScene({
-  data: { title: "Hello", color: "#667eea" },
+  sample: { title: "Hello", color: "#667eea" },
   config: { duration: 3 },
   render(ctx) {
     const { std, sceneProgress, width, height, data } = ctx;
@@ -79,7 +79,7 @@ const HTML_PAGE_EXAMPLE = `<!DOCTYPE html>
     import { Player, defineScene } from 'https://esm.sh/superimg';
 
     const template = defineScene({
-      data: { title: "Hello", color: "#667eea" },
+      sample: { title: "Hello", color: "#667eea" },
       config: { duration: 3 },
       render(ctx) {
         const { std, sceneProgress, width, height, data } = ctx;
@@ -137,14 +137,14 @@ Help me modify this template.`;
 }
 
 const DEFAULT_TEMPLATE = `// SuperImg Template
-// 1. Define \`data\` below → they become editable fields in the Data panel
+// 1. Define \`sample\` below → they become editable fields in the Data panel
 // 2. Access values via \`ctx.data.title\`, \`ctx.data.accentColor\`, etc.
 // 3. Changes in the Data panel instantly update the preview
 
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     title: "SuperImg Editor",
     accentColor: "#667eea",
     bgColor: "#0f0f23",
@@ -490,16 +490,16 @@ export default function Editor({ templateId }: EditorProps) {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="max-h-[200px] overflow-y-auto px-4 pb-4">
-                {session.template && !isComposedTemplate(session.template) && session.template.data && Object.keys(session.template.data).length > 0 ? (
+                {session.template && !isComposedTemplate(session.template) && session.template.sample && Object.keys(session.template.sample).length > 0 ? (
                   <DataForm
-                    templateData={session.template.data}
+                    templateData={session.template.sample}
                     data={formData}
                     onChange={handleDataChange}
                     theme="dark"
                   />
                 ) : (
                   <p className="py-2 text-sm text-muted-foreground">
-                    Add a <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">data</code> object to your template to generate form controls here.
+                    Add a <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">sample</code> object to your template to generate form controls here.
                   </p>
                 )}
               </div>

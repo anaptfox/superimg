@@ -76,7 +76,7 @@ export const ReelItem = memo(forwardRef<ReelItemRef, ReelItemProps>(
             player.play();
           } else {
             player.pause();
-            player.seekToFrame(0);
+            player.seekFrame(0);
           }
         } catch {
           // Player not ready yet, ignore
@@ -116,7 +116,7 @@ export const ReelItem = memo(forwardRef<ReelItemRef, ReelItemProps>(
         reset: () => {
           if (playerRef.current?.isReady) {
             playerRef.current.pause();
-            playerRef.current.seekToFrame(0);
+            playerRef.current.seekFrame(0);
           }
         },
         playerRef: playerRef.current,

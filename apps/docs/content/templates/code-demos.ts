@@ -70,7 +70,7 @@ export default defineScene({
 export const DATA_TEMPLATE = `import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     title: "Welcome",
     subtitle: "Customize via data",
     accentColor: "#667eea",
@@ -132,7 +132,7 @@ export default defineScene<TemplateData>({
       .tagline { font-size: 18px; margin-top: 12px; opacity: 0.5; letter-spacing: 3px; text-transform: uppercase; }
     \`],
   },
-  data: {
+  sample: {
     title: "Hello, SuperImg",
     subtitle: "Video as code",
   },

@@ -56,7 +56,7 @@ export function CodeDemo({ templateId }: CodeDemoProps) {
 
   const handleCanvasClick = () => {
     if (session.store && session.template) {
-      session.store.getState().togglePlayPause();
+      session.store.togglePlayPause();
     }
   };
 

@@ -36,7 +36,7 @@ const INITIAL_FORM: FormState = {
 const TEMPLATE_CODE = `import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     name: "GO!",
     startFrom: 5,
     color: "#ffffff",

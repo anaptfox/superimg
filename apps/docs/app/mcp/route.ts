@@ -18,7 +18,7 @@ const CREATE_VIDEO_DESCRIPTION = `Create a SuperImg video template and open the 
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     title: "Hello",
     accentColor: "#667eea",
   },
@@ -102,7 +102,7 @@ export default defineScene({
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: {
+  sample: {
     title: "Launch Day",
     subtitle: "Something amazing is coming",
     accentColor: "#667eea",

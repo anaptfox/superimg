@@ -11,8 +11,24 @@ const baseURL =
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
-  serverExternalPackages: ['superimg', 'esbuild', 'esbuild-wasm'],
-  assetPrefix: baseURL,
+  serverExternalPackages: ['superimg', 'rolldown', '@rolldown/browser'],
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            value: 'credentialless',
+          },
+        ],
+      },
+    ]
+  },
   async redirects() {
     return [
       {

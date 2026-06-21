@@ -106,7 +106,6 @@ export default function TemplatesPanel() {
                   loadMode="lazy"
                   hoverBehavior="play"
                   hoverDelayMs={200}
-                  maxCacheFrames={30}
                   className="w-full"
                   style={{
                     width: "100%",
