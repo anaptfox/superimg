@@ -245,7 +245,7 @@ export async function resolveRenderTargets(
 
   // Build the list of entry specs from --data (or a single empty entry when --data is absent).
   type EntrySpec = {
-    /** Per-entry data override. `undefined` means "use companion data / no override". */
+    /** Per-entry data override. `undefined` means no override (template data defaults apply). */
     data?: Record<string, unknown>;
     /** Filename suffix; empty for non-batch single renders. */
     slug: string;

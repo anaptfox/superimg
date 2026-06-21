@@ -20,8 +20,8 @@
     }
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
     "clean": "rm -rf dist"
   },

@@ -43,10 +43,6 @@ vi.mock("../cli/utils/merge-encoding.js", () => ({
   mergeEncoding: vi.fn().mockReturnValue(undefined),
 }));
 
-vi.mock("../cli/utils/load-companion-data.js", () => ({
-  loadCompanionData: vi.fn().mockResolvedValue(undefined),
-}));
-
 vi.mock("../cli/utils/asset-discovery.js", () => ({
   discoverTemplateAssets: vi.fn().mockReturnValue([]),
 }));

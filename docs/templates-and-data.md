@@ -7,7 +7,6 @@ This guide covers how to create templates, define default data, pass data to sce
 - [Basic Templates](#basic-templates)
 - [Duration Resolution](#duration-resolution)
 - [Template Data](#template-data)
-- [Template Data](#template-data)
 
 ---
 
@@ -215,38 +214,6 @@ export default defineScene({
 ### Using Templates with Data
 
 When a template has data, it is merged at render time. Any fields you provide override the data defaults; missing fields use the default values.
-
----
-
-## Template Data
-
-Pass data to templates via `ctx.data`.
-
-### Accessing Data in Templates
-
-Data is available via `ctx.data`:
-
-```typescript
-import { defineScene } from 'superimg';
-
-export default defineScene({
-  data: { title: 'Untitled', subtitle: undefined, showLogo: false },
-  render(ctx) {
-    const { data } = ctx;
-    const { title, subtitle, showLogo } = data;
-
-    return `
-      <div class="slide">
-        <h1>${title}</h1>
-        ${subtitle ? `<h2>${subtitle}</h2>` : ''}
-        ${showLogo ? '<img src="logo.png" />' : ''}
-      </div>
-    `;
-  },
-});
-```
-
----
 
 ## RenderContext Reference
 

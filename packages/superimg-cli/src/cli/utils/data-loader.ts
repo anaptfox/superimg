@@ -18,8 +18,6 @@ import { rolldown } from "rolldown";
 /**
  * Bundle and execute a `.ts` / `.js` data file, returning its default export.
  * Bundles as ESM, writes to a temp file, and dynamically imports it.
- *
- * Shared by the companion-data loader and the `--data` CLI flag.
  */
 export async function loadDataScript(filePath: string): Promise<unknown> {
   const fileUrl = pathToFileURL(resolve(filePath)).href;

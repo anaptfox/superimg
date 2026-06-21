@@ -1,5 +1,4 @@
 // Changelog Video — Animated release notes
-// Reads data from companion changelog.data.ts which parses CHANGELOG.md
 import { defineScene } from "superimg";
 
 interface ChangelogEntry {

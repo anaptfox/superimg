@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
   entry: { index: "src/index.ts" },
@@ -6,6 +6,5 @@ export default defineConfig({
   dts: true,
   outDir: "dist",
   clean: true,
-  splitting: false,
-  bundle: true,
+  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
 });

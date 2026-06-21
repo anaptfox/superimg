@@ -106,8 +106,8 @@
   },
   "scripts": {
     "prebuild": "node scripts/gen-katex-css.mjs",
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "test": "vitest --run",
     "clean": "rm -rf dist"
   },
@@ -134,6 +134,6 @@
     "simplex-noise": "^4.0.3"
   },
   "devDependencies": {
-    "tsup": "^8.0.0"
+    "tsdown": "^0.22.3"
   }
 }

@@ -1,6 +1,6 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
-const noExternal = ["@superimg/skill"];
+const alwaysBundle = ["@superimg/skill"];
 
 export default defineConfig([
   {
@@ -11,9 +11,9 @@ export default defineConfig([
     format: ["esm"],
     dts: true,
     outDir: "dist",
-    splitting: false,
     clean: true,
-    noExternal,
+    deps: { alwaysBundle },
+    outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
   },
   {
     entry: {
@@ -21,10 +21,10 @@ export default defineConfig([
     },
     format: ["esm"],
     outDir: "dist",
-    splitting: false,
     banner: {
       js: "#!/usr/bin/env node",
     },
-    noExternal,
+    deps: { alwaysBundle },
+    outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
   },
 ]);

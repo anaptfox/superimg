@@ -175,8 +175,8 @@
     }
   },
   "scripts": {
-    "build": "tsup && node scripts/verify-build-artifacts.mjs",
-    "dev": "tsup --watch",
+    "build": "tsdown && node scripts/verify-build-artifacts.mjs",
+    "dev": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
     "clean": "rm -rf dist",
     "verify:build": "node scripts/verify-build-artifacts.mjs"

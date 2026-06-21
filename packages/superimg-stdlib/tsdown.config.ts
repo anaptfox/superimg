@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
   entry: [
@@ -31,10 +31,8 @@ export default defineConfig({
   dts: true,
   outDir: "dist",
   clean: true,
-  // Each entry becomes a standalone bundle (no shared chunks)
-  splitting: false,
-  // Bundle everything into each file (including dependencies)
-  bundle: true,
-  // Don't mark dependencies as external - we want them bundled
-  noExternal: ["date-fns", "colord", "simplex-noise", "shiki", "@shikijs/themes", "@shikijs/langs", "path-data-parser", "katex"],
+  deps: {
+    alwaysBundle: ["date-fns", "colord", "simplex-noise", "shiki", "@shikijs/themes", "@shikijs/langs", "path-data-parser", "katex"],
+  },
+  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
 });

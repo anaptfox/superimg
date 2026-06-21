@@ -50,8 +50,8 @@
   },
   "scripts": {
     "generate": "node --import tsx scripts/generate-runtime.ts",
-    "build": "pnpm run generate && tsup",
-    "dev": "tsup --watch",
+    "build": "pnpm run generate && tsdown",
+    "dev": "tsdown --watch",
     "test": "vitest --run",
     "clean": "rm -rf dist src/generated"
   },

@@ -13,10 +13,10 @@
     }
   },
   "scripts": {
-    "build": "npm run build:harness && npm run embed:harness && tsup",
+    "build": "npm run build:harness && npm run embed:harness && tsdown",
     "build:harness": "vite build --config vite.harness.config.ts",
     "embed:harness": "node scripts/embed-harness.mjs",
-    "dev": "tsup --watch",
+    "dev": "tsdown --watch",
     "verify:harness": "tsx scripts/harness-integrity.ts verify",
     "prepublishOnly": "npm run verify:harness",
     "test": "vitest run",

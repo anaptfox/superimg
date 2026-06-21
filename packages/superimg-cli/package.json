@@ -19,8 +19,8 @@
     }
   },
   "scripts": {
-    "build": "tsup && node scripts/check-deps.mjs",
-    "dev": "tsup --watch",
+    "build": "tsdown && node scripts/check-deps.mjs",
+    "dev": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
     "check-deps": "node scripts/check-deps.mjs",
     "clean": "rm -rf dist"

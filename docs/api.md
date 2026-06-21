@@ -12,7 +12,7 @@ The `RenderContext` is the central object passed to your template's `render` fun
 interface RenderContext<
   TData = Record<string, unknown>,
 > {
-  // Standard library (score, interpolate, math, color utilities)
+  // Standard library (timeline, interpolate, math, color utilities)
   std: Stdlib;
 
   // Global position (entire video)
@@ -162,13 +162,13 @@ std.css.stack()  // display:flex; flex-direction:column
 std.css.row()    // display:flex; flex-direction:row
 ```
 
-#### `std.score`
+#### `std.timeline`
 
-Scene-local timing for layout choreography. Use `std.score()` when your animation is driven by the scene's normalized progress (`sceneProgress`) and you want named phases such as enter, hold, and exit.
+Scene-local timing for layout choreography. Use `std.timeline()` when your animation is driven by the scene's normalized progress (`sceneProgress`) and you want named phases such as enter, hold, and exit.
 
 ```typescript
-// Defaults to { enter: 0.15, hold: 0.70, exit: 0.15 }
-const t = std.score();
+// Defaults to { enter: "15%", hold: "70%", exit: "15%" }
+const t = std.timeline();
 
 const card = t.motion({ y: 24, scale: 0.96 });
 const count = t.tween(0, 100, { during: "enter", at: 0.2 });
@@ -182,13 +182,13 @@ return `
 `;
 ```
 
-Custom phase names are supported. Fractions are portions of the scene and must sum to `<= 1`:
+Custom phase names are supported. Phases can be specified as seconds (`"1.5s"`), milliseconds (`"500ms"`), or percentages of scene duration (`"20%"`):
 
 ```typescript
-const t = std.score({
-  intro: 0.2,
-  product: 0.5,
-  outro: 0.2,
+const t = std.timeline({
+  intro: "20%",
+  product: "0.5s",
+  outro: "200ms",
 });
 
 const productProgress = t.within("product"); // 0-1 inside that phase
@@ -199,7 +199,7 @@ const product = t.motion({ during: "product", at: 0.15, duration: 0.7 });
 const fade = t.tween(1, 0, { during: "outro", easing: "easeInCubic" });
 ```
 
-Score object fields and helpers:
+Timeline object fields and helpers:
 
 ```typescript
 t.progress       // Current sceneProgress
@@ -231,7 +231,7 @@ t.motion({
 });
 ```
 
-Use `std.score(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Score And Cues](/docs/timing) for examples that combine both.
+Use `std.timeline(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Timeline And Cues](/docs/timing) for examples that combine both.
 
 #### `std.interpolate`
 
@@ -245,7 +245,7 @@ std.interpolate(progress, [0, 1], [0, 100], 'easeOutCubic')    // With easing
 std.interpolate(sceneProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0])
 ```
 
-For phased scene animation (enter/hold/exit with auto fades), reach for `std.score` instead.
+For phased scene animation (enter/hold/exit with auto fades), reach for `std.timeline` instead.
 
 #### `std.math`
 
@@ -316,8 +316,8 @@ Spring physics for organic motion with overshoot and bounce:
 std.spring(0.8, 1, progress)                         // 0.8→overshoot→1
 std.spring(0, 500, progress, { stiffness: 200, damping: 8, mass: 1 })
 
-// Inside a score.motion() / .tween() call, use the string form
-const t = std.score();
+// Inside a timeline.motion() / .tween() call, use the string form
+const t = std.timeline();
 const pop = t.motion({ scale: 0.5, easing: "spring(200,8)" });
 ```
 
@@ -415,7 +415,7 @@ const elevenLabsWords = std.cue.fromElevenLabs(response.words);
 const whisperWords = std.cue.fromWhisper(response.words);
 ```
 
-Use `std.score(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Score And Cues](/docs/timing) for a guide-level walkthrough.
+Use `std.timeline(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Timeline And Cues](/docs/timing) for a guide-level walkthrough.
 
 #### `std.responsive`
 

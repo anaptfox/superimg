@@ -14,8 +14,8 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --outDir dist",
-    "dev": "tsup src/index.ts --format esm --dts --outDir dist --watch",
+    "build": "tsdown",
+    "dev": "tsdown",
     "test": "vitest --run --passWithNoTests",
     "clean": "rm -rf dist"
   },

@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig({
   entry: {
@@ -17,6 +17,8 @@ export default defineConfig({
   dts: true,
   clean: true,
   outDir: "dist",
-  splitting: false,
-  external: ["rolldown", "@rolldown/browser"],
+  deps: {
+    neverBundle: ["rolldown", "@rolldown/browser"],
+  },
+  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
 });

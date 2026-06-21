@@ -100,7 +100,7 @@ export interface RenderContext<TData = Record<string, unknown>> {
   isSquare: boolean;
 
   // === Data ===
-  /** Template data (merged from template data + companion data + incoming data) */
+  /** Template data (merged from template defaults + incoming data) */
   data: TData;
 
   /** Resolved static assets with full metadata (from config.assets) */

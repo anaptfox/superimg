@@ -322,7 +322,7 @@ Only `superimg` is published. The `@superimg/*` packages shown here are private 
 
 **Key architectural boundary:** private `@superimg/core` has two kinds of entry points:
 - **Browser-safe** (`.`): Compiler, context, HTML utilities — no Node.js deps
-- **Server-only** (`./bundler`): Template bundling — requires `esbuild`, `fs`
+- **Server-only** (`./bundler`): Template bundling — requires `rolldown`, `fs`
 - **Engine** (`./engine`): `createRenderPlan()`, `executeRenderPlan()` — browser-safe but exposed as a separate entry point for tree-shaking
 
 ### RenderContext Flow

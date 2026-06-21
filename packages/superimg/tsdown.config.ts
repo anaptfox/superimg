@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(__dirname, "package.json"), "utf8"));
@@ -47,45 +47,48 @@ export default defineConfig({
   define: {
     __SUPERIMG_VERSION__: JSON.stringify(pkg.version),
   },
-  noExternal: [
-    "@superimg/cli",
-    "@superimg/types",
-    "@superimg/stdlib",
-    /^@superimg\/core/,
-    "@superimg/runtime",
-    "@superimg/runtime-web",
-    "@superimg/player",
-    "@superimg/skill",
-    "@superimg/playwright",
-    "hono",
-    "@hono/node-server",
-    "zod",
-  ],
-  external: [
-    "zustand",
-    "date-fns",
-    "colord",
-    "simplex-noise",
-    "playwright",
-    "playwright-core",
-    "rolldown",
-    "@rolldown/browser",
-    "commander",
-    "acorn",
-    "ink",
-    "react",
-    "vite",
-    "ws",
-    // Native binding packages must be external
-    "oxc-parser",
-    /^@oxc-parser\//,
-    // mediabunny is a direct dep — keep external so browser + server share one instance
-    "mediabunny",
-    // Server-side encoding — optional native addons, never bundle
-    "@mediabunny/server",
-    "sharp",
-    "node-av",
-    /^@seydx\//,
-  ],
+  deps: {
+    alwaysBundle: [
+      "@superimg/cli",
+      "@superimg/types",
+      "@superimg/stdlib",
+      /^@superimg\/core/,
+      "@superimg/runtime",
+      "@superimg/runtime-web",
+      "@superimg/player",
+      "@superimg/skill",
+      "@superimg/playwright",
+      "hono",
+      "@hono/node-server",
+      "zod",
+    ],
+    neverBundle: [
+      "zustand",
+      "date-fns",
+      "colord",
+      "simplex-noise",
+      "playwright",
+      "playwright-core",
+      "rolldown",
+      "@rolldown/browser",
+      "commander",
+      "acorn",
+      "ink",
+      "react",
+      "vite",
+      "ws",
+      // Native binding packages must be external
+      "oxc-parser",
+      /^@oxc-parser\//,
+      // mediabunny is a direct dep — keep external so browser + server share one instance
+      "mediabunny",
+      // Server-side encoding — optional native addons, never bundle
+      "@mediabunny/server",
+      "sharp",
+      "node-av",
+      /^@seydx\//,
+    ],
+  },
+  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
   onSuccess: "rm -rf dist/dev-ui && cp -R ../superimg-cli/dist/dev-ui dist/dev-ui",
 });
