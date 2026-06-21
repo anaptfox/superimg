@@ -39,12 +39,12 @@
     "@superimg/core": "workspace:*",
     "@superimg/runtime": "workspace:*",
     "@superimg/types": "workspace:*",
-    "esbuild": "^0.27.0",
     "execa": "^9.6.1",
     "hono": "^4.7.11",
     "mediabunny": "^1.46.0",
     "playwright": "^1.60.0",
     "playwright-core": "^1.60.0",
+    "rolldown": "1.1.2",
     "sharp": "^0.34.0"
   }
 }

@@ -6,5 +6,5 @@ export default defineConfig({
   ],
   format: ["esm"],
   dts: true,
-  external: ["esbuild", "playwright", "playwright-core"],
+  external: ["rolldown", "playwright", "playwright-core"],
 });
