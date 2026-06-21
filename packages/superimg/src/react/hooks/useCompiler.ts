@@ -44,22 +44,26 @@ export interface UseCompilerReturn {
  * };
  * ```
  */
-export function useCompiler(wasmURL?: string): UseCompilerReturn {
+export function useCompiler(): UseCompilerReturn {
   const [ready, setReady] = useState(false);
   const [template, setTemplate] = useState<TemplateModule | null>(null);
   const [error, setError] = useState<SuperImgError | null>(null);
 
   useEffect(() => {
-    initBundler(wasmURL).then(() => setReady(true));
-  }, [wasmURL]);
+    initBundler().then(() => setReady(true)).catch((e: any) => {
+      if (e?.name === "BrowserNotSupportedError") {
+        setError(e);
+      }
+    });
+  }, []);
 
   const compile = useCallback(async (code: string): Promise<CompileResult> => {
     try {
-      await initBundler(wasmURL);
+      await initBundler();
       if (!ready) setReady(true);
 
       const bundled = await bundleTemplateBrowser(code);
-      const result = compileTemplate(bundled);
+      const result = compileTemplate(bundled.code);
 
       if (result.error) {
         setError(result.error);
@@ -70,15 +74,18 @@ export function useCompiler(wasmURL?: string): UseCompilerReturn {
       }
 
       return result;
-    } catch (e) {
-      const err = new TemplateCompilationError({
-        syntaxError: e instanceof Error ? e.message : String(e),
-      });
+    } catch (e: any) {
+      // Don't wrap our specific browser support error
+      const err = e?.name === "BrowserNotSupportedError" 
+        ? e 
+        : new TemplateCompilationError({
+            syntaxError: e instanceof Error ? e.message : String(e),
+          });
       setError(err);
       setTemplate(null);
       return { error: err };
     }
-  }, [wasmURL]);
+  }, []);
 
   const validate = useCallback(
     (tmpl: TemplateModule, testContext: RenderContext): CompileError | null => {

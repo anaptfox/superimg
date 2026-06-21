@@ -1,5 +1,6 @@
 //! Player - React component for SuperImg
 //! Renders templates with playback controls, hover behavior, and ref-based imperative API
+"use client";
 
 import {
   useRef,

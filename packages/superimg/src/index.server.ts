@@ -61,5 +61,5 @@ export { RENDER_EVENT_VERSION } from "@superimg/cli/server";
 export type { RenderEvent } from "@superimg/cli/server";
 export { renderTemplates } from "@superimg/cli/server";
 export type { RenderTemplatesOptions } from "@superimg/cli/server";
-export { resolveRenderTargets, executeRenderTargets, loadCompanionData } from "@superimg/cli/server";
+export { resolveRenderTargets, buildRenderTarget, executeRenderTargets } from "@superimg/cli/server";
 export type { RenderOptions, RenderTarget, ResolvedTargets, ExecuteRenderOptions } from "@superimg/cli/server";

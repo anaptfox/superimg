@@ -12,6 +12,9 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "edge-light": "./dist/index.edge.js",
+      "workerd": "./dist/index.edge.js",
+      "worker": "./dist/index.edge.js",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
@@ -44,6 +47,16 @@
       "types": "./dist/index.bundler.d.ts",
       "import": "./dist/index.bundler.js",
       "default": "./dist/index.bundler.js"
+    },
+    "./edge": {
+      "types": "./dist/index.edge.d.ts",
+      "import": "./dist/index.edge.js",
+      "default": "./dist/index.edge.js"
+    },
+    "./integration": {
+      "types": "./dist/index.integration.d.ts",
+      "import": "./dist/index.integration.js",
+      "default": "./dist/index.integration.js"
     },
     "./stdlib": {
       "types": "./dist/stdlib.d.ts",
@@ -194,19 +207,19 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.0.1",
-    "mediabunny": "^1.46.0",
     "@hono/node-server": "^1.14.1",
+    "@rolldown/browser": "1.1.2",
     "acorn": "^8.14.0",
     "chokidar": "^5.0.0",
     "colord": "^2.9.3",
     "commander": "^14.0.3",
     "date-fns": "^4.1.0",
-    "esbuild": "^0.27.0",
-    "esbuild-wasm": "^0.27.0",
     "execa": "^9.6.1",
     "hono": "^4.7.7",
     "ink": "^6.6.0",
+    "mediabunny": "^1.46.0",
     "oxc-parser": "^0.119.0",
+    "rolldown": "1.1.2",
     "simplex-noise": "^4.0.3",
     "vite": "^7.3.1",
     "ws": "^8.18.0",

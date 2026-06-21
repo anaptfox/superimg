@@ -369,7 +369,7 @@ describe("useVideoSession", () => {
 
       const capturedData: Record<string, unknown>[] = [];
       const templateWithData = {
-        data: { name: "Default", count: 42 },
+        sample: { name: "Default", count: 42 },
         render: (ctx: { data: Record<string, unknown> }) => {
           capturedData.push({ ...ctx.data });
           return `<div>${ctx.data.name}-${ctx.data.count}</div>`;
@@ -411,7 +411,7 @@ describe("useVideoSession", () => {
 
       const capturedData: Record<string, unknown>[] = [];
       const templateWithData = {
-        data: { name: "Default", color: "blue" },
+        sample: { name: "Default", color: "blue" },
         render: (ctx: { data: Record<string, unknown> }) => {
           capturedData.push({ ...ctx.data });
           return `<div>${ctx.data.name}</div>`;

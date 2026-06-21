@@ -210,7 +210,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
 
       try {
         const templateData =
-          "data" in template ? template.data : undefined;
+          "sample" in template ? template.sample : undefined;
         const mergedData = {
           ...(templateData ?? {}),
           ...dataRef.current,
@@ -340,7 +340,7 @@ export function useVideoSession(config: VideoSessionConfig): VideoSessionReturn 
         if (!template) return;
 
         const templateData =
-          "data" in template ? template.data : undefined;
+          "sample" in template ? template.sample : undefined;
         const mergedData = {
           ...(templateData ?? {}),
           ...dataRef.current,

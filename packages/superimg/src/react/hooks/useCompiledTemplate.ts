@@ -155,7 +155,7 @@ export function useCompiledTemplate(
 
     try {
       // Initialize bundler
-      await initBundler(wasmURL);
+      await initBundler();
 
       // Check if this compilation was superseded
       if (compilationId !== compilationIdRef.current) return;
@@ -167,7 +167,7 @@ export function useCompiledTemplate(
       if (compilationId !== compilationIdRef.current) return;
 
       // Compile to template
-      const result = compileTemplate(bundled);
+      const result = compileTemplate(bundled.code);
 
       // Check if this compilation was superseded
       if (compilationId !== compilationIdRef.current) return;

@@ -58,6 +58,10 @@ export type {
   Marker,
   MarkerPosition,
 
+  // Batch types
+  BatchEntry,
+  BatchProvider,
+
   // Compiler types
   CompileError,
   CompileResult,
@@ -94,7 +98,7 @@ export type {
 } from "@superimg/types";
 
 // Template helpers
-export { defineScene, defineImage, defineGif, defineSvg, defineConfig } from "@superimg/types";
+export { defineScene, defineImage, defineGif, defineSvg, defineConfig, defineBatch } from "@superimg/types";
 
 // Error classes
 export {
