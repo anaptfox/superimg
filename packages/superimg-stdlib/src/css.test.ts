@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { css, fill, center, stack, row } from "./css";
+import { css, fill, center, column, row } from "./css";
 
 describe("css", () => {
   it("serializes style object to inline string", () => {
@@ -93,7 +93,7 @@ describe("css variadic", () => {
   });
 
   it("combines multiple preset strings", () => {
-    const result = css(fill(), stack(), center());
+    const result = css(fill(), column(), center());
     expect(result).toContain("position:absolute");
     expect(result).toContain("flex-direction:column");
     expect(result).toContain("justify-content:center");
@@ -134,9 +134,9 @@ describe("center", () => {
   });
 });
 
-describe("stack", () => {
+describe("column", () => {
   it("returns flex column preset styles", () => {
-    const result = stack();
+    const result = column();
     expect(result).toContain("display:flex");
     expect(result).toContain("flex-direction:column");
   });

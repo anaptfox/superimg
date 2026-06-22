@@ -55,9 +55,7 @@ export interface StaggerItem<T> {
  * const staggered = std.stagger(["A", "B", "C"], sceneProgress, { from: "center" });
  * ```
  */
-export function stagger(count: number, progress: number, options?: StaggerOptions): number[];
-export function stagger<T>(items: T[], progress: number, options?: StaggerOptions): StaggerItem<T>[];
-export function stagger<T>(
+function staggerImpl<T>(
   countOrItems: number | T[],
   progress: number,
   options?: StaggerOptions,
@@ -118,6 +116,22 @@ export function stagger<T>(
   return results;
 }
 
+export interface StaggerFn {
+  (count: number, progress: number, options?: StaggerOptions): number[];
+  <T>(items: T[], progress: number, options?: StaggerOptions): StaggerItem<T>[];
+  lead: typeof staggerLead;
+}
+
+function staggerBase<T>(
+  countOrItems: number | T[],
+  progress: number,
+  options?: StaggerOptions,
+): number[] | StaggerItem<T>[] {
+  return staggerImpl(countOrItems, progress, options);
+}
+
+export const stagger = staggerBase as StaggerFn;
+
 function applyEasing(t: number, easing: EasingName | EasingFn | undefined): number {
   if (!easing || t === 0 || t === 1) return t;
   return tween(0, 1, t, easing);
@@ -158,3 +172,33 @@ function computeDelays(count: number, from: "start" | "end" | "center" | "edges"
 
   return delays;
 }
+
+export interface StaggerLeadOptions extends StaggerOptions {
+  /** Minimum per-item progress to count as lead (default 0.35) */
+  threshold?: number;
+}
+
+/**
+ * Index of the item currently leading a stagger (highest progress above threshold).
+ * Useful for syncing external UI (e.g. phone mockup) with staggered cards.
+ */
+export function staggerLead<T>(
+  items: T[],
+  progress: number,
+  options?: StaggerLeadOptions,
+): number {
+  if (items.length === 0) return 0;
+  const threshold = options?.threshold ?? 0.35;
+  const staggered = stagger(items, progress, options);
+  let best = 0;
+  let bestP = -1;
+  for (const entry of staggered) {
+    if (entry.progress >= threshold && entry.progress > bestP) {
+      bestP = entry.progress;
+      best = entry.index;
+    }
+  }
+  return bestP < 0 ? 0 : best;
+}
+
+stagger.lead = staggerLead;

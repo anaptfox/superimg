@@ -198,7 +198,7 @@ describe("validateAITemplate", () => {
         height: 600,
         fps: 24,
         duration: 2,
-        sample: { title: "Custom" },
+        data: { title: "Custom" },
       }
     );
     expect(result.valid).toBe(true);
@@ -292,7 +292,7 @@ describe("validateAITemplate", () => {
           render(ctx) { return '<div>' + ctx.data.name + '</div>'; }
         });
       `),
-      { sample: { name: "Override" } }
+      { data: { name: "Override" } }
     );
     expect(result.samples?.[0]?.html).toContain("Override");
   });

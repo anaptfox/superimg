@@ -221,7 +221,7 @@ export interface TypeResult {
  *
  * Takes a string and a progress value (0–1) and returns the visible portion.
  * Compose with `std.code.highlight()` for syntax-highlighted code typing,
- * or with `std.score()` / `std.cue.*` to sequence or sync typing events.
+ * or with `std.score()` / `std.cue.*` to score and sync typing events.
  *
  * @param text - Full text to reveal
  * @param progress - Progress value, typically 0–1 (clamped internally)

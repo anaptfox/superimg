@@ -7,7 +7,7 @@ import {
   type TemplateModule,
   type CompileError,
 } from "../../index.browser.js";
-import { initBundler, bundleTemplateBrowser } from "../../index.bundler.js";
+import { loadBundler } from "./bundler-loader.js";
 
 // =============================================================================
 // GLOBAL LRU CACHE
@@ -154,7 +154,7 @@ export function useCompiledTemplate(
     setError(null);
 
     try {
-      // Initialize bundler
+      const { initBundler, bundleTemplateBrowser } = await loadBundler();
       await initBundler();
 
       // Check if this compilation was superseded

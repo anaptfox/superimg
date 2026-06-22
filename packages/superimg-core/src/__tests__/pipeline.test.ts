@@ -32,7 +32,7 @@ describe("render pipeline integration", () => {
       });
     `;
     const { template } = await compileFromString(code);
-    const ctx = makeTestContext({ sample: { title: "Override" } });
+    const ctx = makeTestContext({ data: { title: "Override" } });
     const html = template!.render(ctx);
     expect(html).toContain("Override");
   });

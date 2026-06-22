@@ -7,7 +7,7 @@
 //!   tsx scripts/harness-integrity.ts embed    - Write hash to dist/harness/.source-hash
 
 import { createHash } from "node:crypto";
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 const ROOT = join(import.meta.dirname, "..", "..", "..");
@@ -95,6 +95,7 @@ async function readEmbeddedHash(): Promise<string | null> {
  * Write hash to dist/harness/.source-hash
  */
 async function embedHash(hash: string): Promise<void> {
+  await mkdir(join(PLAYWRIGHT_PKG, "dist", "harness"), { recursive: true });
   await writeFile(HASH_FILE, hash + "\n", "utf-8");
 }
 

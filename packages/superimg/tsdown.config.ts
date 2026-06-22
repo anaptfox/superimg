@@ -77,6 +77,7 @@ export default defineConfig({
       "react",
       "vite",
       "ws",
+      "morphdom",
       // Native binding packages must be external
       "oxc-parser",
       /^@oxc-parser\//,

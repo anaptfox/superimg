@@ -257,7 +257,7 @@ async function initHome() {
     }
     const videos: VideoItem[] = await res.json();
     if (videos.length === 0) {
-      homeView.innerHTML = `<div class="p-8 text-center text-[#999]">No videos found. Create a *.video.ts file or run superimg init.</div>`;
+      homeView.innerHTML = `<div class="p-8 text-center text-[#999]">No templates found. Create a *.video.ts, *.gif.ts, *.image.ts, or *.svg.ts file — or run superimg init.</div>`;
       homeView.classList.add("visible");
       return;
     }

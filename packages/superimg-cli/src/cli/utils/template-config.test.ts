@@ -38,7 +38,7 @@ describe("parseTemplate", () => {
       );
 
       const parsed = await parseTemplate(templatePath);
-      expect(parsed.metadata.hasRenderExport).toBe(true);
+      expect(parsed.metasample.hasRenderExport).toBe(true);
       expect(parsed.templateConfig?.fps).toBe(48);
     });
   });

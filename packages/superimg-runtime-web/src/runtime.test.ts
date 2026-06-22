@@ -44,7 +44,7 @@ describe("runtime-web", () => {
     expect(runtime.getState().kind).toBe("image");
     expect(presenter.records.at(-1)?.html).toContain("initial:800x600");
 
-    runtime.update({ sample: { label: "updated" } });
+    runtime.update({ data: { label: "updated" } });
 
     expect(runtime.getElement()).toBe(element);
     expect(presenter.records.at(-1)?.html).toContain("updated:800x600");

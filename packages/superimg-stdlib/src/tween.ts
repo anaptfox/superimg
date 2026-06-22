@@ -74,7 +74,7 @@ function resolveEasing(easingOpt: EasingName | EasingFn | undefined): EasingFn {
  * @returns Interpolated value
  *
  * Internal-only. Not exposed on `ctx.std`; template authors should use
- * `std.score()` for phased animation or `std.interpolate()` for custom progress.
+ * `std.score()` for phased choreography or `std.interpolate()` for custom progress.
  * @example
  * ```ts
  * // Simple: linear interpolation

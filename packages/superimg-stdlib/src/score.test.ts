@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { createTimeline, compose } from "./score.js";
+import { createScore, mergeMotion } from "./score.js";
 
 /** Helper: create a timeline at scene progress sp, with 10s total duration. */
 function s(sp: number, phases?: Record<string, string>) {
-  return createTimeline(
+  return createScore(
     { sceneProgress: sp, sceneTimeSeconds: sp * 10, sceneDurationSeconds: 10 },
     phases,
   );
 }
 
-describe("timeline — phase normalization", () => {
+describe("score — phase normalization", () => {
   it("rejects phases that sum past 100%", () => {
     expect(() => s(0, { a: "60%", b: "60%" })).toThrow(/exceeds 100%/);
   });
@@ -33,6 +33,40 @@ describe("timeline — phase normalization", () => {
     expect(t.within("reveal")).toBeCloseTo(0.6, 5);
   });
 
+  it("`within(phase, { duration })` maps a sub-window to 0-1", () => {
+    const t = s(0.05, { intro: "2s", hold: "6s", exit: "2s" });
+    const p = t.within("intro", { duration: 0.5 });
+    expect(p).toBeCloseTo(0.5, 5);
+  });
+
+  it("`within(phase, { at, duration })` delays the sub-window", () => {
+    const t = s(0.1, { intro: "2s", hold: "6s", exit: "2s" });
+    expect(t.within("intro", { at: 0.5, duration: 0.5 })).toBe(0);
+    const t2 = s(0.15, { intro: "2s", hold: "6s", exit: "2s" });
+    expect(t2.within("intro", { at: 0.5, duration: 0.5 })).toBeCloseTo(0.5, 5);
+  });
+
+  it("`span(from, to)` maps scene-absolute seconds to 0-1", () => {
+    const t = s(0.05, { all: "100%" });
+    expect(t.span("0s", "1s")).toBeCloseTo(0.5, 5);
+    expect(s(0, { all: "100%" }).span("0s", "1s")).toBe(0);
+    expect(s(0.1, { all: "100%" }).span("0s", "1s")).toBe(1);
+  });
+
+  it("`transition(from, to, easing)` eases span progress", () => {
+    const t = s(0.05, { all: "100%" });
+    const raw = t.span("0s", "1s");
+    const eased = t.transition("0s", "1s", "easeOutCubic");
+    expect(eased).toBeGreaterThan(raw);
+    expect(t.transition("0s", "1s")).toBeCloseTo(raw, 5);
+  });
+
+  it("`inSpan(from, to)` is true only inside the window", () => {
+    expect(s(0, { all: "100%" }).inSpan("0s", "1s")).toBe(false);
+    expect(s(0.05, { all: "100%" }).inSpan("0s", "1s")).toBe(true);
+    expect(s(0.1, { all: "100%" }).inSpan("0s", "1s")).toBe(false);
+  });
+
   it("accepts seconds strings", () => {
     const t = s(0.5, { enter: "2s", hold: "6s", exit: "2s" });
     expect(t.active).toBe("hold");
@@ -44,7 +78,7 @@ describe("timeline — phase normalization", () => {
   });
 });
 
-describe("timeline — probes", () => {
+describe("score — probes", () => {
   it("exposes progress and seconds", () => {
     const t = s(0.3);
     expect(t.progress).toBe(0.3);
@@ -80,7 +114,7 @@ describe("timeline — probes", () => {
   });
 });
 
-describe("timeline — motion enter/exit", () => {
+describe("score — motion enter/exit", () => {
   it("opacity 0 at sp=0 (fully entering)", () => {
     const t = s(0);
     const m = t.motion();
@@ -226,7 +260,7 @@ describe("timeline — motion enter/exit", () => {
   });
 });
 
-describe("timeline — tween", () => {
+describe("score — tween", () => {
   it("scopes scalar interpolation to a phase", () => {
     const phases = { enter: "20%", hold: "60%", exit: "20%" };
     expect(s(0, phases).tween(0, 100, { during: "enter" })).toBeCloseTo(0, 5);
@@ -268,7 +302,7 @@ describe("timeline — tween", () => {
   });
 });
 
-describe("timeline — value", () => {
+describe("score — value", () => {
   it("passes through the value unchanged", () => {
     const t = s(0.5);
     const v = t.value(42, {});
@@ -301,30 +335,30 @@ describe("timeline — value", () => {
   });
 });
 
-describe("timeline — compose()", () => {
+describe("score — mergeMotion()", () => {
   it("merges two motion results, last-wins per property", () => {
     const a = s(0.5).motion({ y: 20 });
     const b = { y: 40 };
-    const merged = compose(a, b);
+    const merged = mergeMotion(a, b);
     expect(merged.y).toBe(40);
     expect(merged.opacity).toBe(a.opacity); // from a
   });
 
   it("rebuilds transform from merged values", () => {
     const a = s(0.5).motion();
-    const merged = compose(a, { scale: 1.05 });
+    const merged = mergeMotion(a, { scale: 1.05 });
     expect(merged.transform).toContain("scale(1.05)");
     expect(merged.style).toMatch(/opacity:/);
   });
 
   it("visible flag carries through", () => {
     const m = s(0).motion(); // not yet entered
-    const merged = compose(m, { scale: 1 });
+    const merged = mergeMotion(m, { scale: 1 });
     expect(merged.visible).toBe(false);
   });
 });
 
-describe("timeline — real migration samples", () => {
+describe("score — real migration samples", () => {
   it("stats-card pattern: y motion with stagger in enter (fraction at)", () => {
     const t = s(0.03, { enter: "30%", hold: "45%", exit: "25%" });
     const value = t.motion({ y: 15, at: 0.15 });

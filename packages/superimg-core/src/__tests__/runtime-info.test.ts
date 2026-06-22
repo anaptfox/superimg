@@ -16,7 +16,7 @@ describe("runtime template info", () => {
       render: () => "<div />",
     });
 
-    const info = resolveRuntimeTemplateInfo(template, { sample: { title: "override" } });
+    const info = resolveRuntimeTemplateInfo(template, { data: { title: "override" } });
 
     expect(info.kind).toBe("image");
     expect(info.isAnimated).toBe(false);
@@ -85,7 +85,7 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
       render: () => "<div />",
     });
 
-    const info = resolveRuntimeTemplateInfo(template, { sample: { title: "override" } });
+    const info = resolveRuntimeTemplateInfo(template, { data: { title: "override" } });
 
     // options.data spreads over sample — only explicitly supplied keys override
     expect(info.data.title).toBe("override");
@@ -99,7 +99,7 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
     });
 
     const info = resolveRuntimeTemplateInfo(template, {
-      sample: { title: "override title" },
+      data: { title: "override title" },
     });
 
     expect(info.data.title).toBe("override title");

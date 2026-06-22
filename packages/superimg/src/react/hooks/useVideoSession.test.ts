@@ -8,9 +8,11 @@ vi.mock("../../index.bundler.js", () => ({
   bundleTemplateBrowser: vi.fn().mockImplementation(async (code: string) => {
     const hasValidTemplate = /defineScene|render\s*\(/.test(code);
     if (hasValidTemplate) {
-      return "var __template = { default: { render: function() { return '<div></div>'; } } };";
+      return {
+        code: "var __template = { default: { kind: 'video', render: function() { return '<div></div>'; } } };",
+      };
     }
-    return "var __template = { default: {} };";
+    return { code: "var __template = { default: {} };" };
   }),
 }));
 

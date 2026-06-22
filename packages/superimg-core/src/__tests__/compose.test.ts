@@ -62,8 +62,8 @@ describe("compose", () => {
       render: (ctx: { data: Record<string, unknown> }) =>
         JSON.stringify(ctx.data),
     };
-    const composed = compose([{ template: scene, sample: { b: 2, c: 2 } }]);
-    const ctx = makeTestContext({ sample: { c: 3 } });
+    const composed = compose([{ template: scene, data: { b: 2, c: 2 } }]);
+    const ctx = makeTestContext({ data: { c: 3 } });
 
     expect(JSON.parse(composed.render(ctx))).toEqual({ a: 1, b: 2, c: 3 });
   });
@@ -112,6 +112,104 @@ describe("compose", () => {
 
   it("throws when scenes array is empty", () => {
     expect(() => compose([])).toThrow(/at least one scene/);
+  });
+
+  it("getSceneAtFrame returns correct scene", () => {
+    const scene1 = {
+      kind: "video" as const,
+      config: { duration: 1 },
+      render: () => "a",
+    };
+    const scene2 = {
+      kind: "video" as const,
+      config: { duration: 1 },
+      render: () => "b",
+    };
+    const composed = compose([
+      { template: scene1, id: "intro" },
+      { template: scene2, id: "outro" },
+    ]);
+
+    expect(composed.getSceneAtFrame(0).id).toBe("intro");
+    expect(composed.getSceneAtFrame(29).id).toBe("intro");
+    expect(composed.getSceneAtFrame(30).id).toBe("outro");
+    expect(composed.getSceneById("outro")?.index).toBe(1);
+  });
+
+  it("getCheckpoints returns scene start frames", () => {
+    const scene = {
+      kind: "video" as const,
+      config: { duration: 1 },
+      render: () => "",
+    };
+    const composed = compose([
+      { template: scene, id: "a", label: "Scene A" },
+      { template: scene, id: "b", label: "Scene B" },
+    ]);
+
+    const checkpoints = composed.getCheckpoints();
+    expect(checkpoints).toHaveLength(2);
+    expect(checkpoints[0]).toMatchObject({ id: "a", frame: 0, label: "Scene A" });
+    expect(checkpoints[1]).toMatchObject({ id: "b", frame: 30, label: "Scene B" });
+  });
+
+  it("passes scene metadata into render context", () => {
+    const scene = {
+      kind: "video" as const,
+      config: { duration: 1 },
+      render: (ctx: {
+        sceneIndex: number;
+        sceneId: string;
+        sceneFrame: number;
+        sceneProgress: number;
+      }) =>
+        JSON.stringify({
+          sceneIndex: ctx.sceneIndex,
+          sceneId: ctx.sceneId,
+          sceneFrame: ctx.sceneFrame,
+          sceneProgress: ctx.sceneProgress,
+        }),
+    };
+    const composed = compose([{ template: scene, id: "hero" }]);
+
+    const mid = makeTestContext({ globalFrame: 15, fps: 30, totalFrames: 30 });
+    const parsed = JSON.parse(composed.render(mid));
+
+    expect(parsed.sceneIndex).toBe(0);
+    expect(parsed.sceneId).toBe("hero");
+    expect(parsed.sceneFrame).toBe(15);
+    expect(parsed.sceneProgress).toBeCloseTo(15 / 29, 5);
+  });
+
+  it("applies exit transition at scene end", () => {
+    const scene = {
+      kind: "video" as const,
+      config: { duration: 1 },
+      render: () => "<div>content</div>",
+    };
+    const composed = compose([
+      {
+        template: scene,
+        exit: { type: "fade", duration: "500ms" },
+      },
+    ]);
+
+    const nearEnd = makeTestContext({ globalFrame: 28, fps: 30, totalFrames: 30 });
+    const html = composed.render(nearEnd);
+    const match = html.match(/opacity:([\d.]+)/);
+    expect(match).not.toBeNull();
+    expect(parseFloat(match![1])).toBeLessThan(1);
+  });
+
+  it("parses frame-based scene duration", () => {
+    const scene = {
+      kind: "video" as const,
+      config: { fps: 30 },
+      render: () => "",
+    };
+    const composed = compose([{ template: scene, duration: "30f" }]);
+    expect(composed.totalFrames).toBe(30);
+    expect(composed.duration).toBeCloseTo(1, 5);
   });
 
   it("applies easing to transitions", () => {

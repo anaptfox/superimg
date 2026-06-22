@@ -1,11 +1,11 @@
 /**
- * timeline() — unified scene-local timing primitive.
+ * score() — unified scene-local timing primitive.
  *
  * Given a phase layout in seconds/percentages, returns an object for declaring
  * motions, tweens, and values scoped to those phases.
  *
  * ```ts
- * const t = std.timeline({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
+ * const t = std.score({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
  * const card = t.motion();                            // auto enter + exit
  * const val  = t.motion({ y: 15, at: "0.1s" });       // stagger 0.1s into enter
  * const cnt  = t.tween(0, target, { during: "enter" });
@@ -14,6 +14,7 @@
  */
 
 import { clamp01, type EasingFn, type EasingName } from "./easing.js";
+import { interpolate } from "./interpolate.js";
 import * as easing from "./easing.js";
 import { lerp } from "./math.js";
 import { type SpringConfig, springCurve } from "./spring.js";
@@ -74,7 +75,7 @@ export interface MotionResult {
   style: string;
 }
 
-/** Partial motion values for use with compose(). */
+/** Partial motion values for use with mergeMotion(). */
 export type MotionValue = Partial<Pick<MotionResult, "x" | "y" | "scale" | "rotate" | "blur" | "opacity">>;
 
 export interface TweenOpts<P extends string = string> {
@@ -95,31 +96,42 @@ export interface ValueResult<T> {
   opacity: number;
 }
 
-export interface Timeline<P extends string = string> {
+export interface WithinOpts {
+  /** Phase-local start offset (0–1 fraction, or "0.5s") */
+  at?: number | string;
+  /** Window length (0–1 fraction of phase, or "1s"). Default: remainder of phase */
+  duration?: number | string;
+}
+
+export interface Score<P extends string = string> {
   readonly progress: number;
   readonly seconds: number;
   readonly active: P | "idle";
-  within(phase: P): number;
+  within(phase: P, opts?: WithinOpts): number;
+  /** Scene-absolute progress from `from` to `to` (e.g. span("0s", "1s")) */
+  span(from: string, to: string): number;
+  /** Eased scene-absolute transition progress (alias for interpolate(span(...), [0,1], [0,1], easing)) */
+  transition(from: string, to: string, easing?: EasingName | EasingFn): number;
+  /** True when scene time is strictly inside a span window */
+  inSpan(from: string, to: string): boolean;
 
   motion(opts?: MotionOpts<P>): MotionResult;
   tween(from: number, to: number, opts?: TweenOpts<P>): number;
   value<T extends number | string>(v: T, opts?: ValueOpts<P>): ValueResult<T>;
 }
 
-export type TimelineOf<P extends PhaseConfig | undefined> =
+export type ScoreOf<P extends PhaseConfig | undefined> =
   P extends PhaseConfig
-    ? Timeline<Extract<keyof P, string>>
-    : Timeline<"enter" | "hold" | "exit">;
+    ? Score<Extract<keyof P, string>>
+    : Score<"enter" | "hold" | "exit">;
 
-/** Minimal surface timeline() needs from the per-frame render context. */
-export interface TimelineContext {
+/** Minimal surface score() needs from the per-frame render context. */
+export interface ScoreContext {
   sceneProgress: number;
   sceneTimeSeconds: number;
   sceneDurationSeconds: number;
 }
 
-// Kept for any code that referenced ScoreContext by name.
-export type ScoreContext = TimelineContext;
 
 // -----------------------------------------------------------------------------
 // Defaults
@@ -192,31 +204,31 @@ function parsePhaseDuration(value: string, totalSeconds: number): number {
   if (s.endsWith("%")) {
     const pct = parseFloat(s);
     if (!Number.isFinite(pct) || pct <= 0)
-      throw new Error(`timeline(): invalid phase "%": "${value}"`);
+      throw new Error(`score(): invalid phase "%": "${value}"`);
     return pct / 100;
   }
   if (s.endsWith("ms")) {
     const ms = parseFloat(s);
     if (!Number.isFinite(ms) || ms <= 0)
-      throw new Error(`timeline(): invalid phase duration: "${value}"`);
+      throw new Error(`score(): invalid phase duration: "${value}"`);
     return ms / 1000 / totalSeconds;
   }
   if (s.endsWith("s")) {
     const sec = parseFloat(s);
     if (!Number.isFinite(sec) || sec <= 0)
-      throw new Error(`timeline(): invalid phase duration: "${value}"`);
+      throw new Error(`score(): invalid phase duration: "${value}"`);
     return sec / totalSeconds;
   }
-  throw new Error(`timeline(): phase "${value}" must end with "s", "ms", or "%" (e.g. "0.6s", "15%")`);
+  throw new Error(`score(): phase "${value}" must end with "s", "ms", or "%" (e.g. "0.6s", "15%")`);
 }
 
 function normalizePhases(cfg: PhaseConfig, totalSeconds: number): NormalizedPhase[] {
   const entries = Object.entries(cfg);
-  if (entries.length === 0) throw new Error("timeline(): phase layout must have at least one phase");
+  if (entries.length === 0) throw new Error("score(): phase layout must have at least one phase");
   const fractions = entries.map(([name, v]) => ({ name, fraction: parsePhaseDuration(v, totalSeconds) }));
   const total = fractions.reduce((s, f) => s + f.fraction, 0);
   if (total > 1.0000001)
-    throw new Error(`timeline(): phases sum to ${(total * 100).toFixed(1)}% which exceeds 100%`);
+    throw new Error(`score(): phases sum to ${(total * 100).toFixed(1)}% which exceeds 100%`);
   let acc = 0;
   return fractions.map(({ name, fraction }) => {
     const start = acc;
@@ -232,7 +244,7 @@ function parseMotionTime(value: number | string, phaseSpan: number, totalSeconds
   const s = value.trim();
   if (s.endsWith("ms")) return parseFloat(s) / 1000 / totalSeconds;
   if (s.endsWith("s")) return parseFloat(s) / totalSeconds;
-  throw new Error(`timeline(): time "${value}" must be "Xs" or "Xms"`);
+  throw new Error(`score(): time "${value}" must be "Xs" or "Xms"`);
 }
 
 // -----------------------------------------------------------------------------
@@ -282,10 +294,10 @@ function makeResult(
 // Factory
 // -----------------------------------------------------------------------------
 
-export function createTimeline<P extends PhaseConfig | undefined = undefined>(
-  ctx: TimelineContext,
+export function createScore<P extends PhaseConfig | undefined = undefined>(
+  ctx: ScoreContext,
   phases?: P,
-): TimelineOf<P> {
+): ScoreOf<P> {
   const cfg = (phases ?? DEFAULT_PHASES) as PhaseConfig;
   const totalSeconds = ctx.sceneDurationSeconds > 0 ? ctx.sceneDurationSeconds : 1;
   const ordered = normalizePhases(cfg, totalSeconds);
@@ -305,15 +317,52 @@ export function createTimeline<P extends PhaseConfig | undefined = undefined>(
   function phaseOf(name: string): NormalizedPhase {
     const p = phaseMap.get(name);
     if (!p) throw new Error(
-      `timeline: unknown phase "${name}". Known: ${ordered.map((o) => o.name).join(", ")}`
+      `score: unknown phase "${name}". Known: ${ordered.map((o) => o.name).join(", ")}`
     );
     return p;
   }
 
-  function within(name: string): number {
+  function phaseLocal(name: string): number {
     const p = phaseOf(name);
     if (p.start === p.end) return sp >= p.start ? 1 : 0;
     return clamp01((sp - p.start) / (p.end - p.start));
+  }
+
+  function within(name: string, opts?: WithinOpts): number {
+    const local = phaseLocal(name);
+    if (!opts) return local;
+
+    const phase = phaseOf(name);
+    const span = phase.end - phase.start;
+    const atLocal = opts.at !== undefined
+      ? (typeof opts.at === "number" ? opts.at : parseMotionTime(opts.at, span, totalSeconds) / span)
+      : 0;
+    const durLocal = opts.duration !== undefined
+      ? (typeof opts.duration === "number" ? opts.duration : parseMotionTime(opts.duration, span, totalSeconds) / span)
+      : 1 - atLocal;
+
+    if (local <= atLocal) return 0;
+    if (local >= atLocal + durLocal) return 1;
+    return clamp01((local - atLocal) / durLocal);
+  }
+
+  function span(from: string, to: string): number {
+    const start = parseMotionTime(from, 1, totalSeconds);
+    const end = parseMotionTime(to, 1, totalSeconds);
+    if (sp <= start) return 0;
+    if (sp >= end) return 1;
+    return clamp01((sp - start) / (end - start));
+  }
+
+  function transition(from: string, to: string, easing?: EasingName | EasingFn): number {
+    const raw = span(from, to);
+    if (!easing) return raw;
+    return interpolate(raw, [0, 1], [0, 1], easing);
+  }
+
+  function inSpan(from: string, to: string): boolean {
+    const raw = span(from, to);
+    return raw > 0 && raw < 1;
   }
 
   function motion(opts: MotionOpts = {}): MotionResult {
@@ -427,25 +476,36 @@ export function createTimeline<P extends PhaseConfig | undefined = undefined>(
     return { current: v, opacity };
   }
 
-  const result: Timeline = { progress: sp, seconds: secs, active: activeName, within, motion, tween, value };
-  return result as unknown as TimelineOf<P>;
+  const result: Score = {
+    progress: sp,
+    seconds: secs,
+    active: activeName,
+    within,
+    span,
+    transition,
+    inSpan,
+    motion,
+    tween,
+    value,
+  };
+  return result as unknown as ScoreOf<P>;
 }
 
 /**
- * The public `timeline()` runtime stub. `std.timeline()` on `ctx.std` is a
+ * The public `score()` runtime stub. `std.score()` on `ctx.std` is a
  * bound variant created per-render by the stdlib assembler. Importing and
- * calling `createTimeline(ctx, phases)` directly also works.
+ * calling `createScore(ctx, phases)` directly also works.
  */
-export function timeline<P extends PhaseConfig | undefined = undefined>(
-  this: TimelineContext | void,
+export function score<P extends PhaseConfig | undefined = undefined>(
+  this: ScoreContext | void,
   phases?: P,
-): TimelineOf<P> {
+): ScoreOf<P> {
   if (this && typeof this.sceneProgress === "number") {
-    return createTimeline(this, phases);
+    return createScore(this, phases);
   }
   throw new Error(
-    "timeline(): must be invoked through ctx.std.timeline() — the stdlib binds it to the render context. " +
-      "For direct use, call createTimeline(ctx, phases).",
+    "score(): must be invoked through ctx.std.score() — the stdlib binds it to the render context. " +
+      "For direct use, call createScore(ctx, phases).",
   );
 }
 
@@ -456,9 +516,9 @@ export function timeline<P extends PhaseConfig | undefined = undefined>(
  * @example
  * const card = t.motion({ y: 20 });
  * const idle = { scale: std.oscillate(time, { period: "1s", from: 0.98, to: 1.02 }) };
- * return `<div style="${std.css(std.compose(card, idle))}">`;
+ * return `<div style="${std.css(std.mergeMotion(card, idle))}">`;
  */
-export function compose(...motions: Array<MotionValue | MotionResult>): MotionResult {
+export function mergeMotion(...motions: Array<MotionValue | MotionResult>): MotionResult {
   let x = 0, y = 0, scale = 1, rotate = 0, blur = 0, opacity = 1;
   let enter = 1, exitVal = 0;
   let visible = true;

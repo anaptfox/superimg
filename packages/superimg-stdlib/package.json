@@ -95,6 +95,18 @@
       "import": "./dist/layout.js",
       "types": "./dist/layout.d.ts"
     },
+    "./layers": {
+      "import": "./dist/layers.js",
+      "types": "./dist/layers.d.ts"
+    },
+    "./safe-area": {
+      "import": "./dist/safe-area.js",
+      "types": "./dist/safe-area.d.ts"
+    },
+    "./reveal": {
+      "import": "./dist/reveal.js",
+      "types": "./dist/reveal.d.ts"
+    },
     "./oscillate": {
       "import": "./dist/oscillate.js",
       "types": "./dist/oscillate.d.ts"

@@ -11,7 +11,7 @@ describe("renderNativeToHtml", () => {
       render: (ctx) => `<div data-w="${ctx.width}">hello ${ctx.data?.name ?? ""}</div>`,
     };
 
-    const html = renderNativeToHtml({ template, sample: { name: "world" } });
+    const html = renderNativeToHtml({ template, data: { name: "world" } });
 
     expect(html).toContain("hello world");
     expect(html).toContain('data-w="800"');
@@ -29,7 +29,7 @@ describe("renderNativeToHtml", () => {
 
     const html = renderNativeToHtml({
       template: bundled,
-      sample: { title: "Edge Render" },
+      data: { title: "Edge Render" },
     });
 
     expect(html).toContain("Edge Render");
@@ -60,7 +60,7 @@ describe("renderToHtml — sample field fallback", () => {
       render: (ctx) => `<span>${(ctx.data as any).greeting ?? ""}</span>`,
     };
 
-    const html = renderToHtml({ template, sample: { greeting: "runtime override" } });
+    const html = renderToHtml({ template, data: { greeting: "runtime override" } });
 
     expect(html).toContain("runtime override");
     expect(html).not.toContain("sample value");

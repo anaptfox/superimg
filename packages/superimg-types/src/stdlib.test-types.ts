@@ -31,4 +31,15 @@ const _ctxCue = ctx.std.cue.transcript(
   ctx.sceneTimeSeconds,
 );
 
-const _ctxTimeline = ctx.std.timeline;
+const _ctxScore = ctx.std.score;
+
+const t = std.score({ hook: "3.5s", features: "7s", cta: "5.5s" });
+const _handoffP = t.transition("3s", "4s", "easeInOutCubic");
+const _inHandoff: boolean = t.inSpan("3s", "4s");
+const _handoffLocal = std.reveal.handoffLocal(_handoffP);
+const _lead = std.stagger.lead(["a", "b"], t.within("features"), { duration: 0.5 });
+const L = std.layers({ width: 1920, height: 1080 });
+const _handoffHtml = L.handoff({
+  shared: [L.bg("bg")],
+  transition: std.reveal.split({ from: "a", to: "b", progress: 0.5 }),
+});

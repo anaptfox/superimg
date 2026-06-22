@@ -7,7 +7,7 @@
  * @example
  * ```ts
  * const frame = { x: 0, y: 0, width, height };
- * const [title, label, window] = std.layout.stack(
+ * const [title, label, window] = std.layout.partitionY(
  *   frame,
  *   [
  *     { height: height * 0.15 },
@@ -66,7 +66,7 @@ function assertFiniteNonNegative(value: number, label: string): void {
  *
  * Rows do not need to fill the area; unused space is simply left below the last row.
  */
-export function stack(area: Box, rows: RowSpec[], opts: StackOptions = {}): Box[] {
+export function partitionY(area: Box, rows: RowSpec[], opts: StackOptions = {}): Box[] {
   const gap = opts.gap ?? 0;
   assertFiniteNonNegative(gap, "options.gap");
 
@@ -76,7 +76,7 @@ export function stack(area: Box, rows: RowSpec[], opts: StackOptions = {}): Box[
     const row = rows[i];
     if (row.fill) {
       if (fillIndex !== -1) {
-        throw new Error(`layout.stack: at most one row may set fill:true (rows ${fillIndex} and ${i})`);
+        throw new Error(`layout.partitionY: at most one row may set fill:true (rows ${fillIndex} and ${i})`);
       }
       fillIndex = i;
     } else {
@@ -91,7 +91,7 @@ export function stack(area: Box, rows: RowSpec[], opts: StackOptions = {}): Box[
 
   if (consumedWithoutFill > area.height + 1e-6) {
     throw new Error(
-      `layout.stack: rows + gaps (${consumedWithoutFill}) exceed area height (${area.height})`,
+      `layout.partitionY: rows + gaps (${consumedWithoutFill}) exceed area height (${area.height})`,
     );
   }
 

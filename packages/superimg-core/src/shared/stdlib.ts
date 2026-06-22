@@ -1,5 +1,5 @@
 //! Shared stdlib construction - used by wasm.ts and other runtime code
-//! The static members live in `stdlib`; ctx-scoped members (`score`, `px`,
+//! The static members live in `stdlib`; ctx-scoped members (`score` timing, `px`,
 //! `scale`) are appended per-frame inside createRenderContext.
 
 import type { Stdlib } from "@superimg/types";
@@ -7,13 +7,15 @@ import * as math from "@superimg/stdlib/math";
 import * as color from "@superimg/stdlib/color";
 import * as text from "@superimg/stdlib/text";
 import * as date from "@superimg/stdlib/date";
-import { css, fill, center, stack, row } from "@superimg/stdlib/css";
+import { css, fill, center, column, row } from "@superimg/stdlib/css";
 import * as responsive from "@superimg/stdlib/responsive";
 import * as subtitle from "@superimg/stdlib/subtitle";
 import * as presets from "@superimg/stdlib/presets";
 import * as code from "@superimg/stdlib/code";
 import * as cue from "@superimg/stdlib/cue";
-import { compose } from "@superimg/stdlib/score";
+import { mergeMotion } from "@superimg/stdlib/score";
+import { layers } from "@superimg/stdlib/layers";
+import { revealFx } from "@superimg/stdlib/reveal";
 import { oscillate, loop, pingpong, wiggle } from "@superimg/stdlib/oscillate";
 import * as backgrounds from "@superimg/stdlib/backgrounds";
 import { montage } from "@superimg/stdlib/montage";
@@ -30,15 +32,15 @@ const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
 ) as Omit<typeof math, "lerp">;
 
-/** Per-frame parts bound by createRenderContext: timeline, px, scale. */
-export type StaticStdlib = Omit<Stdlib, "timeline" | "px" | "scale">;
+/** Per-frame parts bound by createRenderContext: score, px, scale. */
+export type StaticStdlib = Omit<Stdlib, "score" | "px" | "scale">;
 
 export const stdlib: StaticStdlib = {
   math: mathWithoutLerp,
   color,
   text,
   date,
-  css: Object.assign(css, { fill, center, stack, row }),
+  css: Object.assign(css, { fill, center, column, row }),
   responsive,
   subtitle,
   presets,
@@ -55,7 +57,9 @@ export const stdlib: StaticStdlib = {
   path: Object.assign(path, { parse: createMotionPath }),
   svg: { draw, filter, morph, reveal, shape, textPath },
   layout,
-  compose,
+  mergeMotion,
+  layers,
+  reveal: revealFx,
   oscillate,
   loop,
   pingpong,

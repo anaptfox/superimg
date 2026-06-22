@@ -97,10 +97,10 @@ export function center(): string {
 }
 
 /**
- * Preset: flexbox column stack.
+ * Preset: flexbox column layout.
  * Use for vertical layouts.
  */
-export function stack(): string {
+export function column(): string {
   return "display:flex;flex-direction:column";
 }
 

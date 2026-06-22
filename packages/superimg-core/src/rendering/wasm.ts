@@ -9,7 +9,7 @@ import type {
   SvgStdlib,
 } from "@superimg/types";
 import { stdlib } from "../shared/stdlib.js";
-import { createTimeline } from "@superimg/stdlib/score";
+import { createScore } from "@superimg/stdlib/score";
 import type { PhaseConfig } from "@superimg/stdlib/score";
 
 /**
@@ -77,8 +77,8 @@ export function createRenderContext(
       ...stdlib,
       px: (value: number) => `${value * scale}px`,
       scale,
-      timeline: <P extends PhaseConfig | undefined = undefined>(phases?: P) =>
-        createTimeline(
+      score: <P extends PhaseConfig | undefined = undefined>(phases?: P) =>
+        createScore(
           { sceneProgress: progress, sceneTimeSeconds: timeSeconds, sceneDurationSeconds: durationSeconds },
           phases,
         ),

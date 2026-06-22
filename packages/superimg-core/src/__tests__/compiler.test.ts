@@ -266,7 +266,7 @@ describe("compileTemplate (with bundled code)", () => {
     expect(result.template?.sample).toEqual({ title: "Object default" });
 
     const html = result.template!.render(
-      makeTestContext({ sample: { title: "Object default" } })
+      makeTestContext({ data: { title: "Object default" } })
     );
     expect(html).toBe("<div>Object default</div>");
   });
@@ -289,7 +289,7 @@ describe("compileTemplate (with bundled code)", () => {
     expect(result.template?.sample).toEqual({ title: "Define default" });
 
     const html = result.template!.render(
-      makeTestContext({ sample: { title: "Define default" } })
+      makeTestContext({ data: { title: "Define default" } })
     );
     expect(html).toBe("<div>Define default</div>");
   });

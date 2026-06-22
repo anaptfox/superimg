@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { stack, inset, type Box } from "./layout";
+import { partitionY, inset, type Box } from "./layout";
 
 const area: Box = { x: 0, y: 0, width: 1920, height: 1080 };
 
-describe("stack", () => {
+describe("partitionY", () => {
   it("lays out three fixed rows top-to-bottom", () => {
-    const [a, b, c] = stack(area, [{ height: 100 }, { height: 200 }, { height: 300 }]);
+    const [a, b, c] = partitionY(area, [{ height: 100 }, { height: 200 }, { height: 300 }]);
     expect(a).toEqual({ x: 0, y: 0, width: 1920, height: 100 });
     expect(b).toEqual({ x: 0, y: 100, width: 1920, height: 200 });
     expect(c).toEqual({ x: 0, y: 300, width: 1920, height: 300 });
@@ -13,14 +13,14 @@ describe("stack", () => {
 
   it("inherits area.x/width on each row", () => {
     const offset: Box = { x: 50, y: 10, width: 800, height: 600 };
-    const [a] = stack(offset, [{ height: 100 }]);
+    const [a] = partitionY(offset, [{ height: 100 }]);
     expect(a.x).toBe(50);
     expect(a.width).toBe(800);
     expect(a.y).toBe(10);
   });
 
   it("fill row consumes remaining height", () => {
-    const [a, b, c] = stack(area, [{ height: 162 }, { fill: true }, { height: 58 }]);
+    const [a, b, c] = partitionY(area, [{ height: 162 }, { fill: true }, { height: 58 }]);
     expect(a.height).toBe(162);
     expect(b.y).toBe(162);
     expect(b.height).toBe(1080 - 162 - 58);
@@ -29,7 +29,7 @@ describe("stack", () => {
   });
 
   it("applies gap between rows, not before first or after last", () => {
-    const [a, b, c] = stack(area, [{ height: 100 }, { height: 100 }, { height: 100 }], {
+    const [a, b, c] = partitionY(area, [{ height: 100 }, { height: 100 }, { height: 100 }], {
       gap: 20,
     });
     expect(a.y).toBe(0);
@@ -38,39 +38,39 @@ describe("stack", () => {
   });
 
   it("gap is included when computing fill height", () => {
-    const [, b] = stack(area, [{ height: 100 }, { fill: true }, { height: 100 }], { gap: 50 });
+    const [, b] = partitionY(area, [{ height: 100 }, { fill: true }, { height: 100 }], { gap: 50 });
     expect(b.height).toBe(1080 - 100 - 100 - 50 - 50);
   });
 
   it("allows fixed rows to under-fill the area (unused space below)", () => {
-    const [a, b] = stack(area, [{ height: 100 }, { height: 100 }]);
+    const [a, b] = partitionY(area, [{ height: 100 }, { height: 100 }]);
     expect(a.height).toBe(100);
     expect(b.height).toBe(100);
     expect(b.y + b.height).toBe(200);
   });
 
   it("throws when fixed rows + gaps exceed area height", () => {
-    expect(() => stack(area, [{ height: 800 }, { height: 400 }])).toThrow(/exceed area height/);
+    expect(() => partitionY(area, [{ height: 800 }, { height: 400 }])).toThrow(/exceed area height/);
   });
 
   it("throws when more than one fill row is specified", () => {
-    expect(() => stack(area, [{ fill: true }, { fill: true }])).toThrow(/at most one row/);
+    expect(() => partitionY(area, [{ fill: true }, { fill: true }])).toThrow(/at most one row/);
   });
 
   it("throws on negative height", () => {
-    expect(() => stack(area, [{ height: -10 }])).toThrow(/non-negative/);
+    expect(() => partitionY(area, [{ height: -10 }])).toThrow(/non-negative/);
   });
 
   it("throws on negative gap", () => {
-    expect(() => stack(area, [{ height: 10 }], { gap: -5 })).toThrow(/non-negative/);
+    expect(() => partitionY(area, [{ height: 10 }], { gap: -5 })).toThrow(/non-negative/);
   });
 
   it("handles an empty row list", () => {
-    expect(stack(area, [])).toEqual([]);
+    expect(partitionY(area, [])).toEqual([]);
   });
 
   it("treats missing height as 0", () => {
-    const [a, b] = stack(area, [{}, { height: 50 }]);
+    const [a, b] = partitionY(area, [{}, { height: 50 }]);
     expect(a.height).toBe(0);
     expect(b.y).toBe(0);
     expect(b.height).toBe(50);

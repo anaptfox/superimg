@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -80,9 +80,32 @@ function listBuiltFiles(dir) {
   return files;
 }
 
+/** Rolldown emits a side-effect node:module import for CJS interop; strip for browser bundles. */
+function stripRolldownNodeModuleImport() {
+  let patched = 0;
+
+  for (const builtFile of listBuiltFiles(distRoot)) {
+    if (!/rolldown-runtime-.*\.js$/.test(builtFile)) {
+      continue;
+    }
+
+    const contents = readFileSync(builtFile, "utf8");
+    const next = contents.replace(/^import "node:module";\n/, "");
+    if (next !== contents) {
+      writeFileSync(builtFile, next);
+      patched += 1;
+    }
+  }
+
+  return patched;
+}
+
 async function main() {
   assert(existsSync(coreEnginePath), `Missing built core engine at ${coreEnginePath}`);
   assert(existsSync(cliPath), `Missing built CLI entrypoint at ${cliPath}`);
+
+  const patchedRuntimeChunks = stripRolldownNodeModuleImport();
+  assert(patchedRuntimeChunks > 0, "Expected at least one rolldown-runtime chunk to patch");
 
   for (const artifact of expectedArtifacts) {
     const artifactPath = join(distRoot, artifact);
@@ -120,6 +143,7 @@ async function main() {
   ]);
 
   console.log("Verified superimg build artifacts:");
+  console.log(`- stripped node:module from ${patchedRuntimeChunks} rolldown-runtime chunk(s)`);
   console.log(`- ${coreEnginePath} has no @superimg/stdlib/timeline import`);
   console.log(`- ${cliPath} exists`);
   console.log("- all public subpath artifacts exist");

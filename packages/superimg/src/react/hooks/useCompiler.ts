@@ -11,7 +11,7 @@ import {
   type RenderContext,
   type SuperImgError,
 } from "../../index.browser.js";
-import { initBundler, bundleTemplateBrowser } from "../../index.bundler.js";
+import { loadBundler } from "./bundler-loader.js";
 
 export interface UseCompilerReturn {
   /** Whether the bundler is ready (esbuild-wasm initialized) */
@@ -50,7 +50,10 @@ export function useCompiler(): UseCompilerReturn {
   const [error, setError] = useState<SuperImgError | null>(null);
 
   useEffect(() => {
-    initBundler().then(() => setReady(true)).catch((e: any) => {
+    loadBundler()
+      .then(({ initBundler }) => initBundler())
+      .then(() => setReady(true))
+      .catch((e: any) => {
       if (e?.name === "BrowserNotSupportedError") {
         setError(e);
       }
@@ -59,6 +62,7 @@ export function useCompiler(): UseCompilerReturn {
 
   const compile = useCallback(async (code: string): Promise<CompileResult> => {
     try {
+      const { initBundler, bundleTemplateBrowser } = await loadBundler();
       await initBundler();
       if (!ready) setReady(true);
 

@@ -45,9 +45,9 @@ const imageModule: ImageModule = {
     // @ts-expect-error - no ctx.fps
     const fps = ctx.fps;
 
-    // ImageStdlib should NOT have timeline, oscillate, loop, etc.
-    // @ts-expect-error - no timeline
-    const tl = ctx.std.timeline;
+    // ImageStdlib should NOT have score, oscillate, loop, etc.
+    // @ts-expect-error - no score
+    const tl = ctx.std.score;
 
     // @ts-expect-error - no oscillate
     const osc = ctx.std.oscillate;
@@ -108,8 +108,8 @@ const gifModule: GifModule = {
     const time = ctx.globalTimeSeconds;
     const fps = ctx.fps;
 
-    // But GIF should use timeline (video context)
-    const tl = ctx.std.timeline({ hold: "3s", exit: "1s" });
+    // But GIF should use score (video context)
+    const tl = ctx.std.score({ hold: "3s", exit: "1s" });
 
     return `<div>${frame}</div>`;
   },
@@ -162,9 +162,9 @@ const svgModule: SvgModule = {
     // @ts-expect-error - no ctx.fps
     const fps = ctx.fps;
 
-    // SvgStdlib should NOT have timeline, oscillate, etc.
-    // @ts-expect-error - no timeline
-    const tl = ctx.std.timeline;
+    // SvgStdlib should NOT have score, oscillate, etc.
+    // @ts-expect-error - no score
+    const tl = ctx.std.score;
 
     // But CAN have viz (for math visualization)
     const coords = ctx.std.viz.createCoords({
