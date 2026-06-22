@@ -79,8 +79,8 @@ export default defineScene({
       high, low, sparkline, upColor, downColor
     } = data;
 
-    // timeline: enter (0.6s) -> hold (2.2s) -> exit (1.2s)
-    const t = std.timeline({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
+    // score phases: enter (0.6s) → hold (2.2s) → exit (1.2s)
+    const t = std.score({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
 
     // === MOTIONS ===
     const identityAnim = t.motion({

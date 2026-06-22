@@ -178,7 +178,7 @@ export default defineScene<TimelineVideoData>({
       const IN_DUR = 0.15;
       const OUT_DUR = 0.15;
 
-      const t = std.timeline(lp, [0, IN_DUR, 1 - OUT_DUR, 1]);
+      const t = std.score(lp, [0, IN_DUR, 1 - OUT_DUR, 1]);
       const opacity = t.motion([0, 1, 1, 0], [themeEasing, "linear", "easeOutCubic"]);
       const yOffset = t.motion([40, 0, 0, -40], [themeEasing, "linear", "easeOutCubic"]);
 

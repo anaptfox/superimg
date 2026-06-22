@@ -4,7 +4,7 @@ This guide covers how SuperImg discovers videos, loads configuration, and resolv
 
 ## Table of Contents
 
-- [Video Discovery](#video-discovery)
+- [Template Discovery](#template-discovery)
 - [Cascading Config (_config.ts)](#cascading-config-_configts)
 - [Configuration Precedence](#configuration-precedence)
 - [Output Presets](#output-presets)
@@ -12,15 +12,21 @@ This guide covers how SuperImg discovers videos, loads configuration, and resolv
 
 ---
 
-## Video Discovery
+## Template Discovery
 
-SuperImg automatically discovers all video templates in your project. No registration or manifest file is needed.
+SuperImg automatically discovers all templates in your project. No registration or manifest file is needed.
 
-- **Pattern:** Any file ending in `.video.ts` or `.video.js` is a video template
+| Kind | Pattern | Factory | Output |
+|------|---------|---------|--------|
+| Video | `*.video.ts`, `*.video.js` | `defineScene` | MP4 |
+| GIF | `*.gif.ts`, `*.gif.js` | `defineGif` | GIF |
+| Image | `*.image.ts`, `*.image.js` | `defineImage` | PNG / WebP / JPEG |
+| SVG | `*.svg.ts`, `*.svg.js` | `defineSvg` | SVG |
+
 - **Excluded directories:** `node_modules`, `.next`, `.vercel`, `dist`, `out`, `.git`, `build`, `.turbo`
-- **Video name:** The relative path without the extension. For example, `src/social/promo.video.ts` becomes the video named `src/social/promo`
+- **Template name:** Relative path without extension (e.g. `src/social/promo.video.ts` → `src/social/promo`)
 
-Use `superimg list` to see all discovered videos and their resolved dimensions.
+Use `superimg list` to see all discovered templates and their resolved dimensions.
 
 ---
 

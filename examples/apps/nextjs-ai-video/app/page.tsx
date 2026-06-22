@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useVideoSession } from "superimg/react";
-import { type TemplateModule } from "superimg";
+import { type TemplateModule } from "superimg/browser";
 import { timelineTemplate, type TimelineData } from "@/lib/template";
 
 const SUGGESTIONS = [

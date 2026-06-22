@@ -10,18 +10,29 @@ This guide covers how to create templates, define default data, pass data to sce
 
 ---
 
+## Template kinds
+
+| Kind | Factory | File | Returns |
+|------|---------|------|---------|
+| **video** | `defineScene` | `*.video.ts` | HTML per frame → MP4 |
+| **gif** | `defineGif` | `*.gif.ts` | HTML per frame → GIF |
+| **image** | `defineImage` | `*.image.ts` | HTML → still image |
+| **svg** | `defineSvg` | `*.svg.ts` | SVG markup |
+
+Video and GIF use full temporal stdlib (`std.score`, `std.layers`, …). Image and SVG use a static subset — no `score` or `layers`. **Layer the frame, score the motion** applies to video and GIF.
+
 ## Basic Templates
 
-A template is a function that receives a `RenderContext` and returns HTML. The recommended way to create templates is with `defineScene` and a `data` object:
+A template's `render(ctx)` returns markup for the current frame (video/gif) or a single frame (image/svg). Use `sample` for default data:
 
-### Module Templates (recommended)
+### Video template (recommended starting point)
 
 ```typescript
-// templates/intro.ts
+// templates/intro.video.ts
 import { defineScene } from 'superimg';
 
 export default defineScene({
-  data: {
+  sample: {
     name: 'World',
   },
   config: {
@@ -53,7 +64,7 @@ Templates can define named output presets via `config.outputs` to target multipl
 
 ```typescript
 export default defineScene({
-  data: { title: 'Untitled' },
+  sample: { title: 'Untitled' },
   config: {
     width: 1920,
     height: 1080,
@@ -143,7 +154,7 @@ Presets for common layouts:
 ```typescript
 std.css.fill()   // position:absolute; top:0; left:0; width:100%; height:100%
 std.css.center() // display:flex; align-items:center; justify-content:center
-std.css.stack()  // display:flex; flex-direction:column
+std.css.column()  // display:flex; flex-direction:column
 std.css.row()    // display:flex; flex-direction:row
 ```
 
@@ -171,18 +182,51 @@ export default defineScene({
 
 ---
 
-## Template Data
-
-Templates can export a `data` object. The runtime merges `{ ...data, ...incomingData }` before passing to `ctx.data`. This makes templates self-contained — they render correctly with zero configuration.
-
-### Defining Data
+### Still image
 
 ```typescript
-// templates/product.ts — using defineScene (recommended)
+import { defineImage } from 'superimg';
+
+export default defineImage({
+  sample: { title: 'SuperImg' },
+  config: { width: 1200, height: 630 },
+  render(ctx) {
+    const { std, width, height, data } = ctx;
+    return `<div style="${std.css({ width, height, background: '#0f172a' }, std.css.center())}">
+      <h1 style="color:#fff;font-size:64px">${data.title}</h1>
+    </div>`;
+  },
+});
+```
+
+### SVG
+
+```typescript
+import { defineSvg } from 'superimg';
+
+export default defineSvg({
+  config: { width: 800, height: 400 },
+  render(ctx) {
+    const { width, height } = ctx;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+      <circle cx="400" cy="200" r="80" fill="#667eea"/>
+    </svg>`;
+  },
+});
+```
+
+## Template Data
+
+Templates export a `sample` object. At render time the runtime merges incoming data and exposes the result as `ctx.data`. This makes templates self-contained — they render correctly with zero configuration.
+
+### Defining sample data
+
+```typescript
+// templates/product.video.ts
 import { defineScene } from 'superimg';
 
 export default defineScene({
-  data: {
+  sample: {
     title: 'Untitled',
     price: 0,
     discount: undefined as number | undefined,
@@ -224,7 +268,7 @@ interface RenderContext<
   TData = Record<string, unknown>,
 > {
   // Standard library
-  std: Stdlib;                      // Tween, math, color utilities
+  std: Stdlib;                      // score, layers, interpolate, math, color, …
 
   // Global position (entire video)
   globalFrame: number;              // Current frame in video
@@ -270,33 +314,32 @@ interface RenderContext<
 
 ## Best Practices
 
-### 1. Use defineScene with Data for Reusable Templates
+### 1. Use sample for reusable templates
 
 ```typescript
 import { defineScene } from 'superimg';
 
-// Good - self-contained with data
 export default defineScene({
-  data: {
+  sample: {
     title: 'Untitled',
     items: [] as string[],
   },
   render(ctx) {
     const { title, items } = ctx.data;
-    // ctx.data is merged from data + incoming overrides
+    // ctx.data = sample merged with CLI/API overrides
     return `<div>${title}</div>`;
   },
 });
 ```
 
-### 2. Use Data for Optional Fields
+### 2. Optional fields in sample
 
 ```typescript
 export default defineScene({
-  data: {
+  sample: {
     title: 'Hello',
-    subtitle: undefined as string | undefined,  // Optional
-    color: '#000',                              // Optional with default
+    subtitle: undefined as string | undefined,
+    color: '#000',
   },
   render(ctx) {
     const { title, subtitle, color } = ctx.data;
@@ -305,9 +348,9 @@ export default defineScene({
 });
 ```
 
-### 3. Full Type Inference
+### 3. Full type inference
 
-`defineScene` infers types from your `data` — no manual type annotations needed. `ctx.data` is automatically typed.
+`defineScene` infers types from your `sample` — `ctx.data` is automatically typed.
 
 ### 4. Use Explicit Duration in Config
 

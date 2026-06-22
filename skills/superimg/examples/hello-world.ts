@@ -18,8 +18,8 @@ export default defineScene({
   render(ctx) {
     const { std, width, height, data } = ctx;
 
-    // timeline() defaults to enter 15% / hold 70% / exit 15%
-    const t = std.timeline();
+    // score() defaults to enter 15% / hold 70% / exit 15%
+    const t = std.score();
 
     // Auto fade-in, hold, then fade-out. Slides up from y:30 on entrance.
     const card = t.motion({ y: 30 });

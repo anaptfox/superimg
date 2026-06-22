@@ -18,8 +18,8 @@ export default defineScene({
     const { std, data } = ctx;
     const { title, features } = data;
 
-    // timeline: intro (2s) → features (4s) → outro (2s)
-    const t = std.timeline({ intro: "2.0s", features: "4.0s", outro: "2.0s" });
+    // score phases: intro (2s) → features (4s) → outro (2s)
+    const t = std.score({ intro: "2.0s", features: "4.0s", outro: "2.0s" });
 
     // Phase-specific rendering based on which is active
     if (t.active === "intro") {

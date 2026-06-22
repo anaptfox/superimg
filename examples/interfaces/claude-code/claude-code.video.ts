@@ -201,7 +201,7 @@ export default defineScene<ClaudeCodeData>({
     } = data;
 
     const colors = THEME[theme] ?? THEME.dark;
-    const score = std.timeline({ intro: "0.68s", welcome: "1.53s", prompt: "2.13s", work: "2.98s", final: "0.85s", outro: "0.34s" });
+    const score = std.score({ intro: "0.68s", welcome: "1.53s", prompt: "2.13s", work: "2.98s", final: "0.85s", outro: "0.34s" });
     const intro = score.motion({ during: "intro", y: 22, scale: 0.992, exit: false });
     const welcomeProgress = score.within("welcome");
     const promptProgress = score.within("prompt");

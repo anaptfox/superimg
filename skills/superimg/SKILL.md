@@ -2,34 +2,73 @@
 name: superimg
 description: >
   This skill should be used when the user asks to "create a video template",
-  "animate with SuperImg", "render HTML to MP4", "use defineScene", "work with
-  ctx.std", or mentions SuperImg, video generation, or programmatic video.
-  Provides the SuperImg framework for HTML/CSS templates rendered to video.
+  "render HTML to MP4/PNG/GIF/SVG", "use defineScene", "defineImage",
+  "defineGif", "defineSvg", "work with ctx.std", or mentions SuperImg,
+  video generation, or programmatic media. Provides the SuperImg framework
+  for HTML/CSS templates rendered to video, image, GIF, or SVG.
 ---
 
 # SuperImg Skill
 
 ## Mental Model
 
-Video is a pure function of time. Your template's `render(ctx)` is called once per frame. It receives a `RenderContext` and returns an HTML string. All animation is derived from `sceneProgress` (0→1 over the scene) or `sceneTimeSeconds` (elapsed seconds). Use `std.score` as the primary orchestration primitive for layouts, and `std.interpolate` or `std.spring` for low-level math. Data comes from `data`, merged with per-scene overrides.
+**Layer the frame, score the motion** — for **video** and **gif** (animated templates).
 
-## Quick Start
+### Four template kinds
+
+| Kind | Factory | File | Stdlib | Output |
+|------|---------|------|--------|--------|
+| **video** | `defineScene` | `*.video.ts` | Full (`score`, `layers`, `reveal`, `cue`, …) | MP4 |
+| **gif** | `defineGif` | `*.gif.ts` | Full (same temporal APIs as video) | GIF |
+| **image** | `defineImage` | `*.image.ts` | Static — no `score`, `layers`, `reveal`, `cue` | PNG/WebP/JPEG |
+| **svg** | `defineSvg` | `*.svg.ts` | Static — same as image + `std.viz` / `std.svg` | SVG markup |
+
+**Pick a kind:** OG card / still → `defineImage`. Chart / vector → `defineSvg` (return `<svg xmlns="...">`). Short loop → `defineGif`. Scene / reel / multi-scene → `defineScene`.
+
+### Animated path (video + gif)
+
+`render(ctx)` is a pure function of time; returns HTML each frame.
+
+| Tier | API | Role |
+|------|-----|------|
+| **Video** | `compose([scenes])` | Multi-scene chain (video only) |
+| **Template** | `defineScene` / `defineGif` | Scene contract, config, sample data |
+| **Layers** (optional) | `std.layers()` | Shot stack — bg → tint → content → overlay → fx |
+| **Score** | `std.score()` | Phase timing + motion (`t.motion().style`, `tween`, `within`) |
+
+**Satellites:** `std.cue.*` (absolute time for voiceover), `std.css` / `std.layout` (spatial layout inside planes), `interpolate` / `spring` / `stagger` (escape hatches), `mergeMotion` (combine motions), `std.reveal.*` (transition overlay utilities — mount on `L.fx()`, not a compositional tier).
+
+Simple centered card → template + score. Layered broadcast layout → add layers. Voiceover sync → cue + score.
+
+### Static path (image + svg)
+
+Single `render(ctx)` call — no `sceneProgress`. Use `std.css`, `std.layout`, `std.color`. SVG templates return real SVG markup; optional `config.duration` for CSS animation.
+
+### Footguns
+
+- **image/svg:** no `std.score()` or `std.layers()` — types exclude them
+- **`std.reveal` vs `std.svg.reveal`:** full-frame overlays vs SVG path reveals
+- **Broadcast overlays:** `std.layers({ mode: "transparent" })`
+- **Flat HTML (no layers):** set root `width` / `height` via `std.css`
+- **`compose()` vs `mergeMotion()`:** scenes vs motion values
+- **GIF timing:** full `RenderContext`; `sceneProgress` equals global in single-scene GIFs; score or raw `globalTimeSeconds` both work
+
+## Quick Start (video)
 
 ```typescript
 import { defineScene } from "superimg";
 
 export default defineScene({
-  data: { message: "Hello!", accentColor: "#667eea" },
+  sample: { message: "Hello!", accentColor: "#667eea" },
   config: {
     duration: 3,
     inlineCss: ["* { margin: 0; box-sizing: border-box; } body { background: #0f0f23; font-family: system-ui; }"],
   },
   render(ctx) {
     const { std, width, height, data } = ctx;
-    // score() handles enter/hold/exit phases automatically
-    const t = std.score(); 
-    const card = t.motion({ y: 30 }); // enter from y:30, stay, then auto-exit
-    
+    const t = std.score();
+    const card = t.motion({ y: 30 });
+
     return `
       <div style="${std.css({ width, height }, std.css.center())}">
         <div style="${std.css({ color: data.accentColor, fontSize: 64 }, card.style)}">${data.message}</div>
@@ -41,108 +80,93 @@ export default defineScene({
 
 ## Key Context Fields
 
-Use these from `ctx`: `sceneProgress`, `sceneTimeSeconds`, `sceneDurationSeconds`, `width`, `height`, `isPortrait`, `data`, `std`, `asset()`. For scene-local animation, prefer `sceneProgress` / `sceneTimeSeconds` over the `global*` variants — `globalFrame` and `globalTimeSeconds` span the whole composed video and are only useful inside `compose()`.
+**Video/gif:** `sceneProgress`, `sceneTimeSeconds`, `width`, `height`, `data`, `std`, `asset()`. Prefer `sceneProgress` / `sceneTimeSeconds` over `global*` for scene-local animation.
 
-**Co-located assets (zero config):** `ctx.asset('logo.png')` returns a URL for `assets/logo.png` next to your `.video.ts` file. For named assets with preloaded metadata, use `config.assets` + `ctx.assets`.
+**Image/svg:** `width`, `height`, `data`, `std`, `asset()` — no temporal fields.
+
+**Co-located assets:** `ctx.asset('logo.png')` for files in `assets/` next to your template.
 
 ## Core Patterns
 
-**Score API (recommended for layouts and choreography):**
+**Score API (video/gif):**
 ```typescript
-// Define phases in fractions of scene duration
 const t = std.score({ enter: 0.15, hold: 0.7, exit: 0.15 });
-
-// Motion with automatic enter/exit
 const card = t.motion({ scale: 0.8, easing: "easeOutBack" });
-
-// Phase-scoped scalar animation (e.g. animated counter)
 const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
 ```
 
-**Responsive sizing:**
+**Layer stack (video/gif, layered scenes):**
 ```typescript
-const r = std.createResponsive(ctx);
-const fontSize = r({ portrait: 48, square: 32, default: 40 });
+const L = std.layers({ width, height, mode: "opaque" });
+const wipe = std.reveal.wipe({ progress: t.within("intro"), direction: "diagonal", color: "#000" });
+return L.render(
+  L.bg(kenBurns.html),
+  L.tint("rgba(0,0,0,0.5)"),
+  L.content(`<h1 style="${card.style}">...</h1>`, { safe: "broadcast" }),
+  L.overlay(lowerThirdHtml, { anchor: "bottom-left", offset: { y: 80 }, safe: true, motion: badgeAnim }),
+  L.fx(wipe.html, { visible: () => t.within("intro") < 1 }),
+);
 ```
 
-**Audio & Cue Sync (transcripts, markers):**
+**Still image:**
 ```typescript
-// Word-level timing from ElevenLabs/Whisper
-const transcript = std.cue.transcript(data.words, ctx.sceneTimeSeconds);
-const word = transcript.current();
-
-// named markers for synced triggers
-const m = std.cue.markers({ intro: 0, main: 2.5, outro: 8 }, ctx.sceneTimeSeconds);
-const opacity = std.interpolate(m.progress("intro", "main"), [0, 1], [0, 1], "easeOutCubic");
+import { defineImage } from "superimg";
+export default defineImage({
+  config: { width: 1200, height: 630 },
+  render(ctx) {
+    const { std, width, height, data } = ctx;
+    return `<div style="${std.css({ width, height, background: "#0f172a" }, std.css.center())}">
+      <h1 style="color:#fff;font-size:64px">${data.title}</h1>
+    </div>`;
+  },
+});
 ```
 
-**Low-level interpolation:** `std.interpolate(progress, [0, 1], [from, to], easing?)`
+**Responsive sizing:** `const r = std.createResponsive(ctx);` then `r({ portrait: 48, default: 40 })`
 
-**Layout:** `std.css({ width, height })`, `std.css.center()`, `std.css.fill()`, `std.css.stack()`
+**Audio & cue sync:** `std.cue.transcript(words, ctx.sceneTimeSeconds)` — pair with score for scene choreography.
 
-**Color:** `std.color.alpha(color, 0.5)`, `std.color.mix(c1, c2, t)`
+**Layout:** `std.css()`, `std.css.center()`, `std.css.column()`, `std.layout.partitionY()`
 
 ## Stdlib Cheat Sheet
 
-- `std.score(phases?)` — primary timing object. Returns `{ motion, tween, value, active, within }`.
-- `std.cue.transcript(words, time)` — word-level sync for voiceovers.
-- `std.cue.markers(def, time)` — progress between named timestamps.
-- `std.cue.script(events, time)` — ID-based trigger system for scripts.
-- `std.createResponsive(ctx)` — factory for `r({ portrait: X, default: Y })`
-- `std.interpolate(progress, inputRange, outputRange, easing?)` — multi-keyframe eased interpolation
-- `std.interpolateColor(progress, inputRange, colors, easing?)` — multi-keyframe color interpolation
-- `std.clamp01(t)` — clamp value to 0–1 range
-- `std.math.map(v, inMin, inMax, outMin, outMax)` — map value between ranges
-- `std.math.mapClamp(...)` — map and clamp combined
-- `std.color.alpha`, `std.color.mix` — color manipulation
-- `std.css(obj)` — object → inline style string
-- `std.spring(from, to, progress, config?)` — spring curve with overshoot/bounce
-- `std.stagger(items, progress, opts?)` — distribute progress across items
+- `std.score(phases?)` — video/gif only. `{ motion, tween, value, active, within, span, transition, inSpan }`
+- `std.layers(opts)` — video/gif only. `.bg()`, `.tint()`, `.content()`, `.overlay()`, `.fx()`, `.handoff()`, `.render()`
+- `std.reveal.wipe/split/curtain/crossfade/iris/handoffLocal()` — transition overlays (utility)
+- `std.stagger.lead(items, progress)` — leading stagger index (sync phone mockups)
+- `std.mergeMotion(...)` — merge motion values (not `compose()`)
+- `std.cue.transcript/markers/script` — absolute-time sync
+- `std.interpolate`, `std.spring`, `std.stagger`
+- `std.css`, `std.color`, `std.createResponsive`
+- `std.viz`, `std.svg.*` — svg templates
 
 ## Do / Don't
 
-**DO:** Use `std.score` for complex layouts. Put shared CSS in `config.inlineCss`. Use `config.fonts` for Google Fonts. Set root element to `width: ${width}px; height: ${height}px`. Use `std.css()` for inline styles. Import from `"superimg"` in templates.
+**DO:** Match factory to file extension. Use `std.score` for phased video/gif animation. Put shared CSS in `config.inlineCss`. Use `std.css()` for inline styles.
 
-**DON'T:** Return JSX — return template literal strings. Mutate state in render — keep it pure. Drive scene-local animation off `globalFrame` / `globalTimeSeconds` (those span the whole composed video; use `sceneProgress` / `sceneTimeSeconds` instead). Call `std.tween()` directly — it lives on the score object, via `std.score().tween(...)`. Reach for `std.phases` — it does not exist; use `std.score` for phased timing.
+**DON'T:** Use `score`/`layers` in image/svg templates. Return JSX. Mutate state in render. Use `globalTimeSeconds` for scene-local video animation (use `sceneProgress`). Call `std.tween()` at top level — use `std.score().tween()`.
 
 ## Config
 
-`defineScene` config: `width`, `height`, `fps`, `duration`, `fonts`, `inlineCss`, `stylesheets`, `outputs`. Precedence: CLI flags > template config > `_config.ts` (cascading) > built-in defaults. Use `defineConfig` in `_config.ts` for project-wide settings.
+`defineScene` / `defineGif`: `width`, `height`, `fps`, `duration`, `fonts`, `inlineCss`, `outputs`. `defineImage`: no `fps`/`duration`. `defineSvg`: optional `duration` for CSS anim.
 
 ## CLI
 
-> **Note for AI Agents:** Do **not** use the `-o` or `--output` flag when rendering unless the user explicitly requests a custom path. Rely on the framework to determine the output location automatically.
+> **Note for AI Agents:** Do **not** use `-o` / `--output` unless the user requests a custom path.
 
 ```bash
-superimg init my-project
-superimg init .                    # Add to existing project
 superimg dev intro
-superimg render intro              # Outputs natively to output/intro.mp4
-superimg render intro -o custom.mp4
+superimg render intro
 superimg list
-superimg info intro
 superimg setup
-superimg skill install
-```
-
-## Server API
-
-```typescript
-import { renderVideo, loadTemplate } from "superimg/server";
-const t = await loadTemplate("videos/intro.video.ts");
-await renderVideo("videos/intro.video.ts", { outputPath: "out.mp4", width: 1920, height: 1080 });
 ```
 
 ## Additional Resources
 
-For detailed API documentation and working examples, consult:
-
-### Reference Files
-- **[references/api.md](references/api.md)** — Complete RenderContext interface, all stdlib primitives, config options
-
-### Example Files
-- **[examples/hello-world.ts](examples/hello-world.ts)** — Minimal template demonstrating core concepts
-- **[examples/stats-card.ts](examples/stats-card.ts)** — Advanced template with phase timing, animated counters, responsive sizing
+- **[references/api.md](references/api.md)** — Full API, template kinds, composition model
+- **[examples/hello-world.ts](examples/hello-world.ts)** — Minimal video
+- **[examples/stats-card.ts](examples/stats-card.ts)** — Score + counters
 
 ### Project Examples
-See `examples/<category>/<template>/` in the SuperImg repo for full templates, indexed in `examples/_templates.json`: `lower-thirds`, `stats-card`, `phase-demo`, `countdown`, `spring-stagger-demo`.
+
+`feature-launch`, `layer-shots`, `lower-thirds`, `stats-card`, `og-card` (image), `spinner` (gif), `sine-wave` (svg) — indexed in `examples/_templates.json`.

@@ -9,6 +9,26 @@
     "category": "basics",
     "description": "Animated title card with accent lines"
   },
+  "layer-shots": {
+    "title": "Layer Shots",
+    "category": "basics",
+    "description": "Video composition model: template, layers stack, score phases, reveal FX"
+  },
+  "og-card": {
+    "title": "OG Card",
+    "category": "basics",
+    "description": "Still image template (defineImage) with multi-format outputs"
+  },
+  "spinner": {
+    "title": "Spinner",
+    "category": "basics",
+    "description": "Animated GIF loop (defineGif)"
+  },
+  "sine-wave": {
+    "title": "Sine Wave",
+    "category": "vector",
+    "description": "SVG chart template (defineSvg) with std.viz"
+  },
   "watermark-demo": {
     "title": "Watermark Demo",
     "category": "basics",
@@ -28,6 +48,11 @@
     "title": "Countdown Timer",
     "category": "marketing",
     "description": "Animated countdown to a target date"
+  },
+  "feature-launch": {
+    "title": "Feature Launch",
+    "category": "marketing",
+    "description": "Mobile app launch spot with SVG iPhone mockup and in-app UI — layers, score, reveal transitions, multi-format outputs"
   },
   "http-spotlight": {
     "title": "HTTP Spotlight",

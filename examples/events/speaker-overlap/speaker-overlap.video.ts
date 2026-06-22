@@ -42,8 +42,8 @@ export default defineScene({
     const mainDur = 9.0;
     const r = std.createResponsive(ctx);
 
-    // timeline: main (9s) -> outro (3s)
-    const t = std.timeline({ main: "9.0s", outro: "3.0s" });
+    // score phases: main (9s) → outro (3s)
+    const t = std.score({ main: "9.0s", outro: "3.0s" });
 
     // === OUTRO PHASE ===
     if (t.active === "outro") {
@@ -97,10 +97,7 @@ export default defineScene({
     const portraitPaddingTop = paddingY + (avatarSize / 2);
     const landscapePaddingRight = paddingX + (avatarSize / 2);
 
-    return `
-      <div style="${std.css({ width, height, position: "relative", overflow: "hidden" })}">
-        ${bg.html}
-        <div style="${std.css({ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 40 })}">
+    const cardHtml = `
           <div style="${std.css({
             width: cardWidth, maxWidth: cardMaxWidth, background: std.color.alpha(brandColor, 0.95), borderRadius: 16,
             paddingTop: isPortrait ? portraitPaddingTop : paddingY, paddingBottom: paddingY, paddingLeft: paddingX,
@@ -143,8 +140,16 @@ export default defineScene({
               <div style="${std.css({ fontSize: addressSize, fontWeight: 400, opacity: 0.85 })}">${address}</div>
             </div>
           </div>
-        </div>
-      </div>
     `;
+
+    const L = std.layers({ width, height });
+    return L.render(
+      L.bg(bg),
+      L.content(`
+        <div style="${std.css({ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 40 })}">
+          ${cardHtml}
+        </div>
+      `),
+    );
   },
 });

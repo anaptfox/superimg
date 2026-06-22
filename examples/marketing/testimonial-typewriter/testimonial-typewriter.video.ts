@@ -36,7 +36,7 @@ export default defineScene({
     const r = std.createResponsive(ctx);
 
     // Timeline for a 24s scene
-    const t = std.timeline({
+    const t = std.score({
       enter: "1.5s",
       hold: "21.0s",
       exit: "1.5s"

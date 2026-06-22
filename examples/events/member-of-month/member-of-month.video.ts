@@ -34,8 +34,8 @@ export default defineScene({
     const { std, sceneTimeSeconds: time, width, height, data, isPortrait, isSquare } = ctx;
     const { name, role, location, photoUrl, quote, techlahomaSvg, ctaUrl, brandColor } = data;
 
-    // Timeline for a 15s scene
-    const t = std.timeline({
+    // Score phases for a 15s scene
+    const t = std.score({
       build: "3.0s",
       content: "7.5s",
       poster: "4.5s"

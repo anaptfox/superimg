@@ -48,7 +48,7 @@ export default defineScene({
     const cardPadding = r({ portrait: 32, default: 48 });
 
     // Phase timing — 4s scene: enter 1.2s / hold 1.8s / exit 1.0s
-    const t = std.timeline({ enter: "1.2s", hold: "1.8s", exit: "1.0s" });
+    const t = std.score({ enter: "1.2s", hold: "1.8s", exit: "1.0s" });
 
     // Card fades in first, elements stagger behind it
     const cardAnim  = t.motion({ y: 20 });

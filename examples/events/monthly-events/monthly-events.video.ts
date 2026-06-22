@@ -57,7 +57,7 @@ export default defineScene({
 
     // === TIMELINE PHASES ===
     // hook: 2s, events: 9s, recap: 2.5s, outro: 1.5s
-    const t = std.timeline({
+    const t = std.score({
       hook: "2.0s",
       events: "9.0s",
       recap: "2.5s",

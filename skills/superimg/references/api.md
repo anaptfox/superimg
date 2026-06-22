@@ -2,7 +2,31 @@
 
 Complete API documentation for SuperImg templates.
 
-## RenderContext
+## Template kinds
+
+| Kind | Factory | File | Context | Stdlib | Time? | Returns |
+|------|---------|------|---------|--------|-------|---------|
+| **video** | `defineScene` | `*.video.ts` | `RenderContext` | Full | `sceneProgress`, `sceneTimeSeconds`; `compose()` for multi-scene | HTML → MP4 |
+| **gif** | `defineGif` | `*.gif.ts` | `RenderContext` | Full | Same as video (single-scene: scene* === global*) | HTML → GIF |
+| **image** | `defineImage` | `*.image.ts` | `ImageRenderContext` | `ImageStdlib` | None | HTML → PNG/WebP/JPEG |
+| **svg** | `defineSvg` | `*.svg.ts` | `SvgRenderContext` | `SvgStdlib` | Optional `config.duration` for CSS anim | **SVG markup** |
+
+`ImageStdlib` / `SvgStdlib` omit: `score`, `layers`, `reveal`, `cue`, `mergeMotion`, `backgrounds`, `montage`, `oscillate`, `loop`, `pingpong`, `wiggle`.
+
+## Composition model (video + gif only)
+
+| Tier | API | Role |
+|------|-----|------|
+| **Video** | `compose([scenes])` | Multi-scene chain |
+| **Template** | `defineScene` / `defineGif` | Scene contract |
+| **Layers** (optional) | `std.layers()` | Shot stack — bg, tint, content, overlay, fx |
+| **Score** | `std.score()` | Phases + motion (`motion().style`, `tween`, `within`) |
+
+**Satellites:** `std.cue.*`, `css`/`layout`, `interpolate`/`spring`/`stagger`, `mergeMotion`, `std.reveal.*` (transition overlays — utility, not a tier).
+
+Wire score into layers: `L.overlay(html, { motion: t.motion({ y: 20 }) })` or inline `style="${card.style}"` in content HTML.
+
+## RenderContext (video + gif)
 
 The `ctx` object passed to your `render` function:
 
@@ -83,6 +107,41 @@ export default defineScene({
 });
 ```
 
+## ImageRenderContext (image)
+
+```typescript
+interface ImageRenderContext<TData> {
+  std: ImageStdlib;
+  width: number;
+  height: number;
+  aspectRatio: number;
+  isPortrait: boolean;
+  isLandscape: boolean;
+  isSquare: boolean;
+  data: TData;
+  assets: Record<string, AssetMeta>;
+  asset: (filename: string) => string;
+  output: OutputInfo;
+}
+```
+
+## SvgRenderContext (svg)
+
+Same as image, plus optional `duration?: number` for CSS `animation-duration`. `render()` must return `<svg xmlns="http://www.w3.org/2000/svg" ...>`.
+
+## Naming disambiguation
+
+| Name | Scope | Purpose |
+|------|-------|---------|
+| `std.score()` | video/gif scene | Phase choreography — `motion()`, `tween()`, `within()` |
+| `std.layers()` | video/gif scene | Z-ordered shot stack |
+| `std.reveal.*()` | video/gif utility | Full-frame transition overlays (not `std.svg.reveal`) |
+| `std.svg.reveal` | svg utility | SVG path clip reveals |
+| `compose([scenes])` | Multi-scene video | Chain scenes |
+| `mergeMotion()` | video/gif | Merge motion values (not `compose()`) |
+| `createTimelineController()` | Player UI | Playback scrubber |
+| `examples/data/timeline/` | Template name | Chart template only |
+
 ## std.score
 
 The primary primitive for layout orchestration and phased animation. Breaks a scene into enter/hold/exit phases and exposes motions scoped to those phases with automatic fade-in + fade-out.
@@ -102,7 +161,7 @@ const card = t.motion({ y: 30, scale: 0.8, easing: "easeOutBack" });
 // <div style="${card.style}">...</div>
 ```
 
-**Options:** `y`, `x`, `scale`, `rotate`, `blur` (number — start offsets), `at` (0-1 stagger within enter), `duration` (0-1 fraction of phase), `easing` (enter easing name), `exit` (boolean or override object).
+**Options:** `y`, `x`, `scale`, `rotate`, `blur` (number — start offsets), `at` (0-1 or `"0.5s"` stagger within phase), `for` (0-1 fraction or `"0.5s"` span of phase), `during`, `easing` (enter easing name), `exit` (boolean or override object).
 
 **Result fields:** `.style`, `.opacity`, `.transform`, `.enter` (0-1 entry progress), `.exit` (0-1 exit progress), `.visible`, `.phase`.
 
@@ -121,6 +180,29 @@ Returns 0-1 progress inside a specific phase, with optional stagger (`at`) and `
 ```typescript
 const p = t.within("hold", { at: 0.5, duration: 0.5 });
 ```
+
+### t.span(from, to)
+
+Scene-absolute progress window in seconds (e.g. intro wipe from scene start):
+
+```typescript
+const introP = t.span("0s", "1s");
+const wipe = std.reveal.wipe({ progress: introP, direction: "diagonal", color: accent });
+```
+
+### t.transition(from, to, easing?)
+
+Eased scene-absolute handoff progress. Use with `t.inSpan()` for cross-phase transitions:
+
+```typescript
+if (t.inSpan("3s", "4s")) {
+  const p = t.transition("3s", "4s", "easeInOutCubic");
+  const toLocal = std.reveal.handoffLocal(p);
+  // split/crossfade content panels only — keep shared bg outside
+}
+```
+
+**Phases vs spans:** `t.active` / `t.within("hook")` for steady shots; `t.inSpan()` + `t.transition()` for windows that cross phase boundaries.
 
 ---
 
@@ -286,8 +368,58 @@ std.css.fill(): string
 // Flexbox row layout
 std.css.row(): string
 
-// Flexbox column stack
-std.css.stack(): string
+// Flexbox column layout
+std.css.column(): string
+```
+
+## std.layers
+
+Within-scene layer stack. Declaration order = z-order (bottom to top).
+
+```typescript
+const L = std.layers({ width, height, mode: "opaque" | "transparent" | "split" });
+
+return L.render(
+  L.bg(kenBurns.html),                              // full-bleed background
+  L.tint("rgba(0,0,0,0.5)"),                        // color wash
+  L.content(`<h1>...</h1>`, { safe: "broadcast" }), // main message
+  L.overlay(html, { anchor: "bottom-left", offset: { y: 80 }, safe: true }),
+  L.fx(wipe.html, { visible: () => wipe.active }),  // transient FX
+);
+
+// Content-only handoff (shared bg + transition panels + pinned hero)
+return L.handoff({
+  shared: [L.bg(kenBurns.html), L.tint("rgba(0,0,0,0.5)")],
+  transition: std.reveal.split({ from: hookPanel, to: featuresPanel, progress: p }),
+  pinned: [L.overlay(phone, { anchor: { x: "73%", y: "50%", origin: "center" } })],
+});
+```
+
+**Ken Burns rule:** Keep `kenBurns` in `shared` / single `L.bg()` — never inside both split panels (zoom seams).
+
+**Overlay anchors:** `{ x, y, origin: "center" }` applies `translate(-50%, -50%)` and merges with `motion` transforms.
+
+## Transition FX utilities (`std.reveal`)
+
+Progress-driven full-frame overlays. Not a compositional tier — mount via `L.fx()`. Returns `{ html, active, progress }`.
+
+Not to be confused with `std.svg.reveal` (SVG path clipping).
+
+```typescript
+std.reveal.wipe({ progress, direction: "diagonal", color });
+std.reveal.split({ from, to, progress, style: "wipe" | "slide" | "flip" | "split" });
+std.reveal.curtain({ progress, direction: "up" });
+std.reveal.crossfade({ progress, from, to });
+std.reveal.iris({ progress, color });
+std.reveal.handoffLocal(progress, { peek: 0.1 });  // frozen "to" panel during handoff
+```
+
+## std.mergeMotion
+
+Merge motion values (not video `compose()`):
+
+```typescript
+std.mergeMotion(card, { scale: 1.05 });
 ```
 
 **Property Conversion:**
@@ -494,6 +626,8 @@ items.map(({ item, progress }) =>
 **StaggerItem (items-based overload):**
 `{ item, progress, index, active, done }`
 
+**Lead index:** `std.stagger.lead(items, progress, opts?)` — index of the item with highest progress above threshold (sync phone mockups, highlights).
+
 **Example:**
 ```typescript
 // Drive a staggered cascade off the "enter" phase of a score
@@ -632,8 +766,8 @@ Template definition function:
 import { defineScene } from "superimg";
 
 export default defineScene({
-  // Default data values (merged with per-render data)
-  data: {
+  // Default sample values (merged at render → ctx.data)
+  sample: {
     title: "Hello",
     accentColor: "#667eea",
   },
@@ -656,5 +790,30 @@ export default defineScene({
     // Return HTML string
     return `<div>...</div>`;
   },
+});
+```
+
+## defineImage / defineGif / defineSvg
+
+```typescript
+import { defineImage, defineGif, defineSvg } from "superimg";
+
+// Still image (*.image.ts) — ImageRenderContext, no score/layers
+export default defineImage({
+  sample: { title: "OG Card" },
+  config: { width: 1200, height: 630, outputs: { og: { format: "png" } } },
+  render(ctx) { return `<div>...</div>`; },
+});
+
+// GIF (*.gif.ts) — full RenderContext, same temporal stdlib as video
+export default defineGif({
+  config: { width: 200, height: 200, fps: 24, duration: 1.5 },
+  render(ctx) { return `<div>...</div>`; },
+});
+
+// SVG (*.svg.ts) — must return <svg xmlns="http://www.w3.org/2000/svg">...</svg>
+export default defineSvg({
+  config: { width: 800, height: 400 },
+  render(ctx) { return `<svg xmlns="http://www.w3.org/2000/svg">...</svg>`; },
 });
 ```

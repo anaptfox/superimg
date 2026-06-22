@@ -71,7 +71,7 @@ export default defineScene<GitHubWrappedVideoData>({
     const themeKey: WrappedTheme = theme ?? "dark";
     const themeConfig = THEME_CONFIG[themeKey];
 
-    const t = std.timeline({
+    const t = std.score({
       intro: "1.2s",
       username: "1.0s",
       commits: "1.6s",

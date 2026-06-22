@@ -87,7 +87,7 @@ createApp(App).mount('#app')`,
       }
     }
 
-    const t = std.timeline({
+    const t = std.score({
       window: "0.26s",
       lines: "2.46s",
       hold: "0.48s"

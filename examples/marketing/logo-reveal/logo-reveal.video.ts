@@ -55,7 +55,7 @@ export default defineScene<LogoRevealVideoData>({
           : "#ffffff";
     const textColor = theme === "dark" || theme === "custom" ? "#ffffff" : "#0a0a0a";
 
-    const score = std.timeline({
+    const score = std.score({
       buildUp: "0.6s",
       reveal: "1.4s",
       settle: "0.4s",

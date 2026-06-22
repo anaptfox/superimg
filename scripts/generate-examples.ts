@@ -1,7 +1,7 @@
 #!/usr/bin/env npx tsx
 /**
  * Generate playground examples from category folders under examples/
- * Reads .video.ts/.video.js files and outputs TypeScript with code as strings
+ * Reads template files (*.video.ts, *.gif.ts, *.image.ts, *.svg.ts, …) and outputs TypeScript with code as strings
  */
 
 import * as fs from "fs";
@@ -53,13 +53,14 @@ for (const [id, meta] of Object.entries(metadata).sort(([a], [b]) =>
   }
 
   const files = fs.readdirSync(dirPath);
-  const videoFiles = files.filter(
-    (file) => file.endsWith(".video.ts") || file.endsWith(".video.js")
+  const TEMPLATE_SUFFIXES = [".video.ts", ".video.js", ".gif.ts", ".gif.js", ".image.ts", ".image.js", ".svg.ts", ".svg.js"];
+  const templateFiles = files.filter((file) =>
+    TEMPLATE_SUFFIXES.some((suffix) => file.endsWith(suffix))
   );
-  if (videoFiles.length !== 1) continue;
+  if (templateFiles.length !== 1) continue;
 
-  const [videoFile] = videoFiles;
-  const filePath = path.join(dirPath, videoFile);
+  const [templateFile] = templateFiles;
+  const filePath = path.join(dirPath, templateFile);
   const code = fs.readFileSync(filePath, "utf-8");
 
   examples.push({

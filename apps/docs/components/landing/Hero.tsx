@@ -31,7 +31,7 @@ export function Hero() {
       </h1>
 
       <p className="mt-6 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-        Write a TypeScript function that returns HTML. SuperImg renders every frame to MP4.
+        Write a TypeScript function that returns HTML or SVG. SuperImg renders to MP4, GIF, PNG, or SVG.
       </p>
 
       <LiveExampleLoader />

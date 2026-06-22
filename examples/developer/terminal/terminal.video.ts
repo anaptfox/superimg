@@ -70,7 +70,7 @@ export default defineScene<TerminalVideoData>({
     const t = (THEMES[theme] ?? THEMES.dark) as (typeof THEMES)["dark"];
     const termFontSize = FONT_SIZE_MAP[fontSize] ?? "20px";
 
-    const score = std.timeline({ header: "0.3s", commands: "5.28s", prompt: "0.3s", exit: "0.12s" });
+    const score = std.score({ header: "0.3s", commands: "5.28s", prompt: "0.3s", exit: "0.12s" });
     const terminalAnim = score.motion({
       during: "header",
       y: 20,

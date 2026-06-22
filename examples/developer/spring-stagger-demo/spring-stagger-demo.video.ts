@@ -1,4 +1,4 @@
-// Spring & Stagger Demo — showcases timeline(), spring physics, stagger, and multi-keyframe interpolation.
+// Spring & Stagger Demo — showcases score(), spring physics, stagger, and multi-keyframe interpolation.
 
 import { defineScene } from "superimg";
 
@@ -57,7 +57,7 @@ export default defineScene({
     const { std, sceneProgress, width, height, data } = ctx;
     const items = data.items as string[];
 
-    const t = std.timeline({ enter: "1.25s", hold: "2.5s", exit: "1.25s" });
+    const t = std.score({ enter: "1.25s", hold: "2.5s", exit: "1.25s" });
     const enterP = t.within("enter");
     const exitP = t.within("exit");
 
@@ -120,7 +120,7 @@ export default defineScene({
 
     return `
       <div style="${bodyStyle}">
-        <div style="${std.css(std.css.stack())}; align-items: center;">
+        <div style="${std.css(std.css.column())}; align-items: center;">
           <div class="heading" style="${headingStyle}">The Process</div>
           <div class="grid">
             ${cardHtml}

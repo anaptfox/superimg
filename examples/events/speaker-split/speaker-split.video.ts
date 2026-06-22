@@ -39,8 +39,8 @@ export default defineScene({
     const r = std.createResponsive(ctx);
     const isHorizontalSplit = !isPortrait;
 
-    // Timeline: Content (0-9s) | Outro (9-12s)
-    const t = std.timeline({
+    // Score phases: content (0–9s) | outro (9–12s)
+    const t = std.score({
       content: "9.0s",
       outro: "3.0s"
     });

@@ -10,9 +10,20 @@ import {
 const WIDGET_VERSION = "v4";
 const WIDGET_URL = `https://widget.superimg.app/?${WIDGET_VERSION}`;
 
-const CREATE_VIDEO_DESCRIPTION = `Create a SuperImg video template and open the live editor with a preview.
+const CREATE_VIDEO_DESCRIPTION = `Create a SuperImg template and open the live editor with a preview.
 
-## Template Structure
+## Template kinds
+
+| Kind | Factory | File | Notes |
+|------|---------|------|-------|
+| video | defineScene | *.video.ts | Full stdlib: score, layers, reveal, cue → MP4 |
+| gif | defineGif | *.gif.ts | Same temporal APIs as video → GIF |
+| image | defineImage | *.image.ts | Static — no score/layers → PNG/WebP/JPEG |
+| svg | defineSvg | *.svg.ts | Return <svg xmlns="..."> markup |
+
+Layer the frame, score the motion — video and gif only.
+
+## Template Structure (video)
 
 \`\`\`
 import { defineScene } from "superimg";
@@ -78,8 +89,13 @@ export default defineScene({
   std.css({ width, height }, std.css.center()) → combines object + preset into one style string
   std.css.center() → "display:flex;align-items:center;justify-content:center"
   std.css.fill()   → "position:absolute;top:0;left:0;width:100%;height:100%"
-  std.css.stack()  → "display:flex;flex-direction:column"
+  std.css.column() → "display:flex;flex-direction:column"
   std.css.row()    → "display:flex;flex-direction:row"
+
+### std.layers — within-scene layer stack (declaration order = z-order)
+  const L = std.layers({ width, height, mode: "opaque" | "transparent" | "split" });
+  L.render(L.bg(html), L.tint("rgba(0,0,0,0.5)"), L.content(html, { safe: true }), L.overlay(html, { anchor: "bottom-left" }), L.fx(wipe.html));
+  Pair with std.reveal.wipe/split/curtain/crossfade/iris() for transition FX.
 
 ### std.cue — absolute-time cue helpers (for voiceover / transcript / marker-based work)
   const t = std.cue.transcript(words, time);

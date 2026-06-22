@@ -64,8 +64,8 @@ console.log(result); // 5`,
   render(ctx) {
     const { std, width, height, data } = ctx;
 
-    // Timeline: 1s Enter | 3s Hold | 1s Exit
-    const t = std.timeline({ enter: "1.0s", hold: "3.0s", exit: "1.0s" });
+    // Score phases: 1s enter | 3s hold | 1s exit
+    const t = std.score({ enter: "1.0s", hold: "3.0s", exit: "1.0s" });
 
     // Static code animation
     const staticAnim = t.motion({ at: 0, for: 0.8, y: 30 });

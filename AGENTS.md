@@ -3,7 +3,26 @@
 
 ## Mental Model
 
-Video is a pure function of time. Your template's `render(ctx)` is called once per frame. It receives a `RenderContext` and returns an HTML string. All animation is derived from `sceneProgress` (0→1 over the scene) or `sceneTimeSeconds` (elapsed seconds). Use `std.score` as the primary orchestration primitive for layouts, and `std.interpolate` or `std.spring` for low-level math. Data comes from `data`, merged with per-scene overrides.
+**Layer the frame, score the motion** — for **video** and **gif**.
+
+### Four template kinds
+
+| Kind | Factory | File | Stdlib | Output |
+|------|---------|------|--------|--------|
+| **video** | `defineScene` | `*.video.ts` | Full (`score`, `layers`, `reveal`, `cue`, …) | MP4 |
+| **gif** | `defineGif` | `*.gif.ts` | Full (temporal APIs) | GIF |
+| **image** | `defineImage` | `*.image.ts` | Static — no score/layers/reveal/cue | PNG/WebP/JPEG |
+| **svg** | `defineSvg` | `*.svg.ts` | Static + `std.viz` / `std.svg` | SVG markup |
+
+**Pick:** still → `defineImage`; vector → `defineSvg`; short loop → `defineGif`; scene/reel → `defineScene`.
+
+### Animated path (video + gif)
+
+`render(ctx)` returns HTML each frame. Tiers: **compose** (video only, multi-scene) → **template** → **layers** (optional shot stack) → **score** (phases + motion). Satellites: `cue`, `css/layout`, `interpolate/spring/stagger`, `mergeMotion`, `reveal.*` (FX utilities on `L.fx()`).
+
+### Static path (image + svg)
+
+Single render — `std.css`, `std.layout`, `std.color`. SVG must return `<svg xmlns="...">`. No `sceneProgress`.
 
 ## Quick Start
 
@@ -70,7 +89,20 @@ const opacity = std.interpolate(m.progress("intro", "main"), [0, 1], [0, 1], "ea
 
 **Low-level interpolation:** `std.interpolate(progress, [0, 1], [from, to], easing?)`
 
-**Layout:** `std.css({ width, height })`, `std.css.center()`, `std.css.fill()`, `std.css.stack()`
+**Layer stack (recommended for layered scenes):**
+```typescript
+const L = std.layers({ width, height, mode: "opaque" }); // or "transparent" for overlays
+const wipe = std.reveal.wipe({ progress: t.within("intro"), direction: "diagonal", color: "#000" });
+return L.render(
+  L.bg(kenBurns.html),
+  L.tint("rgba(0,0,0,0.5)"),
+  L.content(`<h1 style="${card.style}">...</h1>`, { safe: "broadcast" }),
+  L.overlay(lowerThirdHtml, { anchor: "bottom-left", offset: { y: 80 }, safe: true }),
+  L.fx(wipe.html, { visible: () => wipe.active }),
+);
+```
+
+**Layout:** `std.css({ width, height })`, `std.css.center()`, `std.css.fill()`, `std.css.column()`
 
 **Color:** `std.color.alpha(color, 0.5)`, `std.color.mix(c1, c2, t)`
 
@@ -87,6 +119,10 @@ const opacity = std.interpolate(m.progress("intro", "main"), [0, 1], [0, 1], "ea
 - `std.math.map(v, inMin, inMax, outMin, outMax)` — map value between ranges
 - `std.math.mapClamp(...)` — map and clamp combined
 - `std.color.alpha`, `std.color.mix` — color manipulation
+- `std.layers(opts)` — layer stack: `.bg()`, `.tint()`, `.content()`, `.overlay()`, `.fx()`, `.render()`
+- `std.reveal.wipe/split/curtain/crossfade/iris()` — shared transition FX
+- `std.mergeMotion(...motions)` — merge motion values (not video `compose()`)
+- `std.layout.partitionY(area, rows)` — vertical box partition; `std.layout.inset(area, pad)`
 - `std.css(obj)` — object → inline style string
 - `std.spring(from, to, progress, config?)` — spring curve with overshoot/bounce
 - `std.stagger(items, progress, opts?)` — distribute progress across items
@@ -137,5 +173,5 @@ For detailed API documentation and working examples, consult:
 - **[examples/stats-card.ts](examples/stats-card.ts)** — Advanced template with phase timing, animated counters, responsive sizing
 
 ### Project Examples
-See `examples/<category>/<template>/` in the SuperImg repo for full templates, indexed in `examples/_templates.json`: `lower-thirds`, `stats-card`, `phase-demo`, `countdown`, `spring-stagger-demo`.
+See `examples/<category>/<template>/` in the SuperImg repo, indexed in `examples/_templates.json`: `feature-launch`, `layer-shots`, `lower-thirds`, `stats-card`, `og-card` (image), `spinner` (gif), `sine-wave` (svg).
 <!-- END superimg-skill -->

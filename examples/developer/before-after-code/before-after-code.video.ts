@@ -140,7 +140,7 @@ export default defineScene<BeforeAfterCodeData>({
     const baseFontSize = Math.min(width, height) * 0.045;
     const horizontalPadding = width * 0.08;
 
-    const [titleArea, labelArea, windowArea] = std.layout.stack(
+    const [titleArea, labelArea, windowArea] = std.layout.partitionY(
       { x: 0, y: 0, width, height },
       [
         { height: title ? height * 0.15 : 0 },

@@ -40,8 +40,8 @@ export default defineScene({
     const r = std.createResponsive(ctx);
     const mainDur = 9.0;
     
-    // timeline: main (0-9s) → outro (9-12s)
-    const t = std.timeline({ main: "9.0s", outro: "3.0s" });
+    // score phases: main (0–9s) → outro (9–12s)
+    const t = std.score({ main: "9.0s", outro: "3.0s" });
 
     // === OUTRO PHASE ===
     if (t.active === "outro") {

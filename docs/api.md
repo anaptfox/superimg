@@ -12,7 +12,7 @@ The `RenderContext` is the central object passed to your template's `render` fun
 interface RenderContext<
   TData = Record<string, unknown>,
 > {
-  // Standard library (timeline, interpolate, math, color utilities)
+  // Standard library (score, layers, interpolate, math, color utilities)
   std: Stdlib;
 
   // Global position (entire video)
@@ -130,6 +130,17 @@ export default defineScene({
 });
 ```
 
+### Template kinds
+
+| Kind | Factory | File | Temporal stdlib | Output |
+|------|---------|------|-----------------|--------|
+| **video** | `defineScene` | `*.video.ts` | `score`, `layers`, `reveal`, `cue`, … | MP4 |
+| **gif** | `defineGif` | `*.gif.ts` | Full (same as video) | GIF |
+| **image** | `defineImage` | `*.image.ts` | None — `ImageStdlib` only | PNG/WebP/JPEG |
+| **svg** | `defineSvg` | `*.svg.ts` | None — `SvgStdlib`; optional CSS `duration` | SVG |
+
+**Layer the frame, score the motion** applies to video and gif. Image and svg use `std.css` / `std.layout` / `std.viz` / `std.svg` — no `score` or `layers`.
+
 ### Core Modules (start here)
 
 These modules cover 90%+ of template needs. Start with these.
@@ -158,17 +169,17 @@ Layout presets:
 ```typescript
 std.css.fill()   // position:absolute; top:0; left:0; width:100%; height:100%
 std.css.center() // display:flex; align-items:center; justify-content:center
-std.css.stack()  // display:flex; flex-direction:column
+std.css.column()  // display:flex; flex-direction:column
 std.css.row()    // display:flex; flex-direction:row
 ```
 
-#### `std.timeline`
+#### `std.score` (video and gif only)
 
-Scene-local timing for layout choreography. Use `std.timeline()` when your animation is driven by the scene's normalized progress (`sceneProgress`) and you want named phases such as enter, hold, and exit.
+Scene-local timing for layout choreography. Use `std.score()` when your animation is driven by the scene's normalized progress (`sceneProgress`) and you want named phases such as enter, hold, and exit.
 
 ```typescript
 // Defaults to { enter: "15%", hold: "70%", exit: "15%" }
-const t = std.timeline();
+const t = std.score();
 
 const card = t.motion({ y: 24, scale: 0.96 });
 const count = t.tween(0, 100, { during: "enter", at: 0.2 });
@@ -185,7 +196,7 @@ return `
 Custom phase names are supported. Phases can be specified as seconds (`"1.5s"`), milliseconds (`"500ms"`), or percentages of scene duration (`"20%"`):
 
 ```typescript
-const t = std.timeline({
+const t = std.score({
   intro: "20%",
   product: "0.5s",
   outro: "200ms",
@@ -195,22 +206,28 @@ const productProgress = t.within("product"); // 0-1 inside that phase
 const activePhase = t.active;                 // "intro" | "product" | "outro" | "idle"
 
 const title = t.motion({ during: "intro", y: 32 });
-const product = t.motion({ during: "product", at: 0.15, duration: 0.7 });
+const product = t.motion({ during: "product", at: 0.15, for: 0.7 });
 const fade = t.tween(1, 0, { during: "outro", easing: "easeInCubic" });
 ```
 
-Timeline object fields and helpers:
+Score object fields and helpers:
 
 ```typescript
 t.progress       // Current sceneProgress
 t.seconds        // Current sceneTimeSeconds
 t.active         // Active phase name, or "idle" when outside all phases
 t.within(name)   // Phase-local progress, clamped to 0-1
+t.within(name, { at, duration })  // Sub-window inside phase → 0-1
+t.span("0s", "1s")  // Scene-absolute window → 0-1
+t.transition("3s", "4s", "easeInOutCubic")  // Eased span progress
+t.inSpan("3s", "4s")  // True strictly inside a span window
 
 t.motion(opts?)  // Returns { enter, exit, opacity, transform, filter, style, visible, phase }
 t.tween(from, to, opts?)  // Phase-scoped scalar interpolation
 t.value(value, opts?)     // Preserve a value with phase-based opacity
 ```
+
+**Phases vs transition windows:** Use `t.active` / `t.within("hook")` for steady shots inside a phase. Use `t.inSpan("3s", "4s")` + `t.transition(...)` for cross-phase handoffs that straddle phase boundaries.
 
 Common `motion()` options:
 
@@ -218,7 +235,7 @@ Common `motion()` options:
 t.motion({
   during: "enter",       // Phase to use for entrance timing; defaults to first phase
   at: 0.25,              // Start 25% into that phase
-  duration: 0.5,         // Span 50% of that phase
+  for: 0.5,              // Span 50% of that phase (or "0.5s")
   y: 40,
   x: 0,
   scale: 0.95,
@@ -231,7 +248,57 @@ t.motion({
 });
 ```
 
-Use `std.timeline(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Timeline And Cues](/docs/timing) for examples that combine both.
+Use `std.score(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Score And Cues](/docs/timing) for examples that combine both.
+
+#### `std.layers` (video and gif only)
+
+Within-scene layer stack. Declaration order = z-order (bottom to top). Pair with `std.score()` for timing and `std.reveal.*()` for transition FX.
+
+```typescript
+const L = std.layers({ width, height, mode: "opaque" }); // or "transparent" | "split"
+const wipe = std.reveal.wipe({ progress: t.within("intro"), direction: "diagonal", color: "#000" });
+
+return L.render(
+  L.bg(kenBurns.html),
+  L.tint("rgba(0,0,0,0.5)"),
+  L.content(`<h1 style="${card.style}">...</h1>`, { safe: "broadcast" }),
+  L.overlay(lowerThirdHtml, { anchor: "bottom-left", offset: { y: 80 }, safe: true }),
+  L.fx(wipe.html, { visible: () => wipe.active }),
+);
+
+// Content-only handoff: shared bg + split/crossfade panels + pinned hero
+const handoff = std.reveal.split({ from: hookPanel, to: featuresPanel, progress: t.transition("3s", "4s") });
+return L.handoff({
+  shared: [L.bg(kenBurns.html), L.tint("rgba(0,0,0,0.5)")],
+  transition: handoff,
+  pinned: [L.overlay(phoneHtml, { anchor: { x: "73%", y: "50%", origin: "center" } })],
+});
+```
+
+**Ken Burns rule:** Put `kenBurns` in `shared` (or a single `L.bg()`), not inside both split/crossfade panels — duplicate zoom layers cause seams during handoffs.
+
+#### `std.reveal` (video and gif only)
+
+Transition overlay utilities — progress-fed full-frame FX. Mount on `L.fx()`. Not `std.svg.reveal`. Returns `{ html, active, progress }`.
+
+**Progress contract:** `0` = start, `1` = complete. Cover overlays (`wipe`, `iris`): 0 = fully obscured, 1 = revealed. Curtain: 0 = hidden, 1 = fully covering. Handoffs (`split`, `crossfade`): 0 = `from`, 1 = `to`.
+
+```typescript
+std.reveal.wipe({ progress, direction: "diagonal", color });
+std.reveal.split({ from, to, progress, style: "wipe" | "slide" | "flip" | "split" });
+std.reveal.curtain({ progress, direction: "up" });
+std.reveal.crossfade({ progress, from, to });
+std.reveal.iris({ progress, color });
+std.reveal.handoffLocal(progress, { peek: 0.1 });  // map transition p → target phase local
+```
+
+#### `std.mergeMotion`
+
+Merge motion values from multiple `t.motion()` results (not video `compose()`):
+
+```typescript
+std.mergeMotion(card, { scale: 1.05 });
+```
 
 #### `std.interpolate`
 
@@ -245,7 +312,7 @@ std.interpolate(progress, [0, 1], [0, 100], 'easeOutCubic')    // With easing
 std.interpolate(sceneProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0])
 ```
 
-For phased scene animation (enter/hold/exit with auto fades), reach for `std.timeline` instead.
+For phased scene animation (enter/hold/exit with auto fades), reach for `std.score` instead.
 
 #### `std.math`
 
@@ -316,8 +383,8 @@ Spring physics for organic motion with overshoot and bounce:
 std.spring(0.8, 1, progress)                         // 0.8→overshoot→1
 std.spring(0, 500, progress, { stiffness: 200, damping: 8, mass: 1 })
 
-// Inside a timeline.motion() / .tween() call, use the string form
-const t = std.timeline();
+// Inside a score.motion() / .tween() call, use the string form
+const t = std.score();
 const pop = t.motion({ scale: 0.5, easing: "spring(200,8)" });
 ```
 
@@ -332,6 +399,9 @@ std.stagger(5, progress, { duration: 0.3 })
 // Items-based: returns StaggerItem<T>[]
 std.stagger(items, progress, { duration: 0.4, from: "center" })
 // Each item: { item, progress, index, active, done }
+
+// Lead index for syncing external UI (e.g. phone mockup) with staggered cards
+std.stagger.lead(features, t.within("features"), { duration: 0.48 })
 
 // Options: each, duration, from ("start"|"end"|"center"|"edges"), easing
 ```
@@ -415,7 +485,7 @@ const elevenLabsWords = std.cue.fromElevenLabs(response.words);
 const whisperWords = std.cue.fromWhisper(response.words);
 ```
 
-Use `std.timeline(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Timeline And Cues](/docs/timing) for a guide-level walkthrough.
+Use `std.score(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Score And Cues](/docs/timing) for a guide-level walkthrough.
 
 #### `std.responsive`
 
@@ -479,13 +549,15 @@ A `Preset` has: `{ width, height, aspect_ratio?, fps?, duration_max_seconds?, no
 
 ## Template Module
 
-The recommended way to create a template is with `defineScene`:
+Use the factory that matches your file extension (see [Template kinds](#template-kinds) above).
+
+### defineScene (video)
 
 ```typescript
 import { defineScene } from 'superimg';
 
 export default defineScene({
-  data: {
+  sample: {
     title: 'Hello',
     color: '#ffffff',
   },
@@ -508,7 +580,22 @@ export default defineScene({
 });
 ```
 
-`defineScene` is an identity function that provides full type inference from the data — no manual type annotations needed.
+`defineScene` infers types from `sample` — merged data is available as `ctx.data`.
+
+### defineImage / defineGif / defineSvg
+
+```typescript
+import { defineImage, defineGif, defineSvg } from 'superimg';
+
+// Still image — no fps/duration/score
+export default defineImage({ sample: { title: 'Hi' }, config: { width: 1200, height: 630 }, render: (ctx) => '...' });
+
+// Animated GIF — full RenderContext, same stdlib as video
+export default defineGif({ config: { fps: 24, duration: 2 }, render: (ctx) => '...' });
+
+// SVG — return <svg xmlns="http://www.w3.org/2000/svg">...</svg>
+export default defineSvg({ config: { width: 800, height: 400 }, render: (ctx) => '<svg>...</svg>' });
+```
 
 ### TemplateModule Interface
 
@@ -519,7 +606,7 @@ interface TemplateModule<TData = Record<string, unknown>> {
 
   // Optional
   config?: TemplateConfig;
-  data?: Partial<TData>;
+  sample?: Partial<TData>;
 }
 
 interface TemplateConfig {

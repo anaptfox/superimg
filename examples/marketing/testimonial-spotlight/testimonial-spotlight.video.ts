@@ -40,7 +40,7 @@ export default defineScene({
     const r = std.createResponsive(ctx);
 
     // Phases: Intro (Photo grow + shift) | Content (Sentences) | Outro
-    const t = std.timeline({
+    const t = std.score({
       intro: "4.0s",
       content: "13.0s",
       outro: "3.0s"

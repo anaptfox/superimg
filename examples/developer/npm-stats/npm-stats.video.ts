@@ -57,7 +57,7 @@ export default defineScene<NpmStatsVideoData>({
     const gridColor = theme === "dark" ? "#2a2a2a" : "#e5e5e5";
     const areaOpacity = theme === "dark" ? "0.2" : "0.15";
 
-    const t = std.timeline({
+    const t = std.score({
       title: "0.56s",
       chart: "5.39s",
       pause: "0.49s",

@@ -47,15 +47,14 @@ export default defineScene({
     const r = std.createResponsive(ctx);
 
     // Phases: Intro | Chunks (Content) | Outro
-    const t = std.timeline({
+    const t = std.score({
       intro: "2.2s",
       content: "16.5s",
       outro: "3.3s"
     });
 
-    // Diagonal wipe (first 1.5s)
     const wipeEased = t.within("intro", { at: 0, duration: 0.7 });
-    const wipeOffset = std.interpolate(wipeEased, [0, 1], [-50, 100], "easeInOutCubic");
+    const wipe = std.reveal.wipe({ progress: wipeEased, direction: "diagonal", color: brandColor });
 
     // Header + photo animations
     const headerAnim = t.motion({ at: 0.6, for: 0.4, exit: false });
@@ -91,38 +90,74 @@ export default defineScene({
 
     const photoSize = r({ portrait: 200, square: 160, default: 180 });
     const padding = r({ portrait: 48, default: 60 });
-    const photoPosition = isPortrait
-      ? { bottom: "25%", right: "50%", transform: `translateX(50%)` }
-      : { bottom: r({ square: "15%", default: "12%" }), right: r({ square: "10%", default: "8%" }) };
-
-    return `
-      <div style="${std.css({ width, height, position: "relative", overflow: "hidden", background: "#000" })}">
-        ${t.within("intro") < 1 ? `<div style="${std.css({ position: "absolute", inset: 0, background: brandColor, clipPath: `polygon(0 0, ${wipeOffset + 50}% 0, ${wipeOffset}% 100%, 0 100%)`, zIndex: 10 })}"></div>` : ""}
-
-        <!-- Yellow diagonal footer -->
-        <div style="${std.css({ position: "absolute", bottom: 0, left: 0, right: 0, height: r({ portrait: "18%", default: "15%" }), background: brandColor, clipPath: "polygon(0 40%, 100% 0, 100% 100%, 0 100%)", zIndex: 2 })}; ${footerAnim.style}">
-          <div style="${std.css({ position: "absolute", bottom: r({ portrait: 40, default: 30 }), left: padding, display: "flex", alignItems: "center", gap: 20 })}">
-            <img src="${techlahomaSvg}" style="${std.css({ height: r({ portrait: 36, default: 28 }), filter: "brightness(0)" })}" />
-          </div>
-          <div style="${std.css({ position: "absolute", bottom: r({ portrait: 40, default: 30 }), right: padding, fontSize: r({ portrait: 24, square: 20, default: 22 }), fontWeight: 600, color: "#000" })}">${name}, ${title}</div>
+    const footerHtml = `
+      <div style="${std.css({
+        width: "100%",
+        height: r({ portrait: "18%", default: "15%" }),
+        background: brandColor,
+        clipPath: "polygon(0 40%, 100% 0, 100% 100%, 0 100%)",
+        position: "relative",
+      })}">
+        <div style="${std.css({ position: "absolute", bottom: r({ portrait: 40, default: 30 }), left: padding, display: "flex", alignItems: "center", gap: 20 })}">
+          <img src="${techlahomaSvg}" style="${std.css({ height: r({ portrait: 36, default: 28 }), filter: "brightness(0)" })}" />
         </div>
-
-        <!-- Question header -->
-        <div style="${std.css({ position: "absolute", top: r({ portrait: 80, default: 60 }), left: padding })}; ${headerAnim.style}">
-          <div style="${std.css({ fontSize: r({ portrait: 36, square: 28, default: 32 }), fontWeight: 700, color: brandColor, marginBottom: 8 })}">${question}</div>
-          <div style="${std.css({ width: `${headerAnim.enter * 100}%`, maxWidth: 300, height: 3, background: "#fff" })}"></div>
-        </div>
-
-        <!-- Photo -->
-        <div style="${std.css({ position: "absolute", ...photoPosition, width: photoSize, height: photoSize, borderRadius: "50%", overflow: "hidden", border: `4px solid ${brandColor}`, zIndex: 3 })}; ${photoAnim.style}">
-          <img src="${photoUrl}" style="${std.css({ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%)" })}" />
-        </div>
-
-        <!-- Quote area -->
-        <div style="${std.css({ position: "absolute", top: r({ portrait: "15%", default: "20%" }), left: padding, right: isPortrait ? padding : photoSize + padding + 40, display: "flex", flexDirection: "column", justifyContent: "center", height: r({ portrait: "40%", default: "50%" }), textAlign: isPortrait ? "center" : "left" })}">
-          ${renderQuoteChunk()}
-        </div>
+        <div style="${std.css({ position: "absolute", bottom: r({ portrait: 40, default: 30 }), right: padding, fontSize: r({ portrait: 24, square: 20, default: 22 }), fontWeight: 600, color: "#000" })}">${name}, ${title}</div>
       </div>
     `;
+
+    const headerHtml = `
+      <div style="${std.css({ fontSize: r({ portrait: 36, square: 28, default: 32 }), fontWeight: 700, color: brandColor, marginBottom: 8 })}">${question}</div>
+      <div style="${std.css({ width: `${headerAnim.enter * 100}%`, maxWidth: 300, height: 3, background: "#fff" })}"></div>
+    `;
+
+    const photoHtml = `
+      <div style="${std.css({
+        width: photoSize,
+        height: photoSize,
+        borderRadius: "50%",
+        overflow: "hidden",
+        border: `4px solid ${brandColor}`,
+      })}">
+        <img src="${photoUrl}" style="${std.css({ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(100%)" })}" />
+      </div>
+    `;
+
+    const quoteHtml = `
+      <div style="${std.css({
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        height: "100%",
+        textAlign: isPortrait ? "center" : "left",
+      })}">
+        ${renderQuoteChunk()}
+      </div>
+    `;
+
+    const L = std.layers({ width, height });
+
+    return L.render(
+      L.bg("#000"),
+      L.content(quoteHtml, {
+        inset: {
+          top: r({ portrait: height * 0.15, default: height * 0.2 }),
+          left: padding,
+          right: isPortrait ? padding : photoSize + padding + 40,
+          bottom: height * (isPortrait ? 0.35 : 0.25),
+        },
+      }),
+      L.overlay(headerHtml, {
+        anchor: { x: padding, y: r({ portrait: 80, default: 60 }) },
+        motion: headerAnim,
+      }),
+      L.overlay(photoHtml, {
+        anchor: isPortrait
+          ? { x: "50%", y: "75%" }
+          : { x: `calc(100% - ${r({ square: "10%", default: "8%" })})`, y: `calc(100% - ${r({ square: "15%", default: "12%" })})` },
+        motion: photoAnim,
+      }),
+      L.overlay(footerHtml, { anchor: "bottom-left", motion: footerAnim }),
+      L.fx(wipe.html, { visible: () => wipe.active }),
+    );
   },
 });

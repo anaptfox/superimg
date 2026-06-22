@@ -137,7 +137,7 @@ export default defineScene<HttpTraceData>({
     const isLight = theme === "light";
 
     // Unified timeline
-    const t = std.timeline({
+    const t = std.score({
       stage: "0.64s",
       layout: "0.8s",
       request: "1.6s",

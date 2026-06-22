@@ -1,4 +1,4 @@
-import { defineScene } from "superimg";
+import { defineScene } from "superimg/browser";
 
 export interface TimelineData extends Record<string, unknown> {
   title: string;

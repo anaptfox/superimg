@@ -103,7 +103,7 @@ console.log(greet("World"));`,
       }
     }
 
-    const t = std.timeline({
+    const t = std.score({
       header: "0.5s",
       code: "3.72s",
       pulse: "0.74s"

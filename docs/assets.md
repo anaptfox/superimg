@@ -18,11 +18,11 @@ SuperImg provides two ways to use assets (images, videos, audio) in templates:
 
 ## Quick Start
 
-Drop files into an `assets/` folder next to your `.video.ts` file and reference them with `ctx.asset()`:
+Drop files into an `assets/` folder next to your template file (`.video.ts`, `.gif.ts`, `.image.ts`, or `.svg.ts`) and reference them with `ctx.asset()`:
 
 ```
 my-template/
-  my-template.video.ts
+  my-template.video.ts   # or .gif.ts, .image.ts, .svg.ts
   assets/
     logo.png
     background.jpg

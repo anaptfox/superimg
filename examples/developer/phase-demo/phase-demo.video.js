@@ -1,5 +1,5 @@
 // Phase Demo — Score API
-// Demonstrates: std.timeline() for declarative phase-based layouts.
+// Demonstrates: std.score() for declarative phase-based layouts.
 
 import { defineScene } from "superimg";
 
@@ -32,7 +32,7 @@ export default defineScene({
     const { message, accentColor } = data;
 
     // timeline: enter (0.8s) → hold (2.4s) → exit (0.8s)
-    const t = std.timeline({ enter: "0.8s", hold: "2.4s", exit: "0.8s" });
+    const t = std.score({ enter: "0.8s", hold: "2.4s", exit: "0.8s" });
 
     // Declare the card motion with enter and exit behaviors
     const cardAnim = t.motion({
