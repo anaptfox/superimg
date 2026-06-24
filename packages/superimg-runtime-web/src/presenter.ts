@@ -1,5 +1,6 @@
 import morphdom from "morphdom";
 import type { TailwindConfig } from "@superimg/types";
+import { superimgDebug } from "./debug.js";
 
 export interface DomPresenter {
   attach(container: HTMLElement): void;
@@ -24,7 +25,7 @@ export class IframePresenter implements DomPresenter {
   private pendingTailwind: boolean | TailwindConfig | undefined;
   private stylesInjected = false;
 
-  constructor() {
+  constructor(opts: { allowScripts?: boolean } = {}) {
     this.iframe = document.createElement("iframe");
     this.iframe.style.cssText = `
       width:100%;
@@ -34,7 +35,14 @@ export class IframePresenter implements DomPresenter {
       background:#000000;
       display:block;
     `;
-    this.iframe.setAttribute("sandbox", "allow-same-origin allow-scripts");
+    // Rendering is parent-driven (morphdom into the same-origin iframe DOM), so the
+    // frame needs no scripts of its own — keep the sandbox script-less by default.
+    // `allow-scripts` is added only when a template runs in-frame JS (e.g. the
+    // Tailwind browser CDN); the "can escape its sandboxing" warning that the
+    // same-origin + scripts combo triggers is then expected and justified.
+    const sandbox = ["allow-same-origin"];
+    if (opts.allowScripts) sandbox.push("allow-scripts");
+    this.iframe.setAttribute("sandbox", sandbox.join(" "));
     this.iframe.onload = () => this.setupIframeBody();
     this.iframe.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body></body></html>';
   }
@@ -56,11 +64,26 @@ export class IframePresenter implements DomPresenter {
     this.pendingTailwind = tailwind;
     this.stylesInjected = false;
     const doc = this.iframe.contentDocument;
-    if (doc?.head) this.injectStylesIntoDoc(doc);
+    superimgDebug("injectStyles", {
+      inlineCss: this.pendingInlineCss.length,
+      stylesheets: this.pendingStylesheets,
+      isReady: this.isReady,
+      sandbox: this.iframe.getAttribute("sandbox"),
+    });
+    // Only inject once the srcdoc document is live (isReady). Injecting into the
+    // pre-load about:blank document is pointless — srcdoc replaces it on load,
+    // and the stale `stylesInjected` flag would then make setupIframeBody skip the
+    // real document, leaving it with no fonts/CSS. Before isReady, setupIframeBody
+    // performs the injection on `onload`.
+    if (this.isReady && doc?.head) this.injectStylesIntoDoc(doc);
+    else superimgDebug("injectStyles deferred — waiting for iframe onload");
   }
 
   private injectStylesIntoDoc(doc: Document): void {
-    if (this.stylesInjected) return;
+    if (this.stylesInjected) {
+      superimgDebug("injectStylesIntoDoc skipped (stylesInjected already true)");
+      return;
+    }
     doc.head
       .querySelectorAll("[data-superimg-runtime-web-style]")
       .forEach((node) => node.remove());
@@ -95,11 +118,37 @@ export class IframePresenter implements DomPresenter {
       doc.head.appendChild(style);
     }
     this.stylesInjected = true;
+    const links = Array.from(doc.head.querySelectorAll('link[rel="stylesheet"]')).map(
+      (l) => (l as HTMLLinkElement).href,
+    );
+    superimgDebug("injectStylesIntoDoc done", {
+      stylesheetLinksInHead: links,
+      inlineStyleBlocks: doc.head.querySelectorAll("style").length,
+    });
+    // Surface whether the iframe actually finished loading the fonts.
+    const fonts = (doc as Document & { fonts?: FontFaceSet }).fonts;
+    if (fonts?.ready) {
+      void fonts.ready.then(() => {
+        superimgDebug("iframe document.fonts ready", {
+          status: fonts.status,
+          loaded: Array.from(fonts).map((f) => `${f.family} ${f.weight} ${f.status}`),
+        });
+      });
+    }
   }
 
   private setupIframeBody(): void {
     const doc = this.iframe.contentDocument;
+    superimgDebug("setupIframeBody (iframe onload fired)", {
+      hasContentDoc: !!doc,
+      hasHead: !!doc?.head,
+      pendingStylesheets: this.pendingStylesheets.length,
+      stylesInjected: this.stylesInjected,
+    });
     if (!doc) return;
+    // Fresh srcdoc document — discard any flag set against the pre-load document
+    // so styles/fonts are (re)injected into the document that's actually visible.
+    this.stylesInjected = false;
     this.injectStylesIntoDoc(doc);
 
     doc.body.style.cssText = `

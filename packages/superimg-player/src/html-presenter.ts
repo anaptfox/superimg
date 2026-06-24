@@ -26,7 +26,7 @@ export class HtmlPresenter implements FramePresenter {
   private pendingTailwind: boolean | TailwindConfig | undefined = undefined;
   private stylesInjected = false;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, opts: { allowScripts?: boolean } = {}) {
     this.container = container;
 
     // Create iframe that fills the container
@@ -40,8 +40,13 @@ export class HtmlPresenter implements FramePresenter {
       display: block;
     `;
 
-    // Security sandbox (allow scripts for template interactivity if needed)
-    this.iframe.setAttribute("sandbox", "allow-same-origin allow-scripts");
+    // Script-less sandbox by default — rendering is parent-driven, so the frame
+    // needs no scripts of its own. `allow-scripts` is added only when a template
+    // runs in-frame JS (e.g. the Tailwind browser CDN); pairing it with
+    // allow-same-origin is what triggers the "can escape its sandboxing" warning.
+    const sandbox = ["allow-same-origin"];
+    if (opts.allowScripts) sandbox.push("allow-scripts");
+    this.iframe.setAttribute("sandbox", sandbox.join(" "));
 
     container.appendChild(this.iframe);
 

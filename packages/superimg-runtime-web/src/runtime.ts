@@ -17,6 +17,7 @@ import type {
 } from "@superimg/types";
 import { isComposedTemplate } from "@superimg/types";
 import { IframePresenter, type DomPresenter } from "./presenter.js";
+import { superimgDebug } from "./debug.js";
 
 export type RuntimeInput = AnyTemplateModule | ComposedTemplate;
 export type RuntimePlaybackMode = "once" | "loop" | "ping-pong";
@@ -34,6 +35,9 @@ export interface RuntimeOptions {
   assetResolver?: (filename: string) => string;
   assets?: Record<string, AssetMeta>;
   presenter?: DomPresenter;
+  /** Force the iframe sandbox to allow scripts (default: only when the template
+   *  needs them, e.g. `config.tailwind`). Set for templates that run in-frame JS. */
+  allowScripts?: boolean;
 }
 
 export interface RuntimeUpdate {
@@ -106,12 +110,21 @@ export class WebRuntime {
   constructor(template: RuntimeInput, options: RuntimeOptions = {}) {
     this.template = template;
     this.options = options;
-    this.presenter = options.presenter ?? new IframePresenter();
     this.data = options.data ?? {};
     this.assets = options.assets ?? {};
     this.assetResolver = options.assetResolver;
+    // Resolve info before building the presenter — the sandbox's `allow-scripts`
+    // token depends on the template (see needsScripts). resolveInfo() reads only
+    // template/options/data, never the presenter, so this ordering is safe.
     this.info = this.resolveInfo();
+    this.presenter = options.presenter ?? new IframePresenter({ allowScripts: this.needsScripts() });
     this.state = this.createState(false, false, 0);
+  }
+
+  /** Whether the iframe needs `allow-scripts`: Tailwind injects a CDN `<script>`,
+   *  and templates may opt in explicitly. Plain templates render script-free. */
+  private needsScripts(): boolean {
+    return !!this.info.tailwind || this.options.allowScripts === true;
   }
 
   attach(container: HTMLElement): this {
@@ -294,7 +307,20 @@ export class WebRuntime {
   }
 
   private configurePresenter(): void {
-    this.presenter.injectStyles(this.info.inlineCss, this.info.stylesheets, this.info.tailwind);
+    const fontUrls = (this.info.fonts ?? []).map((f) => {
+      const family = encodeURIComponent(f.trim());
+      return `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
+    });
+    const stylesheets = [...fontUrls, ...(this.info.stylesheets ?? [])];
+    superimgDebug("configurePresenter", {
+      fonts: this.info.fonts,
+      fontUrls,
+      inlineCssCount: this.info.inlineCss?.length ?? 0,
+      stylesheets,
+      tailwind: this.info.tailwind,
+      presenter: this.presenter.constructor.name,
+    });
+    this.presenter.injectStyles(this.info.inlineCss, stylesheets, this.info.tailwind);
   }
 
   private clampFrame(frame: number): number {
