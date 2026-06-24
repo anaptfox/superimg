@@ -30,6 +30,7 @@ import type { oscillate, loop, pingpong, wiggle } from "@superimg/stdlib/oscilla
 import type * as viz from "@superimg/stdlib/viz";
 import type { layers, LayerStack } from "@superimg/stdlib/layers";
 import type { revealFx } from "@superimg/stdlib/reveal";
+import type { sync as videoSync, VideoSyncOptions, VideoSyncResult } from "@superimg/stdlib/video";
 
 /**
  * Standard library available via `ctx.std` in render functions.
@@ -61,6 +62,9 @@ export interface Stdlib {
    * ```
    */
   score: <P extends PhaseConfig | undefined = undefined>(phases?: P) => ScoreOf<P>;
+  video: {
+    sync: (opts: VideoSyncOptions) => VideoSyncResult;
+  };
   mergeMotion: typeof mergeMotion;
   layers: typeof layers;
   reveal: typeof revealFx;
@@ -95,7 +99,7 @@ export type { LayerStack };
 
 export type ImageStdlib = Omit<
   Stdlib,
-  "score" | "oscillate" | "loop" | "pingpong" | "wiggle" | "montage" | "backgrounds" | "cue" | "mergeMotion" | "reveal"
+  "score" | "video" | "oscillate" | "loop" | "pingpong" | "wiggle" | "montage" | "backgrounds" | "cue" | "mergeMotion" | "reveal"
 >;
 
 export type SvgStdlib = ImageStdlib;

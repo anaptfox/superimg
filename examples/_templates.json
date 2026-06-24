@@ -9,6 +9,21 @@
     "category": "basics",
     "description": "Animated title card with accent lines"
   },
+  "score-clips": {
+    "title": "Score Clips",
+    "category": "basics",
+    "description": "Nested score.clip() windows for sequence-like timing inside custom phases"
+  },
+  "clip-reel": {
+    "title": "Clip Reel",
+    "category": "basics",
+    "description": "Product-style reel combining nested score.clip() segments with std.video.sync"
+  },
+  "video-sync": {
+    "title": "Video Sync",
+    "category": "basics",
+    "description": "Frame-accurate embedded video with std.video.sync"
+  },
   "layer-shots": {
     "title": "Layer Shots",
     "category": "basics",

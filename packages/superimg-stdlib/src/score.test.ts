@@ -390,3 +390,42 @@ describe("score — real migration samples", () => {
     }
   });
 });
+
+describe("score.clip", () => {
+  it("clip({ during }) is active only inside the named phase", () => {
+    const t = s(0.05, { hook: "2s", demo: "6s", outro: "2s" });
+    const hook = t.clip({ during: "hook" });
+    expect(hook.active).toBe(true);
+    expect(hook.progress).toBeCloseTo(0.25, 5);
+
+    const tDemo = s(0.5, { hook: "2s", demo: "6s", outro: "2s" });
+    expect(tDemo.clip({ during: "hook" }).active).toBe(false);
+    expect(tDemo.clip({ during: "demo" }).active).toBe(true);
+  });
+
+  it("clip({ from, duration }) resolves relative to scene window", () => {
+    const t = s(0.15, { all: "100%" });
+    const clip = t.clip({ from: "1s", duration: "2s" });
+    expect(clip.active).toBe(true);
+    expect(clip.progress).toBeCloseTo(0.25, 5);
+    expect(clip.seconds).toBeCloseTo(0.5, 5);
+  });
+
+  it("nested clip.score() uses local enter/hold/exit", () => {
+    const t = s(0.05, { hook: "2s", demo: "6s", outro: "2s" });
+    const hook = t.clip({ during: "hook" });
+    const local = hook.score({ enter: "50%", hold: "50%" });
+    expect(local.active).toBe("enter");
+    expect(local.motion().opacity).toBeGreaterThan(0);
+    expect(local.motion().opacity).toBeLessThan(1);
+  });
+
+  it("nested clip inside parent clip", () => {
+    const t = s(0.35, { all: "100%" });
+    const outer = t.clip({ from: "2s", duration: "4s" });
+    const inner = outer.clip({ from: "1s", duration: "1s" });
+    expect(outer.active).toBe(true);
+    expect(inner.active).toBe(true);
+    expect(inner.progress).toBeCloseTo(0.5, 5);
+  });
+});

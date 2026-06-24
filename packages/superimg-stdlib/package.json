@@ -103,6 +103,10 @@
       "import": "./dist/safe-area.js",
       "types": "./dist/safe-area.d.ts"
     },
+    "./video": {
+      "import": "./dist/video.js",
+      "types": "./dist/video.d.ts"
+    },
     "./reveal": {
       "import": "./dist/reveal.js",
       "types": "./dist/reveal.d.ts"

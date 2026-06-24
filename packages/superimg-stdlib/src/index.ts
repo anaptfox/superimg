@@ -22,7 +22,7 @@ export * from "./code";
 export * as cue from "./cue/index.js";
 export { score, createScore, mergeMotion, type PhaseConfig, type MotionEasing, type MotionOpts,
   type MotionResult, type MotionValue, type TweenOpts, type ValueOpts, type ValueResult,
-  type Score, type ScoreOf, type ScoreContext } from "./score";
+  type Score, type ScoreOf, type ScoreContext, type ClipOpts, type ScoreClip } from "./score";
 export * from "./backgrounds";
 export * from "./montage";
 export * from "./spring";
@@ -33,6 +33,7 @@ export * from "./svg";
 export * as layout from "./layout";
 export * from "./layers";
 export * from "./safe-area";
+export { sync as videoSync, quantizeVideoTime, VIDEO_SYNC_ATTR, type VideoSyncOptions, type VideoSyncResult } from "./video";
 export { revealFx as reveal } from "./reveal";
 export { oscillate, loop, pingpong, wiggle,
   type OscillateOpts, type LoopOpts, type WiggleOpts } from "./oscillate";

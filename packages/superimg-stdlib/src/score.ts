@@ -118,6 +118,8 @@ export interface Score<P extends string = string> {
   motion(opts?: MotionOpts<P>): MotionResult;
   tween(from: number, to: number, opts?: TweenOpts<P>): number;
   value<T extends number | string>(v: T, opts?: ValueOpts<P>): ValueResult<T>;
+  /** Nested timing window with local score() — Remotion-style sequence clips */
+  clip(opts: ClipOpts): ScoreClip;
 }
 
 export type ScoreOf<P extends PhaseConfig | undefined> =
@@ -130,6 +132,27 @@ export interface ScoreContext {
   sceneProgress: number;
   sceneTimeSeconds: number;
   sceneDurationSeconds: number;
+  fps?: number;
+}
+
+export interface ClipOpts {
+  /** Named phase from the parent score layout */
+  during?: string;
+  /** Start offset relative to parent window (0–1 fraction, or "0.5s" / "500ms") */
+  from?: number | string;
+  /** Clip length relative to parent window (required unless `during` is set) */
+  duration?: number | string;
+}
+
+export interface ScoreClip {
+  readonly active: boolean;
+  readonly progress: number;
+  readonly frame: number;
+  readonly seconds: number;
+  readonly durationSeconds: number;
+  readonly totalFrames: number;
+  score<P extends PhaseConfig | undefined = undefined>(phases?: P): ScoreOf<P>;
+  clip(opts: ClipOpts): ScoreClip;
 }
 
 
@@ -245,6 +268,107 @@ function parseMotionTime(value: number | string, phaseSpan: number, totalSeconds
   if (s.endsWith("ms")) return parseFloat(s) / 1000 / totalSeconds;
   if (s.endsWith("s")) return parseFloat(s) / totalSeconds;
   throw new Error(`score(): time "${value}" must be "Xs" or "Xms"`);
+}
+
+interface ClipWindow {
+  start: number;
+  end: number;
+}
+
+function resolveClipWindow(
+  opts: ClipOpts,
+  parentWindow: ClipWindow,
+  parentDurationSeconds: number,
+  phaseMap?: Map<string, NormalizedPhase>,
+): ClipWindow {
+  if (opts.during) {
+    if (!phaseMap) {
+      throw new Error('score.clip({ during }) requires a score with named phases');
+    }
+    const p = phaseMap.get(opts.during);
+    if (!p) {
+      throw new Error(
+        `score.clip: unknown phase "${opts.during}". Known: ${[...phaseMap.keys()].join(", ")}`,
+      );
+    }
+    return { start: p.start, end: p.end };
+  }
+
+  if (opts.duration === undefined) {
+    throw new Error("score.clip() requires `duration` or `during`");
+  }
+
+  const parentSpan = parentWindow.end - parentWindow.start;
+  const fromOffset =
+    opts.from === undefined
+      ? 0
+      : typeof opts.from === "number"
+        ? opts.from * parentSpan
+        : parseMotionTime(opts.from, parentSpan, parentDurationSeconds);
+
+  const durationSpan =
+    typeof opts.duration === "number"
+      ? opts.duration * parentSpan
+      : parseMotionTime(opts.duration, parentSpan, parentDurationSeconds);
+
+  const start = parentWindow.start + fromOffset;
+  return { start, end: start + durationSpan };
+}
+
+function createScoreClip(
+  sceneCtx: ScoreContext,
+  window: ClipWindow,
+  phaseMap?: Map<string, NormalizedPhase>,
+): ScoreClip {
+  const { sceneProgress, sceneDurationSeconds } = sceneCtx;
+  const fps = sceneCtx.fps ?? 30;
+
+  const clipFn = (opts: ClipOpts): ScoreClip => {
+    const child = resolveClipWindow(opts, window, sceneDurationSeconds, phaseMap);
+    return createScoreClip(sceneCtx, child, phaseMap);
+  };
+
+  return {
+    get active() {
+      return sceneProgress >= window.start && sceneProgress < window.end;
+    },
+    get progress() {
+      const s = window.end - window.start;
+      return s <= 0 ? 0 : clamp01((sceneProgress - window.start) / s);
+    },
+    get frame() {
+      const s = window.end - window.start;
+      const p = s <= 0 ? 0 : clamp01((sceneProgress - window.start) / s);
+      const sec = p * (s * sceneDurationSeconds);
+      const tf = Math.max(1, Math.ceil(s * sceneDurationSeconds * fps));
+      return Math.min(tf - 1, Math.floor(sec * fps));
+    },
+    get seconds() {
+      const s = window.end - window.start;
+      const p = s <= 0 ? 0 : clamp01((sceneProgress - window.start) / s);
+      return p * s * sceneDurationSeconds;
+    },
+    get durationSeconds() {
+      return (window.end - window.start) * sceneDurationSeconds;
+    },
+    get totalFrames() {
+      return Math.max(1, Math.ceil((window.end - window.start) * sceneDurationSeconds * fps));
+    },
+    score<P extends PhaseConfig | undefined = undefined>(phases?: P) {
+      const s = window.end - window.start;
+      const p = s <= 0 ? 0 : clamp01((sceneProgress - window.start) / s);
+      return createScore(
+        {
+          sceneProgress: p,
+          sceneTimeSeconds: p * s * sceneDurationSeconds,
+          sceneDurationSeconds: s * sceneDurationSeconds,
+          fps,
+        },
+        phases,
+      );
+    },
+    clip: clipFn,
+  };
 }
 
 // -----------------------------------------------------------------------------
@@ -476,6 +600,8 @@ export function createScore<P extends PhaseConfig | undefined = undefined>(
     return { current: v, opacity };
   }
 
+  const parentWindow: ClipWindow = { start: 0, end: 1 };
+
   const result: Score = {
     progress: sp,
     seconds: secs,
@@ -487,6 +613,7 @@ export function createScore<P extends PhaseConfig | undefined = undefined>(
     motion,
     tween,
     value,
+    clip: (opts: ClipOpts) => createScoreClip(ctx, resolveClipWindow(opts, parentWindow, totalSeconds, phaseMap), phaseMap),
   };
   return result as unknown as ScoreOf<P>;
 }

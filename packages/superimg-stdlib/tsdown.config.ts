@@ -25,6 +25,7 @@ export default defineConfig({
     "src/layout.ts",
     "src/layers.ts",
     "src/safe-area.ts",
+    "src/video.ts",
     "src/reveal.ts",
     "src/oscillate.ts",
     "src/viz/index.ts",
