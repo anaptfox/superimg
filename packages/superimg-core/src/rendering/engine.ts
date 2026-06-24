@@ -266,7 +266,7 @@ export async function executeRenderPlan<TFrame>(
       }
     : undefined;
 
-  await renderer.init({ width, height, fonts, inlineCss, stylesheets, tailwind, mode });
+  await renderer.init({ width, height, fps, fonts, inlineCss, stylesheets, tailwind, mode });
 
   let assetsMap: Record<string, import("@superimg/types").AssetMeta> = {};
   if (resolvedAssets.length > 0 && renderer.preloadAssets) {

@@ -3,8 +3,7 @@
 import type { Browser, Page } from "playwright-core";
 import { Hono } from "hono";
 import { serve, type ServerType } from "@hono/node-server";
-import { readFileSync, existsSync } from "node:fs";
-import { extname } from "node:path";
+import { serveAssetFile } from "./asset-server.js";
 import type { RenderEngine, EncodingOptions, VideoEncoder, AudioValue, FrameRenderer, FrameRendererConfig, ResolvedAssetDeclaration, AssetMeta } from "@superimg/types";
 import {
   checkBrowserStatus,
@@ -18,22 +17,6 @@ import { PlaywrightFrameRenderer } from "./adapters.js";
 import { FfmpegGifEncoder } from "./ffmpeg-gif-encoder.js";
 import { NodeVideoEncoder } from "./node-encoder.js";
 import { SharpStillEncoder, type StillFormat } from "./sharp-still-encoder.js";
-
-const MIME_TYPES: Record<string, string> = {
-  ".mp3": "audio/mpeg",
-  ".wav": "audio/wav",
-  ".ogg": "audio/ogg",
-  ".m4a": "audio/mp4",
-  ".aac": "audio/aac",
-  ".mp4": "video/mp4",
-  ".webm": "video/webm",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".gif": "image/gif",
-  ".webp": "image/webp",
-  ".svg": "image/svg+xml",
-};
 
 function wrapInASCIIBox(text: string, padding = 1): string {
   const lines = text.split("\n");
@@ -196,19 +179,11 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
 
     // Serve local files for images and other assets referenced in templates
     app.get("/assets", (c) => {
-      const filePath = c.req.query("path");
-      if (!filePath) {
-        return c.text("Missing path parameter", 400);
+      const result = serveAssetFile(c.req.query("path"), c.req.header("range"));
+      for (const [key, value] of Object.entries(result.headers)) {
+        c.header(key, value);
       }
-      if (!existsSync(filePath)) {
-        return c.text(`File not found: ${filePath}`, 404);
-      }
-      const ext = extname(filePath).toLowerCase();
-      const mimeType = MIME_TYPES[ext] || "application/octet-stream";
-      const data = readFileSync(filePath);
-      c.header("Content-Type", mimeType);
-      c.header("Content-Length", String(data.length));
-      return c.body(data);
+      return c.body(result.body, result.status);
     });
 
     this.server = serve({ fetch: app.fetch, port: 0 });

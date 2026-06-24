@@ -11,6 +11,7 @@ import type {
 } from "@superimg/types";
 import { buildPageShell } from "@superimg/core/html";
 import { resolveAudio } from "@superimg/core";
+import { installVideoSyncHelpers, syncVideosInPage, warmVideosInPage } from "./video-sync.js";
 
 /**
  * Playwright-based frame renderer.
@@ -19,6 +20,7 @@ import { resolveAudio } from "@superimg/core";
 export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
   private width = 0;
   private height = 0;
+  private fps = 30;
   private mode: 'frame' | 'animation' = 'frame';
 
   constructor(
@@ -30,6 +32,7 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
   async init(config: FrameRendererConfig): Promise<void> {
     this.width = config.width;
     this.height = config.height;
+    this.fps = config.fps ?? 30;
     this.mode = config.mode ?? 'frame';
     await this.page.setViewportSize({ width: config.width, height: config.height });
     if (this.mode === 'animation') {
@@ -42,6 +45,7 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
       tailwind: config.tailwind,
     });
     await this.page.setContent(shell, { waitUntil: "load" });
+    await installVideoSyncHelpers(this.page);
     await this.page.evaluate(() => document.fonts.ready);
   }
 
@@ -55,6 +59,8 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
       if (el) el.innerHTML = h;
       await document.fonts.ready;
     }, html);
+
+    await syncVideosInPage(this.page, this.fps);
 
     // Use JPEG for speed unless alpha channel is needed (JPEG doesn't support transparency)
     const useAlpha = options?.alpha === true;
@@ -183,7 +189,15 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
         return result;
       },
       declarations
-    );
+    ).then(async (result) => {
+      const videoUrls = declarations
+        .filter((d) => d.type === "video")
+        .map((d) => d.src);
+      if (videoUrls.length > 0) {
+        await warmVideosInPage(this.page, videoUrls);
+      }
+      return result;
+    });
   }
 }
 

@@ -77,6 +77,7 @@ export interface RenderProgress {
 export interface FrameRendererConfig {
   width: number;
   height: number;
+  fps?: number;
   fonts?: string[];
   inlineCss?: string[];
   stylesheets?: string[];
