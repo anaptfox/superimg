@@ -32,8 +32,8 @@ const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
 ) as Omit<typeof math, "lerp">;
 
-/** Per-frame parts bound by createRenderContext: score, px, scale. */
-export type StaticStdlib = Omit<Stdlib, "score" | "px" | "scale">;
+/** Per-frame parts bound by createRenderContext: score, video, px, scale. */
+export type StaticStdlib = Omit<Stdlib, "score" | "video" | "px" | "scale">;
 
 export const stdlib: StaticStdlib = {
   math: mathWithoutLerp,

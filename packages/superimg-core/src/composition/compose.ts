@@ -13,6 +13,8 @@ import type {
 } from "@superimg/types";
 import type { Checkpoint } from "@superimg/types";
 import { parseDuration } from "../shared/utils.js";
+import { bindStdTiming } from "../shared/bind-std-timing.js";
+import { stdlib } from "../shared/stdlib.js";
 import { renderWithTransition } from "./transitions.js";
 
 function isSceneDefinition(
@@ -163,6 +165,18 @@ export function compose(
         // scene.data already has: defaults + def.data
         // Only merge runtime ctx.data on top
         data: { ...scene.data, ...ctx.data } as RenderContext["data"],
+        std: bindStdTiming(
+          stdlib,
+          {
+            fps: ctx.fps,
+            frame: sceneFrame,
+            totalFrames: scene.totalFrames,
+            progress: sceneProgress,
+            timeSeconds: sceneTimeSeconds,
+            durationSeconds: scene.duration,
+          },
+          ctx.std.scale ?? 1,
+        ),
       };
 
       let html = scene.template.render(sceneCtx);

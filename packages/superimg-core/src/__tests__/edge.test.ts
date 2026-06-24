@@ -106,6 +106,20 @@ describe("renderToHtml — sample field fallback", () => {
     expect(html).toContain('data-h="630"');
   });
 
+  it("renders a specific frame via frame option", () => {
+    const template: ImageModule & { sample?: Record<string, unknown> } = {
+      kind: "video",
+      config: { fps: 30, duration: 2, width: 640, height: 360 },
+      render: (ctx) => `<div data-progress="${ctx.sceneProgress}"></div>`,
+    };
+
+    const start = renderToHtml({ template, frame: 0, composite: false });
+    const mid = renderToHtml({ template, frame: 30, composite: false });
+
+    expect(start).toContain('data-progress="0"');
+    expect(mid).toMatch(/data-progress="0\.5/);
+  });
+
   it("renders a bundled template string using sample as default data", async () => {
     const code = `
       import { defineImage } from "superimg";

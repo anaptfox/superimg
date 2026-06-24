@@ -31,6 +31,24 @@ describe("compose", () => {
     expect(composed.render(ctx30)).toBe("scene2");
   });
 
+  it("std.score() uses scene-local progress inside composed render", () => {
+    const scene = {
+      kind: "video" as const,
+      config: { duration: 2 },
+      render: (ctx: { std: { score: () => { progress: number } } }) =>
+        String(ctx.std.score().progress),
+    };
+    const composed = compose([scene, scene]);
+    const fps = 30;
+    const totalFrames = 120;
+
+    const ctxScene1End = makeTestContext({ globalFrame: 59, fps, totalFrames });
+    expect(parseFloat(composed.render(ctxScene1End))).toBe(1);
+
+    const ctxScene2Start = makeTestContext({ globalFrame: 60, fps, totalFrames });
+    expect(parseFloat(composed.render(ctxScene2Start))).toBe(0);
+  });
+
   it("sceneProgress is 0 at scene start, ~1 at scene end", () => {
     const scene = {
       kind: "video" as const,

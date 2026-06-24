@@ -1,11 +1,11 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`template snapshot tests > template output matches snapshot at keyframes > progress=0 1`] = `"<div class="frame" data-progress="0" data-eased="0">undefined</div>"`;
+exports[`template snapshot tests > template output matches snapshot at keyframes > progress=0 1`] = `"<div class="frame" data-progress="0" data-eased="0">Snapshot Test</div>"`;
 
-exports[`template snapshot tests > template output matches snapshot at keyframes > progress=0.5 1`] = `"<div class="frame" data-progress="0.5" data-eased="0.875">undefined</div>"`;
+exports[`template snapshot tests > template output matches snapshot at keyframes > progress=0.5 1`] = `"<div class="frame" data-progress="0.5084745762711864" data-eased="0.8812488131697983">Snapshot Test</div>"`;
 
-exports[`template snapshot tests > template output matches snapshot at keyframes > progress=0.25 1`] = `"<div class="frame" data-progress="0.25" data-eased="0.578125">undefined</div>"`;
+exports[`template snapshot tests > template output matches snapshot at keyframes > progress=0.25 1`] = `"<div class="frame" data-progress="0.2542372881355932" data-eased="0.5852351019334985">Snapshot Test</div>"`;
 
-exports[`template snapshot tests > template output matches snapshot at keyframes > progress=0.75 1`] = `"<div class="frame" data-progress="0.75" data-eased="0.984375">undefined</div>"`;
+exports[`template snapshot tests > template output matches snapshot at keyframes > progress=0.75 1`] = `"<div class="frame" data-progress="0.7457627118644068" data-eased="0.9835669664376592">Snapshot Test</div>"`;
 
-exports[`template snapshot tests > template output matches snapshot at keyframes > progress=1 1`] = `"<div class="frame" data-progress="1" data-eased="1">undefined</div>"`;
+exports[`template snapshot tests > template output matches snapshot at keyframes > progress=1 1`] = `"<div class="frame" data-progress="1" data-eased="1">Snapshot Test</div>"`;

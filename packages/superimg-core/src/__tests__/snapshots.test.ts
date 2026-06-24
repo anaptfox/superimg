@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { compileFromString, makeTestContext } from "./__test-utils__/index.js";
+import { compileFromString } from "./__test-utils__/index.js";
+import { renderHtmlAtFrame } from "../testing/index.js";
 
 const REFERENCE_TEMPLATE = `
   import { defineScene } from 'superimg';
@@ -18,7 +19,7 @@ describe("template snapshot tests", () => {
     const { template } = await compileFromString(REFERENCE_TEMPLATE);
     expect(template).toBeDefined();
     for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
-      const html = template!.render(makeTestContext({ sceneProgress: progress }));
+      const html = renderHtmlAtFrame(template!, { progress, composite: false });
       expect(html).toMatchSnapshot(`progress=${progress}`);
     }
   });

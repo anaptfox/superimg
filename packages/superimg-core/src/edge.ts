@@ -1,17 +1,24 @@
-import type { AnyTemplateModule, TemplateConfig } from "@superimg/types";
-import { buildCompositeHtml } from "./html/html.js";
-import { createRenderContext } from "./rendering/wasm.js";
+import type { AnyTemplateModule } from "@superimg/types";
 import { compileTemplate } from "./rendering/compiler.js";
+import { renderTemplateFrame } from "./rendering/render-frame.js";
 
 export interface NativeRenderOptions {
   /** The bundled template code or a compiled module (image/video/svg/gif) */
   template: string | AnyTemplateModule;
-  /** Width of the output SVG (default: 1920) */
+  /** Width of the output (default: from template config or 1920) */
   width?: number;
-  /** Height of the output SVG (default: 1080) */
+  /** Height of the output (default: from template config or 1080) */
   height?: number;
-  /** The data to pass into the render context */
+  /** Template data merged on top of sample */
   data?: Record<string, unknown>;
+  /** Frame index for video/gif templates (default: 0) */
+  frame?: number;
+  /** Scene progress 0–1 — alternative to frame */
+  progress?: number;
+  fps?: number;
+  durationSeconds?: number;
+  /** Include background/watermark wrapper (default: true) */
+  composite?: boolean;
   /** Optional asset resolver */
   assetResolver?: (filename: string) => string;
 }
@@ -19,14 +26,11 @@ export interface NativeRenderOptions {
 /**
  * Renders a template natively to an HTML string (single frame, no Playwright).
  * Safe to execute in Cloudflare Workers, V8 Isolates, or Deno.
- * For PNG/SVG encoding from the output, pipe into an image WASM (e.g. resvg-wasm, sharp-wasm).
+ * For PNG output, use renderVideo with encoding.format png and frame.
  */
 export function renderToHtml(options: NativeRenderOptions): string {
   let module: AnyTemplateModule;
 
-  // If a string is passed, it must be IIFE-bundled template code (the bundler's
-  // `__template` global). Reuse the canonical compiler so we get the same
-  // error handling and migration guards as the Playwright path.
   if (typeof options.template === "string") {
     const result = compileTemplate(options.template);
     if (result.error || !result.template) {
@@ -37,40 +41,21 @@ export function renderToHtml(options: NativeRenderOptions): string {
     module = options.template;
   }
 
-  // Config shapes differ per kind; only the video config carries background/
-  // watermark, so read through TemplateConfig (absent fields resolve to undefined).
-  const config = module.config as TemplateConfig | undefined;
-  const width = options.width ?? config?.width ?? 1920;
-  const height = options.height ?? config?.height ?? 1080;
-  const data = options.data ?? module.sample ?? {};
-  
-  // Single frame context for image generation
-  const ctx = createRenderContext(
-    0, // frame 0
-    1, // fps 1
-    1, // durationFrames 1
-    width,
-    height,
-    data,
-    "native_edge_render",
-    {},
-    options.assetResolver
-  );
+  const { compositeHtml } = renderTemplateFrame({
+    template: module,
+    width: options.width,
+    height: options.height,
+    data: options.data,
+    frame: options.frame,
+    progress: options.progress,
+    fps: options.fps,
+    durationSeconds: options.durationSeconds,
+    composite: options.composite,
+    assetResolver: options.assetResolver,
+  });
 
-  // The edge path builds one render context that serves every template kind
-  // (image/video/svg/gif share width/height/data/assets); the union's render
-  // signatures differ only in their ctx subtype, so cast to invoke.
-  const rawOutput = (module.render as (ctx: unknown) => string)(ctx);
-
-  return buildCompositeHtml(
-    rawOutput,
-    config?.background,
-    config?.watermark,
-    width,
-    height
-  );
+  return compositeHtml;
 }
 
 /** @deprecated Use renderToHtml instead. */
 export const renderNativeToHtml = renderToHtml;
-

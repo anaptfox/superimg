@@ -9,8 +9,7 @@ import type {
   SvgStdlib,
 } from "@superimg/types";
 import { stdlib } from "../shared/stdlib.js";
-import { createScore } from "@superimg/stdlib/score";
-import type { PhaseConfig } from "@superimg/stdlib/score";
+import { bindStdTiming } from "../shared/bind-std-timing.js";
 
 /**
  * Compute orientation flags from dimensions
@@ -72,17 +71,18 @@ export function createRenderContext(
   const scale = designWidth ? width / designWidth : 1;
 
   return {
-    // Standard library (augmented with per-render scale helpers + score).
-    std: {
-      ...stdlib,
-      px: (value: number) => `${value * scale}px`,
+    std: bindStdTiming(
+      stdlib,
+      {
+        fps,
+        frame,
+        totalFrames,
+        progress,
+        timeSeconds,
+        durationSeconds,
+      },
       scale,
-      score: <P extends PhaseConfig | undefined = undefined>(phases?: P) =>
-        createScore(
-          { sceneProgress: progress, sceneTimeSeconds: timeSeconds, sceneDurationSeconds: durationSeconds },
-          phases,
-        ),
-    },
+    ),
 
     // Global position
     globalFrame: frame,
