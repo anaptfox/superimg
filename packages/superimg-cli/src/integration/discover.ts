@@ -60,6 +60,8 @@ const superimgStub: Plugin = {
  * Each candidate is bundled (relative imports inlined so a lazy
  * `await import("../content")` resolves at build time; bare deps stay external)
  * and imported to read its `batch` provider.
+ *
+ * Throws when a template mentions `batch` but bundling or import fails.
  */
 export async function discoverBatchSources(
   projectRoot: string,
@@ -67,6 +69,7 @@ export async function discoverBatchSources(
 ): Promise<DiscoveredBatch[]> {
   const templates = discoverVideos(projectRoot);
   const results: DiscoveredBatch[] = [];
+  const errors: string[] = [];
 
   for (const tpl of templates) {
     let source: string;
@@ -81,36 +84,48 @@ export async function discoverBatchSources(
     const tempPath = `${dir}/.${basename(tpl.entrypoint).replace(/\.(ts|js)$/, "")}.batch.mjs`;
 
     let bundle;
-    let code: string;
+    let code: string | undefined;
     try {
       bundle = await rolldown({
         input: tpl.entrypoint,
         external: (id) => !id.startsWith(".") && !isAbsolute(id) && id !== "\0superimg-stub" && id !== "superimg",
         plugins: [superimgStub, ...(options.plugins ?? [])],
       });
-      const { output } = await bundle.generate({ format: "es" });
+      // Single chunk so lazy `import("../content")` is inlined — otherwise rolldown
+      // emits a sibling chunk (e.g. content-*.js) we never write next to the temp file.
+      const { output } = await bundle.generate({ format: "es", codeSplitting: false });
       code = output[0]!.code;
-    } catch {
-      continue; // a template that won't bundle simply has no discoverable batch
+    } catch (e) {
+      errors.push(`${tpl.entrypoint}: failed to bundle batch provider — ${String(e)}`);
+      continue;
     } finally {
       if (bundle) await bundle.close();
     }
 
-    if (!code) continue;
+    if (!code) {
+      errors.push(`${tpl.entrypoint}: batch bundle produced no output`);
+      continue;
+    }
     writeFileRecursive(tempPath, code);
 
     try {
       const mod = await import(pathToFileURL(tempPath).href);
       if (typeof mod.batch === "function") {
         results.push({ entrypoint: tpl.entrypoint, batch: mod.batch });
+      } else {
+        errors.push(`${tpl.entrypoint}: exports batch but it is not a function`);
       }
-    } catch {
-      // ignore templates whose batch module fails to load
+    } catch (e) {
+      errors.push(`${tpl.entrypoint}: failed to load batch module — ${String(e)}`);
     } finally {
       try {
         unlinkSync(tempPath);
       } catch {}
     }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Batch discovery failed:\n${errors.join("\n")}`);
   }
 
   return results;

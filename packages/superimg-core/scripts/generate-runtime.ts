@@ -22,6 +22,8 @@ export function defineImage(m) { return { ...m, kind: "image" }; }
 export function defineGif(m) { return { ...m, kind: "gif" }; }
 export function defineSvg(m) { return { ...m, kind: "svg" }; }
 export function defineConfig(c) { return c; }
+// Returns the provider unchanged — used only at module init for batch exports.
+export function defineBatch(_template, provider) { return provider; }
 
 // Real implementations from source
 export { compose } from "./composition/compose.js";

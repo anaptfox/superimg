@@ -9,6 +9,8 @@ export interface ManifestTemplate extends VideoSummary {
   slug?: string;
   /** True when this item came from a template's `batch` export. */
   batch: boolean;
+  /** Batch entry data for native player / codegen (from `entry.data`). */
+  data?: Record<string, unknown>;
 }
 
 export interface DiscoveryManifest {
@@ -51,6 +53,7 @@ export async function buildManifest(
           stem,
           slug: entry.slug,
           batch: true,
+          data: entry.data,
         });
       }
     } else {

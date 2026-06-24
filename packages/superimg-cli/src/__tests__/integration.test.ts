@@ -317,4 +317,67 @@ export const batch = () => [{ slug: "s1", sample: {} }];`
     expect(entry!.stem).toBe("simple");
     expect(entry!.slug).toBeUndefined();
   });
+
+  it("fails when a batch export cannot be bundled", async () => {
+    fixtureDir = makeTmpDir("manifest-batch-error");
+    writeFileSync(
+      join(fixtureDir, "broken.image.ts"),
+      `export default { kind: "image", config: { width: 1200, height: 630 }, render: () => "<div/>" };
+export const batch = async () => {
+  const { missing } = await import("./does-not-exist.js");
+  return missing.map((p: { slug: string }) => ({ slug: p.slug, sample: {} }));
+};`,
+    );
+
+    await expect(buildManifest(fixtureDir)).rejects.toThrow(/Batch discovery failed/);
+  });
+
+  it("resolves a batch provider that lazy-imports a relative content module", async () => {
+    fixtureDir = makeTmpDir("manifest-lazy-content");
+    const src = join(fixtureDir, "src");
+    mkdirSync(src, { recursive: true });
+
+    writeFileSync(
+      join(src, "content.ts"),
+      `export const posts = [
+  { slug: "alpha", title: "Alpha" },
+  { slug: "beta", title: "Beta" },
+];`,
+    );
+    writeFileSync(
+      join(src, "og.image.ts"),
+      `export default { kind: "image", config: { width: 1200, height: 630 }, render: () => "<div/>" };
+export const batch = async () => {
+  const { posts } = await import("./content.js");
+  return posts.map((p) => ({ slug: p.slug, sample: { title: p.title } }));
+};`,
+    );
+
+    const manifest = await buildManifest(fixtureDir);
+
+    const names = manifest.templates.map((t) => t.name);
+    expect(names).toContain("og-alpha");
+    expect(names).toContain("og-beta");
+    expect(manifest.templates.filter((t) => t.batch)).toHaveLength(2);
+  });
+
+  it("includes batch entry data in manifest rows", async () => {
+    fixtureDir = makeTmpDir("manifest-batch-data");
+
+    writeFileSync(
+      join(fixtureDir, "hero.image.ts"),
+      `export default { kind: "image", config: { width: 1200, height: 630 }, render: () => "<div/>" };
+export const batch = () => [
+  { slug: "a", data: { title: "Alpha" } },
+  { slug: "b", data: { title: "Beta", accent: "#f00" } },
+];`,
+    );
+
+    const manifest = await buildManifest(fixtureDir);
+
+    const a = manifest.templates.find((t) => t.name === "hero-a");
+    const b = manifest.templates.find((t) => t.name === "hero-b");
+    expect(a?.data).toEqual({ title: "Alpha" });
+    expect(b?.data).toEqual({ title: "Beta", accent: "#f00" });
+  });
 });
