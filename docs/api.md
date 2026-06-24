@@ -225,7 +225,29 @@ t.inSpan("3s", "4s")  // True strictly inside a span window
 t.motion(opts?)  // Returns { enter, exit, opacity, transform, filter, style, visible, phase }
 t.tween(from, to, opts?)  // Phase-scoped scalar interpolation
 t.value(value, opts?)     // Preserve a value with phase-based opacity
+t.clip(opts)              // Nested clip window with local score (sequence-like timing)
 ```
+
+**Nested clips (`score.clip`):** Use custom phases for top-level beats, then `clip()` for nested local timing — Remotion-style sequences without a separate primitive.
+
+```typescript
+const t = std.score({ hook: "2s", demo: "5s", outro: "1s" });
+
+const hook = t.clip({ during: "hook" });
+if (hook.active) {
+  const local = hook.score({ enter: "20%", hold: "60%", exit: "20%" });
+  return `<div style="${local.motion({ y: 24 }).style}">Hook</div>`;
+}
+
+const demo = t.clip({ during: "demo" });
+const feature = demo.clip({ from: "0.5s", duration: "1.5s" }); // nested inside demo
+if (feature.active) {
+  const local = feature.score();
+  return `<div style="${local.motion({ scale: 0.9 }).style}">Feature</div>`;
+}
+```
+
+`clip()` options: `{ during: "phaseName" }` (span the named phase) or `{ from, duration }` (relative to parent window). Returns `{ active, progress, frame, seconds, durationSeconds, score(), clip() }`.
 
 **Phases vs transition windows:** Use `t.active` / `t.within("hook")` for steady shots inside a phase. Use `t.inSpan("3s", "4s")` + `t.transition(...)` for cross-phase handoffs that straddle phase boundaries.
 
@@ -291,6 +313,24 @@ std.reveal.crossfade({ progress, from, to });
 std.reveal.iris({ progress, color });
 std.reveal.handoffLocal(progress, { peek: 0.1 });  // map transition p → target phase local
 ```
+
+#### `std.video.sync` (video and gif only)
+
+Frame-accurate embedded video for headless render. Replaces `<video autoplay>` — Playwright seeks marked elements before screenshot.
+
+```typescript
+const clip = std.video.sync({
+  src: ctx.asset("hero.mp4"),
+  at: ctx.sceneTimeSeconds,  // output timeline position (default: pass sceneTimeSeconds)
+  start: 0,                  // offset into source media
+  playbackRate: 1,
+  objectFit: "cover",
+}, ctx.fps);
+
+return `<div style="${std.css.fill()}">${clip.html}</div>`;
+```
+
+Returns `{ time, html, style }`. `time` is frame-quantized source media time in seconds.
 
 #### `std.mergeMotion`
 
@@ -708,8 +748,32 @@ type HoverBehavior = 'none' | 'play' | 'preview-scrub';
 
 ---
 
+## Frame Capture & Testing
+
+Capture a single video frame using the same still-export path as `defineImage` — no `renderStill` API.
+
+```bash
+superimg render my.video.ts --format html --frame 45
+superimg render my.video.ts --format png --frame 45
+```
+
+```typescript
+import { renderToHtml } from "superimg";
+import { renderVideo } from "superimg/server";
+import { renderHtmlAtFrame } from "@superimg/core/testing";
+
+const html = renderToHtml({ template, frame: 45 });
+const snapshot = renderHtmlAtFrame(template, { progress: 0.5, composite: false });
+const png = await renderVideo("./t.video.ts", { frame: 45, encoding: { format: "png" } });
+```
+
+See [Testing](./testing.md) for Vitest snapshot patterns.
+
+---
+
 ## See Also
 
+- [Testing](./testing.md) - Frame capture and snapshot testing
 - [Project Configuration](./project-config.md) - Cascading config and video discovery
 - [Templates & Data](./templates-and-data.md) - Creating templates with data
 - [Player Guide](./player-guide.md) - Browser playback

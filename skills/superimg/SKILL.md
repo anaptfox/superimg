@@ -95,6 +95,23 @@ const card = t.motion({ scale: 0.8, easing: "easeOutBack" });
 const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
 ```
 
+**Nested clips (sequence-like timing):**
+```typescript
+const t = std.score({ hook: "2s", demo: "5s" });
+const hook = t.clip({ during: "hook" });
+if (hook.active) {
+  const local = hook.score({ enter: "20%", hold: "60%", exit: "20%" });
+  return `<div style="${local.motion({ y: 24 }).style}">Hook</div>`;
+}
+const feature = t.clip({ during: "demo" }).clip({ from: "0.5s", duration: "1.5s" });
+```
+
+**Embedded video (frame-accurate):**
+```typescript
+const clip = std.video.sync({ src: ctx.asset("clip.mp4"), at: ctx.sceneTimeSeconds }, ctx.fps);
+return clip.html; // not <video autoplay>
+```
+
 **Layer stack (video/gif, layered scenes):**
 ```typescript
 const L = std.layers({ width, height, mode: "opaque" });
@@ -130,7 +147,8 @@ export default defineImage({
 
 ## Stdlib Cheat Sheet
 
-- `std.score(phases?)` — video/gif only. `{ motion, tween, value, active, within, span, transition, inSpan }`
+- `std.score(phases?)` — video/gif only. `{ motion, tween, value, active, within, clip, span, transition, inSpan }`
+- `std.video.sync(opts, fps)` — frame-accurate embedded `<video>` for headless render
 - `std.layers(opts)` — video/gif only. `.bg()`, `.tint()`, `.content()`, `.overlay()`, `.fx()`, `.handoff()`, `.render()`
 - `std.reveal.wipe/split/curtain/crossfade/iris/handoffLocal()` — transition overlays (utility)
 - `std.stagger.lead(items, progress)` — leading stagger index (sync phone mockups)
@@ -157,6 +175,8 @@ export default defineImage({
 ```bash
 superimg dev intro
 superimg render intro
+superimg render intro --format png --frame 45   # single-frame still
+superimg render intro --format html --frame 45  # HTML snapshot (no browser)
 superimg list
 superimg setup
 ```

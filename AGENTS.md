@@ -70,6 +70,22 @@ const card = t.motion({ scale: 0.8, easing: "easeOutBack" });
 const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
 ```
 
+**Nested clips (sequence-like timing):**
+```typescript
+const t = std.score({ hook: "2s", demo: "5s" });
+const hook = t.clip({ during: "hook" });
+if (hook.active) {
+  const local = hook.score({ enter: "20%", hold: "60%", exit: "20%" });
+  return `<div style="${local.motion({ y: 24 }).style}">Hook</div>`;
+}
+```
+
+**Embedded video (frame-accurate):**
+```typescript
+const clip = std.video.sync({ src: ctx.asset("clip.mp4"), at: ctx.sceneTimeSeconds }, ctx.fps);
+return clip.html; // not <video autoplay>
+```
+
 **Responsive sizing:**
 ```typescript
 const r = std.createResponsive(ctx);
@@ -108,7 +124,8 @@ return L.render(
 
 ## Stdlib Cheat Sheet
 
-- `std.score(phases?)` — primary timing object. Returns `{ motion, tween, value, active, within }`.
+- `std.score(phases?)` — primary timing object. Returns `{ motion, tween, value, active, within, clip }`.
+- `std.video.sync(opts, fps)` — frame-accurate embedded `<video>` for headless render
 - `std.cue.transcript(words, time)` — word-level sync for voiceovers.
 - `std.cue.markers(def, time)` — progress between named timestamps.
 - `std.cue.script(events, time)` — ID-based trigger system for scripts.
@@ -146,6 +163,8 @@ superimg init my-project
 superimg init .                    # Add to existing project
 superimg dev intro
 superimg render intro              # Outputs natively to output/intro.mp4
+superimg render intro --format png --frame 45   # single-frame still
+superimg render intro --format html --frame 45  # HTML snapshot (no browser)
 superimg render intro -o custom.mp4
 superimg list
 superimg info intro

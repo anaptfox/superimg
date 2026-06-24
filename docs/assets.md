@@ -159,6 +159,7 @@ interface AudioAssetMeta {
 
 ```typescript
 render(ctx) {
+  const { std, fps } = ctx;
   const { productImage, promo } = ctx.assets;
 
   // Use image dimensions for layout
@@ -174,7 +175,7 @@ render(ctx) {
       <img src="${productImage.url}"
            style="aspect-ratio: ${productImage.width}/${productImage.height}">
     </div>
-    ${showVideo ? `<video src="${promo.url}" autoplay muted></video>` : ''}
+    ${showVideo ? std.video.sync({ src: promo.url, at: ctx.sceneTimeSeconds }, ctx.fps).html : ''}
   `;
 }
 ```
@@ -276,22 +277,24 @@ render(ctx) {
 }
 ```
 
-### 4. Use Duration for Video Sync
+### 4. Use `std.video.sync` for Embedded Video
 
-Sync template animations with video asset duration:
+Headless render cannot rely on `<video autoplay>`. Use `std.video.sync` — it emits marked `<video>` elements and Playwright seeks to the correct frame before capture:
 
 ```typescript
 render(ctx) {
+  const { std, fps } = ctx;
   const { intro } = ctx.assets;
 
-  // Show intro video, then transition to content
   const introDone = ctx.sceneTimeSeconds > intro.duration;
+  if (introDone) return `<div class="content">...</div>`;
 
-  return introDone
-    ? `<div class="content">...</div>`
-    : `<video src="${intro.url}" autoplay muted></video>`;
+  const clip = std.video.sync({ src: intro.url, at: ctx.sceneTimeSeconds }, fps);
+  return clip.html;
 }
 ```
+
+Options: `src`, `at` (output timeline seconds, default caller passes `sceneTimeSeconds`), `start` (offset into source), `playbackRate`, `objectFit`, `muted`.
 
 ---
 
