@@ -32,6 +32,7 @@ export interface RenderOptions {
   width?: string;
   height?: string;
   fps?: string;
+  frame?: string;
   preset?: string;
   presets?: boolean;
   all?: boolean;
@@ -88,6 +89,8 @@ export interface RenderTarget {
   data?: Record<string, unknown>;
   /** Human-readable label for progress logs, e.g. "jane-doe". */
   entryLabel?: string;
+  /** Single-frame capture index for still/html output */
+  frame?: number;
 }
 
 export interface ResolvedTargets {
@@ -111,6 +114,7 @@ export function buildRenderTarget(args: {
   format?: OutputFormat;
   data?: Record<string, unknown>;
   entryLabel?: string;
+  frame?: number;
 }): RenderTarget {
   return {
     name: args.name,
@@ -120,6 +124,7 @@ export function buildRenderTarget(args: {
     duration: args.duration,
     outputPath: args.outputPath,
     outputName: args.name,
+    frame: args.frame,
     debugHtmlDir: resolveDebugHtmlDir({
       outputPath: args.outputPath,
       outputName: args.name,
@@ -297,6 +302,16 @@ export async function resolveRenderTargets(
     coercedOutput = coercedOutput + "/";
   }
 
+  const frameOverride = options.frame !== undefined ? parseInt(options.frame, 10) : undefined;
+  if (options.frame !== undefined && (frameOverride === undefined || Number.isNaN(frameOverride) || frameOverride < 0)) {
+    throw new ValidationError({
+      field: "--frame",
+      expectedType: "non-negative integer",
+      receivedValue: options.frame,
+      suggestion: "Pass a frame index such as `--frame 45`.",
+    });
+  }
+
   // Cross-product: targets = entries × presets.
   const targets: RenderTarget[] = [];
   for (const entry of entrySpecs) {
@@ -322,6 +337,7 @@ export async function resolveRenderTargets(
         format: effectiveFormat,
         data: entry.data,
         entryLabel: entry.slug || undefined,
+        frame: frameOverride,
       }));
     }
   }

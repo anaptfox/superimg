@@ -84,6 +84,7 @@ program
   .option("-w, --width <pixels>", "Video width")
   .option("-h, --height <pixels>", "Video height")
   .option("--fps <fps>", "Frames per second")
+  .option("--frame <n>", "Capture a single frame (pairs with --format png|webp|jpeg|html)")
   .option("--preset <name>", "Render a named output preset from config.outputs")
   .option("--presets", "Render all output presets defined in config.outputs")
   .option("--all", "Render all videos in project")

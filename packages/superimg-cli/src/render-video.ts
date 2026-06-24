@@ -2,7 +2,7 @@
 
 import { dirname, resolve } from "node:path";
 import { bundleTemplateWithMap } from "@superimg/core/bundler";
-import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
+import { createRenderPlan, executeRenderPlan, resolveFrameIndex } from "@superimg/core/engine";
 import { PlaywrightEngine } from "@superimg/playwright";
 import { parseTemplate } from "./cli/utils/template-config.js";
 import type { EncodingOptions, RenderEngine } from "@superimg/types";
@@ -22,6 +22,10 @@ export interface RenderVideoOptions {
   fps?: number;
   /** Override duration in seconds */
   duration?: number;
+  /** Capture a single frame (uses still encoder with png/webp/jpeg) */
+  frame?: number;
+  /** Scene progress 0–1 — alternative to frame */
+  progress?: number;
   /** Template data (merged with defaults) */
   data?: Record<string, unknown>;
   /** Encoding options */
@@ -72,11 +76,27 @@ export async function renderVideo(
 
     const { renderer, encoder } = engine.createAdapters({ encoding: job.encoding, audio: job.audio });
 
-    const plan = createRenderPlan(job, {
-      assetBaseUrl,
-      resolvedAssets,
-      templateDir,
-    });
+    const planOpts: {
+      assetBaseUrl?: string;
+      resolvedAssets: typeof resolvedAssets;
+      templateDir: string;
+      startFrame?: number;
+      endFrame?: number;
+    } = { assetBaseUrl, resolvedAssets, templateDir };
+
+    if (options.frame !== undefined || options.progress !== undefined) {
+      const probe = createRenderPlan(job, planOpts);
+      const startFrame = resolveFrameIndex({
+        frame: options.frame,
+        progress: options.progress,
+        fps: probe.fps,
+        durationSeconds: probe.durationSeconds,
+      });
+      planOpts.startFrame = startFrame;
+      planOpts.endFrame = startFrame + 1;
+    }
+
+    const plan = createRenderPlan(job, planOpts);
     const result = await executeRenderPlan(plan, renderer, encoder, {
       onProgress: options.onProgress
         ? (p) => options.onProgress!(p.frame, p.totalFrames)

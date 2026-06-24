@@ -9,7 +9,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { bundleTemplateCodeWithMap } from "@superimg/core/bundler";
 import { createRenderPlan, executeRenderPlan, executeRenderPlanParallel } from "@superimg/core/engine";
-import { compileTemplate, createRenderContext } from "@superimg/core";
+import { compileTemplate } from "@superimg/core";
+import { renderTemplateFrame } from "@superimg/core/engine";
 import { PlaywrightEngine } from "@superimg/playwright";
 import type { RenderProgress, TemplateBundle } from "@superimg/types";
 import { discoverTemplateAssets } from "../utils/asset-discovery.js";
@@ -60,13 +61,26 @@ export function writeDebugHtmlFrame(target: RenderTarget, frame: number, composi
  */
 function renderBypassTarget(
   target: RenderTarget,
-  template: { render: (ctx: ReturnType<typeof createRenderContext>) => string },
+  template: Parameters<typeof renderTemplateFrame>[0]["template"],
   assetResolver: (filename: string) => string,
+  templateConfig?: { background?: unknown; watermark?: unknown },
   onTargetComplete?: (target: RenderTarget, result: Uint8Array) => void
 ): void {
-  const targetData = target.data ?? {};
-  const ctx = createRenderContext(0, 1, 1, target.width, target.height, targetData as Record<string, unknown>, target.name, {}, assetResolver);
-  const output = template.render(ctx);
+  const { html, compositeHtml } = renderTemplateFrame({
+    template,
+    frame: target.frame,
+    fps: target.fps,
+    durationSeconds: target.duration,
+    width: target.width,
+    height: target.height,
+    data: target.data,
+    background: templateConfig?.background as Parameters<typeof renderTemplateFrame>[0]["background"],
+    watermark: templateConfig?.watermark as Parameters<typeof renderTemplateFrame>[0]["watermark"],
+    assetResolver,
+    outputName: target.name,
+    composite: target.format === "html",
+  });
+  const output = target.format === "html" ? compositeHtml : html;
   if (target.format === "svg") {
     const warn = validateSvgMarkup(output, target.name);
     if (warn) console.warn(warn);
@@ -117,7 +131,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       if (isCancelled?.()) return;
       const target = targets[i];
       onTargetStart?.(target, i, targets.length);
-      renderBypassTarget(target, template, bypassAssetResolver, onTargetComplete);
+      renderBypassTarget(target, template, bypassAssetResolver, templateData.templateConfig, onTargetComplete);
     }
     return;
   }
@@ -144,7 +158,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       if (target.format === "svg" || target.format === "html") {
         if (!bypassTemplate) throw new Error("bypass template not compiled");
         onTargetStart?.(target, i, targets.length);
-        renderBypassTarget(target, bypassTemplate, bypassAssetResolver, onTargetComplete);
+        renderBypassTarget(target, bypassTemplate, bypassAssetResolver, templateData.templateConfig, onTargetComplete);
         continue;
       }
 
@@ -205,11 +219,19 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         continue;
       }
 
-      const plan = createRenderPlan(job, {
-        assetBaseUrl,
-        resolvedAssets,
-        templateDir,
-      });
+      const planBase = { assetBaseUrl, resolvedAssets, templateDir };
+      const plan =
+        target.frame !== undefined
+          ? (() => {
+              const probe = createRenderPlan(job, planBase);
+              const start = Math.max(0, Math.min(target.frame!, probe.totalFrames - 1));
+              return createRenderPlan(job, {
+                ...planBase,
+                startFrame: start,
+                endFrame: start + 1,
+              });
+            })()
+          : createRenderPlan(job, planBase);
 
       const parallelN = Math.max(1, parseInt(process.env.SUPERIMG_PARALLEL ?? "1", 10) || 1);
       let result: Uint8Array;
