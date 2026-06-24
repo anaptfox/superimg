@@ -12,6 +12,7 @@ export default defineConfig({
     validation: "src/validation.ts",
     errors: "src/errors/index.ts",
     "errors-node": "src/errors-node.ts",
+    testing: "src/testing/index.ts",
   },
   format: ["esm"],
   dts: true,

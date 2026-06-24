@@ -46,6 +46,10 @@
     "./errors-node": {
       "import": "./dist/errors-node.js",
       "types": "./dist/errors-node.d.ts"
+    },
+    "./testing": {
+      "import": "./dist/testing.js",
+      "types": "./dist/testing.d.ts"
     }
   },
   "scripts": {
