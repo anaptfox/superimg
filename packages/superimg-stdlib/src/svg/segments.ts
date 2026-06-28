@@ -5,9 +5,11 @@
  */
 
 import { parsePath, absolutize, normalize } from "path-data-parser";
-import type { Segment } from "path-data-parser";
 
-export type { Segment };
+export interface Segment {
+  key: string;
+  data: number[];
+}
 
 // --- Bezier math ---
 
@@ -108,7 +110,7 @@ function buildCubicLUT(seg: Omit<CubicSegment, "lut" | "length">): { lut: number
 
 /** Find bezier parameter t for a target arc length using binary search on LUT */
 function lutLookup(lut: number[], targetLen: number): number {
-  const total = lut[lut.length - 1];
+  const total = lut[lut.length - 1] ?? 0;
   if (targetLen <= 0) return 0;
   if (targetLen >= total) return 1;
 
@@ -116,13 +118,15 @@ function lutLookup(lut: number[], targetLen: number): number {
   let lo = 0, hi = lut.length - 1;
   while (lo < hi - 1) {
     const mid = (lo + hi) >> 1;
-    if (lut[mid] < targetLen) lo = mid;
+    if ((lut[mid] ?? 0) < targetLen) lo = mid;
     else hi = mid;
   }
 
   // Linear interpolation between lo and hi
-  const segLen = lut[hi] - lut[lo];
-  const frac = segLen > 0 ? (targetLen - lut[lo]) / segLen : 0;
+  const loVal = lut[lo] ?? 0;
+  const hiVal = lut[hi] ?? 0;
+  const segLen = hiVal - loVal;
+  const frac = segLen > 0 ? (targetLen - loVal) / segLen : 0;
   return (lo + frac) / LUT_SAMPLES;
 }
 
@@ -154,12 +158,19 @@ export function normalizePath(d: string): NormalizedPath {
 
   for (const seg of raw) {
     switch (seg.key) {
-      case "M":
-        cx = seg.data[0];
-        cy = seg.data[1];
+      case "M": {
+        const mx = seg.data[0];
+        const my = seg.data[1];
+        if (mx !== undefined && my !== undefined) {
+          cx = mx;
+          cy = my;
+        }
         break;
+      }
       case "L": {
-        const x1 = seg.data[0], y1 = seg.data[1];
+        const x1 = seg.data[0];
+        const y1 = seg.data[1];
+        if (x1 === undefined || y1 === undefined) break;
         const dx = x1 - cx, dy = y1 - cy;
         const length = Math.sqrt(dx * dx + dy * dy);
         segments.push({ type: "L", x0: cx, y0: cy, x1, y1, length });
@@ -170,7 +181,16 @@ export function normalizePath(d: string): NormalizedPath {
         break;
       }
       case "C": {
-        const [c1x, c1y, c2x, c2y, x1, y1] = seg.data;
+        const c1x = seg.data[0];
+        const c1y = seg.data[1];
+        const c2x = seg.data[2];
+        const c2y = seg.data[3];
+        const x1 = seg.data[4];
+        const y1 = seg.data[5];
+        if (
+          c1x === undefined || c1y === undefined || c2x === undefined ||
+          c2y === undefined || x1 === undefined || y1 === undefined
+        ) break;
         const base = { type: "C" as const, x0: cx, y0: cy, c1x, c1y, c2x, c2y, x1, y1 };
         const { lut, length } = buildCubicLUT(base);
         segments.push({ ...base, lut, length });
@@ -201,11 +221,13 @@ export function pointAtProgress(np: NormalizedPath, t: number): { x: number; y: 
   // Find which segment contains the target length
   let segIdx = 0;
   for (; segIdx < np.cumulative.length - 1; segIdx++) {
-    if (np.cumulative[segIdx] >= targetLen) break;
+    if ((np.cumulative[segIdx] ?? 0) >= targetLen) break;
   }
 
   const seg = np.segments[segIdx];
-  const prevCum = segIdx > 0 ? np.cumulative[segIdx - 1] : 0;
+  if (!seg) return { x: 0, y: 0 };
+
+  const prevCum = segIdx > 0 ? (np.cumulative[segIdx - 1] ?? 0) : 0;
   const localLen = targetLen - prevCum;
 
   if (seg.type === "L") {
@@ -230,11 +252,13 @@ export function angleAtProgress(np: NormalizedPath, t: number): number {
 
   let segIdx = 0;
   for (; segIdx < np.cumulative.length - 1; segIdx++) {
-    if (np.cumulative[segIdx] >= targetLen) break;
+    if ((np.cumulative[segIdx] ?? 0) >= targetLen) break;
   }
 
   const seg = np.segments[segIdx];
-  const prevCum = segIdx > 0 ? np.cumulative[segIdx - 1] : 0;
+  if (!seg) return 0;
+
+  const prevCum = segIdx > 0 ? (np.cumulative[segIdx - 1] ?? 0) : 0;
   const localLen = targetLen - prevCum;
 
   if (seg.type === "L") {
@@ -250,6 +274,6 @@ export function angleAtProgress(np: NormalizedPath, t: number): number {
 export function serializePath(segments: Segment[]): string {
   return segments.map(s => {
     if (s.key === "Z") return "Z";
-    return `${s.key}${s.data.map(n => Math.round(n * 1000) / 1000).join(",")}`;
+    return `${s.key}${s.data.map((n: number) => Math.round(n * 1000) / 1000).join(",")}`;
   }).join(" ");
 }

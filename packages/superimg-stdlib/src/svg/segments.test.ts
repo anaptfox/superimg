@@ -12,7 +12,7 @@ describe("segments", () => {
     it("parses a cubic bezier", () => {
       const np = normalizePath("M 0 0 C 50 0 50 100 100 100");
       expect(np.segments).toHaveLength(1);
-      expect(np.segments[0].type).toBe("C");
+      expect(np.segments[0]!.type).toBe("C");
       expect(np.totalLength).toBeGreaterThan(100);
     });
 
@@ -31,7 +31,7 @@ describe("segments", () => {
     it("normalizes Q to C", () => {
       const np = normalizePath("M 0 0 Q 50 100 100 0");
       expect(np.segments).toHaveLength(1);
-      expect(np.segments[0].type).toBe("C");
+      expect(np.segments[0]!.type).toBe("C");
     });
 
     it("caches parsed results", () => {

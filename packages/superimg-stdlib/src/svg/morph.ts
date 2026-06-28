@@ -8,13 +8,12 @@
  * ```ts
  * const a = std.svg.shape.polygon(100, 100, 80, 10);
  * const b = std.svg.shape.star(100, 100, 80, 35, 5);
- * const d = std.svg.morph(a, b, sceneProgress);
+ * const d = std.svg.morph(a, b, timeline.progress);
  * return `<path d="${d}" fill="#667eea" />`;
  * ```
  */
 
-import { normalizePath, serializePath } from "./segments";
-import type { Segment } from "./segments";
+import { normalizePath, serializePath, type Segment } from "./segments.js";
 
 interface MorphPair {
   segA: Segment[];
@@ -42,14 +41,17 @@ function getMorphPair(pathA: string, pathB: string): MorphPair {
   }
 
   for (let i = 0; i < segA.length; i++) {
-    if (segA[i].key !== segB[i].key) {
+    const a = segA[i];
+    const b = segB[i];
+    if (!a || !b) continue;
+    if (a.key !== b.key) {
       throw new Error(
-        `svg.morph: segment ${i} type mismatch — path A has "${segA[i].key}", path B has "${segB[i].key}".`,
+        `svg.morph: segment ${i} type mismatch — path A has "${a.key}", path B has "${b.key}".`,
       );
     }
-    if (segA[i].data.length !== segB[i].data.length) {
+    if (a.data.length !== b.data.length) {
       throw new Error(
-        `svg.morph: segment ${i} data length mismatch — path A has ${segA[i].data.length} values, path B has ${segB[i].data.length}.`,
+        `svg.morph: segment ${i} data length mismatch — path A has ${a.data.length} values, path B has ${b.data.length}.`,
       );
     }
   }
@@ -64,10 +66,10 @@ export function morph(pathA: string, pathB: string, progress: number): string {
   const { segA, segB } = getMorphPair(pathA, pathB);
 
   const result: Segment[] = segA.map((sa, i) => {
-    const sb = segB[i];
+    const sb = segB[i]!;
     return {
       key: sa.key,
-      data: sa.data.map((val: number, j: number) => val + (sb.data[j] - val) * t),
+      data: sa.data.map((val: number, j: number) => val + ((sb.data[j] ?? val) - val) * t),
     };
   });
 

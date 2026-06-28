@@ -1,3 +1,6 @@
+import { scaleLinear } from "d3-scale";
+import { defaultTickFormatter } from "./d3-helpers.js";
+
 export interface CoordConfig {
   xRange?: [number, number];
   yRange?: [number, number];
@@ -55,7 +58,7 @@ export function createCoords(config: CoordConfig): CoordSystem {
 
   function toPixel(x: number, y: number) {
     const px = plotLeft + ((x - xMin) / xSpan) * plotWidth;
-    const py = plotTop + ((yMax - y) / ySpan) * plotHeight; // SVG y inverted
+    const py = plotTop + ((yMax - y) / ySpan) * plotHeight;
     return { px, py };
   }
 
@@ -78,32 +81,45 @@ export function createCoords(config: CoordConfig): CoordSystem {
   };
 }
 
+function pixelScales(coords: CoordSystem) {
+  const { xRange, yRange } = coords.config;
+  const { px: x0 } = coords.toPixel(xRange[0], 0);
+  const { px: x1 } = coords.toPixel(xRange[1], 0);
+  const { py: y0 } = coords.toPixel(0, yRange[0]);
+  const { py: y1 } = coords.toPixel(0, yRange[1]);
+  const xScale = scaleLinear().domain(xRange).range([x0, x1]);
+  const yScale = scaleLinear().domain(yRange).range([y0, y1]);
+  return { xScale, yScale };
+}
+
 export interface AxesOptions {
   color?: string;
   strokeWidth?: number;
-  tickInterval?: number;
+  ticks?: number;
   tickLength?: number;
   labels?: boolean;
   fontSize?: number;
   progress?: number;
+  tickFormat?: (v: number) => string;
 }
 
 export function axes(coords: CoordSystem, opts: AxesOptions = {}): string {
   const {
     color = "#888",
     strokeWidth = 1.5,
-    tickInterval = 1,
+    ticks = 6,
     tickLength = 5,
     labels = true,
     fontSize = 12,
     progress = 1,
+    tickFormat = defaultTickFormatter(),
   } = opts;
 
   const { xRange, yRange } = coords.config;
   const [xMin, xMax] = xRange;
   const [yMin, yMax] = yRange;
+  const { xScale, yScale } = pixelScales(coords);
 
-  // Clamp origin to visible area
   const originX = Math.max(xMin, Math.min(xMax, 0));
   const originY = Math.max(yMin, Math.min(yMax, 0));
 
@@ -121,76 +137,72 @@ export function axes(coords: CoordSystem, opts: AxesOptions = {}): string {
   const dashX = progress < 1 ? `stroke-dasharray="${xLen}" stroke-dashoffset="${xLen * (1 - progress)}"` : "";
   const dashY = progress < 1 ? `stroke-dasharray="${yLen}" stroke-dashoffset="${yLen * (1 - progress)}"` : "";
 
-  const lines: string[] = [];
-  // X axis
-  lines.push(
-    `<line x1="${xStartPx}" y1="${oyPy}" x2="${xEndPx}" y2="${oyPy}" stroke="${color}" stroke-width="${strokeWidth}" ${dashX}/>`
-  );
-  // Y axis
-  lines.push(
-    `<line x1="${oxPx}" y1="${yStartPy}" x2="${oxPx}" y2="${yEndPy}" stroke="${color}" stroke-width="${strokeWidth}" ${dashY}/>`
-  );
+  const lines: string[] = [
+    `<line x1="${xStartPx}" y1="${oyPy}" x2="${xEndPx}" y2="${oyPy}" stroke="${color}" stroke-width="${strokeWidth}" ${dashX}/>`,
+    `<line x1="${oxPx}" y1="${yStartPy}" x2="${oxPx}" y2="${yEndPy}" stroke="${color}" stroke-width="${strokeWidth}" ${dashY}/>`,
+  ];
 
-  // Ticks and labels
-  const ticks: string[] = [];
-  // X ticks
-  const xStart = Math.ceil(xMin / tickInterval) * tickInterval;
-  for (let v = xStart; v <= xMax + 1e-9; v += tickInterval) {
+  const tickEls: string[] = [];
+  for (const v of xScale.ticks(ticks)) {
     if (Math.abs(v) < 1e-9) continue;
     const { px } = coords.toPixel(v, 0);
-    ticks.push(`<line x1="${px}" y1="${oyPy - tickLength}" x2="${px}" y2="${oyPy + tickLength}" stroke="${color}" stroke-width="${strokeWidth * 0.8}"/>`);
+    tickEls.push(
+      `<line x1="${px}" y1="${oyPy - tickLength}" x2="${px}" y2="${oyPy + tickLength}" stroke="${color}" stroke-width="${strokeWidth * 0.8}"/>`,
+    );
     if (labels) {
-      ticks.push(`<text x="${px}" y="${oyPy + tickLength + fontSize + 2}" text-anchor="middle" fill="${color}" font-size="${fontSize}" font-family="monospace" opacity="${progress}">${Math.round(v * 100) / 100}</text>`);
-    }
-  }
-  // Y ticks
-  const yStartV = Math.ceil(yMin / tickInterval) * tickInterval;
-  for (let v = yStartV; v <= yMax + 1e-9; v += tickInterval) {
-    if (Math.abs(v) < 1e-9) continue;
-    const { py } = coords.toPixel(0, v);
-    ticks.push(`<line x1="${oxPx - tickLength}" y1="${py}" x2="${oxPx + tickLength}" y2="${py}" stroke="${color}" stroke-width="${strokeWidth * 0.8}"/>`);
-    if (labels) {
-      ticks.push(`<text x="${oxPx - tickLength - 4}" y="${py + fontSize * 0.35}" text-anchor="end" fill="${color}" font-size="${fontSize}" font-family="monospace" opacity="${progress}">${Math.round(v * 100) / 100}</text>`);
+      tickEls.push(
+        `<text x="${px}" y="${oyPy + tickLength + fontSize + 2}" text-anchor="middle" fill="${color}" font-size="${fontSize}" font-family="monospace" opacity="${progress}">${tickFormat(v)}</text>`,
+      );
     }
   }
 
-  return `<g>${lines.join("")}${ticks.join("")}</g>`;
+  for (const v of yScale.ticks(ticks)) {
+    if (Math.abs(v) < 1e-9) continue;
+    const { py } = coords.toPixel(0, v);
+    tickEls.push(
+      `<line x1="${oxPx - tickLength}" y1="${py}" x2="${oxPx + tickLength}" y2="${py}" stroke="${color}" stroke-width="${strokeWidth * 0.8}"/>`,
+    );
+    if (labels) {
+      tickEls.push(
+        `<text x="${oxPx - tickLength - 4}" y="${py + fontSize * 0.35}" text-anchor="end" fill="${color}" font-size="${fontSize}" font-family="monospace" opacity="${progress}">${tickFormat(v)}</text>`,
+      );
+    }
+  }
+
+  return `<g>${lines.join("")}${tickEls.join("")}</g>`;
 }
 
 export interface GridOptions {
   color?: string;
   strokeWidth?: number;
-  interval?: number;
+  ticks?: number;
   progress?: number;
 }
 
 export function grid(coords: CoordSystem, opts: GridOptions = {}): string {
-  const { color = "#222", strokeWidth = 0.5, interval = 1, progress = 1 } = opts;
+  const { color = "#222", strokeWidth = 0.5, ticks = 6, progress = 1 } = opts;
   const { xRange, yRange } = coords.config;
   const [xMin, xMax] = xRange;
   const [yMin, yMax] = yRange;
+  const { xScale, yScale } = pixelScales(coords);
 
   const paths: string[] = [];
 
-  const xStart = Math.ceil(xMin / interval) * interval;
-  for (let v = xStart; v <= xMax + 1e-9; v += interval) {
+  for (const v of xScale.ticks(ticks)) {
     const { px } = coords.toPixel(v, 0);
     const { py: py1 } = coords.toPixel(0, yMax);
     const { py: py2 } = coords.toPixel(0, yMin);
     paths.push(`M ${px} ${py1} L ${px} ${py2}`);
   }
 
-  const yStart = Math.ceil(yMin / interval) * interval;
-  for (let v = yStart; v <= yMax + 1e-9; v += interval) {
+  for (const v of yScale.ticks(ticks)) {
     const { py } = coords.toPixel(0, v);
     const { px: px1 } = coords.toPixel(xMin, 0);
     const { px: px2 } = coords.toPixel(xMax, 0);
     paths.push(`M ${px1} ${py} L ${px2} ${py}`);
   }
 
-  const d = paths.join(" ");
-  const opacity = progress;
-  return `<path d="${d}" stroke="${color}" stroke-width="${strokeWidth}" fill="none" opacity="${opacity}"/>`;
+  return `<path d="${paths.join(" ")}" stroke="${color}" stroke-width="${strokeWidth}" fill="none" opacity="${progress}"/>`;
 }
 
 export interface NumberLineOptions {

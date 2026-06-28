@@ -13,8 +13,10 @@ export interface PlotOptions {
 function pathLength(points: Array<[number, number]>): number {
   let len = 0;
   for (let i = 1; i < points.length; i++) {
-    const dx = points[i][0] - points[i - 1][0];
-    const dy = points[i][1] - points[i - 1][1];
+    const currPt = points[i]!;
+    const prevPt = points[i - 1]!;
+    const dx = currPt[0] - prevPt[0];
+    const dy = currPt[1] - prevPt[1];
     len += Math.sqrt(dx * dx + dy * dy);
   }
   return len;
@@ -46,12 +48,16 @@ function buildPathD(
   }
 
   // Adaptive subdivision
-  const finalSegs: Seg[] = [rawSegs[0]];
+  const firstSeg = rawSegs[0];
+  if (!firstSeg) return "";
+  const finalSegs: Seg[] = [firstSeg];
   for (let i = 1; i < rawSegs.length; i++) {
     const prev = rawSegs[i - 1];
     const curr = rawSegs[i];
+    if (!prev || !curr) continue;
     if (adaptive && i >= 2) {
       const pprev = rawSegs[i - 2];
+      if (!pprev) continue;
       const curvature = Math.abs(curr.py - 2 * prev.py + pprev.py);
       if (curvature > 2) {
         // One level of subdivision

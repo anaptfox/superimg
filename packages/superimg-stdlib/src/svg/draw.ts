@@ -7,7 +7,7 @@
  * @example
  * ```ts
  * const d = "M10,80 Q95,10 180,80";
- * const draw = std.svg.draw(d, sceneProgress);
+ * const draw = std.svg.draw(d, timeline.progress);
  * return `<path d="${d}" fill="none" stroke="white" stroke-width="3"
  *           stroke-dasharray="${draw.strokeDasharray}"
  *           stroke-dashoffset="${draw.strokeDashoffset}" />`;
