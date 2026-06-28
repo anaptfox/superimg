@@ -1,7 +1,20 @@
 //! Server-side video+audio encoder using @mediabunny/server + sharp for JPEG decode
 
-import type { VideoEncoder, VideoEncoderConfig, QualityPreset, VideoCodecPreference, AudioOptions } from "@superimg/types";
-import { resolveAudio } from "@superimg/core";
+import type {
+  ResolvedAudioTimeline,
+  VideoEncoder,
+  VideoEncoderConfig,
+  QualityPreset,
+  VideoCodecPreference,
+} from "@superimg/types";
+import {
+  mixAudioClips,
+  interleaveStereo,
+  TARGET_SAMPLE_RATE,
+  TARGET_CHANNELS,
+  type DecodedAudioClip,
+  type MixClipInput,
+} from "@superimg/core";
 import {
   BufferTarget,
   Mp4OutputFormat,
@@ -26,6 +39,7 @@ import {
 } from "mediabunny";
 import { registerMediabunnyServer } from "@mediabunny/server";
 import sharp from "sharp";
+import { resolveLocalAssetPath } from "./resolve-local-asset-path.js";
 
 let serverRegistered = false;
 
@@ -64,48 +78,59 @@ function toCodecArray<T>(v: T | T[]): T[] {
   return Array.isArray(v) ? v : [v];
 }
 
-/**
- * Extract a local absolute file path from an audio src.
- * Handles two cases:
- *  1. localhost asset URL: http://localhost:PORT/assets?path=<encodedAbsolutePath>
- *  2. Already an absolute path: /path/to/file.mp3
- */
-function extractAudioFilePath(src: string): string | null {
-  try {
-    const url = new URL(src);
-    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-      return url.searchParams.get("path");
-    }
-    return null; // remote URL — not supported
-  } catch {
-    // Not a valid URL — treat as a direct file path
-    return src.startsWith("/") ? src : null;
+async function decodeAudioFile(filePath: string): Promise<DecodedAudioClip> {
+  const input = new Input({ formats: ALL_FORMATS, source: new FilePathSource(filePath) });
+  const audioTrack = await input.getPrimaryAudioTrack();
+  if (!audioTrack) {
+    input.dispose();
+    throw new Error(`[NodeVideoEncoder] No audio track found in: ${filePath}`);
   }
-}
 
-interface AudioPipeline {
-  input: Input;
-  sink: AudioSampleSink;
-  source: AudioSampleSource;
-  sampleRate: number;
-  numberOfChannels: number;
-  sourceDuration: number;
-  opts: AudioOptions;
+  const sampleRate = await audioTrack.getSampleRate();
+  const numberOfChannels = await audioTrack.getNumberOfChannels();
+  const sourceDuration = await input.computeDuration([audioTrack]);
+  const sink = new AudioSampleSink(audioTrack);
+
+  const chunks: Float32Array[][] = Array.from({ length: numberOfChannels }, () => []);
+  for await (const sample of sink.samples()) {
+    for (let ch = 0; ch < numberOfChannels; ch++) {
+      const size = sample.allocationSize({ planeIndex: ch, format: "f32-planar" });
+      const plane = new Float32Array(size / 4);
+      sample.copyTo(plane, { planeIndex: ch, format: "f32-planar" });
+      chunks[ch]!.push(plane);
+    }
+    sample.close();
+  }
+  input.dispose();
+
+  const channels = chunks.map((chunkList) => {
+    const totalLen = chunkList.reduce((sum, c) => sum + c.length, 0);
+    const out = new Float32Array(totalLen);
+    let offset = 0;
+    for (const chunk of chunkList) {
+      out.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return out;
+  });
+
+  return { channels, sampleRate, sourceDurationSeconds: sourceDuration };
 }
 
 /**
  * Node.js video+audio encoder using Mediabunny server-side encoding.
- * Accepts JPEG or PNG buffers from Playwright screenshots.
  */
 export class NodeVideoEncoder implements VideoEncoder<Buffer> {
   private videoSource: VideoSampleSource | null = null;
+  private audioSource: AudioSampleSource | null = null;
   private output: Output | null = null;
   private width = 0;
   private height = 0;
   private fps = 0;
   private frameDuration = 0;
   private videoDuration = 0;
-  private audio: AudioPipeline | null = null;
+  private resolvedAudio: ResolvedAudioTimeline | null = null;
+  private encodingConfig?: VideoEncoderConfig["encoding"];
 
   async init(config: VideoEncoderConfig): Promise<void> {
     ensureServerRegistered();
@@ -115,6 +140,8 @@ export class NodeVideoEncoder implements VideoEncoder<Buffer> {
     this.fps = config.fps;
     this.frameDuration = 1 / config.fps;
     this.videoDuration = 0;
+    this.resolvedAudio = config.resolvedAudio ?? null;
+    this.encodingConfig = config.encoding;
 
     const isWebM = config.encoding?.format === "webm";
     const defaultCodecs: VideoCodecPreference[] = isWebM ? ["vp9", "av1"] : ["avc", "vp9", "av1"];
@@ -128,8 +155,16 @@ export class NodeVideoEncoder implements VideoEncoder<Buffer> {
 
     const target = new BufferTarget();
     const format = isWebM
-      ? new WebMOutputFormat({ minimumClusterDuration: config.encoding?.webm?.minimumClusterDuration })
-      : new Mp4OutputFormat({ fastStart: config.encoding?.mp4?.fastStart ?? undefined });
+      ? new WebMOutputFormat({
+          ...(config.encoding?.webm?.minimumClusterDuration !== undefined
+            ? { minimumClusterDuration: config.encoding.webm.minimumClusterDuration }
+            : {}),
+        })
+      : new Mp4OutputFormat({
+          ...(config.encoding?.mp4?.fastStart !== undefined
+            ? { fastStart: config.encoding.mp4.fastStart }
+            : {}),
+        });
 
     this.output = new Output({ format, target });
 
@@ -137,51 +172,32 @@ export class NodeVideoEncoder implements VideoEncoder<Buffer> {
       codec: videoCodec,
       bitrate: resolveVideoBitrate(config.encoding?.video?.bitrate),
       keyFrameInterval: config.encoding?.video?.keyFrameInterval ?? 5,
-      bitrateMode: config.encoding?.video?.bitrateMode,
-      latencyMode: config.encoding?.video?.latencyMode,
+      ...(config.encoding?.video?.bitrateMode !== undefined
+        ? { bitrateMode: config.encoding.video.bitrateMode }
+        : {}),
+      ...(config.encoding?.video?.latencyMode !== undefined
+        ? { latencyMode: config.encoding.video.latencyMode }
+        : {}),
     });
     this.output.addVideoTrack(this.videoSource, { frameRate: this.fps });
 
-    // Set up audio pipeline if audio is configured
-    if (config.audio) {
-      const resolved = resolveAudio(config.audio);
-      const filePath = extractAudioFilePath(resolved.src);
-      if (!filePath) {
-        throw new Error(`[NodeVideoEncoder] Audio src "${resolved.src}" is not a local file path. Remote audio URLs are not supported in server-side mode.`);
-      }
-
-      const input = new Input({ formats: ALL_FORMATS, source: new FilePathSource(filePath) });
-      const audioTrack = await input.getPrimaryAudioTrack();
-      if (!audioTrack) throw new Error(`[NodeVideoEncoder] No audio track found in: ${filePath}`);
-
-      const sampleRate = await audioTrack.getSampleRate();
-      const numberOfChannels = await audioTrack.getNumberOfChannels();
-      const sourceDuration = await input.computeDuration([audioTrack]);
-
+    if (this.resolvedAudio?.clips.length) {
       const audioCodecPrefs = config.encoding?.audio?.codec ?? (["aac", "opus"] as const);
       const audioCodec = await getFirstEncodableAudioCodec(toCodecArray(audioCodecPrefs), {
-        numberOfChannels,
-        sampleRate,
+        numberOfChannels: TARGET_CHANNELS,
+        sampleRate: TARGET_SAMPLE_RATE,
         bitrate: resolveAudioBitrate(config.encoding?.audio?.bitrate),
       });
       if (!audioCodec) throw new Error("[NodeVideoEncoder] No supported audio codec found");
 
-      const audioSource = new AudioSampleSource({
+      this.audioSource = new AudioSampleSource({
         codec: audioCodec,
         bitrate: resolveAudioBitrate(config.encoding?.audio?.bitrate),
-        bitrateMode: config.encoding?.audio?.bitrateMode,
+        ...(config.encoding?.audio?.bitrateMode !== undefined
+          ? { bitrateMode: config.encoding.audio.bitrateMode }
+          : {}),
       });
-      this.output.addAudioTrack(audioSource);
-
-      this.audio = {
-        input,
-        sink: new AudioSampleSink(audioTrack),
-        source: audioSource,
-        sampleRate,
-        numberOfChannels,
-        sourceDuration,
-        opts: { src: resolved.src, loop: resolved.loop, volume: resolved.volume, fadeIn: resolved.fadeIn, fadeOut: resolved.fadeOut },
-      };
+      this.output.addAudioTrack(this.audioSource);
     }
 
     await this.output.start();
@@ -214,10 +230,9 @@ export class NodeVideoEncoder implements VideoEncoder<Buffer> {
 
     this.videoSource.close();
 
-    if (this.audio) {
-      await this.finalizeAudio(this.audio);
-      this.audio.source.close();
-      this.audio.input.dispose();
+    if (this.audioSource && this.resolvedAudio?.clips.length) {
+      await this.finalizeMixedAudio(this.resolvedAudio);
+      this.audioSource.close();
     }
 
     await this.output.finalize();
@@ -228,70 +243,35 @@ export class NodeVideoEncoder implements VideoEncoder<Buffer> {
     return new Uint8Array(buffer);
   }
 
-  private async finalizeAudio(audio: AudioPipeline): Promise<void> {
-    const { sink, source, sampleRate, numberOfChannels, sourceDuration, opts, videoDuration = this.videoDuration } = audio;
-    const { loop = true, volume = 1, fadeIn = 0, fadeOut = 0 } = opts;
+  private async finalizeMixedAudio(timeline: ResolvedAudioTimeline): Promise<void> {
+    if (!this.audioSource) return;
 
-    // Decode all source audio samples into per-channel Float32 arrays.
-    // Collect chunks first, then concat once to avoid O(n²) re-allocation per sample.
-    const chunks: Float32Array[][] = Array.from({ length: numberOfChannels }, () => []);
-    for await (const sample of sink.samples()) {
-      for (let ch = 0; ch < numberOfChannels; ch++) {
-        const size = sample.allocationSize({ planeIndex: ch, format: "f32-planar" });
-        const plane = new Float32Array(size / 4);
-        sample.copyTo(plane, { planeIndex: ch, format: "f32-planar" });
-        chunks[ch].push(plane);
+    const videoDuration = this.videoDuration;
+    const mixInputs: MixClipInput[] = [];
+
+    for (const clip of timeline.clips) {
+      const filePath = resolveLocalAssetPath(clip.src);
+      if (!filePath) {
+        throw new Error(
+          `[NodeVideoEncoder] Audio src "${clip.src}" is not a local file path.`,
+        );
       }
-      sample.close();
-    }
-    const srcChannels: Float32Array[] = chunks.map((chunkList) => {
-      const totalLen = chunkList.reduce((sum, c) => sum + c.length, 0);
-      const out = new Float32Array(totalLen);
-      let offset = 0;
-      for (const chunk of chunkList) { out.set(chunk, offset); offset += chunk.length; }
-      return out;
-    });
-
-    const srcTotalFrames = srcChannels[0].length;
-    const totalOutputFrames = Math.ceil(this.videoDuration * sampleRate);
-
-    // Build processed output: apply loop, volume, fade in/out
-    const outChannels: Float32Array[] = Array.from({ length: numberOfChannels }, () => new Float32Array(totalOutputFrames));
-    for (let ch = 0; ch < numberOfChannels; ch++) {
-      const src = srcChannels[ch];
-      const out = outChannels[ch];
-      for (let i = 0; i < totalOutputFrames; i++) {
-        const t = i / sampleRate;
-        let s: number;
-        if (loop) {
-          const tInSrc = t % sourceDuration;
-          s = src[Math.min(Math.floor(tInSrc * sampleRate), srcTotalFrames - 1)];
-        } else if (t < sourceDuration) {
-          s = src[Math.min(Math.floor(t * sampleRate), srcTotalFrames - 1)];
-        } else {
-          s = 0;
-        }
-        s *= volume;
-        if (fadeIn > 0 && t < fadeIn) s *= t / fadeIn;
-        if (fadeOut > 0 && t > this.videoDuration - fadeOut) s *= Math.max(0, (this.videoDuration - t) / fadeOut);
-        out[i] = s;
-      }
+      const decoded = await decodeAudioFile(filePath);
+      mixInputs.push({ decoded, resolved: clip });
     }
 
-    // Combine into f32-planar layout: [ch0_frames..., ch1_frames..., ...]
-    const combined = new Float32Array(totalOutputFrames * numberOfChannels);
-    for (let ch = 0; ch < numberOfChannels; ch++) {
-      combined.set(outChannels[ch], ch * totalOutputFrames);
-    }
+    const { left, right } = mixAudioClips(mixInputs, videoDuration, timeline.mix);
+    const combined = interleaveStereo(left, right);
+    const totalFrames = left.length;
 
     const audioSample = new AudioSample({
       data: combined.buffer,
       format: "f32-planar",
-      numberOfChannels,
-      sampleRate,
+      numberOfChannels: TARGET_CHANNELS,
+      sampleRate: TARGET_SAMPLE_RATE,
       timestamp: 0,
     });
-    await source.add(audioSample);
+    await this.audioSource.add(audioSample);
     audioSample.close();
   }
 

@@ -16,7 +16,14 @@ import {
   QUALITY_HIGH,
   QUALITY_VERY_HIGH,
 } from "mediabunny";
-import type { EncodingOptions, QualityPreset, AudioOptions, VideoCodecPreference } from "@superimg/types";
+import type { EncodingOptions, QualityPreset, VideoCodecPreference, ResolvedAudioTimeline } from "@superimg/types";
+import {
+  mixAudioClips,
+  TARGET_SAMPLE_RATE,
+  TARGET_CHANNELS,
+  type DecodedAudioClip,
+  type MixClipInput,
+} from "@superimg/core";
 import { get2DContext } from "./utils.js";
 
 function resolveVideoBitrate(
@@ -63,10 +70,6 @@ function toCodecArray<T>(v: T | T[]): T[] {
   return Array.isArray(v) ? v : [v];
 }
 
-/**
- * Validate that frame dimensions match encoder dimensions.
- * Throws if they don't match.
- */
 export function validateFrameDimensions(
   imageData: { width: number; height: number },
   encoderWidth: number,
@@ -77,6 +80,25 @@ export function validateFrameDimensions(
       `Frame dimensions ${imageData.width}x${imageData.height} do not match encoder dimensions ${encoderWidth}x${encoderHeight}`
     );
   }
+}
+
+async function decodeAudioUrl(url: string): Promise<DecodedAudioClip> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch audio: ${url} (${response.status})`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const audioContext = new AudioContext();
+  const buffer = await audioContext.decodeAudioData(arrayBuffer);
+  const channels: Float32Array[] = [];
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    channels.push(buffer.getChannelData(ch));
+  }
+  return {
+    channels,
+    sampleRate: buffer.sampleRate,
+    sourceDurationSeconds: buffer.duration,
+  };
 }
 
 /**
@@ -91,8 +113,8 @@ export class BrowserEncoder {
   private fps: number;
   private frameDuration: number;
   private videoDuration: number = 0;
-  private sourceAudioBuffer: AudioBuffer | null = null;
-  private audioOptions: AudioOptions | null = null;
+  private resolvedAudio: ResolvedAudioTimeline | null = null;
+  private decodedClips: MixClipInput[] = [];
   private frameCanvas: OffscreenCanvas;
   private frameCtx: OffscreenCanvasRenderingContext2D;
   private encoding?: EncodingOptions;
@@ -106,19 +128,32 @@ export class BrowserEncoder {
     this.width = width;
     this.height = height;
     this.fps = fps;
-    this.encoding = encoding;
+    if (encoding !== undefined) {
+      this.encoding = encoding;
+    }
     this.frameDuration = 1 / fps;
     this.frameCanvas = new OffscreenCanvas(width, height);
     this.frameCtx = get2DContext(this.frameCanvas);
   }
 
   /**
-   * Initialize the encoder
+   * Load and decode audio clips before init()
    */
+  async setResolvedAudio(timeline: ResolvedAudioTimeline): Promise<void> {
+    if (this.output) {
+      throw new Error("setResolvedAudio must be called before init()");
+    }
+    this.resolvedAudio = timeline;
+    this.decodedClips = [];
+    for (const clip of timeline.clips) {
+      const decoded = await decodeAudioUrl(clip.src);
+      this.decodedClips.push({ decoded, resolved: clip });
+    }
+  }
+
   async init(): Promise<void> {
     const isWebM = this.encoding?.format === "webm";
 
-    // Smart codec defaults: WebM doesn't support AVC
     const defaultCodecs: VideoCodecPreference[] = isWebM
       ? ["vp9", "av1"]
       : ["avc", "vp9", "av1"];
@@ -135,10 +170,14 @@ export class BrowserEncoder {
     const outputTarget = new BufferTarget();
     const outputFormat = isWebM
       ? new WebMOutputFormat({
-          minimumClusterDuration: this.encoding?.webm?.minimumClusterDuration,
+          ...(this.encoding?.webm?.minimumClusterDuration !== undefined
+            ? { minimumClusterDuration: this.encoding.webm.minimumClusterDuration }
+            : {}),
         })
       : new Mp4OutputFormat({
-          fastStart: this.encoding?.mp4?.fastStart ?? undefined,
+          ...(this.encoding?.mp4?.fastStart !== undefined
+            ? { fastStart: this.encoding.mp4.fastStart }
+            : {}),
         });
     this.output = new Output({
       format: outputFormat,
@@ -150,66 +189,46 @@ export class BrowserEncoder {
       bitrate: resolveVideoBitrate(this.encoding?.video?.bitrate),
       keyFrameInterval: this.encoding?.video?.keyFrameInterval ?? 5,
       sizeChangeBehavior: "deny",
-      alpha: this.encoding?.video?.alpha,
-      bitrateMode: this.encoding?.video?.bitrateMode,
-      latencyMode: this.encoding?.video?.latencyMode,
-      hardwareAcceleration: this.encoding?.video?.hardwareAcceleration,
+      ...(this.encoding?.video?.alpha !== undefined ? { alpha: this.encoding.video.alpha } : {}),
+      ...(this.encoding?.video?.bitrateMode !== undefined
+        ? { bitrateMode: this.encoding.video.bitrateMode }
+        : {}),
+      ...(this.encoding?.video?.latencyMode !== undefined
+        ? { latencyMode: this.encoding.video.latencyMode }
+        : {}),
+      ...(this.encoding?.video?.hardwareAcceleration !== undefined
+        ? { hardwareAcceleration: this.encoding.video.hardwareAcceleration }
+        : {}),
     });
 
     this.output.addVideoTrack(this.canvasSource, { frameRate: this.fps });
 
-    if (this.audioSource) {
+    if (this.resolvedAudio?.clips.length) {
+      const codecPrefsAudio = this.encoding?.audio?.codec ?? (["aac", "opus"] as const);
+      const audioCodec = await getFirstEncodableAudioCodec(
+        toCodecArray(codecPrefsAudio),
+        {
+          numberOfChannels: TARGET_CHANNELS,
+          sampleRate: TARGET_SAMPLE_RATE,
+          bitrate: resolveAudioBitrate(this.encoding?.audio?.bitrate),
+        }
+      );
+      if (!audioCodec) {
+        throw new Error("No supported audio codec found");
+      }
+      this.audioSource = new AudioBufferSource({
+        codec: audioCodec,
+        bitrate: resolveAudioBitrate(this.encoding?.audio?.bitrate),
+        ...(this.encoding?.audio?.bitrateMode !== undefined
+          ? { bitrateMode: this.encoding.audio.bitrateMode }
+          : {}),
+      });
       this.output.addAudioTrack(this.audioSource);
     }
 
     await this.output.start();
   }
 
-  /**
-   * Set audio track for the video
-   * Must be called before init()
-   */
-  async setAudioTrack(audioUrl: string, options: AudioOptions): Promise<void> {
-    if (this.output) {
-      throw new Error("setAudioTrack must be called before init()");
-    }
-
-    const response = await fetch(audioUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch audio: ${audioUrl} (${response.status})`);
-    }
-    const arrayBuffer = await response.arrayBuffer();
-
-    const audioContext = new AudioContext();
-    this.sourceAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    this.audioOptions = options;
-
-    const { numberOfChannels, sampleRate } = this.sourceAudioBuffer;
-
-    const codecPrefs = this.encoding?.audio?.codec ?? (["aac", "opus"] as const);
-    const audioCodec = await getFirstEncodableAudioCodec(
-      toCodecArray(codecPrefs),
-      {
-        numberOfChannels,
-        sampleRate,
-        bitrate: resolveAudioBitrate(this.encoding?.audio?.bitrate),
-      }
-    );
-
-    if (!audioCodec) {
-      throw new Error("No supported audio codec found");
-    }
-
-    this.audioSource = new AudioBufferSource({
-      codec: audioCodec,
-      bitrate: resolveAudioBitrate(this.encoding?.audio?.bitrate),
-      bitrateMode: this.encoding?.audio?.bitrateMode,
-    });
-  }
-
-  /**
-   * Add a frame to the encoder
-   */
   async addFrame(imageData: ImageData, timestamp: number): Promise<void> {
     validateFrameDimensions(imageData, this.width, this.height);
 
@@ -229,76 +248,6 @@ export class BrowserEncoder {
     await this.canvasSource.add(timestamp, this.frameDuration);
   }
 
-  /**
-   * Process source audio with looping, volume, and fade effects into a single AudioBuffer
-   */
-  private processAudio(
-    audioContext: AudioContext,
-    videoDuration: number
-  ): AudioBuffer {
-    const src = this.sourceAudioBuffer!;
-    const opts = this.audioOptions!;
-    const loop = opts.loop ?? true;
-    const volume = opts.volume ?? 1;
-    const fadeIn = opts.fadeIn ?? 0;
-    const fadeOut = opts.fadeOut ?? 0;
-
-    const sampleRate = src.sampleRate;
-    const numberOfChannels = src.numberOfChannels;
-    const totalFrames = Math.ceil(videoDuration * sampleRate);
-    const srcDuration = src.duration;
-    const srcTotalSamples = src.length;
-
-    const out = audioContext.createBuffer(
-      numberOfChannels,
-      totalFrames,
-      sampleRate
-    );
-
-    for (let ch = 0; ch < numberOfChannels; ch++) {
-      const srcData = src.getChannelData(ch);
-      const outData = out.getChannelData(ch);
-
-      for (let i = 0; i < totalFrames; i++) {
-        const t = i / sampleRate;
-        let sample: number;
-
-        if (loop) {
-          const tInSrc = t % srcDuration;
-          const srcIdx = Math.min(
-            Math.floor(tInSrc * sampleRate),
-            srcTotalSamples - 1
-          );
-          sample = srcData[srcIdx];
-        } else if (t < srcDuration) {
-          const srcIdx = Math.min(
-            Math.floor(t * sampleRate),
-            srcTotalSamples - 1
-          );
-          sample = srcData[srcIdx];
-        } else {
-          sample = 0;
-        }
-
-        sample *= volume;
-
-        if (t < fadeIn && fadeIn > 0) {
-          sample *= t / fadeIn;
-        }
-        if (t > videoDuration - fadeOut && fadeOut > 0) {
-          sample *= Math.max(0, (videoDuration - t) / fadeOut);
-        }
-
-        outData[i] = sample;
-      }
-    }
-
-    return out;
-  }
-
-  /**
-   * Finalize encoding and return video blob
-   */
   async finalize(): Promise<Blob> {
     if (!this.canvasSource || !this.output) {
       throw new Error("Encoder not initialized");
@@ -306,15 +255,21 @@ export class BrowserEncoder {
 
     this.canvasSource.close();
 
-    if (this.audioSource && this.sourceAudioBuffer && this.audioOptions) {
-      const audioContext = new AudioContext({
-        sampleRate: this.sourceAudioBuffer.sampleRate,
-      });
-      const processedBuffer = this.processAudio(
-        audioContext,
-        this.videoDuration
+    if (this.audioSource && this.resolvedAudio && this.decodedClips.length) {
+      const { left, right } = mixAudioClips(
+        this.decodedClips,
+        this.videoDuration,
+        this.resolvedAudio.mix,
       );
-      await this.audioSource.add(processedBuffer);
+      const audioContext = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE });
+      const buffer = audioContext.createBuffer(
+        TARGET_CHANNELS,
+        left.length,
+        TARGET_SAMPLE_RATE,
+      );
+      buffer.copyToChannel(left, 0);
+      buffer.copyToChannel(right, 1);
+      await this.audioSource.add(buffer);
       this.audioSource.close();
     }
 

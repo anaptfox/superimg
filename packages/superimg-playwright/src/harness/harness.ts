@@ -1,9 +1,8 @@
 //! Render harness - runs in Playwright's browser context (encoder-only)
 
 import { BrowserEncoder } from "@superimg/runtime/encoder";
-import type { EncodingOptions } from "@superimg/types";
+import type { EncodingOptions, ResolvedAudioTimeline } from "@superimg/types";
 
-// Declare global interface for window.__superimg
 declare global {
   interface Window {
     __superimg: {
@@ -19,7 +18,7 @@ export interface InitEncoderConfig {
   height: number;
   fps: number;
   encoding?: EncodingOptions;
-  audio?: { src: string } & Record<string, unknown>;
+  resolvedAudio?: ResolvedAudioTimeline | null;
 }
 
 let encoder: BrowserEncoder;
@@ -32,9 +31,8 @@ window.__superimg = {
     h = config.height;
     encoder = new BrowserEncoder(w, h, config.fps, config.encoding);
 
-    if (config.audio) {
-      const { src, ...opts } = config.audio;
-      await encoder.setAudioTrack(src, opts as any);
+    if (config.resolvedAudio?.clips.length) {
+      await encoder.setResolvedAudio(config.resolvedAudio);
     }
 
     await encoder.init();

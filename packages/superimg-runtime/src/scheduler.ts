@@ -27,7 +27,9 @@ export class BrowserScheduler {
     this.fps = fps;
     this.width = width;
     this.height = height;
-    this.designWidth = designWidth;
+    if (designWidth !== undefined) {
+      this.designWidth = designWidth;
+    }
     this.renderer = new BrowserRenderer();
   }
 

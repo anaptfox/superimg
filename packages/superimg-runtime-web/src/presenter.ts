@@ -5,6 +5,8 @@ import { superimgDebug } from "./debug.js";
 export interface DomPresenter {
   attach(container: HTMLElement): void;
   present(html: string, width: number, height: number): Promise<void> | void;
+  /** Update logical render dimensions without presenting new HTML */
+  setLogicalSize(width: number, height: number): void;
   injectStyles(inlineCss?: string[], stylesheets?: string[], tailwind?: boolean | TailwindConfig): void;
   getElement(): HTMLElement;
   dispose(): void;
@@ -184,7 +186,7 @@ export class IframePresenter implements DomPresenter {
     }
   }
 
-  present(html: string, width: number, height: number): void {
+  setLogicalSize(width: number, height: number): void {
     this.logicalWidth = width;
     this.logicalHeight = height;
     if (this.scaleWrapper) {
@@ -192,6 +194,10 @@ export class IframePresenter implements DomPresenter {
       this.scaleWrapper.style.height = `${height}px`;
     }
     this.updateScale();
+  }
+
+  present(html: string, width: number, height: number): void {
+    this.setLogicalSize(width, height);
 
     if (!this.isReady || !this.root) {
       this.pendingHtml = html;

@@ -13,7 +13,7 @@ import type {
   ComposedTemplate,
   RenderContext,
   ResolvedScene,
-  TemplateKind,
+  Medium,
 } from "@superimg/types";
 import { isComposedTemplate } from "@superimg/types";
 import { IframePresenter, type DomPresenter } from "./presenter.js";
@@ -51,7 +51,8 @@ export interface RuntimeUpdate {
 }
 
 export interface RuntimeState {
-  kind: TemplateKind;
+  medium: Medium;
+  animated: boolean;
   isReady: boolean;
   isPlaying: boolean;
   isScrubbing: boolean;
@@ -112,7 +113,9 @@ export class WebRuntime {
     this.options = options;
     this.data = options.data ?? {};
     this.assets = options.assets ?? {};
-    this.assetResolver = options.assetResolver;
+    if (options.assetResolver !== undefined) {
+      this.assetResolver = options.assetResolver;
+    }
     // Resolve info before building the presenter — the sandbox's `allow-scripts`
     // token depends on the template (see needsScripts). resolveInfo() reads only
     // template/options/data, never the presenter, so this ordering is safe.
@@ -216,7 +219,7 @@ export class WebRuntime {
   }
 
   on<K extends keyof RuntimeEvents>(event: K, callback: RuntimeEvents[K]): () => void {
-    const set = (this.events[event] ??= new Set() as any);
+    const set = (this.events[event] ??= new Set<RuntimeEvents[K]>());
     set.add(callback);
     return () => this.off(event, callback);
   }
@@ -281,18 +284,19 @@ export class WebRuntime {
 
   private resolveInfo(): RuntimeTemplateInfo {
     return resolveRuntimeTemplateInfo(this.template as RuntimeTemplate, {
-      width: this.options.width,
-      height: this.options.height,
-      fps: this.options.fps,
-      duration: this.options.duration,
       data: this.data,
+      ...(this.options.width !== undefined ? { width: this.options.width } : {}),
+      ...(this.options.height !== undefined ? { height: this.options.height } : {}),
+      ...(this.options.fps !== undefined ? { fps: this.options.fps } : {}),
+      ...(this.options.duration !== undefined ? { duration: this.options.duration } : {}),
     });
   }
 
   private createState(isReady: boolean, isPlaying: boolean, frame: number): RuntimeState {
     const currentFrame = this.clampFrame(frame);
     return {
-      kind: this.info.kind,
+      medium: this.info.medium,
+      animated: this.info.isAnimated,
       isReady,
       isPlaying,
       isScrubbing: false,
@@ -333,21 +337,21 @@ export class WebRuntime {
       data: this.info.data,
       outputName: this.options.outputName ?? "default",
       assets: this.assets,
-      assetResolver: this.assetResolver,
-      designWidth: config.width,
+      ...(this.assetResolver !== undefined ? { assetResolver: this.assetResolver } : {}),
+      ...(config.width !== undefined ? { designWidth: config.width } : {}),
     };
 
-    if (this.info.kind === "image") {
+    // Static templates render a single frame with a non-temporal context.
+    if (!this.info.isAnimated) {
+      if (this.info.medium === "svg") {
+        const ctx = createSvgRenderContext(this.info.width, this.info.height, {
+          ...base,
+          duration: this.info.duration,
+        });
+        const html = (this.template as AnyTemplateModule).render(ctx as never);
+        return { frame, html, compositeHtml: html };
+      }
       const ctx = createImageRenderContext(this.info.width, this.info.height, base);
-      const html = (this.template as AnyTemplateModule).render(ctx as never);
-      return { frame, html, compositeHtml: html };
-    }
-
-    if (this.info.kind === "svg") {
-      const ctx = createSvgRenderContext(this.info.width, this.info.height, {
-        ...base,
-        duration: this.info.duration,
-      });
       const html = (this.template as AnyTemplateModule).render(ctx as never);
       return { frame, html, compositeHtml: html };
     }

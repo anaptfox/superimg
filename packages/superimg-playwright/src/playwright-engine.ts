@@ -14,9 +14,16 @@ import {
   type EnsureBrowserOptions,
 } from "./browser-utils.js";
 import { PlaywrightFrameRenderer } from "./adapters.js";
+import { ensureFfmpegAvailable, FrameExtractor } from "./frame-extractor.js";
 import { FfmpegGifEncoder } from "./ffmpeg-gif-encoder.js";
 import { NodeVideoEncoder } from "./node-encoder.js";
 import { SharpStillEncoder, type StillFormat } from "./sharp-still-encoder.js";
+
+async function launchChromium(
+  chromium: import("playwright").BrowserType,
+): Promise<Browser> {
+  return chromium.launch();
+}
 
 function wrapInASCIIBox(text: string, padding = 1): string {
   const lines = text.split("\n");
@@ -74,7 +81,10 @@ export interface PlaywrightEngineOptions {
 class PerRenderFrameRenderer implements FrameRenderer<Buffer> {
   private inner: PlaywrightFrameRenderer | null = null;
 
-  constructor(private readonly browser: Browser) {}
+  constructor(
+    private readonly browser: Browser,
+    private readonly frameExtractor: FrameExtractor,
+  ) {}
 
   async init(config: FrameRendererConfig): Promise<void> {
     const context = await this.browser.newContext({
@@ -85,7 +95,7 @@ class PerRenderFrameRenderer implements FrameRenderer<Buffer> {
       timezoneId: "UTC",
     });
     const page = await context.newPage();
-    this.inner = new PlaywrightFrameRenderer(page, true);
+    this.inner = new PlaywrightFrameRenderer(page, true, this.frameExtractor);
     await this.inner.init(config);
   }
 
@@ -116,6 +126,7 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
   private page: Page | null = null;
   private server: ServerType | null = null;
   private serverPort: number = 0;
+  private frameExtractor: FrameExtractor | null = null;
 
   constructor(private readonly options: PlaywrightEngineOptions = {})  {}
 
@@ -151,9 +162,12 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
       await ensureBrowser({ autoInstall: true });
     }
 
+    await ensureFfmpegAvailable();
+    this.frameExtractor = new FrameExtractor();
+
     try {
       const { chromium } = await import("playwright");
-      this.browser = await chromium.launch();
+      this.browser = await launchChromium(chromium);
     } catch (err) {
       if (err instanceof Error && err.message.includes("Executable doesn't exist")) {
         const prettyMessage = createBrowserNotFoundMessage();
@@ -183,7 +197,7 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
       for (const [key, value] of Object.entries(result.headers)) {
         c.header(key, value);
       }
-      return c.body(result.body, result.status);
+      return c.body(new Uint8Array(result.body), result.status);
     });
 
     this.server = serve({ fetch: app.fetch, port: 0 });
@@ -222,7 +236,7 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
       // Return a renderer that will lazily create its own context+page and close it on dispose.
       // We pass the browser so the renderer can mint the context at init() time.
       return {
-        renderer: new PerRenderFrameRenderer(this.browser),
+        renderer: new PerRenderFrameRenderer(this.browser, this.frameExtractor!),
         encoder,
       };
     }
@@ -233,7 +247,7 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
     }
 
     return {
-      renderer: new PlaywrightFrameRenderer(page),
+      renderer: new PlaywrightFrameRenderer(page, false, this.frameExtractor!),
       encoder,
     };
   }
@@ -259,10 +273,13 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
         return ctx.newPage();
       })
     );
-    return pages.map((page) => new PlaywrightFrameRenderer(page, true));
+    const extractor = this.frameExtractor!;
+    return pages.map((page) => new PlaywrightFrameRenderer(page, true, extractor));
   }
 
   async dispose(): Promise<void> {
+    await this.frameExtractor?.dispose();
+    this.frameExtractor = null;
     await this.browser?.close();
     this.browser = null;
     this.page = null;

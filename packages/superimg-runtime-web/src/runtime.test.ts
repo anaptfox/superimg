@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { defineGif, defineImage, defineScene, defineSvg } from "@superimg/types";
-import { createRuntime, mount } from "./runtime.js";
+import { define } from "@superimg/types";
+import { createRuntime, mount, type RuntimeInput } from "./runtime.js";
 import type { DomPresenter } from "./presenter.js";
 
 class TestPresenter implements DomPresenter {
@@ -12,9 +12,12 @@ class TestPresenter implements DomPresenter {
   }
 
   present(html: string, width: number, height: number): void {
+    this.setLogicalSize(width, height);
     this.records.push({ html, width, height });
     this.element.innerHTML = html;
   }
+
+  setLogicalSize(_width: number, _height: number): void {}
 
   injectStyles(): void {}
 
@@ -29,7 +32,7 @@ class TestPresenter implements DomPresenter {
 
 describe("runtime-web", () => {
   it("mounts image templates and updates data without recreating the presenter", () => {
-    const template = defineImage({
+    const template = define({
       sample: { label: "initial" },
       config: { width: 800, height: 600 },
       render: (ctx) => `<main>${ctx.data.label}:${ctx.width}x${ctx.height}</main>`,
@@ -37,11 +40,12 @@ describe("runtime-web", () => {
     const container = document.createElement("div");
     const presenter = new TestPresenter();
 
-    const runtime = createRuntime(template, { presenter });
+    const runtime = createRuntime(template as unknown as RuntimeInput, { presenter });
     runtime.attach(container);
     const element = runtime.getElement();
 
-    expect(runtime.getState().kind).toBe("image");
+    expect(runtime.getState().medium).toBe("html");
+    expect(runtime.getState().animated).toBe(false);
     expect(presenter.records.at(-1)?.html).toContain("initial:800x600");
 
     runtime.update({ data: { label: "updated" } });
@@ -50,17 +54,17 @@ describe("runtime-web", () => {
     expect(presenter.records.at(-1)?.html).toContain("updated:800x600");
   });
 
-  it("mounts SVG, GIF, and video template kinds", () => {
+  it("mounts SVG, animated, and video templates", () => {
     const templates = [
-      defineSvg({
+      define({ medium: "svg",
         config: { width: 200, height: 100, duration: 2 },
         render: (ctx) => `<svg width="${ctx.width}" height="${ctx.height}"></svg>`,
       }),
-      defineGif({
+      define({
         config: { width: 320, height: 180, fps: 12, duration: 1 },
         render: (ctx) => `<div>gif:${ctx.globalFrame}</div>`,
       }),
-      defineScene({
+      define({
         config: { width: 640, height: 360, fps: 24, duration: 1 },
         render: (ctx) => `<div>video:${ctx.globalFrame}</div>`,
       }),
@@ -69,9 +73,10 @@ describe("runtime-web", () => {
     for (const template of templates) {
       const container = document.createElement("div");
       const presenter = new TestPresenter();
-      const runtime = mount(container, template, { presenter });
+      const runtime = mount(container, template as unknown as RuntimeInput, { presenter });
 
-      expect(runtime.getState().kind).toBe(template.kind);
+      expect(runtime.getState().medium).toBe(template.medium);
+      expect(runtime.getState().animated).toBe(template.animated);
       expect(presenter.records).toHaveLength(1);
 
       runtime.dispose();
@@ -79,11 +84,11 @@ describe("runtime-web", () => {
   });
 
   it("clamps frame, progress, and seconds seeks", () => {
-    const template = defineScene({
+    const template = define({
       config: { width: 100, height: 100, fps: 10, duration: 1 },
       render: (ctx) => `<div>${ctx.globalFrame}</div>`,
     });
-    const runtime = createRuntime(template, { presenter: new TestPresenter() });
+    const runtime = createRuntime(template as unknown as RuntimeInput, { presenter: new TestPresenter() });
     runtime.attach(document.createElement("div"));
 
     runtime.seekFrame(999);
@@ -97,13 +102,13 @@ describe("runtime-web", () => {
   });
 
   it("removes the presenter element on dispose", () => {
-    const template = defineScene({
+    const template = define({
       config: { width: 100, height: 100, fps: 10, duration: 1 },
       render: () => "<div>frame</div>",
     });
     const container = document.createElement("div");
     const presenter = new TestPresenter();
-    const runtime = mount(container, template, { presenter });
+    const runtime = mount(container, template as unknown as RuntimeInput, { presenter });
 
     expect(container.contains(presenter.element)).toBe(true);
 

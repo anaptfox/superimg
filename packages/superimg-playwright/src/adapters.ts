@@ -9,9 +9,34 @@ import type {
   ResolvedAssetDeclaration,
   AssetMeta,
 } from "@superimg/types";
+import { RenderError } from "@superimg/types";
 import { buildPageShell } from "@superimg/core/html";
-import { resolveAudio } from "@superimg/core";
-import { installVideoSyncHelpers, syncVideosInPage, warmVideosInPage } from "./video-sync.js";
+
+import { FrameExtractor } from "./frame-extractor.js";
+import { preloadThreeModule } from "./three-preload.js";
+
+const CLIP_SYNC_ATTR = "data-superimg-clip";
+const CLIP_IMG_RE = /<img\b(?=[^>]*\bdata-superimg-clip\b)[^>]*>/gi;
+
+function getAttr(tag: string, name: string): string | undefined {
+  const re = new RegExp(`\\b${name}="([^"]*)"`);
+  const quoted = tag.match(re);
+  if (quoted) return quoted[1];
+  if (tag.includes(` ${name} `) || tag.endsWith(` ${name}`) || tag.includes(` ${name}>`)) {
+    return "";
+  }
+  return undefined;
+}
+
+function buildInjectedImgTag(tag: string, dataUri: string): string {
+  const style = getAttr(tag, "style");
+  const alt = getAttr(tag, "alt") ?? "";
+  const parts = [`<img src="${dataUri}"`];
+  if (style !== undefined) parts.push(` style="${style}"`);
+  if (alt) parts.push(` alt="${alt}"`);
+  parts.push(">");
+  return parts.join("");
+}
 
 /**
  * Playwright-based frame renderer.
@@ -27,6 +52,7 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
     private readonly page: Page,
     /** When true, dispose() closes the browser context so per-render pages don't leak. */
     private readonly closeContextOnDispose = false,
+    private readonly frameExtractor: FrameExtractor = new FrameExtractor(),
   ) {}
 
   async init(config: FrameRendererConfig): Promise<void> {
@@ -42,10 +68,10 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
       fonts: config.fonts ?? [],
       inlineCss: config.inlineCss ?? [],
       stylesheets: config.stylesheets ?? [],
-      tailwind: config.tailwind,
+      ...(config.tailwind !== undefined ? { tailwind: config.tailwind } : {}),
     });
     await this.page.setContent(shell, { waitUntil: "load" });
-    await installVideoSyncHelpers(this.page);
+    await preloadThreeModule(this.page);
     await this.page.evaluate(() => document.fonts.ready);
   }
 
@@ -54,24 +80,101 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
   }
 
   async captureFrame(html: string, options?: { alpha?: boolean }): Promise<Buffer> {
+    const injected = await this.injectClipFrames(html);
+
     await this.page.evaluate(async (h: string) => {
       const el = document.getElementById("frame");
-      if (el) el.innerHTML = h;
-      await document.fonts.ready;
-    }, html);
+      if (!el) return;
+      el.innerHTML = h;
 
-    await syncVideosInPage(this.page, this.fps);
+      // innerHTML does not execute <script> — re-insert so WebGL/three scenes run.
+      const scripts = Array.from(el.querySelectorAll("script"));
+      for (const old of scripts) {
+        const s = document.createElement("script");
+        if (old.src) {
+          s.src = old.src;
+          s.async = false;
+        } else {
+          s.textContent = old.textContent;
+        }
+        if (old.type) s.type = old.type;
+        for (const attr of old.attributes) {
+          if (attr.name !== "src" && attr.name !== "type") s.setAttribute(attr.name, attr.value);
+        }
+        old.replaceWith(s);
+        if (s.src) {
+          await new Promise<void>((resolve, reject) => {
+            s.onload = () => resolve();
+            s.onerror = () => reject(new Error(`Failed to load script: ${s.src}`));
+          });
+        }
+      }
+
+      await document.fonts.ready;
+    }, injected);
+
+    if (process.env.SUPERIMG_PROFILE === "1") {
+      const stats = this.frameExtractor.getStats();
+      if (stats.misses > 0 || stats.hits > 0) {
+        console.error(
+          `[SUPERIMG_PROFILE] clip extract: ${stats.extractMs.toFixed(0)}ms (${stats.hits} hits, ${stats.misses} misses)`,
+        );
+      }
+    }
 
     // Use JPEG for speed unless alpha channel is needed (JPEG doesn't support transparency)
     const useAlpha = options?.alpha === true;
     const png = await this.page.screenshot({
       type: useAlpha ? "png" : "jpeg",
-      quality: useAlpha ? undefined : 95,
+      ...(useAlpha ? {} : { quality: 95 }),
       clip: { x: 0, y: 0, width: this.width, height: this.height },
       omitBackground: useAlpha,
     });
 
     return Buffer.isBuffer(png) ? png : Buffer.from(png);
+  }
+
+  private async injectClipFrames(html: string): Promise<string> {
+    if (!html.includes(CLIP_SYNC_ATTR)) return html;
+
+    const matches = [...html.matchAll(CLIP_IMG_RE)];
+    if (matches.length === 0) return html;
+
+    const replacements = await Promise.all(
+      matches.map(async (match) => {
+        const tag = match[0];
+        const src = getAttr(tag, "data-src");
+        const tRaw = getAttr(tag, "data-t");
+        if (!src || tRaw === undefined) {
+          throw new RenderError({
+            frame: -1,
+            browserError: `Clip placeholder missing data-src or data-t: ${tag}`,
+          });
+        }
+        const t = Number(tRaw);
+        const frameRaw = getAttr(tag, "data-frame");
+        const frameIndex = frameRaw !== undefined ? Number(frameRaw) : Math.round(t * this.fps);
+        void frameIndex;
+
+        try {
+          const png = await this.frameExtractor.extractFrame(src, t, this.fps);
+          const dataUri = `data:image/png;base64,${png.toString("base64")}`;
+          return { tag, replacement: buildInjectedImgTag(tag, dataUri) };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          throw new RenderError({
+            frame: -1,
+            browserError: `Clip frame extraction failed: ${src} at t=${t}s: ${message}`,
+          });
+        }
+      }),
+    );
+
+    let result = html;
+    for (const { tag, replacement } of replacements) {
+      result = result.replace(tag, replacement);
+    }
+    return result;
   }
 
   async dispose(): Promise<void> {
@@ -189,15 +292,7 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
         return result;
       },
       declarations
-    ).then(async (result) => {
-      const videoUrls = declarations
-        .filter((d) => d.type === "video")
-        .map((d) => d.src);
-      if (videoUrls.length > 0) {
-        await warmVideosInPage(this.page, videoUrls);
-      }
-      return result;
-    });
+    );
   }
 }
 
@@ -221,9 +316,8 @@ export class PlaywrightVideoEncoder implements VideoEncoder<Buffer> {
       fps: config.fps,
       encoding: config.encoding,
     };
-    if (config.audio) {
-      const resolved = resolveAudio(config.audio);
-      encoderConfig.audio = resolved;
+    if (config.resolvedAudio) {
+      encoderConfig.resolvedAudio = config.resolvedAudio;
     }
 
     await this.page.evaluate(

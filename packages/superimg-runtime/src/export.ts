@@ -1,6 +1,6 @@
 //! Video export helpers for browser runtime
 
-import type { EncodingOptions, AudioOptions } from "@superimg/types";
+import type { EncodingOptions, ResolvedAudioTimeline } from "@superimg/types";
 import { BrowserEncoder } from "./encoder.js";
 import { get2DContext } from "./utils.js";
 
@@ -9,7 +9,7 @@ export interface ExportConfig {
   width: number;
   height: number;
   duration: number;
-  audio?: AudioOptions;
+  resolvedAudio?: ResolvedAudioTimeline | null;
   encoding?: EncodingOptions;
 }
 
@@ -41,9 +41,9 @@ export async function exportToVideo(
     config.encoding
   );
 
-  if (config.audio?.src) {
+  if (config.resolvedAudio?.clips.length) {
     options?.onStatusChange?.("Loading audio...");
-    await encoder.setAudioTrack(config.audio.src, config.audio);
+    await encoder.setResolvedAudio(config.resolvedAudio);
   }
 
   options?.onStatusChange?.("Rendering frames...");
@@ -62,9 +62,6 @@ export async function exportToVideo(
   return encoder.finalize();
 }
 
-/**
- * Download a blob as a file in the browser.
- */
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

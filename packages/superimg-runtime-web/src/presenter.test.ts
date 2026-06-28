@@ -1,9 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { defineImage } from "@superimg/types";
+import { define } from "@superimg/types";
 import { IframePresenter } from "./presenter.js";
 import { createRuntime } from "./runtime.js";
 
 const sandboxOf = (el: HTMLElement) => el.getAttribute("sandbox");
+
+describe("IframePresenter setLogicalSize", () => {
+  it("updates scale wrapper dimensions without presenting HTML", async () => {
+    const container = document.createElement("div");
+    Object.defineProperty(container, "getBoundingClientRect", {
+      value: () => ({ width: 960, height: 540, x: 0, y: 0, top: 0, left: 0, right: 960, bottom: 540, toJSON: () => ({}) }),
+    });
+    document.body.appendChild(container);
+
+    const presenter = new IframePresenter();
+    presenter.attach(container);
+    await new Promise<void>((resolve) => {
+      presenter.getElement().addEventListener("load", () => resolve(), { once: true });
+    });
+
+    presenter.setLogicalSize(1080, 1920);
+
+    const doc = (presenter.getElement() as HTMLIFrameElement).contentDocument;
+    const scaleWrapper = doc?.getElementById("scale-wrapper");
+    expect(scaleWrapper?.style.width).toBe("1080px");
+    expect(scaleWrapper?.style.height).toBe("1920px");
+
+    presenter.dispose();
+    document.body.removeChild(container);
+  });
+});
 
 describe("IframePresenter sandbox", () => {
   it("defaults to a script-less sandbox (no allow-scripts → no escape warning)", () => {
@@ -21,7 +47,7 @@ describe("IframePresenter sandbox", () => {
 
 describe("WebRuntime → iframe sandbox", () => {
   const template = (config: Record<string, unknown>) =>
-    defineImage({
+    define({
       sample: {},
       config: { width: 800, height: 600, ...config },
       render: () => `<main>hi</main>`,

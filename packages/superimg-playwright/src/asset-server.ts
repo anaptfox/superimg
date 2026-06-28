@@ -118,6 +118,9 @@ export function serveAssetFile(
 
   const baseHeaders: Record<string, string> = {
     "Content-Type": mimeType,
+    // The render page (via page.setContent) has a null origin, so assets are
+    // cross-origin. Preload probes and fetches require CORS headers.
+    "Access-Control-Allow-Origin": "*",
   };
 
   if (!isRangeableExtension(ext)) {

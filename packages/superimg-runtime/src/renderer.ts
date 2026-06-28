@@ -122,10 +122,10 @@ export class BrowserRenderer {
     iframe.height = String(options.height);
 
     const headContent = buildHeadStyles({
-      fonts: options.fonts,
-      stylesheets: options.stylesheets,
-      inlineCss: options.inlineCss,
-      tailwind: options.tailwind,
+      ...(options.fonts !== undefined ? { fonts: options.fonts } : {}),
+      ...(options.stylesheets !== undefined ? { stylesheets: options.stylesheets } : {}),
+      ...(options.inlineCss !== undefined ? { inlineCss: options.inlineCss } : {}),
+      ...(options.tailwind !== undefined ? { tailwind: options.tailwind } : {}),
     });
     const urls = collectStylesheetUrls(options);
     const frameDiv = `<div id="frame" style="position:relative;width:100%;height:100%;"></div>`;

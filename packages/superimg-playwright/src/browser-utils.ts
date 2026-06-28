@@ -4,6 +4,7 @@ import { fork } from "node:child_process";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { access } from "node:fs/promises";
+import { isModuleNotFoundError } from "@superimg/core/errors";
 
 const require = createRequire(import.meta.url);
 
@@ -12,16 +13,16 @@ async function getChromium(): Promise<typeof import("playwright").chromium> {
   try {
     const pw = await import("playwright");
     return pw.chromium;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("DEBUG: import('playwright') failed:", err);
-    if (err?.code === "ERR_MODULE_NOT_FOUND") {
+    if (isModuleNotFoundError(err)) {
       try {
         const cwdRequire = createRequire(join(process.cwd(), "package.json"));
         const pwPath = cwdRequire.resolve("playwright");
         console.error("DEBUG: resolved playwright path from cwd:", pwPath);
         const pw = await import(pwPath);
         return pw.chromium;
-      } catch (err2: any) {
+      } catch (err2: unknown) {
         console.error("DEBUG: fallback import failed:", err2);
         // Fall through to original throw
       }
@@ -118,7 +119,7 @@ export async function checkBrowserStatus(): Promise<BrowserStatus> {
     executablePath = chromium.executablePath();
     await access(executablePath);
     installed = true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("DEBUG: checkBrowserStatus failed:", err);
     executablePath = null;
     installed = false;
@@ -155,7 +156,10 @@ export async function ensureBrowser(options: EnsureBrowserOptions = {}): Promise
   }
 
   // Auto-install
-  await installBrowser({ onProgress, timeout });
+  await installBrowser({
+    ...(onProgress !== undefined ? { onProgress } : {}),
+    ...(timeout !== undefined ? { timeout } : {}),
+  });
 }
 
 /**
