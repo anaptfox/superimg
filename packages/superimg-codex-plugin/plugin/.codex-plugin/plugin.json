@@ -1,16 +1,15 @@
 {
   "name": "superimg",
   "version": "0.1.0",
-  "description": "Programmatic video generation — HTML/CSS templates rendered to MP4. Teaches Codex the SuperImg defineScene API and exposes the SuperImg CLI as MCP tools.",
+  "description": "Programmatic video generation — HTML/CSS templates in *.media.ts rendered to MP4. Teaches Codex the SuperImg define() API.",
   "skills": "./skills",
-  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "SuperImg",
     "shortDescription": "HTML/CSS → MP4 video templates",
-    "longDescription": "SuperImg renders TypeScript scene definitions into video files. This plugin gives Codex the framework's mental model (std.score, std.cue, render(ctx) contracts) plus typed MCP tools for listing, validating, and rendering templates without shell-quoting CLI flags.",
+    "longDescription": "SuperImg renders TypeScript scene definitions into video files. This plugin gives Codex the framework's mental model (std.score, std.cue, render(ctx) contracts) for building and editing templates.",
     "developerName": "anaptfox",
     "category": "developer-tools",
-    "capabilities": ["skills", "mcp"],
+    "capabilities": ["skills"],
     "websiteUrl": "https://superimg.app",
     "defaultPrompt": [
       "Create a SuperImg template that announces a launch",
