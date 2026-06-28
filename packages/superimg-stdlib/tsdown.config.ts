@@ -1,6 +1,8 @@
 import { defineConfig } from "tsdown";
+import { libraryDefaults } from "../build-policy/tsdown.base.ts";
 
 export default defineConfig({
+  ...libraryDefaults,
   entry: [
     "src/easing.ts",
     "src/math.ts",
@@ -14,7 +16,10 @@ export default defineConfig({
     "src/presets.ts",
     "src/code.ts",
     "src/cue/index.ts",
-    "src/score.ts",
+    "src/director.ts",
+    "src/carousel.ts",
+    "src/stack.ts",
+    "src/track.ts",
     "src/backgrounds.ts",
     "src/montage.ts",
     "src/spring.ts",
@@ -31,12 +36,27 @@ export default defineConfig({
     "src/viz/index.ts",
     "src/index.ts",
   ],
-  format: ["esm"],
-  dts: true,
   outDir: "dist",
   clean: true,
   deps: {
-    alwaysBundle: ["date-fns", "colord", "simplex-noise", "shiki", "@shikijs/themes", "@shikijs/langs", "path-data-parser", "katex"],
+    alwaysBundle: [
+      "date-fns",
+      "colord",
+      "simplex-noise",
+      "shiki",
+      "@shikijs/themes",
+      "@shikijs/langs",
+      "path-data-parser",
+      "katex",
+      "d3-array",
+      "d3-format",
+      "d3-regression",
+      "d3-hierarchy",
+      "d3-contour",
+      "d3-density",
+      "d3-force",
+      "d3-scale",
+      "d3-shape",
+    ],
   },
-  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
 });

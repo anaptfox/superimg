@@ -9,8 +9,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.js"
     }
   },
   "scripts": {
@@ -34,10 +33,11 @@
   "license": "MIT",
   "dependencies": {
     "@superimg/core": "workspace:*",
+    "@superimg/runtime": "workspace:*",
     "@superimg/runtime-web": "workspace:*",
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
     "morphdom": "^2.7.8",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.14"
   }
 }

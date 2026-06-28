@@ -1,13 +1,10 @@
 import { defineConfig } from "tsdown";
+import { libraryDefaults } from "../build-policy/tsdown.base.ts";
 
 export default defineConfig({
-  entry: [
-    "src/index.ts",
-  ],
-  format: ["esm"],
-  dts: true,
+  ...libraryDefaults,
+  entry: ["src/index.ts"],
   deps: {
     neverBundle: ["rolldown", "playwright", "playwright-core"],
   },
-  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
 });

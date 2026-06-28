@@ -1,12 +1,8 @@
 import { defineConfig } from "tsdown";
+import { libraryDefaults } from "../build-policy/tsdown.base.ts";
 
 export default defineConfig({
+  ...libraryDefaults,
   entry: ["src/index.ts"],
-  format: ["esm", "cjs"],
-  dts: true,
   outDir: "dist",
-  outExtensions: ({ format }) => ({
-    js: format === 'cjs' ? '.cjs' : '.js',
-    dts: '.d.ts',
-  }),
 });

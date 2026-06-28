@@ -1,0 +1,12 @@
+{
+  "name": "@superimg/build-policy",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared tsdown bundle policy and build verification for SuperImg packages",
+  "exports": {
+    "./bundle-deps": "./bundle-deps.mjs",
+    "./check-externals": "./check-externals.mjs",
+    "./tsdown.base": "./tsdown.base.ts"
+  }
+}

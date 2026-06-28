@@ -31,6 +31,6 @@
   "license": "MIT",
   "devDependencies": {
     "tsdown": "^0.22.3",
-    "tsx": "^4.21.0"
+    "tsx": "^4.22.4"
   }
 }

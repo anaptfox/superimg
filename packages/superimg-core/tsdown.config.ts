@@ -1,6 +1,10 @@
 import { defineConfig } from "tsdown";
+import { coreNeverBundle } from "../build-policy/bundle-deps.mjs";
+import { libraryDefaults } from "../build-policy/tsdown.base.ts";
 
 export default defineConfig({
+  ...libraryDefaults,
+  platform: "node",
   entry: {
     index: "src/index.ts",
     html: "src/html.ts",
@@ -14,12 +18,9 @@ export default defineConfig({
     "errors-node": "src/errors-node.ts",
     testing: "src/testing/index.ts",
   },
-  format: ["esm"],
-  dts: true,
   clean: true,
   outDir: "dist",
   deps: {
-    neverBundle: ["rolldown", "@rolldown/browser"],
+    neverBundle: coreNeverBundle,
   },
-  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
 });

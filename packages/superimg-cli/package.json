@@ -19,10 +19,10 @@
     }
   },
   "scripts": {
-    "build": "tsdown && node scripts/check-deps.mjs",
+    "build": "tsdown && node ../build-policy/check-externals.mjs --profile cli",
     "dev": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
-    "check-deps": "node scripts/check-deps.mjs",
+    "check-externals": "node ../build-policy/check-externals.mjs --profile cli",
     "clean": "rm -rf dist"
   },
   "files": [
@@ -30,8 +30,8 @@
   ],
   "sideEffects": true,
   "dependencies": {
-    "@clack/prompts": "^1.0.1",
-    "@hono/node-server": "^1.14.1",
+    "@clack/prompts": "^1.6.0",
+    "@hono/node-server": "^2.0.6",
     "@superimg/core": "workspace:*",
     "@superimg/player": "workspace:*",
     "@superimg/playwright": "workspace:*",
@@ -40,19 +40,19 @@
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
     "chokidar": "^5.0.0",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "execa": "^9.6.1",
-    "hono": "^4.7.7",
-    "ink": "^6.6.0",
-    "oxc-parser": "^0.119.0",
+    "hono": "^4.12.27",
+    "ink": "^7.1.0",
+    "oxc-parser": "^0.137.0",
     "picocolors": "^1.1.1",
     "react": "catalog:",
-    "rolldown": "1.1.2",
-    "vite": "^7.3.1",
-    "ws": "^8.18.0"
+    "rolldown": "1.1.3",
+    "vite": "^8.1.0",
+    "ws": "^8.21.0"
   },
   "peerDependencies": {
-    "playwright": "^1.57.0"
+    "playwright": "^1.61.0"
   },
   "peerDependenciesMeta": {
     "playwright": {
@@ -60,15 +60,15 @@
     }
   },
   "optionalDependencies": {
-    "@babel/code-frame": "^7.29.0",
-    "@mediabunny/server": "^1.46.0",
-    "mediabunny": "^1.46.0",
-    "sharp": "^0.33.0"
+    "@babel/code-frame": "^8.0.0",
+    "@mediabunny/server": "^1.49.0",
+    "mediabunny": "^1.49.0",
+    "sharp": "^0.35.2"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.1",
+    "@tailwindcss/vite": "^4.3.1",
     "@types/react": "catalog:",
-    "@types/ws": "^8.18.0",
-    "tailwindcss": "^4.2.1"
+    "@types/ws": "^8.18.1",
+    "tailwindcss": "^4.3.1"
   }
 }
