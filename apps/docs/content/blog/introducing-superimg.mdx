@@ -1,0 +1,105 @@
+export const metadata = {
+  title: "Introducing SuperImg",
+  description:
+    "Programmatic media without a timeline editor. Write TypeScript that returns HTML — render to MP4, GIF, PNG, or SVG.",
+};
+
+# Introducing SuperImg
+
+If you need dozens of release videos a quarter — or you want your AI agent to output MP4s, not markdown — a timeline editor does not scale. SuperImg treats media as code: a TypeScript function that returns HTML, rendered frame-by-frame to MP4, GIF, PNG, or SVG.
+
+This demo is a video. It is also that function.
+
+<CodeDemo templateId="intro" />
+
+`define()` calls `render` once per frame. `timeline.progress` goes from `0` to `1` over the clip's duration. The return value is an HTML string. That string gets rasterized into a pixel frame, and the frames get encoded into a video file.
+
+That is the whole model. A video is a pure function of time. Same input, same output — deterministic, testable, composable, like any other TypeScript module. Templates live in `*.media.ts` files anywhere in your project.
+
+---
+
+## Adding easing
+
+The `std` library ships with every template. `std.interpolate()` maps a progress value through paired input and output ranges with optional easing, and `std.math.clamp` bounds a value to a range:
+
+<CodeDemo templateId="easing" />
+
+Two functions turn a mechanical linear fade into smooth deceleration: `clamp` bounds time to a 0–1 range, and `interpolate` maps it to the value you need with your chosen easing curve. Swap in `easeOutBounce` or `easeOutElastic` and the character of motion changes completely.
+
+---
+
+## Making it data-driven
+
+Hardcoded text is a demo. Real templates need data. Add a `sample` object and the values become overridable at render time:
+
+<CodeDemo templateId="data" />
+
+`sample` provides the fallback values. At render time, pass overrides — a different title, a different color — and the template produces a different video from the same code:
+
+```bash
+npx superimg render template.media.ts --data '{"title": "Alice", "subtitle": "Welcome aboard"}'
+```
+
+Pass a JSON array and you get one video per row — same template, any volume.
+
+---
+
+## What you can build
+
+One template, many outputs. The [showcase](/showcase) has dozens of examples; a few common starting points:
+
+- **[Feature launch](/playground/feature-launch)** — product announcement spots for YouTube and social
+- **[Stats card](/playground/stats-card)** — data-driven motion graphics from JSON
+- **[OG card](/playground/og-card)** — static social preview images (no `fps` or `duration` in config)
+
+SuperImg is open source under the MIT license. Templates live in your repo — diff them in pull requests, roll back a bad animation the same way you roll back a bad deploy.
+
+---
+
+## Rendering
+
+One command to go from template to MP4:
+
+```bash
+npx superimg setup
+npx superimg render template.media.ts
+```
+
+Run `setup` once to download Chromium. Output lands in `output/template.mp4` next to your template. Other formats use the same template:
+
+```bash
+npx superimg render template.media.ts --format gif
+npx superimg render template.media.ts --frame 45 --format png
+```
+
+The pipeline: TypeScript compiles to a `render` function, each frame calls it to produce HTML, a headless browser rasterizes the HTML to pixels, and ffmpeg encodes the pixel frames into a video file. Templates also run in the browser with live preview at 60fps, and SuperImg ships a `<Player>` React component for embedding in apps.
+
+---
+
+## Why a function, not a component tree
+
+Other tools for programmatic video — [Remotion](https://www.remotion.dev/), for example — give you a React component tree and a timeline. SuperImg gives you a function. No component lifecycle, no virtual DOM, no reconciler — just a string of HTML per frame, rasterized and encoded.
+
+That also means LLMs can write, edit, and debug templates. There is no JSX tree to understand, no timeline API to learn — just a function that returns HTML. Any model can produce that without special training or tooling.
+
+This makes templates portable. They are plain TypeScript modules that return strings. You can unit test them with `assert.equal`. You can generate them from other code. You can run them anywhere JavaScript runs — browser, CLI, CI, serverless. The mental model is `(time) → HTML → pixels`, and nothing else.
+
+The trade-off is intentional: you give up declarative composition for total control over every pixel in every frame.
+
+---
+
+## Try it
+
+No install needed — open the [playground](/playground) and start building in the browser.
+
+When you are ready to render locally:
+
+```bash
+npx superimg init my-project
+cd my-project
+npx superimg dev template
+```
+
+Read the [getting started guide](/docs/getting-started) for a full walkthrough. Star the project on [GitHub](https://github.com/anaptfox/superimg) and browse the [showcase](/showcase) for templates to fork.
+
+Every frame is just HTML.

@@ -1,7 +1,7 @@
 // Minimal SuperImg template demonstrating core concepts
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
-export default defineScene({
+export default define({
   sample: {
     message: "Hello, SuperImg!",
     accentColor: "#667eea",
@@ -18,8 +18,8 @@ export default defineScene({
   render(ctx) {
     const { std, width, height, data } = ctx;
 
-    // score() defaults to enter 15% / hold 70% / exit 15%
-    const t = std.score();
+    // director() defaults to enter 15% / hold 70% / exit 15%
+    const t = ctx.director();
 
     // Auto fade-in, hold, then fade-out. Slides up from y:30 on entrance.
     const card = t.motion({ y: 30 });

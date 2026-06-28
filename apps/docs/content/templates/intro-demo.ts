@@ -1,6 +1,6 @@
-import { defineScene, type RenderContext } from 'superimg'
+import { define, type RenderContext } from "superimg/browser";
 
-export const introTemplate = defineScene({
+export const introTemplate = define({
   config: {
     fps: 30,
     duration: 4,
@@ -8,19 +8,19 @@ export const introTemplate = defineScene({
     height: 360,
   },
   render(ctx: RenderContext) {
-    const { sceneProgress: p, std, width, height } = ctx
+    const  { timeline, std, width, height } = ctx
 
     // Shifting gradient hue
-    const hue = 260 + p * 40
+    const hue = 260 + timeline.progress * 40
 
     // Text fade in
-    const textProgress = std.math.clamp(p / 0.4, 0, 1)
+    const textProgress = std.math.clamp(timeline.progress / 0.4, 0, 1)
     const textOpacity = std.interpolate(textProgress, [0, 1], [0, 1], "easeOutCubic")
     const textY = std.interpolate(textProgress, [0, 1], [20, 0], "easeOutCubic")
 
     // Subtle pulsing glow
-    const glowOpacity = 0.25 + Math.sin(p * Math.PI * 3) * 0.1
-    const glowScale = 0.95 + Math.sin(p * Math.PI * 2) * 0.05
+    const glowOpacity = 0.25 + Math.sin(timeline.progress * Math.PI * 3) * 0.1
+    const glowScale = 0.95 + Math.sin(timeline.progress * Math.PI * 2) * 0.05
 
     return `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>

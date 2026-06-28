@@ -25,6 +25,7 @@ import {
 import { CodeBlockContent, CodeBlockContainer } from "@/components/ai-elements/code-block";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { EditorExample } from "@/lib/video/examples";
+import { usePlaygroundExample } from "@/lib/playground/example";
 
 interface TemplatePreviewModalProps {
   template: EditorExample | null;
@@ -43,6 +44,8 @@ export function TemplatePreviewModal({
   const [codeOpen, setCodeOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const playground = usePlaygroundExample(template, { enabled: !!template });
+
   const handleCopyCode = useCallback(async () => {
     if (!template) return;
     try {
@@ -57,7 +60,6 @@ export function TemplatePreviewModal({
 
   const handleExport = useCallback(() => {
     if (!template) return;
-    // Navigate to playground with export action queued
     posthog.capture("template_export_clicked", { template_id: template.id });
     router.push(`/playground/${template.id}?action=export`);
     onOpenChange(false);
@@ -70,7 +72,6 @@ export function TemplatePreviewModal({
     onOpenChange(false);
   }, [template, router, onOpenChange]);
 
-  // Format category for display
   const categoryLabel = template?.category
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -78,11 +79,12 @@ export function TemplatePreviewModal({
 
   const content = template ? (
     <div className="flex flex-col gap-4">
-      {/* Video Preview */}
       <div className="relative aspect-video overflow-hidden rounded-lg bg-neutral-950">
         <Player
           ref={playerRef}
-          code={template.code}
+          template={playground.template ?? undefined}
+          assets={playground.assets}
+          assetResolver={playground.assetResolver}
           format="horizontal"
           playbackMode="loop"
           loadMode="eager"
@@ -93,19 +95,23 @@ export function TemplatePreviewModal({
         />
       </div>
 
-      {/* Info */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-foreground">
             {template.title}
           </h2>
-          <Badge variant="outline" className="mt-1">
-            {categoryLabel}
-          </Badge>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <Badge variant="outline">{categoryLabel}</Badge>
+            {template.playground?.needsBundle && (
+              <Badge variant="secondary">Pre-bundled</Badge>
+            )}
+            {template.playground?.needsAssets && (
+              <Badge variant="secondary">Assets</Badge>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Code Preview Collapsible */}
       <Collapsible open={codeOpen} onOpenChange={setCodeOpen}>
         <CollapsibleTrigger asChild>
           <Button
@@ -124,13 +130,12 @@ export function TemplatePreviewModal({
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
-          <CodeBlockContainer language="typescript" className="max-h-64 overflow-auto">
+          <CodeBlockContainer language="typescript" className="max-h-80 overflow-auto">
             <CodeBlockContent code={template.code} language="typescript" />
           </CodeBlockContainer>
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Actions */}
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={handleCopyCode} className="flex-1 sm:flex-none">
           {copied ? (
@@ -157,7 +162,6 @@ export function TemplatePreviewModal({
     </div>
   ) : null;
 
-  // Use Sheet on mobile, Dialog on desktop
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -173,7 +177,7 @@ export function TemplatePreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-6">
+      <DialogContent className="max-h-[90vh] w-[min(92vw,1280px)] max-w-none overflow-y-auto p-6 sm:max-w-[min(92vw,1280px)]">
         <DialogTitle className="sr-only">
           {template?.title ?? "Template Preview"}
         </DialogTitle>

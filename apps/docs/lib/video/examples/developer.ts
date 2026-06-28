@@ -1,7 +1,7 @@
 export const CODE_TYPEWRITER = `// Code Typewriter
 // Syntax highlighted code typing animation
 
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
 const CODE = \`function fibonacci(n) {
   if (n <= 1) return n;
@@ -10,14 +10,14 @@ const CODE = \`function fibonacci(n) {
 
 console.log(fibonacci(10)); // 55\`;
 
-export default defineScene({
+export default define({
   render(ctx) {
-  const { std, width, height, sceneTimeSeconds } = ctx;
+  const { std, width, height, timeline } = ctx;
 
   const dur = std.text.typeDuration(CODE, { speed: 40 });
-  const progress = std.math.clamp(sceneTimeSeconds / dur, 0, 1);
+  const progress = std.math.clamp(timeline.seconds / dur, 0, 1);
   const { visible, typing } = std.text.type(CODE, progress);
-  const showCursor = std.text.cursor(sceneTimeSeconds);
+  const showCursor = std.text.cursor(timeline.seconds);
 
   const highlighted = std.code.highlight(visible, { lang: 'javascript' });
 
@@ -54,7 +54,7 @@ export default defineScene({
 export const GIT_DIFF = `// Git Diff
 // Side-by-side diff animation
 
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
 const REMOVED = [
   "  const result = [];",
@@ -68,12 +68,12 @@ const ADDED = [
   "  return arr.map(x => x * 2);",
 ];
 
-export default defineScene({
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
-  const removedOpacity = Math.max(0, 1 - sceneProgress * 3);
-  const addedOpacity = Math.min(1, (sceneProgress - 0.3) * 2);
+  const removedOpacity = Math.max(0, 1 - timeline.progress * 3);
+  const addedOpacity = Math.min(1, (timeline.progress - 0.3) * 2);
 
   return \`
     <div style="
@@ -123,7 +123,7 @@ export default defineScene({
 export const TERMINAL = `// Terminal Session
 // CLI demo with command output
 
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
 const COMMANDS = [
   { cmd: "npm create superimg@latest", delay: 0 },
@@ -133,11 +133,11 @@ const COMMANDS = [
   { output: "Server running at http://localhost:3000", delay: 0.7 },
 ];
 
-export default defineScene({
+export default define({
   render(ctx) {
-  const { std, width, height, sceneProgress, sceneTimeSeconds } = ctx;
+  const { std, width, height, timeline } = ctx;
 
-  const showCursor = std.text.cursor(sceneTimeSeconds);
+  const showCursor = std.text.cursor(timeline.seconds);
 
   return \`
     <div style="
@@ -162,10 +162,10 @@ export default defineScene({
           <span style="color: #565f89; margin-left: 12px; font-size: 14px;">~/projects</span>
         </div>
         \${COMMANDS.map((item, i) => {
-          const visible = sceneProgress > item.delay;
+          const visible = timeline.progress > item.delay;
           if (!visible) return '';
           if (item.cmd) {
-            const cmdProgress = std.math.clamp((sceneProgress - item.delay) * 5, 0, 1);
+            const cmdProgress = std.math.clamp((timeline.progress - item.delay) * 5, 0, 1);
             const { visible: typed } = std.text.type(item.cmd, cmdProgress);
             return \`
               <div style="color: #7aa2f7; font-size: 18px; margin: 8px 0;">
@@ -192,7 +192,7 @@ export default defineScene({
 export const GIT_BRANCH = `// Git Branch Animation
 // Visualizing git workflow with branches
 
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
 const COMMITS = {
   main: [
@@ -208,9 +208,9 @@ const COMMITS = {
   ],
 };
 
-export default defineScene({
+export default define({
   render(ctx) {
-    const { width, height, sceneProgress } = ctx;
+    const { width, height, timeline } = ctx;
 
     const padding = 50;
     const mainY = height * 0.35;
@@ -218,9 +218,9 @@ export default defineScene({
     const commitSpacing = (width - padding * 2) / 5;
 
     // Animation phases
-    const mainProgress = Math.min(1, sceneProgress * 2);
-    const branchProgress = Math.max(0, Math.min(1, (sceneProgress - 0.3) * 2.5));
-    const mergeProgress = Math.max(0, Math.min(1, (sceneProgress - 0.7) * 3));
+    const mainProgress = Math.min(1, timeline.progress * 2);
+    const branchProgress = Math.max(0, Math.min(1, (timeline.progress - 0.3) * 2.5));
+    const mergeProgress = Math.max(0, Math.min(1, (timeline.progress - 0.7) * 3));
 
     return \`
     <div style="
@@ -336,7 +336,7 @@ export default defineScene({
 export const GITHUB_README = `// GitHub README Animation
 // Animated stats badge for your README.md
 
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
 const STATS = {
   repo: "superimg/superimg",
@@ -346,21 +346,21 @@ const STATS = {
   version: "v2.1.0",
 };
 
-export default defineScene({
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Animate counters
-  const eased = 1 - Math.pow(1 - Math.min(1, sceneProgress * 1.5), 3);
+  const eased = 1 - Math.pow(1 - Math.min(1, timeline.progress * 1.5), 3);
   const stars = Math.floor(STATS.stars * eased);
   const forks = Math.floor(STATS.forks * eased);
   const contributors = Math.floor(STATS.contributors * eased);
 
   // Badge animations
-  const badge1 = Math.min(1, sceneProgress * 4);
-  const badge2 = Math.min(1, Math.max(0, (sceneProgress - 0.1) * 4));
-  const badge3 = Math.min(1, Math.max(0, (sceneProgress - 0.2) * 4));
-  const badge4 = Math.min(1, Math.max(0, (sceneProgress - 0.3) * 4));
+  const badge1 = Math.min(1, timeline.progress * 4);
+  const badge2 = Math.min(1, Math.max(0, (timeline.progress - 0.1) * 4));
+  const badge3 = Math.min(1, Math.max(0, (timeline.progress - 0.2) * 4));
+  const badge4 = Math.min(1, Math.max(0, (timeline.progress - 0.3) * 4));
 
   return \`
     <div style="
@@ -381,7 +381,7 @@ export default defineScene({
         align-items: center;
         gap: 12px;
         margin-bottom: 32px;
-        opacity: \${Math.min(1, sceneProgress * 3)};
+        opacity: \${Math.min(1, timeline.progress * 3)};
       ">
         <svg width="32" height="32" viewBox="0 0 16 16" fill="#fff">
           <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
@@ -445,7 +445,7 @@ export default defineScene({
         margin-top: 40px;
         color: #484f58;
         font-size: 12px;
-        opacity: \${Math.max(0, (sceneProgress - 0.5) * 2)};
+        opacity: \${Math.max(0, (timeline.progress - 0.5) * 2)};
       ">Perfect for your GitHub README.md</div>
     </div>
   \`;
@@ -455,7 +455,7 @@ export default defineScene({
 export const CHANGELOG = `// Changelog / Release Notes
 // Animated release notes from version data
 
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
 const RELEASES = [
   {
@@ -495,9 +495,9 @@ const typeColors = {
   major: "#8957e5",
 };
 
-export default defineScene({
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   return \`
     <div style="
@@ -515,7 +515,7 @@ export default defineScene({
         align-items: center;
         gap: 12px;
         margin-bottom: 32px;
-        opacity: \${Math.min(1, sceneProgress * 3)};
+        opacity: \${Math.min(1, timeline.progress * 3)};
       ">
         <span style="font-size: 28px;">📋</span>
         <span style="color: white; font-size: 28px; font-weight: 600;">Changelog</span>
@@ -525,7 +525,7 @@ export default defineScene({
       <div style="display: flex; flex-direction: column; gap: 24px;">
         \${RELEASES.map((release, i) => {
           const delay = i * 0.2;
-          const opacity = Math.min(1, Math.max(0, (sceneProgress - delay) * 2.5));
+          const opacity = Math.min(1, Math.max(0, (timeline.progress - delay) * 2.5));
           const translateX = (1 - opacity) * 30;
 
           return \`
@@ -559,7 +559,7 @@ export default defineScene({
               <!-- Changes list -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 \${release.changes.map((change, j) => {
-                  const changeOpacity = Math.min(1, Math.max(0, (sceneProgress - delay - 0.1 - j * 0.05) * 4));
+                  const changeOpacity = Math.min(1, Math.max(0, (timeline.progress - delay - 0.1 - j * 0.05) * 4));
                   return \`
                     <div style="
                       color: #c9d1d9;

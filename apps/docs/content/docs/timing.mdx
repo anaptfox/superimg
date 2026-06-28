@@ -1,20 +1,20 @@
-# Timing With Score And Cues
+# Timing With Director And Cues
 
 SuperImg has two timing primitives for most template work:
 
-- `std.score()` choreographs scene-local phases from `sceneProgress`.
+- `ctx.director()` choreographs scene-local phases from `timeline.progress`.
 - `std.cue.*` follows absolute timestamps from transcripts, markers, audio, or scripts.
 
-Use `score` when the scene owns the timing. Use `cue` when external data owns the timing.
+Use `ctx.director()` when the scene owns the timing. Use `cue` when external data owns the timing.
 
 ## Enter, Hold, Exit
 
-`std.score()` defaults to `enter`, `hold`, and `exit` phases. It gives you ready-to-use motion styles and handles the fade-out math automatically.
+`ctx.director()` defaults to `enter`, `hold`, and `exit` phases. It gives you ready-to-use motion styles and handles the fade-out math automatically.
 
 ```typescript
 render(ctx) {
   const { std } = ctx;
-  const t = std.score();
+  const t = ctx.director();
 
   const card = t.motion({ y: 32, scale: 0.96 });
   const eyebrow = t.motion({ at: 0.15, y: 20 });
@@ -36,7 +36,7 @@ For templates with a specific story arc, name the phases after the beats in the 
 ```typescript
 render(ctx) {
   const { std } = ctx;
-  const t = std.score({
+  const t = ctx.director({
     intro: 0.18,
     terminal: 0.62,
     summary: 0.12,
@@ -44,7 +44,7 @@ render(ctx) {
   });
 
   const shell = t.motion({ during: "intro", y: 28, exit: false });
-  const commandProgress = t.within("terminal");
+  const commandProgress = t.in("terminal");
   const summary = t.motion({ during: "summary", y: 18 });
   const fade = t.tween(1, 0, { during: "outro", easing: "easeInCubic" });
 
@@ -57,7 +57,29 @@ render(ctx) {
 }
 ```
 
-`t.active` tells you which phase is currently running, and `t.within("phase")` gives progress scoped to that phase.
+`t.active` tells you which phase is currently running, and `t.in("phase")` gives progress scoped to that phase.
+
+## Nested Clips
+
+`director.clip()` opens nested timing windows — like Remotion sequences scoped to a parent phase or explicit time range. Each clip gets its own local `director()`:
+
+```typescript
+render(ctx) {
+  const { std, width, height, data } = ctx;
+  const t = ctx.director({ hook: "2s", demo: "3s", outro: "1s" });
+
+  const hook = t.clip({ during: "hook" });
+  if (hook.active) {
+    const local = hook.director();
+    const card = local.motion({ y: 32, scale: 0.92 });
+    return `<div style="${std.css({ width, height }, std.css.center())}">
+      <h1 style="${card.style}">${data.hook}</h1>
+    </div>`;
+  }
+
+  // ... demo and outro clips
+}
+```
 
 ## Transcript And Marker Timing
 
@@ -65,7 +87,7 @@ render(ctx) {
 
 ```typescript
 render(ctx) {
-  const { std, sceneTimeSeconds: time, data } = ctx;
+  const { std, timeline, data } = ctx;
 
   const words = std.cue.fromElevenLabs(data.transcript);
   const transcript = std.cue.transcript(words, time);
@@ -87,7 +109,7 @@ const markers = std.cue.markers({
   intro: 0,
   demo: 2.5,
   cta: 8,
-}, ctx.sceneTimeSeconds);
+}, ctx.timeline.seconds);
 
 const demoProgress = markers.progress("demo", "cta");
 const demo = markers.segment("demo", "cta");
@@ -95,12 +117,12 @@ const demo = markers.segment("demo", "cta");
 
 ## Combining Them
 
-Use `score` for the frame and `cue` for audio-synced content inside it.
+Use `ctx.director()` for the frame and `cue` for audio-synced content inside it.
 
 ```typescript
 render(ctx) {
-  const { std, sceneTimeSeconds: time, data } = ctx;
-  const scene = std.score({ enter: 0.12, captions: 0.76, exit: 0.12 });
+  const { std, timeline, data } = ctx;
+  const scene = ctx.director({ enter: 0.12, captions: 0.76, exit: 0.12 });
   const panel = scene.motion({ y: 24 });
 
   const words = std.cue.fromElevenLabs(data.transcript);

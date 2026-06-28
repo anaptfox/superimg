@@ -1,5 +1,72 @@
 # Changelog
 
+## 0.0.21 — Unreleased
+
+**Breaking:** Audio config is clip-based only — `AudioOptions` and bare `audio: "path.mp3"` are removed.
+
+Migrate `audio: { src, volume, fadeIn: 0.5, fadeOut: 2, loop }` to an `AudioClip`:
+
+```typescript
+audio: {
+  id: "bed",
+  src: "assets/bed.mp3",
+  role: "music",
+  volume: 0.5,
+  fadeIn: "0.5s",
+  fadeOut: "2s",
+  loop: true,
+}
+```
+
+Multi-track: `audio: { clips: [...], mix: { ducking: true } }`. Compose scenes accept `scene(..., { audio })` with `atScene` defaulting to the scene id. See `docs/audio.md`.
+
+**Breaking:** Unified template model — all output kinds use a single `define()` factory and `*.media.ts` filename.
+
+### Migration guide
+
+**Rename your files:**
+```
+template.video.ts  →  template.media.ts
+template.image.ts  →  template.media.ts
+template.gif.ts    →  template.media.ts
+template.svg.ts    →  template.media.ts
+```
+
+**Replace the factory call:**
+```typescript
+// Before
+import { defineScene, defineImage, defineGif, defineSvg } from "superimg";
+export default defineScene({ ... })
+
+// After
+import { define } from "superimg";
+export default define({ ... })   // output kind is inferred from config
+```
+
+Output kind is now config-driven:
+| Output | Signal |
+|--------|--------|
+| MP4 / WebM | `fps` + `duration` in config |
+| GIF | `fps` + `duration` + `--format gif` at render time |
+| PNG / WebP / JPEG | no `fps` or `duration` |
+| SVG | `medium: "svg"` in config |
+
+**Rename `defaults` / `data` (define-time) to `sample`:**
+```typescript
+// Before
+defineScene({ defaults: { title: "Hello" } })
+defineScene({ data: { title: "Hello" } })      // 0.0.13 intermediate name
+
+// After
+define({ sample: { title: "Hello" } })
+```
+
+Note: `ctx.data` at render time is unchanged — this only affects the static fallback field inside `define()`.
+
+**CLI rejects legacy extensions with a rename hint.** The `superimg list` and `superimg render` commands only discover `*.media.ts` / `*.media.js` files. Running them against an old `*.video.ts` path prints a clear migration message.
+
+---
+
 ## 0.0.20 — 2026-04-12
 
 - Fix CI GIF rendering: install ffmpeg via apt before render step — `ubuntu-latest` does not ship ffmpeg by default

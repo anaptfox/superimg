@@ -15,7 +15,7 @@ import {
 import { ReelItem, type ReelItemData, type ReelItemRef } from "./ReelItem";
 import { useSwipeGesture } from "./useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { FormatOption } from "superimg/browser";
+import type { FormatOption } from "superimg/react";
 
 export type { ReelItemData };
 

@@ -1,20 +1,18 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 import { Code, Sparkles, Eye, Video } from "lucide-react";
-import { useVideoSession } from "superimg/react";
-import type { RuntimeStore } from "superimg/react";
+import { Player, useCompiledTemplate, type PlayerRef } from "superimg/react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 
-// Step 1: Simple countdown template (before AI edit)
-const BEFORE_TEMPLATE = `import { defineScene } from "superimg";
+const BEFORE_TEMPLATE = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   render(ctx) {
-    const { sceneFrame, fps, width, height, std } = ctx;
-    const count = Math.max(1, 5 - Math.floor(sceneFrame / fps));
+    const { timeline.frame, fps, width, height, std } = ctx;
+    const count = Math.max(1, 5 - Math.floor(timeline.frame / fps));
     const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }, std.css.center());
     return \`
       <div style="\${bgStyle}">
@@ -26,15 +24,14 @@ export default defineScene({
   }
 });`;
 
-// Step 3: Enhanced countdown - with pulse animation (after AI edit)
-const AFTER_TEMPLATE = `import { defineScene } from "superimg";
+const AFTER_TEMPLATE = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   render(ctx) {
-    const { sceneFrame, fps, width, height, std } = ctx;
-    const count = Math.max(1, 5 - Math.floor(sceneFrame / fps));
-    const showGo = Math.floor(sceneFrame / fps) >= 5;
-    const fraction = (sceneFrame % fps) / fps;
+    const { timeline.frame, fps, width, height, std } = ctx;
+    const count = Math.max(1, 5 - Math.floor(timeline.frame / fps));
+    const showGo = Math.floor(timeline.frame / fps) >= 5;
+    const fraction = (timeline.frame % fps) / fps;
     const pulse = std.interpolate(fraction, [0, 1], [1.2, 1], "easeOutCubic");
     const glow = std.interpolate(fraction, [0, 1], [0.8, 0.2], "easeOutCubic");
     const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }, std.css.center());
@@ -48,14 +45,14 @@ export default defineScene({
 });`;
 
 const BEFORE_CODE_DISPLAY = `render(ctx) {
-  const { sceneFrame, fps } = ctx;
-  const count = 5 - Math.floor(sceneFrame / fps);
+  const { timeline.frame, fps } = ctx;
+  const count = 5 - Math.floor(timeline.frame / fps);
   return \`<div>\${count}</div>\`;
 }`;
 
 const AFTER_CODE_DISPLAY = `render(ctx) {
-  const { sceneFrame, fps, std } = ctx;
-  const count = 5 - Math.floor(sceneFrame / fps);
+  const { timeline.frame, fps, std } = ctx;
+  const count = 5 - Math.floor(timeline.frame / fps);
   const pulse = std.interpolate(fraction, [0, 1], [1.2, 1], 'easeOutCubic');
   const s = std.css({
     transform: 'scale(' + pulse + ')'
@@ -63,26 +60,24 @@ const AFTER_CODE_DISPLAY = `render(ctx) {
   return \`<div style="\${s}">\${count}</div>\`;
 }`;
 
-function MiniVideoPreview({
-  containerRef,
-  store,
-}: {
-  containerRef: React.RefObject<HTMLDivElement | null>;
-  store: RuntimeStore;
-}) {
-  const handleClick = () => {
-    store.togglePlayPause();
-  };
+function MiniVideoPreview({ code }: { code: string }) {
+  const playerRef = useRef<PlayerRef>(null);
+  const { template } = useCompiledTemplate({ code });
 
   return (
     <div
       className="cursor-pointer overflow-hidden rounded-xl border border-border/50 bg-[#0d0d0d]"
-      onClick={handleClick}
+      onClick={() => playerRef.current?.store?.togglePlayPause()}
       title="Click to play/pause"
     >
       <div className="flex items-center justify-center p-4">
-        <div
-          ref={containerRef}
+        <Player
+          ref={playerRef}
+          template={template ?? undefined}
+          format="square"
+          playbackMode="loop"
+          loadMode="eager"
+          autoPlay
           className="rounded-lg"
           style={{ width: 150, height: 150 }}
         />
@@ -92,38 +87,6 @@ function MiniVideoPreview({
 }
 
 export function HowItWorks() {
-  const step1ContainerRef = useRef<HTMLDivElement>(null);
-  const step3ContainerRef = useRef<HTMLDivElement>(null);
-
-  const step1Session = useVideoSession({
-    initialFormat: "square",
-    duration: 2,
-    containerRef: step1ContainerRef,
-  });
-
-  const step3Session = useVideoSession({
-    initialFormat: "square",
-    duration: 2,
-    containerRef: step3ContainerRef,
-  });
-
-  useEffect(() => {
-    step1Session.compile(BEFORE_TEMPLATE);
-    step3Session.compile(AFTER_TEMPLATE);
-  }, []);
-
-  useEffect(() => {
-    if (step1Session.template && !step1Session.isPlaying) {
-      step1Session.play();
-    }
-  }, [step1Session.template]);
-
-  useEffect(() => {
-    if (step3Session.template && !step3Session.isPlaying) {
-      step3Session.play();
-    }
-  }, [step3Session.template]);
-
   const steps = [
     {
       number: "1",
@@ -147,7 +110,7 @@ export function HowItWorks() {
           />
         </div>
       ),
-      video: <MiniVideoPreview containerRef={step1ContainerRef} store={step1Session.store} />,
+      video: <MiniVideoPreview code={BEFORE_TEMPLATE} />,
     },
     {
       number: "2",
@@ -159,7 +122,7 @@ export function HowItWorks() {
         <div className="rounded-lg border border-border/50 bg-(--code-bg) p-3 text-left font-mono">
           <code className="text-sm text-(--code-foreground)">
             <span className="select-none text-muted-foreground">$ </span>
-            superimg add skill
+            npx superimg skill install
           </code>
         </div>
       ),
@@ -187,12 +150,12 @@ export function HowItWorks() {
           />
         </div>
       ),
-      video: <MiniVideoPreview containerRef={step3ContainerRef} store={step3Session.store} />,
+      video: <MiniVideoPreview code={AFTER_TEMPLATE} />,
     },
     {
       number: "4",
       title: "Export or embed",
-      description: "Render to MP4 or embed with React",
+      description: "Render to MP4, GIF, or PNG — or embed with React",
       icon: Video,
       color: "text-orange-400",
       content: (
@@ -200,7 +163,7 @@ export function HowItWorks() {
           <div className="rounded-lg border border-border/50 bg-(--code-bg) p-3 text-left font-mono">
             <code className="text-sm text-(--code-foreground)">
               <span className="select-none text-muted-foreground">$ </span>
-              npx superimg render -o video.mp4
+              npx superimg render intro.media.ts
             </code>
           </div>
           <div className="overflow-hidden rounded-lg border border-border/50 bg-(--code-bg)">
@@ -238,7 +201,6 @@ export function HowItWorks() {
               key={step.number}
               className="grid items-center gap-6 rounded-xl border border-border/30 bg-muted/10 p-5 sm:grid-cols-2"
             >
-              {/* Left: Step info + content */}
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/50">
@@ -254,7 +216,6 @@ export function HowItWorks() {
                 {step.content}
               </div>
 
-              {/* Right: Video preview */}
               <div className="flex justify-center">
                 {step.video}
               </div>

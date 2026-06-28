@@ -1,14 +1,14 @@
 export const HELLO_WORLD = `// Hello World
 // A simple animated intro
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Fade in the text
-  const opacity = Math.min(1, sceneProgress * 3);
-  const scale = 0.8 + sceneProgress * 0.2;
+  const opacity = Math.min(1, timeline.progress * 3);
+  const scale = 0.8 + timeline.progress * 0.2;
 
   return \`
     <div style="
@@ -36,15 +36,15 @@ export default defineScene({
 export const ANIMATED_TEXT = `// Animated Text
 // Text that types in character by character
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress, sceneTimeSeconds } = ctx;
+  const { width, height, timeline } = ctx;
 
   const text = "Building the future...";
-  const visibleChars = Math.floor(sceneProgress * text.length * 1.5);
+  const visibleChars = Math.floor(timeline.progress * text.length * 1.5);
   const displayText = text.slice(0, Math.min(visibleChars, text.length));
-  const showCursor = Math.floor(sceneTimeSeconds * 2) % 2 === 0;
+  const showCursor = Math.floor(timeline.seconds * 2) % 2 === 0;
 
   return \`
     <div style="
@@ -71,14 +71,14 @@ export default defineScene({
 export const GRADIENT = `// Gradient Background
 // Smoothly shifting gradient animation
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
-  const hue1 = (sceneProgress * 360) % 360;
+  const hue1 = (timeline.progress * 360) % 360;
   const hue2 = (hue1 + 60) % 360;
-  const angle = sceneProgress * 360;
+  const angle = timeline.progress * 360;
 
   return \`
     <div style="
@@ -100,7 +100,7 @@ export default defineScene({
         text-shadow: 0 2px 10px rgba(0,0,0,0.3);
         opacity: 0.9;
       ">
-        Progress: \${Math.round(sceneProgress * 100)}%
+        Progress: \${Math.round(timeline.progress * 100)}%
       </div>
     </div>
   \`;
@@ -110,9 +110,9 @@ export default defineScene({
 export const COMPLETE_TEMPLATE = `// Complete Template
 // Demonstrates config (width, fps, duration) and data together
 
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: {
     width: 1280,
     height: 720,
@@ -125,7 +125,7 @@ export default defineScene({
     accentColor: "#667eea",
   },
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
+    const { std, timeline, width, height, data } = ctx;
     const { title, subtitle, accentColor } = data;
 
     const enterProgress = std.math.clamp(time / 1.0, 0, 1);

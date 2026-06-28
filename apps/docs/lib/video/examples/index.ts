@@ -15,11 +15,25 @@ export type ExampleCategoryId =
   | "vector"
   | "developer";
 
+export interface PlaygroundMeta {
+  /** Pre-built rolldown IIFE — browser skips WASM when liveEdit is false */
+  liveEdit?: boolean;
+  /** Template declares config.assets */
+  needsAssets?: boolean;
+  /** Rolldown pre-bundle required (multi-file / relative imports) */
+  needsBundle?: boolean;
+  /** Declared scene duration in seconds (for grid badges) */
+  duration?: number;
+}
+
 export interface EditorExample {
   id: string;
   title: string;
   category: ExampleCategoryId;
   code: string;
+  /** Build-time rolldown IIFE for complex templates */
+  bundled?: string;
+  playground?: PlaygroundMeta;
 }
 
 export const EXAMPLE_CATEGORIES = [

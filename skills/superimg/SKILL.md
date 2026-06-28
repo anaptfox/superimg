@@ -2,28 +2,27 @@
 name: superimg
 description: >
   This skill should be used when the user asks to "create a video template",
-  "render HTML to MP4/PNG/GIF/SVG", "use defineScene", "defineImage",
-  "defineGif", "defineSvg", "work with ctx.std", or mentions SuperImg,
-  video generation, or programmatic media. Provides the SuperImg framework
-  for HTML/CSS templates rendered to video, image, GIF, or SVG.
+  "render HTML to MP4/PNG/GIF/SVG", "use define()", "work with ctx.std",
+  or mentions SuperImg, video generation, or programmatic media. Provides the
+  SuperImg framework for HTML/CSS templates in *.media.ts files.
 ---
 
 # SuperImg Skill
 
 ## Mental Model
 
-**Layer the frame, score the motion** — for **video** and **gif** (animated templates).
+**Layer the frame, direct the motion** — for **video** and **gif** (animated templates).
 
-### Four template kinds
+### Unified templates (`*.media.ts`)
 
-| Kind | Factory | File | Stdlib | Output |
-|------|---------|------|--------|--------|
-| **video** | `defineScene` | `*.video.ts` | Full (`score`, `layers`, `reveal`, `cue`, …) | MP4 |
-| **gif** | `defineGif` | `*.gif.ts` | Full (same temporal APIs as video) | GIF |
-| **image** | `defineImage` | `*.image.ts` | Static — no `score`, `layers`, `reveal`, `cue` | PNG/WebP/JPEG |
-| **svg** | `defineSvg` | `*.svg.ts` | Static — same as image + `std.viz` / `std.svg` | SVG markup |
+| Output | Factory | Config signal | Stdlib |
+|--------|---------|---------------|--------|
+| **MP4/WebM** | `define()` | `fps` + `duration` | Full (`director`, `carousel`, `stack`, `track`, `layers`, `reveal`, …) |
+| **GIF** | `define()` | `fps` + `duration` + `--format gif` | Full (same temporal APIs as video) |
+| **image** | `define()` | no `fps`/`duration` | Static — no director/layers/reveal |
+| **svg** | `define({ medium: "svg" })` | `medium: "svg"` | Static + `std.viz` / `std.svg` |
 
-**Pick a kind:** OG card / still → `defineImage`. Chart / vector → `defineSvg` (return `<svg xmlns="...">`). Short loop → `defineGif`. Scene / reel / multi-scene → `defineScene`.
+**Pick output:** still → `define()` without fps/duration. Vector → `define({ medium: "svg" })`. Animated scene/reel → `define()` with fps + duration. File extension is always `*.media.ts`.
 
 ### Animated path (video + gif)
 
@@ -32,33 +31,33 @@ description: >
 | Tier | API | Role |
 |------|-----|------|
 | **Video** | `compose([scenes])` | Multi-scene chain (video only) |
-| **Template** | `defineScene` / `defineGif` | Scene contract, config, sample data |
+| **Template** | `define()` | Scene contract, config, sample data |
 | **Layers** (optional) | `std.layers()` | Shot stack — bg → tint → content → overlay → fx |
-| **Score** | `std.score()` | Phase timing + motion (`t.motion().style`, `tween`, `within`) |
+| **Director** | `ctx.director()` | Phase timing + motion (`t.motion().style`, `tween`, `in`) |
 
-**Satellites:** `std.cue.*` (absolute time for voiceover), `std.css` / `std.layout` (spatial layout inside planes), `interpolate` / `spring` / `stagger` (escape hatches), `mergeMotion` (combine motions), `std.reveal.*` (transition overlay utilities — mount on `L.fx()`, not a compositional tier).
+**Satellites:** `ctx.track()` (transcript/marker sync), `std.carousel()` / `std.stack()` (ordered item choreography), `std.css` / `std.layout` (spatial layout), `interpolate` / `spring` / `stagger` (escape hatches), `mergeMotion` (combine motions), `std.reveal.*` (transition overlay utilities — mount on `L.fx()`, not a compositional tier).
 
-Simple centered card → template + score. Layered broadcast layout → add layers. Voiceover sync → cue + score.
+Simple centered card → template + director. Layered broadcast layout → add layers. Voiceover sync → track + director.
 
 ### Static path (image + svg)
 
-Single `render(ctx)` call — no `sceneProgress`. Use `std.css`, `std.layout`, `std.color`. SVG templates return real SVG markup; optional `config.duration` for CSS animation.
+Single `render(ctx)` call — no `timeline`. Use `std.css`, `std.layout`, `std.color`. SVG templates return real SVG markup; optional `config.duration` for CSS animation.
 
 ### Footguns
 
-- **image/svg:** no `std.score()` or `std.layers()` — types exclude them
-- **`std.reveal` vs `std.svg.reveal`:** full-frame overlays vs SVG path reveals
+- **image/svg:** no `ctx.director()` or `std.layers()` — types exclude them
+- **`std.reveal` overlays vs `std.reveal.clip`:** full-frame transition FX vs clip-path strings
 - **Broadcast overlays:** `std.layers({ mode: "transparent" })`
 - **Flat HTML (no layers):** set root `width` / `height` via `std.css`
 - **`compose()` vs `mergeMotion()`:** scenes vs motion values
-- **GIF timing:** full `RenderContext`; `sceneProgress` equals global in single-scene GIFs; score or raw `globalTimeSeconds` both work
+- **Clock:** `timeline.seconds` is always `progress × durationSeconds` — use `timeline` for scene-local time, not `globalTimeSeconds`
 
 ## Quick Start (video)
 
 ```typescript
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
-export default defineScene({
+export default define({
   sample: { message: "Hello!", accentColor: "#667eea" },
   config: {
     duration: 3,
@@ -66,8 +65,8 @@ export default defineScene({
   },
   render(ctx) {
     const { std, width, height, data } = ctx;
-    const t = std.score();
-    const card = t.motion({ y: 30 });
+    const d = ctx.director();
+    const card = d.motion({ y: 30 });
 
     return `
       <div style="${std.css({ width, height }, std.css.center())}">
@@ -80,7 +79,7 @@ export default defineScene({
 
 ## Key Context Fields
 
-**Video/gif:** `sceneProgress`, `sceneTimeSeconds`, `width`, `height`, `data`, `std`, `asset()`. Prefer `sceneProgress` / `sceneTimeSeconds` over `global*` for scene-local animation.
+**Video/gif:** `timeline` (`progress`, `seconds`, `frame`, `durationSeconds`), `ctx.director()`, `ctx.track()`, `width`, `height`, `data`, `std`, `asset()`. Use `timeline.progress` / `timeline.seconds` for scene-local animation.
 
 **Image/svg:** `width`, `height`, `data`, `std`, `asset()` — no temporal fields.
 
@@ -88,47 +87,77 @@ export default defineScene({
 
 ## Core Patterns
 
-**Score API (video/gif):**
+**Director API (video/gif):**
 ```typescript
-const t = std.score({ enter: 0.15, hold: 0.7, exit: 0.15 });
-const card = t.motion({ scale: 0.8, easing: "easeOutBack" });
-const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
+const d = ctx.director({ enter: "15%", hold: "70%", exit: "15%" });
+const card = d.motion({ scale: 0.8, easing: "easeOutBack" });
+const count = Math.floor(d.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
 ```
 
 **Nested clips (sequence-like timing):**
 ```typescript
-const t = std.score({ hook: "2s", demo: "5s" });
-const hook = t.clip({ during: "hook" });
+const d = ctx.director({ hook: "2s", demo: "5s" });
+const hook = d.clip({ during: "hook" });
 if (hook.active) {
-  const local = hook.score({ enter: "20%", hold: "60%", exit: "20%" });
+  const local = hook.director({ enter: "20%", hold: "60%", exit: "20%" });
   return `<div style="${local.motion({ y: 24 }).style}">Hook</div>`;
 }
-const feature = t.clip({ during: "demo" }).clip({ from: "0.5s", duration: "1.5s" });
+```
+
+**Stack (accumulate — chat, FAQ, lists):**
+```typescript
+const d = ctx.director({ messages: "90%", hold: "10%" });
+const stk = std.stack(messages, { during: d.in("messages"), lead: 0.05, trail: 0.05 });
+for (let i = 0; i < messages.length; i++) {
+  const item = stk.state(i);
+  if (item.state === "hidden") continue;
+  // item.enter: 0→1 during reveal; item.slot: 0→1 across slot (typing, q→a)
+}
+```
+
+**Carousel (replace — threads, wizards):**
+```typescript
+const d = ctx.director({ tweets: "84%", hold: "16%" });
+const car = std.carousel(tweets, { during: d.in("tweets"), exit: 0.15, last: "hold" });
+const item = car.state(0); // states: hidden | entering | hold | exiting | gone
+```
+
+**Track (transcript / marker sync):**
+```typescript
+const vo = ctx.track({ words: data.words });
+const word = vo.current();
+const charP = vo.charProgress();
+```
+
+**Data-driven viz (bar race, force graphs):**
+```typescript
+const d = ctx.director({ intro: "10%", race: "80%", outro: "10%" });
+const bars = std.viz.charts.barRace(keyframes, d.at("race", timeline.seconds));
 ```
 
 **Embedded video (frame-accurate):**
 ```typescript
-const clip = std.video.sync({ src: ctx.asset("clip.mp4"), at: ctx.sceneTimeSeconds }, ctx.fps);
+const clip = std.video.sync({ src: ctx.asset("clip.mp4"), at: timeline.seconds }, ctx.fps);
 return clip.html; // not <video autoplay>
 ```
 
 **Layer stack (video/gif, layered scenes):**
 ```typescript
 const L = std.layers({ width, height, mode: "opaque" });
-const wipe = std.reveal.wipe({ progress: t.within("intro"), direction: "diagonal", color: "#000" });
+const wipe = std.reveal.wipe({ progress: d.in("intro"), direction: "diagonal", color: "#000" });
 return L.render(
   L.bg(kenBurns.html),
   L.tint("rgba(0,0,0,0.5)"),
   L.content(`<h1 style="${card.style}">...</h1>`, { safe: "broadcast" }),
   L.overlay(lowerThirdHtml, { anchor: "bottom-left", offset: { y: 80 }, safe: true, motion: badgeAnim }),
-  L.fx(wipe.html, { visible: () => t.within("intro") < 1 }),
+  L.fx(wipe.html, { visible: () => d.in("intro") < 1 }),
 );
 ```
 
 **Still image:**
 ```typescript
-import { defineImage } from "superimg";
-export default defineImage({
+import { define } from "superimg";
+export default define({
   config: { width: 1200, height: 630 },
   render(ctx) {
     const { std, width, height, data } = ctx;
@@ -141,32 +170,32 @@ export default defineImage({
 
 **Responsive sizing:** `const r = std.createResponsive(ctx);` then `r({ portrait: 48, default: 40 })`
 
-**Audio & cue sync:** `std.cue.transcript(words, ctx.sceneTimeSeconds)` — pair with score for scene choreography.
-
 **Layout:** `std.css()`, `std.css.center()`, `std.css.column()`, `std.layout.partitionY()`
 
 ## Stdlib Cheat Sheet
 
-- `std.score(phases?)` — video/gif only. `{ motion, tween, value, active, within, clip, span, transition, inSpan }`
+- `ctx.director(phases?)` — video/gif only. `{ motion, tween, value, active, in, clip, at, span, transition, inSpan }`
+- `ctx.track({ words, markers })` — transcript/marker sync using `timeline.seconds`
+- `std.carousel(items, opts)` — one active item; prior items exit (`last: "hold"` keeps final)
+- `std.stack(items, opts)` — accumulate items; `enter` + `slot` for sub-beats
 - `std.video.sync(opts, fps)` — frame-accurate embedded `<video>` for headless render
 - `std.layers(opts)` — video/gif only. `.bg()`, `.tint()`, `.content()`, `.overlay()`, `.fx()`, `.handoff()`, `.render()`
 - `std.reveal.wipe/split/curtain/crossfade/iris/handoffLocal()` — transition overlays (utility)
 - `std.stagger.lead(items, progress)` — leading stagger index (sync phone mockups)
 - `std.mergeMotion(...)` — merge motion values (not `compose()`)
-- `std.cue.transcript/markers/script` — absolute-time sync
 - `std.interpolate`, `std.spring`, `std.stagger`
 - `std.css`, `std.color`, `std.createResponsive`
 - `std.viz`, `std.svg.*` — svg templates
 
 ## Do / Don't
 
-**DO:** Match factory to file extension. Use `std.score` for phased video/gif animation. Put shared CSS in `config.inlineCss`. Use `std.css()` for inline styles.
+**DO:** Use `*.media.ts` for all templates. Use `ctx.director()` for phased video/gif animation. Use explicit time units in motion (`at: "0.2s"`, `for: "30%"`). Put shared CSS in `config.inlineCss`. Use `std.css()` for inline styles.
 
-**DON'T:** Use `score`/`layers` in image/svg templates. Return JSX. Mutate state in render. Use `globalTimeSeconds` for scene-local video animation (use `sceneProgress`). Call `std.tween()` at top level — use `std.score().tween()`.
+**DON'T:** Use `director`/`layers` in image/svg templates. Return JSX. Mutate state in render. Use `globalTimeSeconds` for scene-local video animation (use `timeline`). Use unitless numeric `at`/`for` in motion calls.
 
 ## Config
 
-`defineScene` / `defineGif`: `width`, `height`, `fps`, `duration`, `fonts`, `inlineCss`, `outputs`. `defineImage`: no `fps`/`duration`. `defineSvg`: optional `duration` for CSS anim.
+`define()` config: `width`, `height`, `fps`, `duration`, `fonts`, `inlineCss`, `outputs`. Static templates omit `fps`/`duration`. SVG templates use `medium: "svg"` and may set `duration` for CSS anim.
 
 ## CLI
 
@@ -185,7 +214,7 @@ superimg setup
 
 - **[references/api.md](references/api.md)** — Full API, template kinds, composition model
 - **[examples/hello-world.ts](examples/hello-world.ts)** — Minimal video
-- **[examples/stats-card.ts](examples/stats-card.ts)** — Score + counters
+- **[examples/stats-card.ts](examples/stats-card.ts)** — Director + counters
 
 ### Project Examples
 

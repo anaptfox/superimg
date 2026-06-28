@@ -4,7 +4,7 @@
 
 import { useRef, useEffect, forwardRef, useImperativeHandle, memo, useCallback } from "react";
 import { Player, type PlayerRef } from "superimg/react/player";
-import type { PlayerInput, FormatOption } from "superimg/browser";
+import type { PlayerInput, FormatOption } from "superimg/react";
 import { useVisibility } from "./useVisibility";
 
 export interface ReelItemData {

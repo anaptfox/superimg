@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopNav } from "@/components/landing/TopNav";
 
 const TemplateGrid = dynamic(
@@ -15,12 +17,29 @@ const TemplateGrid = dynamic(
         </div>
       </div>
     ),
-  }
+  },
 );
+
+function LegacyExampleRedirect() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const example = searchParams.get("example");
+
+  useEffect(() => {
+    if (example) {
+      router.replace(`/playground/${example}`);
+    }
+  }, [example, router]);
+
+  return null;
+}
 
 export default function PlaygroundPage() {
   return (
     <>
+      <Suspense fallback={null}>
+        <LegacyExampleRedirect />
+      </Suspense>
       <TopNav />
       <TemplateGrid />
     </>

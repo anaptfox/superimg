@@ -1,25 +1,28 @@
 # Templates & Data
 
-This guide covers how to create templates, define default data, pass data to scenes, and share data across scenes.
+This guide covers how to create templates, define default data, pass data at render time, and share data across scenes.
 
 ## Table of Contents
 
+- [Template Kinds](#template-kinds)
 - [Basic Templates](#basic-templates)
 - [Duration Resolution](#duration-resolution)
 - [Template Data](#template-data)
 
 ---
 
-## Template kinds
+## Template Kinds
 
-| Kind | Factory | File | Returns |
-|------|---------|------|---------|
-| **video** | `defineScene` | `*.video.ts` | HTML per frame → MP4 |
-| **gif** | `defineGif` | `*.gif.ts` | HTML per frame → GIF |
-| **image** | `defineImage` | `*.image.ts` | HTML → still image |
-| **svg** | `defineSvg` | `*.svg.ts` | SVG markup |
+All templates use `*.media.ts` (or `*.media.js`). Output kind is determined by `define()` config — not the filename.
 
-Video and GIF use full temporal stdlib (`std.score`, `std.layers`, …). Image and SVG use a static subset — no `score` or `layers`. **Layer the frame, score the motion** applies to video and GIF.
+| Output | Factory | Config signal | Stdlib |
+|--------|---------|---------------|--------|
+| **MP4/WebM** | `define()` | `fps` + `duration` | Full (`director`, `carousel`, `stack`, `track`, `layers`, `reveal`, `cue`, …) |
+| **GIF** | `define()` | `fps` + `duration` + `--format gif` | Full (temporal APIs) |
+| **Image** | `define()` | no `fps`/`duration` | Static — no `director`/`layers`/`reveal`/`cue` |
+| **SVG** | `define({ medium: "svg" })` | `medium: "svg"` | Static + `std.viz` / `std.svg` |
+
+Video and GIF use full temporal stdlib (`ctx.director()`, `std.layers`, …). Image and SVG use a static subset. **Layer the frame, direct the motion** applies to video and GIF.
 
 ## Basic Templates
 
@@ -28,10 +31,10 @@ A template's `render(ctx)` returns markup for the current frame (video/gif) or a
 ### Video template (recommended starting point)
 
 ```typescript
-// templates/intro.video.ts
-import { defineScene } from 'superimg';
+// templates/intro.media.ts
+import { define } from 'superimg';
 
-export default defineScene({
+export default define({
   sample: {
     name: 'World',
   },
@@ -42,9 +45,9 @@ export default defineScene({
     duration: 5,
   },
   render(ctx) {
-    const { std, sceneProgress, width, height, data } = ctx;
+    const { std, timeline, width, height, data } = ctx;
 
-    const scale = std.interpolate(sceneProgress, [0, 1], [0.8, 1], 'easeOutCubic');
+    const scale = std.interpolate(timeline.progress, [0, 1], [0.8, 1], 'easeOutCubic');
     const bodyStyle = std.css({ width, height, transform: 'scale(' + scale + ')' }, std.css.center());
 
     return `
@@ -56,14 +59,14 @@ export default defineScene({
 });
 ```
 
-`defineScene` gives you full type inference — `ctx.data.name` is typed as `string` automatically.
+`define()` gives you full type inference — `ctx.data.name` is typed as `string` automatically.
 
 ### Multi-Output Presets
 
-Templates can define named output presets via `config.outputs` to target multiple aspect ratios or resolutions from a single template:
+Templates can define named output presets via `config.outputs` to target multiple aspect ratios, resolutions, or formats from a single template:
 
 ```typescript
-export default defineScene({
+export default define({
   sample: { title: 'Untitled' },
   config: {
     width: 1920,
@@ -90,8 +93,14 @@ The active output preset is available via `ctx.output` (name, width, height, fit
 # Dev server with live preview
 superimg dev intro
 
-# Render to video
-superimg render intro -o output.mp4
+# Render to video (default output: output/intro.mp4)
+superimg render intro
+
+# Render a GIF
+superimg render spinner --format gif
+
+# Render a still image
+superimg render og-card --format png
 ```
 
 ### Duration Resolution
@@ -109,15 +118,16 @@ Duration can be set in several places. The highest-priority source wins:
 The standard library is available via `ctx.std`:
 
 ```typescript
-import { defineScene } from 'superimg';
+import { define } from 'superimg';
 
-export default defineScene({
+export default define({
+  config: { fps: 30, duration: 5 },
   render(ctx) {
-    const { std, sceneProgress } = ctx;
+    const { std, timeline } = ctx;
     
     // Interpolate: eased mapping through input/output ranges
-    const eased = std.interpolate(sceneProgress, [0, 1], [0, 1], 'easeOutCubic');
-    const value = std.interpolate(sceneProgress, [0, 1], [0, 100], 'easeOutCubic');
+    const eased = std.interpolate(timeline.progress, [0, 1], [0, 1], 'easeOutCubic');
+    const value = std.interpolate(timeline.progress, [0, 1], [0, 100], 'easeOutCubic');
     const clamped = std.math.clamp(value, 10, 90);
     
     // Color manipulation
@@ -163,7 +173,7 @@ std.css.row()    // display:flex; flex-direction:row
 Templates can inject CSS once per render session via `config.inlineCss` and `config.stylesheets`:
 
 ```typescript
-export default defineScene({
+export default define({
   config: {
     width: 1920,
     height: 1080,
@@ -184,10 +194,12 @@ export default defineScene({
 
 ### Still image
 
-```typescript
-import { defineImage } from 'superimg';
+Omit `fps` and `duration` from config. Render with `--format png`, `--format webp`, or `--format jpeg`.
 
-export default defineImage({
+```typescript
+import { define } from 'superimg';
+
+export default define({
   sample: { title: 'SuperImg' },
   config: { width: 1200, height: 630 },
   render(ctx) {
@@ -199,12 +211,38 @@ export default defineImage({
 });
 ```
 
-### SVG
+### GIF
+
+Include `fps` and `duration`, then render with `--format gif`.
 
 ```typescript
-import { defineSvg } from 'superimg';
+import { define } from 'superimg';
 
-export default defineSvg({
+export default define({
+  config: {
+    width: 200,
+    height: 200,
+    fps: 24,
+    duration: 1.5,
+    gif: { loop: 0, maxColors: 64 },
+  },
+  render(ctx) {
+    const { std, width, height, timeline } = ctx;
+    const t = timeline.progress;
+    // ... animate per frame
+    return `<div style="${std.css({ width, height })}">...</div>`;
+  },
+});
+```
+
+### SVG
+
+Use `define({ medium: "svg" })`. `render()` must return an `<svg xmlns="...">` root element.
+
+```typescript
+import { define } from 'superimg';
+
+export default define({ medium: 'svg',
   config: { width: 800, height: 400 },
   render(ctx) {
     const { width, height } = ctx;
@@ -222,10 +260,10 @@ Templates export a `sample` object. At render time the runtime merges incoming d
 ### Defining sample data
 
 ```typescript
-// templates/product.video.ts
-import { defineScene } from 'superimg';
+// templates/product.media.ts
+import { define } from 'superimg';
 
-export default defineScene({
+export default define({
   sample: {
     title: 'Untitled',
     price: 0,
@@ -239,10 +277,10 @@ export default defineScene({
     duration: 5,
   },
   render(ctx) {
-    const { std, sceneProgress, data } = ctx;
+    const { std, timeline, data } = ctx;
     const { title, price, accentColor, discount } = data;
 
-    const opacity = std.interpolate(sceneProgress, [0, 1], [0, 1], 'easeOutCubic');
+    const opacity = std.interpolate(timeline.progress, [0, 1], [0, 1], 'easeOutCubic');
     const finalPrice = discount ? price * (1 - discount / 100) : price;
 
     return `
@@ -259,6 +297,14 @@ export default defineScene({
 
 When a template has data, it is merged at render time. Any fields you provide override the data defaults; missing fields use the default values.
 
+```bash
+# Inline JSON
+superimg render product --data '{"title": "Gadget", "price": 149}'
+
+# Batch from a JSON file — one render per array entry
+superimg render product --data products.json -y
+```
+
 ## RenderContext Reference
 
 The full `RenderContext` interface:
@@ -267,25 +313,20 @@ The full `RenderContext` interface:
 interface RenderContext<
   TData = Record<string, unknown>,
 > {
-  // Standard library
-  std: Stdlib;                      // score, layers, interpolate, math, color, …
+  std: Stdlib;
+  timeline: Timeline;               // progress, seconds (= progress × durationSeconds), frame, …
+  director: (phases?) => Director;
+  track: (opts: TrackSource) => Track;
 
   // Global position (entire video)
-  globalFrame: number;              // Current frame in video
-  globalTimeSeconds: number;        // Current time in video
-  totalFrames: number;              // Total frames in video
-  totalDurationSeconds: number;     // Total duration in seconds
+  globalFrame: number;
+  globalTimeSeconds: number;
+  totalFrames: number;
+  totalDurationSeconds: number;
 
-  // Scene position (equals global in single-template mode)
-  sceneFrame: number;               // Frame within this scene
-  sceneTimeSeconds: number;         // Time within this scene
-  sceneProgress: number;            // Progress through this scene (0-1)
-  sceneTotalFrames: number;         // Total frames in this scene
-  sceneDurationSeconds: number;     // Duration of this scene
-
-  // Scene metadata
-  sceneIndex: number;               // Index of current scene
-  sceneId: string;                  // ID of current scene
+  // Scene metadata (multi-scene compositions)
+  sceneIndex: number;
+  sceneId: string;
 
   // Video info
   fps: number;                      // Frames per second
@@ -317,9 +358,9 @@ interface RenderContext<
 ### 1. Use sample for reusable templates
 
 ```typescript
-import { defineScene } from 'superimg';
+import { define } from 'superimg';
 
-export default defineScene({
+export default define({
   sample: {
     title: 'Untitled',
     items: [] as string[],
@@ -335,7 +376,7 @@ export default defineScene({
 ### 2. Optional fields in sample
 
 ```typescript
-export default defineScene({
+export default define({
   sample: {
     title: 'Hello',
     subtitle: undefined as string | undefined,
@@ -350,7 +391,7 @@ export default defineScene({
 
 ### 3. Full type inference
 
-`defineScene` infers types from your `sample` — `ctx.data` is automatically typed.
+`define()` infers types from your `sample` — `ctx.data` is automatically typed.
 
 ### 4. Use Explicit Duration in Config
 

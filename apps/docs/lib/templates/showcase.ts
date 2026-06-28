@@ -1,7 +1,7 @@
-import { defineScene, type RenderContext } from "superimg";
+import { define, type RenderContext } from "superimg/browser";
 
 // Getting Started: Hello World with fade-in effect
-export const helloWorldTemplate = defineScene({
+export const helloWorldTemplate = define({
   config: {
     fps: 30,
     duration: 3,
@@ -9,9 +9,9 @@ export const helloWorldTemplate = defineScene({
     height: 180,
   },
   render(ctx: RenderContext) {
-    const { sceneProgress: p, std, width, height } = ctx;
+    const  { timeline, std, width, height } = ctx;
 
-    const textProgress = std.math.clamp(p / 0.4, 0, 1);
+    const textProgress = std.math.clamp(timeline.progress / 0.4, 0, 1);
     const textOpacity = std.interpolate(textProgress, [0, 1], [0, 1], "easeOutCubic");
     const textScale = std.interpolate(textProgress, [0, 1], [0.8, 1], "easeOutCubic");
 
@@ -40,7 +40,7 @@ export const helloWorldTemplate = defineScene({
 });
 
 // Marketing: Countdown timer animation
-export const countdownTemplate = defineScene({
+export const countdownTemplate = define({
   config: {
     fps: 30,
     duration: 3,
@@ -48,19 +48,19 @@ export const countdownTemplate = defineScene({
     height: 180,
   },
   render(ctx: RenderContext) {
-    const { sceneProgress: p, std, width, height } = ctx;
+    const  { timeline, std, width, height } = ctx;
 
     const units = [
       { label: "DAYS", value: 14 },
       { label: "HRS", value: 8 },
       { label: "MIN", value: 32 },
-      { label: "SEC", value: Math.floor(45 - p * 5) },
+      { label: "SEC", value: Math.floor(45 - timeline.progress * 5) },
     ];
 
     const unitsHtml = units
       .map((unit, i) => {
         const delay = i * 0.1;
-        const opacity = std.math.clamp((p - delay) * 3, 0, 1);
+        const opacity = std.math.clamp((timeline.progress - delay) * 3, 0, 1);
         const scale = 0.8 + opacity * 0.2;
         return `
           <div style="text-align:center;opacity:${opacity};transform:scale(${scale});">
@@ -94,7 +94,7 @@ export const countdownTemplate = defineScene({
         justify-content:center;
         font-family:system-ui,-apple-system,sans-serif;
       ">
-        <div style="font-size:12px;color:#888;letter-spacing:2px;margin-bottom:12px;opacity:${std.math.clamp(p * 3, 0, 1)};">
+        <div style="font-size:12px;color:#888;letter-spacing:2px;margin-bottom:12px;opacity:${std.math.clamp(timeline.progress * 3, 0, 1)};">
           PRODUCT LAUNCH
         </div>
         <div style="display:flex;gap:12px;">
@@ -106,7 +106,7 @@ export const countdownTemplate = defineScene({
 });
 
 // Social: Testimonial quote card animation
-export const testimonialTemplate = defineScene({
+export const testimonialTemplate = define({
   config: {
     fps: 30,
     duration: 3,
@@ -114,11 +114,11 @@ export const testimonialTemplate = defineScene({
     height: 180,
   },
   render(ctx: RenderContext) {
-    const { sceneProgress: p, std, width, height } = ctx;
+    const  { timeline, std, width, height } = ctx;
 
-    const cardOpacity = std.math.clamp(p * 3, 0, 1);
-    const cardY = std.interpolate(p, [0, 0.5], [20, 0], "easeOutCubic");
-    const quoteOpacity = std.math.clamp((p - 0.2) * 2.5, 0, 1);
+    const cardOpacity = std.math.clamp(timeline.progress * 3, 0, 1);
+    const cardY = std.interpolate(timeline.progress, [0, 0.5], [20, 0], "easeOutCubic");
+    const quoteOpacity = std.math.clamp((timeline.progress - 0.2) * 2.5, 0, 1);
 
     return `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
@@ -155,8 +155,8 @@ export const testimonialTemplate = defineScene({
   },
 });
 
-// Data: Animated bar chart
-export const chartTemplate = defineScene({
+// Data: Animated bar chart (viz.charts.bar)
+export const chartTemplate = define({
   config: {
     fps: 30,
     duration: 3,
@@ -164,72 +164,46 @@ export const chartTemplate = defineScene({
     height: 180,
   },
   render(ctx: RenderContext) {
-    const { sceneProgress: p, std, width, height } = ctx;
+    const  { timeline, std, width, height } = ctx;
+    const viz = std.viz;
 
     const bars = [
-      { label: "Mon", value: 75, color: "#3b82f6" },
-      { label: "Tue", value: 45, color: "#8b5cf6" },
-      { label: "Wed", value: 90, color: "#10b981" },
-      { label: "Thu", value: 60, color: "#f59e0b" },
-      { label: "Fri", value: 100, color: "#ef4444" },
+      { label: "Mon", value: 75 },
+      { label: "Tue", value: 45 },
+      { label: "Wed", value: 90 },
+      { label: "Thu", value: 60 },
+      { label: "Fri", value: 100 },
     ];
 
-    const maxValue = Math.max(...bars.map((b) => b.value));
-    const barWidth = 36;
-    const chartHeight = 100;
+    const coords = viz.createCoords({
+      width,
+      height,
+      xRange: [0, 5],
+      yRange: [0, 100],
+      padding: { top: 36, bottom: 28, left: 20, right: 20 },
+    });
 
-    const barsHtml = bars
-      .map((bar, i) => {
-        const delay = i * 0.1;
-        const barProgress = std.math.clamp((p - delay) * 2, 0, 1);
-        const barHeight = (bar.value / maxValue) * chartHeight * std.interpolate(barProgress, [0, 1], [0, 1], "easeOutCubic");
-        return `
-          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-            <div style="
-              width:${barWidth}px;
-              height:${chartHeight}px;
-              display:flex;
-              align-items:flex-end;
-            ">
-              <div style="
-                width:100%;
-                height:${barHeight}px;
-                background:${bar.color};
-                border-radius:4px 4px 0 0;
-              "></div>
-            </div>
-            <div style="font-size:9px;color:#94a3b8;">${bar.label}</div>
-          </div>
-        `;
-      })
-      .join("");
+    const barsEl = viz.charts.bar(coords, bars, {
+      animate: "grow",
+      progress: timeline.progress,
+      colors: ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444"],
+      showLabels: true,
+      barRadius: 4,
+      labelFontSize: 9,
+    });
 
-    return `
-      <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
-      <div style="
-        width:${width}px;
-        height:${height}px;
-        background:#0f172a;
-        display:flex;
-        flex-direction:column;
-        align-items:center;
-        justify-content:center;
-        font-family:system-ui,-apple-system,sans-serif;
-        padding:16px;
-      ">
-        <div style="font-size:14px;color:white;font-weight:600;margin-bottom:12px;opacity:${std.math.clamp(p * 3, 0, 1)};">
-          Weekly Activity
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end;">
-          ${barsHtml}
-        </div>
-      </div>
-    `;
+    const titleOp = std.math.clamp(timeline.progress * 3, 0, 1);
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <rect width="${width}" height="${height}" fill="#0f172a"/>
+  <text x="${width / 2}" y="22" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#ffffff" opacity="${titleOp.toFixed(3)}">Weekly Activity</text>
+  ${barsEl}
+</svg>`;
   },
 });
 
 // Vector: Animated shapes and strokes
-export const vectorTemplate = defineScene({
+export const vectorTemplate = define({
   config: {
     fps: 30,
     duration: 3,
@@ -237,11 +211,11 @@ export const vectorTemplate = defineScene({
     height: 180,
   },
   render(ctx: RenderContext) {
-    const { sceneProgress: p, std, width, height } = ctx;
+    const  { timeline, std, width, height } = ctx;
 
-    const ringProgress = std.math.clamp(p / 0.45, 0, 1);
-    const orbitProgress = std.math.clamp((p - 0.15) / 0.7, 0, 1);
-    const fadeProgress = std.math.clamp((p - 0.75) / 0.25, 0, 1);
+    const ringProgress = std.math.clamp(timeline.progress / 0.45, 0, 1);
+    const orbitProgress = std.math.clamp((timeline.progress - 0.15) / 0.7, 0, 1);
+    const fadeProgress = std.math.clamp((timeline.progress - 0.75) / 0.25, 0, 1);
 
     const ringScale = std.interpolate(ringProgress, [0, 1], [0.7, 1], "easeOutBack");
     const ringOpacity = std.interpolate(ringProgress, [0, 1], [0, 1], "easeOutCubic") * (1 - fadeProgress * 0.5);
@@ -300,7 +274,7 @@ export const vectorTemplate = defineScene({
 });
 
 // Developer: Terminal typing effect
-export const terminalTemplate = defineScene({
+export const terminalTemplate = define({
   config: {
     fps: 30,
     duration: 3,
@@ -308,15 +282,15 @@ export const terminalTemplate = defineScene({
     height: 180,
   },
   render(ctx: RenderContext) {
-    const { sceneProgress: p, sceneTimeSeconds, std, width, height } = ctx;
+    const  { timeline, std, width, height } = ctx;
 
     const command = "npm create superimg@latest";
     const output = "✓ Project created successfully!";
 
-    const cmdProgress = std.math.clamp(p * 2.5, 0, 1);
+    const cmdProgress = std.math.clamp(timeline.progress * 2.5, 0, 1);
     const { visible: displayCmd, typing: cmdTyping } = std.text.type(command, cmdProgress);
-    const showCursor = std.text.cursor(sceneTimeSeconds);
-    const outputOpacity = std.math.clamp((p - 0.5) * 3, 0, 1);
+    const showCursor = std.text.cursor(timeline.seconds);
+    const outputOpacity = std.math.clamp((timeline.progress - 0.5) * 3, 0, 1);
 
     return `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>

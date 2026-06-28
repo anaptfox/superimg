@@ -1,9 +1,9 @@
 # SuperImg
 
-Programmatic video generation. TypeScript in, MP4 out.
+Programmatic media generation. TypeScript templates → MP4, GIF, images, and SVG.
 
 <p align="center">
-  <img src="docs/assets/hero.gif" alt="SuperImg: write a TypeScript template, get back an MP4" width="960" />
+  <img src="docs/assets/hero.gif" alt="SuperImg: write a TypeScript template, get back media" width="960" />
 </p>
 
 ## Quick Start
@@ -16,17 +16,17 @@ Install with your package manager of choice:
 | pnpm | `pnpm add superimg` | `pnpm dlx superimg` |
 | yarn | `yarn add superimg` | `yarn dlx superimg` |
 | bun | `bun add superimg` | `bunx superimg` |
-| deno | `deno add npm:superimg` | `deno run npm:superimg/cli` |
+| deno | `deno add npm:superimg` | `deno run -A npm:superimg` |
 
 > **Note:** Rendering requires Chromium. Run `npx superimg setup` once to download it.
 
 Create a template:
 
 ```typescript
-// hello.video.ts
-import { defineScene } from 'superimg'
+// hello.media.ts
+import { define } from 'superimg'
 
-export default defineScene({
+export default define({
   config: { width: 1920, height: 1080, fps: 30, duration: 3 },
   render(ctx) {
     return `
@@ -45,22 +45,40 @@ export default defineScene({
 Render it:
 
 ```bash
-npx superimg render hello.video.ts -o hello.mp4
+npx superimg render hello.media.ts
 ```
 
-Or use the programmatic API directly — SuperImg is lib-first:
+Output lands in `output/hello.mp4` next to your template. Or use the programmatic API directly — SuperImg is lib-first:
 
 ```typescript
 import { renderVideo } from 'superimg/server'
 
-const mp4 = await renderVideo('./hello.video.ts', { output: './hello.mp4' })
+await renderVideo('./hello.media.ts', { output: './hello.mp4' })
 ```
 
 That's it. A function that returns HTML → an MP4 file.
 
+## Template Kinds
+
+All templates use `*.media.ts`. Output kind is determined by `define()` config — not the filename.
+
+| Output | Config signal | Stdlib |
+|--------|---------------|--------|
+| **MP4/WebM** | `fps` + `duration` | Full (`score`, `layers`, `reveal`, `cue`, …) |
+| **GIF** | `fps` + `duration` + `--format gif` | Full (temporal APIs) |
+| **Image** | no `fps`/`duration` | Static — no `score`/`layers`/`reveal`/`cue` |
+| **SVG** | `medium: "svg"` | Static + `std.svg` / `std.viz` |
+
+```bash
+npx superimg render spinner.media.ts --format gif   # animated GIF
+npx superimg render og-card.media.ts                # PNG still (no fps/duration)
+npx superimg render chart.media.ts                  # SVG vector output
+npx superimg render intro.media.ts --frame 45 --format png  # single-frame still
+```
+
 ## What You Can Build
 
-200 product videos for an e-commerce catalog. Personalized onboarding walkthroughs. Automated social clips from a data feed. Anything where video needs to scale beyond one-at-a-time.
+200 product videos for an e-commerce catalog. Personalized onboarding walkthroughs. Automated social clips from a data feed. OG cards and share images from the same template system. Anything where media needs to scale beyond one-at-a-time.
 
 - **Deterministic** — Same input, same output. Every frame is testable.
 - **Composable** — Import functions, reuse components, version control everything.
@@ -68,21 +86,21 @@ That's it. A function that returns HTML → an MP4 file.
 
 ## Add Animation
 
-Every frame receives a context with a standard library for animation. `std.score()` breaks the scene into enter/hold/exit phases and `t.motion()` gives each element a fade-in, transform, and fade-out automatically:
+Every frame receives a context with a standard library for animation. `ctx.director()` breaks the scene into enter/hold/exit phases and `d.motion()` gives each element a fade-in, transform, and fade-out automatically:
 
 ```typescript
-import { defineScene } from 'superimg'
+import { define } from 'superimg'
 
-export default defineScene({
+export default define({
   config: { width: 1920, height: 1080, fps: 30, duration: 5 },
   render(ctx) {
     const { std, width, height } = ctx
 
     // Phases default to enter 15% / hold 70% / exit 15%
-    const t = std.score()
+    const d = ctx.director()
 
     // scale 0.8 → 1 on enter, hold, then auto fade + scale back on exit
-    const card = t.motion({ scale: 0.8, easing: 'easeOutCubic' })
+    const card = d.motion({ scale: 0.8, easing: 'easeOutCubic' })
 
     return `
       <div style="
@@ -97,15 +115,15 @@ export default defineScene({
 })
 ```
 
-`std.score` handles phase timing. For custom-progress math (loops, non-phase curves) reach for `std.interpolate(progress, inputRange, outputRange, easing?)`. [See the full API →](./docs/api.md)
+`ctx.director()` handles phase timing. For nested clips use `d.clip()`, for accumulating lists use `std.stack()`, for one-at-a-time slides use `std.carousel()`, for layered scenes use `std.layers()`, for embedded video use `std.video.sync()`. For custom-progress math reach for `std.interpolate(progress, inputRange, outputRange, easing?)`. [See the full API →](./docs/api.md)
 
 ## Data-Driven Templates
 
 Pass data at render time. Same template, different content:
 
 ```typescript
-export default defineScene({
-  data: {
+export default define({
+  sample: {
     productName: 'Widget',
     price: '$99',
   },
@@ -118,14 +136,14 @@ export default defineScene({
 
 ```bash
 # Single video with inline data
-npx superimg render template.video.ts --data '{"productName": "Gadget", "price": "$149"}'
+npx superimg render template.media.ts --data '{"productName": "Gadget", "price": "$149"}'
 
 # Batch render from a JSON file — one video per entry. Filenames pick a slug
 # from each entry's `slug` / `name` / `title` / `id` field (else array index).
-npx superimg render template.video.ts --data products.json -y
+npx superimg render template.media.ts --data products.json -y
 
 # Composes with --presets: 10 entries × 2 presets = 20 MP4s in one Playwright session.
-npx superimg render template.video.ts --data products.json --presets -y
+npx superimg render template.media.ts --data products.json --presets -y
 ```
 
 ## Multi-Format Output
@@ -133,7 +151,7 @@ npx superimg render template.video.ts --data products.json --presets -y
 One template, every platform. Declare named output presets in `config.outputs`:
 
 ```typescript
-export default defineScene({
+export default define({
   config: {
     duration: 5,
     outputs: {
@@ -150,10 +168,10 @@ Then render every preset in one pass (one MP4 per output, single Playwright sess
 
 ```bash
 # All declared presets
-npx superimg render template.video.ts --presets
+npx superimg render template.media.ts --presets
 
 # Or pick specific ones
-npx superimg render template.video.ts --presets youtube,reel
+npx superimg render template.media.ts --preset youtube
 ```
 
 ## Where It Runs
@@ -161,9 +179,9 @@ npx superimg render template.video.ts --presets youtube,reel
 **CLI** — Render locally or in CI. This is the primary workflow:
 
 ```bash
-npx superimg render hello.video.ts -o video.mp4
+npx superimg render hello.media.ts
 
-# Render every video in the project. Multi-output templates (those declaring
+# Render every template in the project. Multi-output templates (those declaring
 # config.outputs) automatically render all presets; single-output templates
 # render once at their default config.
 npx superimg render --all -y
@@ -198,7 +216,7 @@ SuperImg ships a skill that teaches your AI coding agent the framework. One comm
 npx superimg skill install
 ```
 
-Codex users can also install the official plugin (skill + MCP tools, versioned, no AGENTS.md edits):
+Codex users can also install the official plugin (skill only, versioned, no AGENTS.md edits):
 
 ```bash
 codex marketplace add github.com/anaptfox/superimg
@@ -207,8 +225,8 @@ codex plugin install superimg@anaptfox
 
 ## Documentation
 
-- [API Reference](./docs/api.md) — RenderContext, std.score, std.interpolate, and the full standard library
-- [Project Configuration](./docs/project-config.md) — Cascading config and video discovery
+- [API Reference](./docs/api.md) — RenderContext, ctx.director(), std.interpolate, and the full standard library
+- [Project Configuration](./docs/project-config.md) — Cascading config and template discovery
 - [Templates & Data](./docs/templates-and-data.md) — Creating templates with data
 - [Examples](./examples/) — Working templates to copy from
 

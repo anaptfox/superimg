@@ -1,26 +1,16 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
-import { Player } from 'superimg/react/player'
-import { useVideoSession, VideoControls, VideoCanvas } from 'superimg/react'
+import { Player } from 'superimg/react'
 import { introTemplate } from '@/content/templates/intro-demo'
 import { getExampleById } from '@/lib/video/examples'
+import { usePlaygroundExample } from '@/lib/playground/example'
 
 interface PlayerDemoProps {
-  /** Use a pre-defined template from EDITOR_EXAMPLES by id */
   templateId?: string
-  /** Duration in seconds (default: 5) */
   duration?: number
 }
 
-/**
- * PlayerDemo renders a video template inline in MDX content.
- *
- * Without templateId: renders the intro-demo template
- * With templateId: compiles and renders the template from EDITOR_EXAMPLES
- */
 export function PlayerDemo({ templateId, duration = 5 }: PlayerDemoProps) {
-  // If no templateId, use the original intro template behavior
   if (!templateId) {
     return (
       <div className="not-prose my-8 flex flex-col items-center">
@@ -41,31 +31,12 @@ export function PlayerDemo({ templateId, duration = 5 }: PlayerDemoProps) {
     )
   }
 
-  // Use useVideoSession to compile templates from EDITOR_EXAMPLES
   return <CompiledPlayerDemo templateId={templateId} duration={duration} />
 }
 
 function CompiledPlayerDemo({ templateId, duration }: { templateId: string; duration: number }) {
-  const containerRef = useRef<HTMLDivElement>(null)
   const example = getExampleById(templateId)
-
-  const session = useVideoSession({
-    containerRef,
-    initialFormat: 'horizontal',
-    duration,
-  })
-
-  useEffect(() => {
-    if (example) {
-      session.compile(example.code)
-    }
-  }, [example?.code])
-
-  useEffect(() => {
-    if (session.template && !session.isPlaying) {
-      session.play()
-    }
-  }, [session.template])
+  const { template, assets, assetResolver } = usePlaygroundExample(example)
 
   if (!example) {
     return (
@@ -81,16 +52,19 @@ function CompiledPlayerDemo({ templateId, duration }: { templateId: string; dura
         className="w-full overflow-hidden rounded-xl bg-[#0d0d0d]"
         style={{ maxWidth: 640 }}
       >
-        <div className="flex items-center justify-center p-4" style={{ aspectRatio: '16/9' }}>
-          <div
-            ref={containerRef}
-            className="max-h-full max-w-full rounded shadow-lg"
-            style={{ width: '100%', height: '100%', aspectRatio: '16/9' }}
-          />
-        </div>
-        <div className="border-t border-border/50">
-          <VideoControls store={session.store} showTime />
-        </div>
+        <Player
+          template={template ?? undefined}
+          assets={assets}
+          assetResolver={assetResolver}
+          format="horizontal"
+          duration={duration}
+          playbackMode="loop"
+          loadMode="eager"
+          autoPlay
+          controls
+          className="w-full"
+          style={{ aspectRatio: '16/9' }}
+        />
       </div>
     </div>
   )

@@ -1,16 +1,16 @@
 // README Hero Video — Shows what SuperImg produces
 // A slick 6-second demo: logo reveal → code snippet appears → output renders
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
-const CODE = `import { defineScene } from 'superimg'
+const CODE = `import { define } from 'superimg'
 
-export default defineScene({
+export default define({
   render(ctx) {
     return \`<h1>Hello</h1>\`
   }
 })`;
 
-export default defineScene({
+export default define({
   sample: {
     tagline: "TypeScript in, MP4 out.",
   },
@@ -32,7 +32,7 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
+    const { std, timeline, width, height, data } = ctx;
 
     // — Phase timing —
     const enterP = std.clamp01(time / 1.0);

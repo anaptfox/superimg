@@ -1,14 +1,14 @@
 // Compilable template code strings used by the CodeDemo MDX component.
 // The code shown in the UI is the same code that gets compiled and rendered.
 
-export const INTRO_TEMPLATE = `import { defineScene } from "superimg";
+export const INTRO_TEMPLATE = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   render(ctx) {
-    const { width, height, sceneProgress, std } = ctx;
+    const { width, height, timeline, std } = ctx;
 
-    const opacity = std.interpolate(sceneProgress, [0, 0.333], [0, 1], "easeOutCubic");
-    const scale = std.interpolate(sceneProgress, [0, 1], [0.8, 1], "easeOutCubic");
+    const opacity = std.interpolate(timeline.progress, [0, 0.333], [0, 1], "easeOutCubic");
+    const scale = std.interpolate(timeline.progress, [0, 1], [0.8, 1], "easeOutCubic");
 
     return \`
       <div style="
@@ -32,15 +32,15 @@ export default defineScene({
   },
 });`;
 
-export const EASING_TEMPLATE = `import { defineScene } from "superimg";
+export const EASING_TEMPLATE = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: { duration: 3 },
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height } = ctx;
+    const { std, timeline, width, height } = ctx;
 
     // Map the first second of time to a 0–1 progress value
-    const progress = std.math.clamp(time / 1.0, 0, 1);
+    const progress = std.math.clamp(timeline.seconds / 1.0, 0, 1);
 
     const opacity = std.interpolate(progress, [0, 1], [0, 1], "easeOutCubic");
     const y = std.interpolate(progress, [0, 1], [30, 0], "easeOutCubic");
@@ -67,19 +67,19 @@ export default defineScene({
   },
 });`;
 
-export const DATA_TEMPLATE = `import { defineScene } from "superimg";
+export const DATA_TEMPLATE = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   sample: {
     title: "Welcome",
     subtitle: "Customize via data",
     accentColor: "#667eea",
   },
   render(ctx) {
-    const { data, std, sceneTimeSeconds: time, width, height } = ctx;
+    const { data, std, timeline, width, height } = ctx;
     const { title, subtitle, accentColor } = data;
 
-    const progress = std.math.clamp(time / 1.0, 0, 1);
+    const progress = std.math.clamp(timeline.seconds / 1.0, 0, 1);
     const opacity = std.interpolate(progress, [0, 1], [0, 1], "easeOutCubic");
     const y = std.interpolate(progress, [0, 1], [30, 0], "easeOutCubic");
 
@@ -114,14 +114,14 @@ export default defineScene({
 });`;
 
 // Same as "Your First Template" in Getting Started doc
-export const GETTING_STARTED_TEMPLATE = `import { defineScene } from "superimg";
+export const GETTING_STARTED_TEMPLATE = `import { define } from "superimg";
 
 export interface TemplateData {
   title: string;
   subtitle: string;
 }
 
-export default defineScene<TemplateData>({
+export default define<TemplateData>({
   config: {
     fps: 30,
     duration: 4,
@@ -136,10 +136,10 @@ export default defineScene<TemplateData>({
     title: "Hello, SuperImg",
     subtitle: "Video as code",
   },
-  render({ sceneProgress: p, data, std, width, height }) {
-    const hue = 230 + p * 60;
-    const opacity = std.interpolate(p, [0, 0.4], [0, 1], "easeOutCubic");
-    const y = std.interpolate(p, [0, 0.35], [20, 0], "easeOutCubic");
+  render( { timeline, data, std, width, height }) {
+    const hue = 230 + timeline.progress * 60;
+    const opacity = std.interpolate(timeline.progress, [0, 0.4], [0, 1], "easeOutCubic");
+    const y = std.interpolate(timeline.progress, [0, 0.35], [20, 0], "easeOutCubic");
     const bgStyle = std.css({
       width,
       height,
@@ -157,8 +157,12 @@ export default defineScene<TemplateData>({
 });`;
 
 export const CODE_DEMOS: Record<string, { code: string; duration: number }> = {
-  "intro":            { code: INTRO_TEMPLATE,            duration: 4 },
-  "easing":           { code: EASING_TEMPLATE,           duration: 3 },
-  "data":             { code: DATA_TEMPLATE,             duration: 4 },
+  intro:            { code: INTRO_TEMPLATE,            duration: 4 },
+  easing:           { code: EASING_TEMPLATE,           duration: 3 },
+  data:             { code: DATA_TEMPLATE,             duration: 4 },
   "getting-started":  { code: GETTING_STARTED_TEMPLATE,  duration: 4 },
+  // Aliases for blog post
+  "blog-intro":       { code: INTRO_TEMPLATE,            duration: 4 },
+  "blog-easing":      { code: EASING_TEMPLATE,           duration: 3 },
+  "blog-data":        { code: DATA_TEMPLATE,             duration: 4 },
 };

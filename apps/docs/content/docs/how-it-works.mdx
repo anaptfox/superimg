@@ -1,26 +1,28 @@
 # How It Works
 
-SuperImg turns your HTML/CSS into MP4 video. Here's exactly what happens under the hood.
+SuperImg turns your HTML/CSS into media — MP4, GIF, PNG, or SVG. Here's exactly what happens under the hood.
 
 ## The Pipeline
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Template   │     │  Playwright │     │   FFmpeg    │
-│  (HTML/CSS) │ ──▶ │  screenshots│ ──▶ │  encodes    │
-│             │     │  30x/second │     │  to MP4     │
+│  Template   │     │  Playwright │     │   Encoder   │
+│  (HTML/CSS) │ ──▶ │  screenshots│ ──▶ │  MP4 / GIF  │
+│             │     │  30x/second │     │  PNG / SVG  │
 └─────────────┘     └─────────────┘     └─────────────┘
-    You write         Browser            Final video
+    You write         Browser            Final output
 ```
 
 That's the entire system. No magic.
 
 ## Step 1: You Write a Template
 
-A template is a TypeScript file that exports a `render` function. This function receives timing information and returns an HTML string.
+A template is a `*.media.ts` file that exports a `render` function via `define()`. This function receives timing information and returns an HTML string.
 
 ```typescript
-export default defineScene({
+import { define } from "superimg";
+
+export default define({
   config: {
     width: 1920,
     height: 1080,
@@ -31,13 +33,22 @@ export default defineScene({
     title: "Hello World"
   },
   render(ctx) {
-    const opacity = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1]);
+    const opacity = ctx.std.interpolate(ctx.timeline, [0, 1], [0, 1]);
     return `<div style="opacity: ${opacity}">${ctx.data.title}</div>`;
   }
 })
 ```
 
 The key insight: you're not "animating" anything. You're answering the question: **"What should be on screen at this exact moment?"**
+
+Output kind is determined by config, not the filename:
+
+| Output | Config signal |
+|--------|---------------|
+| **MP4/WebM** | `fps` + `duration` |
+| **GIF** | `fps` + `duration` + `--format gif` |
+| **Image** | no `fps`/`duration` |
+| **SVG** | `medium: "svg"` |
 
 ## Step 2: SuperImg Calls Your Function
 
@@ -47,9 +58,9 @@ Each call receives a `ctx` object with timing info:
 
 | Property | Frame 0 | Frame 45 | Frame 89 |
 |----------|---------|----------|----------|
-| `ctx.sceneFrame` | 0 | 45 | 89 |
-| `ctx.sceneTimeSeconds` | 0.0 | 1.5 | 2.97 |
-| `ctx.sceneProgress` | 0.0 | 0.5 | 0.99 |
+| `ctx.timeline.frame` | 0 | 45 | 89 |
+| `ctx.timeline.seconds` | 0.0 | 1.5 | 2.97 |
+| `ctx.timeline.progress` | 0.0 | 0.5 | 0.99 |
 
 Your function uses these values to calculate positions, colors, and opacities—then returns the HTML for that specific frame.
 
@@ -57,15 +68,18 @@ Your function uses these values to calculate positions, colors, and opacities—
 
 SuperImg runs a headless Chromium browser (via Playwright). For each frame:
 
-1. Injects your HTML into the page
-2. Takes a screenshot at the exact canvas dimensions
-3. Saves the image
+1. Injects your HTML into a sandboxed iframe
+2. Seeks any `std.video.sync()` elements to the correct media time
+3. Takes a screenshot at the exact canvas dimensions
+4. Saves the image
 
 This is why CSS works perfectly—it's a real browser rendering your styles.
 
-## Step 4: FFmpeg Encodes to Video
+For stills, only one frame is captured via `render --frame <n>` or when the template has no `fps`/`duration`.
 
-Once all frames are captured, FFmpeg stitches them into an MP4 (or WebM, or other formats). The video codec, bitrate, and quality are all configurable.
+## Step 4: Encode to Output
+
+Once frames are captured, the encoder produces the final file — MP4/WebM via mediabunny/FFmpeg, GIF via FFmpeg, PNG/WebP/JPEG via Sharp, or SVG via resvg.
 
 ## Why This Architecture?
 
@@ -92,11 +106,11 @@ The `ctx` object your render function receives:
 ```typescript
 render(ctx) {
   // Scene timing — use these for animation in single-scene templates
-  ctx.sceneFrame           // Current frame within the scene (0-indexed)
-  ctx.sceneTimeSeconds     // Elapsed seconds in the current scene
-  ctx.sceneProgress        // 0-1 progress through the current scene
-  ctx.sceneTotalFrames     // Total frames in this scene
-  ctx.sceneDurationSeconds // Duration of this scene
+  ctx.timeline.frame           // Current frame within the scene (0-indexed)
+  ctx.timeline.seconds     // Elapsed seconds in the current scene
+  ctx.timeline.progress        // 0-1 progress through the current scene
+  ctx.timeline.totalFrames     // Total frames in this scene
+  ctx.timeline.durationSeconds // Duration of this scene
 
   // Scene metadata (multi-scene compositions via compose())
   ctx.sceneIndex           // Index of the current scene (0-indexed)
@@ -120,7 +134,7 @@ render(ctx) {
   ctx.isLandscape          // true when width > height
   ctx.isSquare             // true when width === height
 
-  // Data (merged from template defaults + .data.ts companion + incoming data)
+  // Data (merged from template sample + incoming render data)
   ctx.data.title           // Your custom typed data
 
   // Assets
@@ -132,16 +146,18 @@ render(ctx) {
   ctx.cssViewport          // Optional viewport overrides for responsive templates
 
   // Standard library
-  ctx.std.score(...)       // Phase-based motion orchestration
+  ctx.ctx.director(...)       // Phase-based motion orchestration
+  ctx.std.layers(...)      // Z-ordered layer stack
+  ctx.std.video.sync(...)  // Frame-accurate embedded video
   ctx.std.interpolate(...) // Multi-keyframe interpolation
   ctx.std.css(...)         // Generate CSS strings
 }
 ```
 
-The standard library covers more than `score`, `interpolate`, and `css` — see [Animation Basics](/docs/animation) for motion primitives and [Timing With Score And Cues](/docs/timing) for audio sync and cues.
+The standard library covers more than `director`, `interpolate`, and `css` — see [Animation Basics](/docs/animation) for motion primitives and [Timing With Director And Cues](/docs/timing) for audio sync and cues.
 
 ## Next Steps
 
-- [CLI Reference](/docs/cli) — Commands for creating and rendering videos
+- [CLI Reference](/docs/cli) — Commands for creating and rendering media
 - [Animation Basics](/docs/animation) — How to think about timing and motion
 - [Player](/docs/player) — Embed videos in web apps

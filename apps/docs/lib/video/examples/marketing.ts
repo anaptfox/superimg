@@ -9,21 +9,21 @@ const PRODUCT = {
   rank: 1,
 };
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Animate upvote count with easing
-  const eased = 1 - Math.pow(1 - Math.min(1, sceneProgress * 1.3), 3);
+  const eased = 1 - Math.pow(1 - Math.min(1, timeline.progress * 1.3), 3);
   const currentUpvotes = Math.floor(PRODUCT.upvotes * eased);
 
   // Card scale animation
-  const cardScale = 0.9 + Math.min(0.1, sceneProgress * 0.15);
-  const cardOpacity = Math.min(1, sceneProgress * 2);
+  const cardScale = 0.9 + Math.min(0.1, timeline.progress * 0.15);
+  const cardOpacity = Math.min(1, timeline.progress * 2);
 
   // Upvote button pulse
-  const pulseScale = 1 + Math.sin(sceneProgress * Math.PI * 4) * 0.05;
+  const pulseScale = 1 + Math.sin(timeline.progress * Math.PI * 4) * 0.05;
 
   return \`
     <div style="
@@ -78,19 +78,19 @@ export default defineScene({
           flex-direction: column;
           align-items: center;
           padding: 16px 24px;
-          background: \${sceneProgress > 0.3 ? '#ff6154' : '#f5f5f5'};
+          background: \${timeline.progress > 0.3 ? '#ff6154' : '#f5f5f5'};
           border-radius: 8px;
           transform: scale(\${pulseScale});
           transition: background 0.3s;
         ">
           <div style="
             font-size: 24px;
-            color: \${sceneProgress > 0.3 ? 'white' : '#ff6154'};
+            color: \${timeline.progress > 0.3 ? 'white' : '#ff6154'};
           ">▲</div>
           <div style="
             font-size: 20px;
             font-weight: 700;
-            color: \${sceneProgress > 0.3 ? 'white' : '#1a1a1a'};
+            color: \${timeline.progress > 0.3 ? 'white' : '#1a1a1a'};
           ">\${currentUpvotes}</div>
         </div>
       </div>
@@ -106,8 +106,8 @@ export default defineScene({
         border-radius: 100px;
         font-weight: 700;
         font-size: 18px;
-        opacity: \${Math.min(1, (sceneProgress - 0.5) * 3)};
-        transform: translateY(\${(1 - Math.min(1, (sceneProgress - 0.5) * 3)) * 20}px);
+        opacity: \${Math.min(1, (timeline.progress - 0.5) * 3)};
+        transform: translateY(\${(1 - Math.min(1, (timeline.progress - 0.5) * 3)) * 20}px);
       ">
         #\${PRODUCT.rank} Product of the Day
       </div>
@@ -128,13 +128,13 @@ const STATS = [
 
 const YEAR = "2025";
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Gradient rotation
-  const gradientAngle = sceneProgress * 45;
+  const gradientAngle = timeline.progress * 45;
 
   return \`
     <div style="
@@ -157,8 +157,8 @@ export default defineScene({
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 40px;
-        opacity: \${Math.min(1, sceneProgress * 3)};
-        transform: scale(\${0.8 + Math.min(0.2, sceneProgress * 0.4)});
+        opacity: \${Math.min(1, timeline.progress * 3)};
+        transform: scale(\${0.8 + Math.min(0.2, timeline.progress * 0.4)});
       ">\${YEAR} Wrapped</div>
 
       <!-- Stats Grid -->
@@ -169,7 +169,7 @@ export default defineScene({
       ">
         \${STATS.map((stat, i) => {
           const delay = i * 0.15;
-          const opacity = Math.min(1, Math.max(0, (sceneProgress - delay - 0.2) * 3));
+          const opacity = Math.min(1, Math.max(0, (timeline.progress - delay - 0.2) * 3));
           const translateY = (1 - opacity) * 30;
           return \`
             <div style="
@@ -208,7 +208,7 @@ export default defineScene({
         background: radial-gradient(circle, rgba(255,107,107,0.3) 0%, transparent 70%);
         top: -100px;
         right: -100px;
-        opacity: \${sceneProgress};
+        opacity: \${ timeline };
       "></div>
       <div style="
         position: absolute;
@@ -218,7 +218,7 @@ export default defineScene({
         background: radial-gradient(circle, rgba(72,219,251,0.3) 0%, transparent 70%);
         bottom: -50px;
         left: -50px;
-        opacity: \${sceneProgress};
+        opacity: \${ timeline };
       "></div>
     </div>
   \`;
@@ -236,13 +236,13 @@ const EVENT = {
 // For demo, we'll show a fixed countdown that animates
 const COUNTDOWN_VALUES = { days: 14, hours: 8, mins: 32, secs: 45 };
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Simulate countdown animation
-  const animatedSecs = Math.floor(COUNTDOWN_VALUES.secs - (sceneProgress * 10) % 60);
+  const animatedSecs = Math.floor(COUNTDOWN_VALUES.secs - (timeline.progress * 10) % 60);
 
   const units = [
     { label: "DAYS", value: COUNTDOWN_VALUES.days },
@@ -269,21 +269,21 @@ export default defineScene({
         text-transform: uppercase;
         letter-spacing: 4px;
         margin-bottom: 16px;
-        opacity: \${Math.min(1, sceneProgress * 3)};
+        opacity: \${Math.min(1, timeline.progress * 3)};
       ">\${EVENT.name}</div>
 
       <div style="
         font-size: 32px;
         color: white;
         margin-bottom: 48px;
-        opacity: \${Math.min(1, sceneProgress * 2)};
+        opacity: \${Math.min(1, timeline.progress * 2)};
       ">Coming Soon</div>
 
       <!-- Countdown Units -->
       <div style="display: flex; gap: 24px;">
         \${units.map((unit, i) => {
           const delay = i * 0.1;
-          const opacity = Math.min(1, Math.max(0, (sceneProgress - delay) * 3));
+          const opacity = Math.min(1, Math.max(0, (timeline.progress - delay) * 3));
           const scale = 0.8 + opacity * 0.2;
           return \`
             <div style="
@@ -333,7 +333,7 @@ export default defineScene({
         height: 4px;
         background: linear-gradient(90deg, transparent, #6366f1, transparent);
         margin-top: 48px;
-        opacity: \${0.5 + Math.sin(sceneProgress * Math.PI * 2) * 0.5};
+        opacity: \${0.5 + Math.sin(timeline.progress * Math.PI * 2) * 0.5};
         border-radius: 2px;
       "></div>
     </div>
@@ -350,31 +350,29 @@ const BRAND = {
   tagline: "Building the future",
 };
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Animation phases
-  const iconPhase = Math.min(1, sceneProgress * 2);
-  const textPhase = Math.max(0, Math.min(1, (sceneProgress - 0.3) * 2));
-  const taglinePhase = Math.max(0, Math.min(1, (sceneProgress - 0.5) * 2));
+  const iconPhase = Math.min(1, timeline.progress * 2);
+  const textPhase = Math.max(0, Math.min(1, (timeline.progress - 0.3) * 2));
+  const taglinePhase = Math.max(0, Math.min(1, (timeline.progress - 0.5) * 2));
 
   // Glow intensity
-  const glowIntensity = 20 + Math.sin(sceneProgress * Math.PI * 3) * 10;
+  const glowIntensity = 20 + Math.sin(timeline.progress * Math.PI * 3) * 10;
 
   // Icon rotation
-  const rotation = sceneProgress * 360;
+  const rotation = timeline.progress * 360;
 
   // Particle effect
   const particles = Array.from({ length: 12 }, (_, i) => {
-    const angle = (i / 12) * Math.PI * 2 + sceneProgress * 2;
-    const distance = 80 + Math.sin(sceneProgress * Math.PI * 2 + i) * 20;
-    const opacity = iconPhase * (0.3 + Math.sin(sceneProgress * Math.PI * 4 + i) * 0.3);
+    const angle = (i / 12) * Math.PI * 2 + timeline.progress * 2;
+    const distance = 80 + Math.sin(timeline.progress * Math.PI * 2 + i) * 20;
+    const opacity = iconPhase * (0.3 + Math.sin(timeline.progress * Math.PI * 4 + i) * 0.3);
     return {
-      x: width / 2 + Math.cos(angle) * distance * sceneProgress,
-      y: height / 2 - 20 + Math.sin(angle) * distance * sceneProgress,
-      opacity,
+      x: width / 2 + Math.cos(angle) * distance * timeline,       y: height / 2 - 20 + Math.sin(angle) * distance * timeline,       opacity,
     };
   });
 
@@ -457,15 +455,15 @@ const USER = {
   plan: "Pro",
 };
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Animation phases
-  const welcomePhase = Math.min(1, sceneProgress * 3);
-  const namePhase = Math.max(0, Math.min(1, (sceneProgress - 0.2) * 2.5));
-  const detailsPhase = Math.max(0, Math.min(1, (sceneProgress - 0.5) * 2));
+  const welcomePhase = Math.min(1, timeline.progress * 3);
+  const namePhase = Math.max(0, Math.min(1, (timeline.progress - 0.2) * 2.5));
+  const detailsPhase = Math.max(0, Math.min(1, (timeline.progress - 0.5) * 2));
 
   return \`
     <div style="

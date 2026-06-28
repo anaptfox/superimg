@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useVideoSession, VideoControls } from "superimg/react";
+import { Player, useCompiledTemplate } from "superimg/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
@@ -33,9 +33,9 @@ const INITIAL_FORM: FormState = {
   gradientKey: "Midnight",
 };
 
-const TEMPLATE_CODE = `import { defineScene } from "superimg";
+const TEMPLATE_CODE = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   sample: {
     name: "GO!",
     startFrom: 5,
@@ -45,8 +45,8 @@ export default defineScene({
   },
 
   render(ctx) {
-    const { sceneFrame, fps, width, height, std, data } = ctx;
-    const second = Math.floor(sceneFrame / fps);
+    const { timeline.frame, fps, width, height, std, data } = ctx;
+    const second = Math.floor(timeline.frame / fps);
     const count = Math.max(1, data.startFrom - second);
     const showGo = second >= data.startFrom;
 
@@ -73,56 +73,37 @@ export default defineScene({
 });`;
 
 export function LiveExample() {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [cfg, setCfg] = useState<FormState>(INITIAL_FORM);
   const [showCode, setShowCode] = useState(false);
   const isMobile = useIsMobile();
 
-  const session = useVideoSession({
-    containerRef,
-    initialFormat: "horizontal",
-    duration: 6,
-  });
+  const { template } = useCompiledTemplate({ code: TEMPLATE_CODE });
 
-  useEffect(() => {
-    session.compile(TEMPLATE_CODE);
-  }, []);
-
-  useEffect(() => {
-    if (session.template && !session.isPlaying) {
-      session.play();
-    }
-  }, [session.template]);
-
-  const updateConfig = useCallback(
-    (patch: Partial<FormState>) => {
-      setCfg((prev) => {
-        const next = { ...prev, ...patch };
-        session.setData({
-          name: next.name,
-          startFrom: next.startFrom,
-          color: next.color,
-          fontSize: next.fontSize,
-          gradient: GRADIENT_PRESETS[next.gradientKey] ?? GRADIENT_PRESETS.Midnight,
-        });
-        return next;
-      });
-    },
-    [session]
+  const formData = useMemo(
+    () => ({
+      name: cfg.name,
+      startFrom: cfg.startFrom,
+      color: cfg.color,
+      fontSize: cfg.fontSize,
+      gradient: GRADIENT_PRESETS[cfg.gradientKey] ?? GRADIENT_PRESETS.Midnight,
+    }),
+    [cfg],
   );
+
+  const updateConfig = (patch: Partial<FormState>) => {
+    setCfg((prev) => ({ ...prev, ...patch }));
+  };
 
   return (
     <section className="py-12">
       <div className="w-full">
         <div className="overflow-hidden rounded-xl border border-border/50 bg-[#1a1a1a] shadow-2xl text-left">
           <div className="grid md:grid-cols-2">
-            {/* Editable Code - col-1 on desktop, pushed below video on mobile via row/col */}
             <div className="md:col-start-1 md:row-start-1 border-t border-border/50 md:border-t-0 md:border-r">
               <div className="flex items-center gap-2 border-b border-border/50 bg-[#252526] px-4 py-2 text-sm font-medium text-muted-foreground">
                 <Code className="h-3 w-3" />
-                template.ts
+                template.media.ts
               </div>
-              {/* Collapsible on mobile */}
               <div className="md:hidden">
                 <button
                   type="button"
@@ -142,10 +123,7 @@ export function LiveExample() {
                     extensions={[javascript({ typescript: true })]}
                     readOnly
                     className="text-sm"
-                    basicSetup={{
-                      lineNumbers: true,
-                      foldGutter: false,
-                    }}
+                    basicSetup={{ lineNumbers: true, foldGutter: false }}
                   />
                 )}
               </div>
@@ -157,17 +135,13 @@ export function LiveExample() {
                   extensions={[javascript({ typescript: true })]}
                   readOnly
                   className="text-sm"
-                  basicSetup={{
-                    lineNumbers: true,
-                    foldGutter: false,
-                  }}
+                  basicSetup={{ lineNumbers: true, foldGutter: false }}
                 />
               </div>
-              {/* Controls */}
               <div className="border-t border-border/50 bg-[#252526] px-4 py-3">
                 <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                   <Sliders className="h-3 w-3" />
-                  Customize (session.setData)
+                  Customize (player.update)
                 </div>
                 <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -188,10 +162,7 @@ export function LiveExample() {
                       value={cfg.startFrom}
                       onChange={(e) =>
                         updateConfig({
-                          startFrom: Math.max(
-                            1,
-                            Math.min(10, Number(e.target.value) || 1)
-                          ),
+                          startFrom: Math.max(1, Math.min(10, Number(e.target.value) || 1)),
                         })
                       }
                       className="h-8 w-full rounded border border-white/10 bg-white/5 px-2 text-xs text-white outline-none focus:border-white/25"
@@ -206,18 +177,14 @@ export function LiveExample() {
                         onChange={(e) => updateConfig({ color: e.target.value })}
                         className="h-8 w-8 shrink-0 cursor-pointer rounded border border-white/10 bg-transparent p-0"
                       />
-                      <span className="font-mono text-[10px] text-white/50">
-                        {cfg.color}
-                      </span>
+                      <span className="font-mono text-[10px] text-white/50">{cfg.color}</span>
                     </div>
                   </label>
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span className="w-12 shrink-0">BG</span>
                     <select
                       value={cfg.gradientKey}
-                      onChange={(e) =>
-                        updateConfig({ gradientKey: e.target.value })
-                      }
+                      onChange={(e) => updateConfig({ gradientKey: e.target.value })}
                       className="h-8 w-full cursor-pointer rounded border border-white/10 bg-white/5 px-1.5 text-xs text-white outline-none focus:border-white/25"
                     >
                       {Object.keys(GRADIENT_PRESETS).map((name) => (
@@ -234,9 +201,7 @@ export function LiveExample() {
                       min={80}
                       max={240}
                       value={cfg.fontSize}
-                      onChange={(e) =>
-                        updateConfig({ fontSize: Number(e.target.value) })
-                      }
+                      onChange={(e) => updateConfig({ fontSize: Number(e.target.value) })}
                       className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-white/70"
                     />
                     <span className="w-8 text-right font-mono text-[10px] text-white/50">
@@ -247,48 +212,29 @@ export function LiveExample() {
               </div>
             </div>
 
-            {/* Video Preview - col-2 on desktop; on mobile, DOM order puts it second but we use -order-1 to hoist */}
             <div className="-order-1 flex flex-col md:order-0 md:col-start-2 md:row-start-1">
               <div className="flex items-center gap-2 border-b border-border/50 bg-[#252526] px-4 py-2 text-sm font-medium text-muted-foreground">
                 <Play className="h-3 w-3" />
                 Preview
               </div>
               <div
-                className="flex flex-1 items-center justify-center bg-[#0d0d0d] p-4"
-                style={
-                  isMobile ? { maxHeight: "min(60vh, 400px)" } : undefined
-                }
+                className="flex flex-1 flex-col bg-[#0d0d0d] p-4"
+                style={isMobile ? { maxHeight: "min(60vh, 400px)" } : undefined}
               >
-                <div
-                  ref={containerRef}
+                <Player
+                  template={template ?? undefined}
+                  data={formData}
+                  format="horizontal"
+                  playbackMode="loop"
+                  loadMode="eager"
+                  autoPlay
+                  controls="full"
                   className="max-h-full max-w-full rounded shadow-lg"
                   style={{
-                    aspectRatio:
-                      session.format === "vertical"
-                        ? "9/16"
-                        : session.format === "square"
-                          ? "1/1"
-                          : typeof session.format === "object"
-                            ? `${session.format.width}/${session.format.height}`
-                            : "16/9",
-                    maxWidth: "100%",
-                    maxHeight: "100%",
+                    width: "100%",
+                    height: "100%",
+                    aspectRatio: "16/9",
                   }}
-                />
-              </div>
-              {/* Playback Controls */}
-              <div className="border-t border-border/50">
-                <VideoControls
-                  store={session.store}
-                  showTime
-                  showFormat
-                  showExport
-                  currentFormat={session.format}
-                  onFormatChange={session.setFormat}
-                  onExport={(opts) => session.exportMp4(opts)}
-                  onDownload={session.download}
-                  exporting={session.exporting}
-                  exportProgress={session.exportProgress}
                 />
               </div>
             </div>

@@ -11,7 +11,8 @@ const baseURL =
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
-  serverExternalPackages: ['superimg', 'rolldown', '@rolldown/browser'],
+  transpilePackages: ['superimg'],
+  serverExternalPackages: ['rolldown', '@rolldown/browser'],
   async headers() {
     return [
       {

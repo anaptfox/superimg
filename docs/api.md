@@ -1,309 +1,447 @@
 # SuperImg API Reference
 
-This document provides an overview of key concepts and utilities available when working with SuperImg, including the rendering context and the standard library (stdlib).
+Complete API documentation for SuperImg templates.
 
-## RenderContext
+## Templates (`*.media.ts`)
 
-The `RenderContext` is the central object passed to your template's `render` function. It contains all information needed to render a single frame, including timing, dimensions, and data.
+All templates use `define()`. Output kind is config-driven:
 
-### Properties
+| Output | Factory | Config signal | Context | Stdlib | Time? | Returns |
+|--------|---------|---------------|---------|--------|-------|---------|
+| **MP4/WebM** | `define()` | `fps` + `duration` | `RenderContext` | Full | `timeline`, `ctx.director()`, `ctx.track()`; `compose()` for multi-scene | HTML → MP4 |
+| **GIF** | `define()` | `fps` + `duration` + `--format gif` | `RenderContext` | Full | Same as video | HTML → GIF |
+| **image** | `define()` | no `fps`/`duration` | `ImageRenderContext` | `ImageStdlib` | None | HTML → PNG/WebP/JPEG |
+| **svg** | `define({ medium: "svg" })` | `medium: "svg"` | `SvgRenderContext` | `SvgStdlib` | Optional `config.duration` for CSS anim | **SVG markup** |
+
+`ImageStdlib` / `SvgStdlib` omit: `director`, `track`, `layers`, `reveal`, `carousel`, `stack`, `mergeMotion`, `backgrounds`, `montage`, `oscillate`, `loop`, `pingpong`, `wiggle`.
+
+## Composition model (video + gif only)
+
+| Tier | API | Role |
+|------|-----|------|
+| **Video** | `compose([scenes])` | Multi-scene chain |
+| **Template** | `define()` | Scene contract |
+| **Layers** (optional) | `std.layers()` | Shot stack — bg, tint, content, overlay, fx |
+| **Director** | `ctx.director()` | Phases + motion (`motion().style`, `tween`, `in`) |
+
+**Satellites:** `ctx.track()`, `std.carousel()` / `std.stack()`, `css`/`layout`, `interpolate`/`spring`/`stagger`, `mergeMotion`, `std.reveal.*` (transition overlays — utility, not a tier).
+
+Wire director into layers: `L.overlay(html, { motion: d.motion({ y: 20 }) })` or inline `style="${card.style}"` in content HTML.
+
+## RenderContext (video + gif)
+
+The `ctx` object passed to your `render` function:
 
 ```typescript
-interface RenderContext<
-  TData = Record<string, unknown>,
-> {
-  // Standard library (score, layers, interpolate, math, color utilities)
+interface Timeline {
+  frame: number;
+  fps: number;
+  progress: number;        // 0→1 normalized scene progress
+  seconds: number;         // progress × durationSeconds
+  durationSeconds: number;
+  totalFrames: number;
+}
+
+interface RenderContext<TData> {
   std: Stdlib;
+  timeline: Timeline;
+  director: (phases?: PhaseConfig) => Director;
+  track: (opts: TrackSource) => Track;
 
-  // Global position (entire video)
-  globalFrame: number;              // Current frame in video (0-indexed)
-  globalTimeSeconds: number;        // Current time in video
-  totalFrames: number;              // Total frames in video
-  totalDurationSeconds: number;     // Total duration in seconds
+  // Global timing (entire video — useful inside compose())
+  globalFrame: number;
+  globalTimeSeconds: number;
+  totalFrames: number;
+  totalDurationSeconds: number;
 
-  // === Scene Position (equals global in single-template mode) ===
-  /** Current frame within this scene (0-indexed) */
-  sceneFrame: number;
-  /** Current time in seconds within this scene */
-  sceneTimeSeconds: number;
-  /** Progress through this scene (0-1) */
-  sceneProgress: number;
-  /** Total frames in this scene */
-  sceneTotalFrames: number;
-  /** Duration of this scene in seconds */
-  sceneDurationSeconds: number;
+  // Scene metadata (multi-scene compositions)
+  sceneIndex: number;
+  sceneId: string;
 
-  // Scene metadata
-  sceneIndex: number;               // Index of current scene (0-indexed)
-  sceneId: string;                  // ID of current scene
+  fps: number;
+  isFinite: boolean;
 
-  // Video info
-  fps: number;                      // Frames per second
-  isFinite: boolean;                // Has finite duration
+  width: number;
+  height: number;
+  aspectRatio: number;
+  isPortrait: boolean;
+  isLandscape: boolean;
+  isSquare: boolean;
 
-  // Dimensions
-  width: number;                    // Canvas width in pixels
-  height: number;                   // Canvas height in pixels
-  aspectRatio: number;              // width / height
-  isPortrait: boolean;              // height > width
-  isLandscape: boolean;             // width > height
-  isSquare: boolean;                // width === height
-
-  // Data
-  data: TData;                      // Template data
-
-  // Output configuration
+  data: TData;
+  assets: Record<string, AssetMeta>;
+  asset: (filename: string) => string;
   output: OutputInfo;
-
-  // CSS viewport (for responsive templates)
   cssViewport?: CssViewport;
-}
-
-interface OutputInfo {
-  name: string;
-  width: number;
-  height: number;
-  fit: FitMode;
-}
-
-type FitMode = 'stretch' | 'contain' | 'cover';
-
-interface CssViewport {
-  width: number;
-  height: number;
-  devicePixelRatio: number;
 }
 ```
 
-### Usage Example
+## ctx.asset(filename)
+
+Get URL for a file in the template's co-located `assets/` folder. Zero config needed.
 
 ```typescript
-import { defineScene } from 'superimg';
+// Place logo.png in assets/ next to your .media.ts file:
+// my-template/
+//   my-template.media.ts
+//   assets/
+//     logo.png
 
-export default defineScene({
-  data: { title: 'Hello' },
-  render(ctx) {
-    const { std, sceneProgress, width, height, data } = ctx;
+render(ctx) {
+  return `<img src="${ctx.asset('logo.png')}" />`;
+}
+```
 
-    // Eased interpolation in one call
-    const x = std.interpolate(sceneProgress, [0, 1], [0, width], 'easeOutCubic');
+For named assets with preloaded metadata (dimensions, duration), use `config.assets` + `ctx.assets`:
 
-    return `
-      <div style="
-        transform: translateX(${x}px);
-        width: ${width}px;
-        height: ${height}px;
-      ">
-        ${data.title}
-      </div>
-    `;
+```typescript
+export default define({
+  config: {
+    assets: { hero: './assets/hero.mp4' }
   },
+  render(ctx) {
+    const hero = ctx.assets.hero; // { url, type, width, height, duration, mimeType, size }
+    return `<video src="${hero.url}" width="${hero.width}" />`;
+  }
 });
+```
+
+## ImageRenderContext (image)
+
+```typescript
+interface ImageRenderContext<TData> {
+  std: ImageStdlib;
+  width: number;
+  height: number;
+  aspectRatio: number;
+  isPortrait: boolean;
+  isLandscape: boolean;
+  isSquare: boolean;
+  data: TData;
+  assets: Record<string, AssetMeta>;
+  asset: (filename: string) => string;
+  output: OutputInfo;
+}
+```
+
+## SvgRenderContext (svg)
+
+Same as image, plus optional `duration?: number` for CSS `animation-duration`. `render()` must return `<svg xmlns="http://www.w3.org/2000/svg" ...>`.
+
+## Naming disambiguation
+
+| Name | Scope | Purpose |
+|------|-------|---------|
+| `ctx.director()` | video/gif scene | Phase choreography — `motion()`, `tween()`, `in()` |
+| `ctx.track()` | video/gif scene | Transcript/marker sync via `timeline.seconds` |
+| `std.carousel()` | video/gif scene | One active item; prior items exit their slot |
+| `std.stack()` | video/gif scene | Accumulate items; `enter` + `slot` for sub-beats |
+| `std.layers()` | video/gif scene | Z-ordered shot stack |
+| `std.reveal.*()` | video/gif utility | Full-frame transition overlays |
+| `std.reveal.clip.*()` | any element | Clip-path reveal strings (`circle`, `wipe`, `inset`, `iris`) |
+| `compose([scenes])` | Multi-scene video | Chain scenes |
+| `mergeMotion()` | video/gif | Merge motion values (not `compose()`) |
+| `createTimelineController()` | Player UI | Playback scrubber |
+| `examples/data/timeline/` | Template name | Chart template only |
+
+## ctx.director()
+
+The primary primitive for layout orchestration and phased animation. Breaks a scene into enter/hold/exit phases and exposes motions scoped to those phases with automatic fade-in + fade-out.
+
+```typescript
+const d = ctx.director(phases?: PhaseConfig);  // default: { enter: "15%", hold: "70%", exit: "15%" }
+```
+
+**Returns** a director with `motion()`, `tween()`, `value()`, `active`, `in()`, `at()`, `clip()`.
+
+### t.motion(opts?)
+
+The 80% case for animating elements. Returns a `.style` string combining opacity + transform.
+
+```typescript
+const card = d.motion({ y: 30, scale: 0.8, easing: "easeOutBack" });
+// <div style="${card.style}">...</div>
+```
+
+**Options:** `y`, `x`, `scale`, `rotate`, `blur` (number — start offsets), `at` (`"0.5s"` or `"20%"` stagger within phase), `for` (`"0.5s"` or `"30%"` span of phase), `during`, `easing` (enter easing name), `exit` (boolean or override object).
+
+**Result fields:** `.style`, `.opacity`, `.transform`, `.enter` (0-1 entry progress), `.exit` (0-1 exit progress), `.visible`, `.phase`.
+
+### t.tween(from, to, opts?)
+
+Phase-scoped scalar interpolation. Use for counters or progress bars tied to a specific phase.
+
+```typescript
+const count = Math.floor(d.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
+```
+
+### d.in(phase, opts?)
+
+Returns 0-1 progress inside a specific phase, with optional stagger (`at`) and `duration`.
+
+```typescript
+const p = d.in("hold", { at: "50%", duration: "50%" });
+```
+
+### t.span(from, to)
+
+Scene-absolute progress window in seconds (e.g. intro wipe from scene start):
+
+```typescript
+const introP = d.span("0s", "1s");
+const wipe = std.reveal.wipe({ progress: introP, direction: "diagonal", color: accent });
+```
+
+### t.transition(from, to, easing?)
+
+Eased scene-absolute handoff progress. Use with `t.inSpan()` for cross-phase transitions:
+
+```typescript
+if (d.inSpan("3s", "4s")) {
+  const p = d.transition("3s", "4s", "easeInOutCubic");
+  const toLocal = std.reveal.handoffLocal(p);
+  // split/crossfade content panels only — keep shared bg outside
+}
+```
+
+**Phases vs spans:** `d.active` / `d.in("hook")` for steady shots; `d.inSpan()` + `d.transition()` for windows that cross phase boundaries.
+
+### d.at(phase, dataSeconds)
+
+Maps scene-local data time (seconds) to progress within a named phase. Use for data-driven viz (bar race, force graphs).
+
+```typescript
+const bars = std.viz.charts.barRace(keyframes, d.at("race", timeline.seconds));
+```
+
+## ctx.track()
+
+Transcript and marker sync using `timeline.seconds`.
+
+```typescript
+const vo = ctx.track({ words: data.words });
+const word = vo.current();
+const charP = vo.charProgress();
+```
+
+## std.carousel()
+
+One active item at a time; previous items exit their slot. Use for thread slides, wizard steps, single-card transitions.
+
+```typescript
+const d = ctx.director({ tweets: "84%", hold: "16%" });
+const car = std.carousel(tweets, { during: d.in("tweets"), exit: 0.15, last: "hold" });
+const item = car.state(0); // { enter, exit, visible, active, state: hidden|entering|hold|exiting|gone }
+```
+
+## std.stack()
+
+Ordered reveal; items stay visible once shown. Use for chat, FAQ, ranked lists.
+
+```typescript
+const d = ctx.director({ messages: "90%", hold: "10%" });
+const stk = std.stack(messages, { during: d.in("messages"), lead: 0.05, trail: 0.05 });
+const item = stk.state(0); // { enter, slot, visible, active, state: hidden|entering|revealed }
 ```
 
 ---
 
-## Standard Library (Stdlib)
+## std.interpolate
 
-The Standard Library provides utility functions for animations, math, colors, text, dates, timing, responsive layouts, subtitles, and presets. Access it via `ctx.std` in your render function.
-
-### Usage
+Low-level multi-keyframe interpolation. Maps a `progress` value through paired input/output ranges with optional easing.
 
 ```typescript
-import { defineScene } from 'superimg';
-
-export default defineScene({
-  render(ctx) {
-    const { std, sceneProgress } = ctx;
-
-    // Interpolate: eased mapping through input/output ranges
-    const x = std.interpolate(sceneProgress, [0, 1], [0, 1920], 'easeOutCubic');
-    const clamped = std.math.clamp(x, 100, 1800);
-
-    // Color
-    const bg = std.color.alpha('#FF0000', 0.5);
-    const mixed = std.color.mix('#FF0000', '#0000FF', sceneProgress);
-    const rgb = std.color.hslToRgb(sceneProgress * 360, 80, 50);
-
-    return `<div style="left: ${x}px; background: ${bg}">Hello</div>`;
-  },
-});
+std.interpolate(progress: number, inputRange: number[], outputRange: number[], easing?: EasingName | EasingFn): number
 ```
 
-### Template kinds
+**Parameters:**
+- `progress` - Input value (clamped to inputRange endpoints)
+- `inputRange` - Input breakpoints (e.g. `[0, 1]` or `[0, 0.5, 1]`)
+- `outputRange` - Output values at each breakpoint (same length as inputRange)
+- `easing` - Optional easing name or function applied per segment
 
-| Kind | Factory | File | Temporal stdlib | Output |
-|------|---------|------|-----------------|--------|
-| **video** | `defineScene` | `*.video.ts` | `score`, `layers`, `reveal`, `cue`, … | MP4 |
-| **gif** | `defineGif` | `*.gif.ts` | Full (same as video) | GIF |
-| **image** | `defineImage` | `*.image.ts` | None — `ImageStdlib` only | PNG/WebP/JPEG |
-| **svg** | `defineSvg` | `*.svg.ts` | None — `SvgStdlib`; optional CSS `duration` | SVG |
+**Available Easings:**
 
-**Layer the frame, score the motion** applies to video and gif. Image and svg use `std.css` / `std.layout` / `std.viz` / `std.svg` — no `score` or `layers`.
+| Easing | Description | Use Case |
+|--------|-------------|----------|
+| `"linear"` | No easing | Constant motion, progress bars |
+| `"easeOutCubic"` | Fast start, smooth stop | Most animations (default choice) |
+| `"easeInCubic"` | Slow start, fast end | Exit animations |
+| `"easeInOutCubic"` | Smooth start and end | Looping, back-and-forth |
+| `"easeOutBack"` | Overshoot then settle | Bouncy entrances, pop-in |
+| `"easeOutElastic"` | Spring oscillation | Playful, attention-grabbing |
+| `"easeOutBounce"` | Bounce at end | Ball drop, landing |
 
-### Core Modules (start here)
-
-These modules cover 90%+ of template needs. Start with these.
-
-#### `std.css`
-
-Convert style objects to inline style strings. Numeric values get `px` automatically (except unitless properties like `opacity`, `zIndex`, `lineHeight` — uses canonical CSS unitless list):
-
+**Examples:**
 ```typescript
-std.css({ width: 1920, height: 1080, opacity: 0.8 })
-// → "width:1920px;height:1080px;opacity:0.8"
+// Fade in
+const opacity = std.interpolate(progress, [0, 1], [0, 1], "easeOutCubic");
 
-std.css({ display: 'flex', alignItems: 'center', transform: `scale(${scale})` })
-// → "display:flex;align-items:center;transform:scale(1.2)"
+// Slide up with overshoot
+const y = std.interpolate(progress, [0, 1], [50, 0], "easeOutBack");
+
+// Scale with bounce
+const scale = std.interpolate(progress, [0, 1], [0, 1], "easeOutElastic");
+
+// Linear for progress bars
+const width = std.interpolate(progress, [0, 1], [0, 100], "linear");
 ```
 
-Variadic form — combine objects and presets in one call:
+## std.math
+
+Mathematical utilities for animation calculations.
 
 ```typescript
-std.css({ width, height }, std.css.center())
-// → "width:1920px;height:1080px;display:flex;align-items:center;justify-content:center"
+// Clamp value to range
+std.math.clamp(value: number, min: number, max: number): number
+
+// Remap value from one range to another
+std.math.map(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number
+
+// Remap with output clamping
+std.math.mapClamp(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number
+
+// Hermite interpolation (smooth 0→1)
+std.math.smoothstep(edge0: number, edge1: number, x: number): number
+
+// Step function (0 if x < edge, 1 otherwise)
+std.math.step(edge: number, x: number): number
+
+// Fractional part (x - floor(x))
+std.math.fract(x: number): number
+
+// Wrap to range [0, length)
+std.math.repeat(t: number, length: number): number
+
+// Oscillate 0→length→0
+std.math.pingPong(t: number, length: number): number
+
+// 1D/2D/3D noise (-1 to 1)
+std.math.noise(x: number): number
+std.math.noise2D(x: number, y: number): number
+std.math.noise3D(x: number, y: number, z: number): number
+
+// Set noise seed for reproducibility
+std.math.setNoiseSeed(seed: number): void
+
+// Degree/radian conversion
+std.math.degToRad(deg: number): number
+std.math.radToDeg(rad: number): number
+
+// Random (non-deterministic)
+std.math.random(min: number, max: number): number
+std.math.randomInt(min: number, max: number): number
+std.math.shuffle<T>(array: T[]): T[]
 ```
 
-Layout presets:
-
+**Common Patterns:**
 ```typescript
-std.css.fill()   // position:absolute; top:0; left:0; width:100%; height:100%
-std.css.center() // display:flex; align-items:center; justify-content:center
-std.css.column()  // display:flex; flex-direction:column
-std.css.row()    // display:flex; flex-direction:row
+// Create 0→1 progress over 1.5 seconds
+const progress = std.math.clamp(time / 1.5, 0, 1);
+
+// Delayed start (after 0.5s)
+const delayedProgress = std.math.clamp((time - 0.5) / 1.0, 0, 1);
+
+// Looping animation (0→1 every 2 seconds)
+const loop = std.math.fract(time / 2);
+
+// Ping-pong (0→1→0 every 2 seconds)
+const pingPong = std.math.pingPong(time, 1);
 ```
 
-#### `std.score` (video and gif only)
+## std.color
 
-Scene-local timing for layout choreography. Use `std.score()` when your animation is driven by the scene's normalized progress (`sceneProgress`) and you want named phases such as enter, hold, and exit.
+Color manipulation utilities.
 
 ```typescript
-// Defaults to { enter: "15%", hold: "70%", exit: "15%" }
-const t = std.score();
+// Add transparency
+std.color.alpha(color: string, opacity: number): string
 
-const card = t.motion({ y: 24, scale: 0.96 });
-const count = t.tween(0, 100, { during: "enter", at: 0.2 });
-const label = t.value("Live", { fadeOn: "exit" });
+// Blend two colors (t: 0=color1, 1=color2)
+std.color.mix(color1: string, color2: string, t: number): string
 
-return `
-  <section style="${card.style}">
-    <strong>${Math.floor(count)}</strong>
-    <span style="opacity:${label.opacity}">${label.current}</span>
-  </section>
-`;
+// Lighten by percentage (0-1)
+std.color.lighten(color: string, amount: number): string
+
+// Darken by percentage (0-1)
+std.color.darken(color: string, amount: number): string
+
+// Create HSL color string
+std.color.hsl(h: number, s: number, l: number): string
+
+// Parse color to RGB object
+std.color.parse(color: string): { r: number, g: number, b: number }
+
+// Convert RGB to hex
+std.color.toHex(r: number, g: number, b: number): string
 ```
 
-Custom phase names are supported. Phases can be specified as seconds (`"1.5s"`), milliseconds (`"500ms"`), or percentages of scene duration (`"20%"`):
-
+**Examples:**
 ```typescript
-const t = std.score({
-  intro: "20%",
-  product: "0.5s",
-  outro: "200ms",
-});
+// Semi-transparent accent
+const glow = std.color.alpha("#667eea", 0.5);
 
-const productProgress = t.within("product"); // 0-1 inside that phase
-const activePhase = t.active;                 // "intro" | "product" | "outro" | "idle"
+// Gradient between colors
+const gradient = std.color.mix("#ff0000", "#0000ff", progress);
 
-const title = t.motion({ during: "intro", y: 32 });
-const product = t.motion({ during: "product", at: 0.15, for: 0.7 });
-const fade = t.tween(1, 0, { during: "outro", easing: "easeInCubic" });
+// Hover state
+const hoverColor = std.color.lighten("#333", 0.2);
+
+// Dynamic hue
+const rainbow = std.color.hsl(time * 60, 70, 50);
 ```
 
-Score object fields and helpers:
+## std.css
+
+Convert objects to inline CSS strings.
 
 ```typescript
-t.progress       // Current sceneProgress
-t.seconds        // Current sceneTimeSeconds
-t.active         // Active phase name, or "idle" when outside all phases
-t.within(name)   // Phase-local progress, clamped to 0-1
-t.within(name, { at, duration })  // Sub-window inside phase → 0-1
-t.span("0s", "1s")  // Scene-absolute window → 0-1
-t.transition("3s", "4s", "easeInOutCubic")  // Eased span progress
-t.inSpan("3s", "4s")  // True strictly inside a span window
+// Object to inline style
+std.css(...args: (Record<string, string | number> | string)[]): string
 
-t.motion(opts?)  // Returns { enter, exit, opacity, transform, filter, style, visible, phase }
-t.tween(from, to, opts?)  // Phase-scoped scalar interpolation
-t.value(value, opts?)     // Preserve a value with phase-based opacity
-t.clip(opts)              // Nested clip window with local score (sequence-like timing)
+// Flexbox centering
+std.css.center(): string
+
+// Absolute fill parent
+std.css.fill(): string
+
+// Flexbox row layout
+std.css.row(): string
+
+// Flexbox column layout
+std.css.column(): string
 ```
 
-**Nested clips (`score.clip`):** Use custom phases for top-level beats, then `clip()` for nested local timing — Remotion-style sequences without a separate primitive.
+## std.layers
+
+Within-scene layer stack. Declaration order = z-order (bottom to top).
 
 ```typescript
-const t = std.score({ hook: "2s", demo: "5s", outro: "1s" });
-
-const hook = t.clip({ during: "hook" });
-if (hook.active) {
-  const local = hook.score({ enter: "20%", hold: "60%", exit: "20%" });
-  return `<div style="${local.motion({ y: 24 }).style}">Hook</div>`;
-}
-
-const demo = t.clip({ during: "demo" });
-const feature = demo.clip({ from: "0.5s", duration: "1.5s" }); // nested inside demo
-if (feature.active) {
-  const local = feature.score();
-  return `<div style="${local.motion({ scale: 0.9 }).style}">Feature</div>`;
-}
-```
-
-`clip()` options: `{ during: "phaseName" }` (span the named phase) or `{ from, duration }` (relative to parent window). Returns `{ active, progress, frame, seconds, durationSeconds, score(), clip() }`.
-
-**Phases vs transition windows:** Use `t.active` / `t.within("hook")` for steady shots inside a phase. Use `t.inSpan("3s", "4s")` + `t.transition(...)` for cross-phase handoffs that straddle phase boundaries.
-
-Common `motion()` options:
-
-```typescript
-t.motion({
-  during: "enter",       // Phase to use for entrance timing; defaults to first phase
-  at: 0.25,              // Start 25% into that phase
-  for: 0.5,              // Span 50% of that phase (or "0.5s")
-  y: 40,
-  x: 0,
-  scale: 0.95,
-  rotate: -2,
-  blur: 8,
-  fromOpacity: 0,
-  easing: "easeOutCubic",
-  exitEasing: "easeInCubic",
-  exit: { y: -40 },
-});
-```
-
-Use `std.score(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Score And Cues](/docs/timing) for examples that combine both.
-
-#### `std.layers` (video and gif only)
-
-Within-scene layer stack. Declaration order = z-order (bottom to top). Pair with `std.score()` for timing and `std.reveal.*()` for transition FX.
-
-```typescript
-const L = std.layers({ width, height, mode: "opaque" }); // or "transparent" | "split"
-const wipe = std.reveal.wipe({ progress: t.within("intro"), direction: "diagonal", color: "#000" });
+const L = std.layers({ width, height, mode: "opaque" | "transparent" | "split" });
 
 return L.render(
-  L.bg(kenBurns.html),
-  L.tint("rgba(0,0,0,0.5)"),
-  L.content(`<h1 style="${card.style}">...</h1>`, { safe: "broadcast" }),
-  L.overlay(lowerThirdHtml, { anchor: "bottom-left", offset: { y: 80 }, safe: true }),
-  L.fx(wipe.html, { visible: () => wipe.active }),
+  L.bg(kenBurns.html),                              // full-bleed background
+  L.tint("rgba(0,0,0,0.5)"),                        // color wash
+  L.content(`<h1>...</h1>`, { safe: "broadcast" }), // main message
+  L.overlay(html, { anchor: "bottom-left", offset: { y: 80 }, safe: true }),
+  L.fx(wipe.html, { visible: () => wipe.active }),  // transient FX
 );
 
-// Content-only handoff: shared bg + split/crossfade panels + pinned hero
-const handoff = std.reveal.split({ from: hookPanel, to: featuresPanel, progress: t.transition("3s", "4s") });
+// Content-only handoff (shared bg + transition panels + pinned hero)
 return L.handoff({
   shared: [L.bg(kenBurns.html), L.tint("rgba(0,0,0,0.5)")],
-  transition: handoff,
-  pinned: [L.overlay(phoneHtml, { anchor: { x: "73%", y: "50%", origin: "center" } })],
+  transition: std.reveal.split({ from: hookPanel, to: featuresPanel, progress: p }),
+  pinned: [L.overlay(phone, { anchor: { x: "73%", y: "50%", origin: "center" } })],
 });
 ```
 
-**Ken Burns rule:** Put `kenBurns` in `shared` (or a single `L.bg()`), not inside both split/crossfade panels — duplicate zoom layers cause seams during handoffs.
+**Ken Burns rule:** Keep `kenBurns` in `shared` / single `L.bg()` — never inside both split panels (zoom seams).
 
-#### `std.reveal` (video and gif only)
+**Overlay anchors:** `{ x, y, origin: "center" }` applies `translate(-50%, -50%)` and merges with `motion` transforms.
 
-Transition overlay utilities — progress-fed full-frame FX. Mount on `L.fx()`. Not `std.svg.reveal`. Returns `{ html, active, progress }`.
+## Transition FX utilities (`std.reveal`)
 
-**Progress contract:** `0` = start, `1` = complete. Cover overlays (`wipe`, `iris`): 0 = fully obscured, 1 = revealed. Curtain: 0 = hidden, 1 = fully covering. Handoffs (`split`, `crossfade`): 0 = `from`, 1 = `to`.
+Progress-driven full-frame overlays. Not a compositional tier — mount via `L.fx()`. Returns `{ html, active, progress }`.
 
 ```typescript
 std.reveal.wipe({ progress, direction: "diagonal", color });
@@ -311,469 +449,373 @@ std.reveal.split({ from, to, progress, style: "wipe" | "slide" | "flip" | "split
 std.reveal.curtain({ progress, direction: "up" });
 std.reveal.crossfade({ progress, from, to });
 std.reveal.iris({ progress, color });
-std.reveal.handoffLocal(progress, { peek: 0.1 });  // map transition p → target phase local
+std.reveal.handoffLocal(progress, { peek: 0.1 });  // frozen "to" panel during handoff
+
+// Clip-path strings for any element (including SVG containers)
+std.reveal.clip.circle(progress, { cx: 0.5, cy: 0.5 });
+std.reveal.clip.wipe(progress, "right");
+std.reveal.clip.inset(progress);
+std.reveal.clip.iris(progress, 6);
 ```
 
-#### `std.video.sync` (video and gif only)
+## std.mergeMotion
 
-Frame-accurate embedded video for headless render. Replaces `<video autoplay>` — Playwright seeks marked elements before screenshot.
-
-```typescript
-const clip = std.video.sync({
-  src: ctx.asset("hero.mp4"),
-  at: ctx.sceneTimeSeconds,  // output timeline position (default: pass sceneTimeSeconds)
-  start: 0,                  // offset into source media
-  playbackRate: 1,
-  objectFit: "cover",
-}, ctx.fps);
-
-return `<div style="${std.css.fill()}">${clip.html}</div>`;
-```
-
-Returns `{ time, html, style }`. `time` is frame-quantized source media time in seconds.
-
-#### `std.mergeMotion`
-
-Merge motion values from multiple `t.motion()` results (not video `compose()`):
+Merge motion values (not video `compose()`):
 
 ```typescript
 std.mergeMotion(card, { scale: 1.05 });
 ```
 
-#### `std.interpolate`
+**Property Conversion:**
+- `fontSize: 48` → `font-size: 48px`
+- `opacity: 0.5` → `opacity: 0.5`
+- `transform: "translateY(10px)"` → `transform: translateY(10px)`
+- camelCase → kebab-case automatically
 
-Multi-keyframe eased interpolation for custom progress, loops, and non-phased value mapping:
-
+**Examples:**
 ```typescript
-std.interpolate(progress, [0, 1], [0, 100])                    // Linear
-std.interpolate(progress, [0, 1], [0, 100], 'easeOutCubic')    // With easing
+// Root container
+const containerStyle = std.css({ width, height }, std.css.center());
 
-// Multi-stop: fade in (0-20%), hold (20-80%), fade out (80-100%)
-std.interpolate(sceneProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0])
+// Animated element
+const elementStyle = std.css({
+  opacity,
+  fontSize: 64,
+  color: accentColor,
+  transform: `translateY(${y}px) scale(${scale})`,
+});
+
+// Usage in template
+return `<div style="${containerStyle}">
+  <h1 style="${elementStyle}">${title}</h1>
+</div>`;
 ```
 
-For phased scene animation (enter/hold/exit with auto fades), reach for `std.score` instead.
+## std.createResponsive
 
-#### `std.math`
-
-Mathematical utilities:
+Factory for aspect-ratio-based value selection.
 
 ```typescript
-// Linear interpolation
-std.math.inverseLerp(a, b, value)  // Normalize value to [0,1] within range
-std.math.mapClamp(val, inMin, inMax, outMin, outMax)  // Map + clamp output
+std.createResponsive(ctx: RenderContext): <T>(options: ResponsiveOptions<T>) => T
 
-// Clamping
-std.math.clamp(value, min, max)   // Restrict value to range
-
-// Mapping
-std.math.map(value, inMin, inMax, outMin, outMax)  // Map value from one range to another (no clamp)
-
-// Random
-std.math.random(min, max)         // Random float between min and max
-std.math.randomInt(min, max)      // Random integer between min and max (inclusive)
-std.math.shuffle(array)           // Fisher-Yates shuffle, returns new array
-
-// Noise
-std.math.setNoiseSeed(seed)       // Set seed for reproducible noise
-std.math.noise(x)                 // 1D simplex noise (-1 to 1)
-std.math.noise2D(x, y)           // 2D simplex noise (-1 to 1)
-std.math.noise3D(x, y, z)        // 3D simplex noise (-1 to 1)
-
-// Angle conversion
-std.math.degToRad(deg)            // Degrees to radians
-std.math.radToDeg(rad)            // Radians to degrees
+interface ResponsiveOptions<T> {
+  portrait?: T;   // When height > width
+  landscape?: T;  // When width > height
+  square?: T;     // When width ≈ height
+  default?: T;    // Fallback value
+}
 ```
 
-#### `std.color`
-
-Color manipulation:
-
+**Examples:**
 ```typescript
-// Conversion
-std.color.hexToRgb(hex)           // Hex to { r, g, b }
-std.color.rgbToHex(r, g, b)      // RGB to hex string
-std.color.hslToRgb(h, s, l)      // HSL to { r, g, b }
-std.color.rgbToHsl(r, g, b)      // RGB to { h, s, l }
-std.color.hsl(h, s, l)           // Create HSL color string: "hsl(180, 50%, 50%)"
+const r = std.createResponsive(ctx);
 
-// Parsing
-std.color.parseColor(str)         // Parse color string to { r, g, b }
-std.color.isLight(color)          // Check if color is light (boolean)
+// Responsive font sizes
+const hookSize = r({ portrait: 68, square: 32, default: 48 });
+const titleSize = r({ portrait: 44, square: 22, default: 32 });
 
-// Alpha/transparency
-std.color.alpha(color, opacity)   // Add alpha: alpha('#FF0000', 0.5) → 'rgba(255, 0, 0, 0.5)'
+// Responsive padding
+const padding = r({ portrait: [64, 48], square: [28, 28], default: [44, 44] });
 
-// Mixing
-std.color.mix(color1, color2, t)  // Blend two colors
-
-// Adjustments
-std.color.lighten(color, amount)  // Lighten by percentage
-std.color.darken(color, amount)   // Darken by percentage
-std.color.saturate(color, amount) // Increase saturation
-std.color.desaturate(color, amount) // Decrease saturation
+// Responsive layout direction
+const direction = r({ portrait: "column", default: "row" });
 ```
 
-#### `std.spring`
+## std.backgrounds
 
-Spring physics for organic motion with overshoot and bounce:
+Background effect utilities.
 
 ```typescript
+std.backgrounds.kenBurns(options: KenBurnsOptions): KenBurnsResult
+
+interface KenBurnsOptions {
+  src: string;         // Image URL
+  progress: number;    // 0-1 for zoom animation
+  zoomFrom?: number;   // Starting zoom (default: 1.0)
+  zoomTo?: number;     // Ending zoom (default: 1.1)
+  overlay?: string;    // Overlay color (default: "rgba(0,0,0,0.5)")
+  position?: string;   // Background position (default: "center")
+  overflow?: number;   // Buffer pixels for zoom (default: 50)
+}
+
+interface KenBurnsResult {
+  zoom: number;           // Current zoom value
+  backgroundStyle: string; // Style for background div
+  overlayStyle: string;    // Style for overlay div
+  html: string;           // Complete HTML for bg + overlay
+}
+```
+
+**Example:**
+```typescript
+const bg = std.backgrounds.kenBurns({
+  src: data.backgroundImage,
+  progress: timeline.progress,
+  overlay: "rgba(0, 0, 0, 0.6)"
+});
+
+return `
+  <div style="${std.css({ width, height, position: 'relative', overflow: 'hidden' })}">
+    ${bg.html}
+    <div style="position: relative; z-index: 1;">
+      <!-- Content here -->
+    </div>
+  </div>
+`;
+```
+
+## ctx.track()
+
+Transcript and marker sync using `timeline.seconds`.
+
+```typescript
+const vo = ctx.track({ words: data.words });
+const t = vo.transcript();
+const current = t.current();
+const phrase = t.between(0, 3);
+const chars = t.charProgress();
+
+const mk = ctx.track({ markers: { intro: 0, main: 2.5, outro: 8 } });
+const fadeIn = mk.markers().progress("intro", "main");
+```
+
+**Example:**
+```typescript
+const vo = ctx.track({ words: data.words });
+const t = vo.transcript();
+const active = t.current();
+const opacity = active ? std.interpolate(active.progress, [0, 1], [0.4, 1], "easeOutCubic") : 0.4;
+return renderCaption({ text: active?.text ?? "", opacity });
+```
+
+Use `ctx.director()` for scene-local phase choreography. Use `ctx.track()` when timing comes from absolute timestamps or external narration data.
+
+## std.spring / std.springTween / std.createSpring
+
+Spring physics for organic motion with overshoot and bounce.
+
+```typescript
+// Spring curve: 0→1 with overshoot based on physics config
+const val = std.spring(progress);                    // default config
+const val = std.spring(progress, { stiffness: 200, damping: 8 });
+
 // Interpolate between values with spring physics
-std.spring(0.8, 1, progress)                         // 0.8→overshoot→1
-std.spring(0, 500, progress, { stiffness: 200, damping: 8, mass: 1 })
+const scale = std.springTween(0.8, 1, progress);     // 0.8→overshoot→1
+const x = std.springTween(0, 500, progress, { stiffness: 200, damping: 8 });
 
-// Inside a score.motion() / .tween() call, use the string form
-const t = std.score();
-const pop = t.motion({ scale: 0.5, easing: "spring(200,8)" });
+// Create reusable easing function for std.interpolate()
+const bounce = std.createSpring({ stiffness: 200, damping: 8 });
+const y = std.interpolate(progress, [0, 1], [0, 100], bounce);
 ```
 
-#### `std.stagger`
+**SpringConfig:**
+| Param | Default | Description |
+|---|---|---|
+| `stiffness` | `100` | Spring constant — higher = faster oscillation |
+| `damping` | `10` | Friction — lower = more bouncy |
+| `mass` | `1` | Mass — higher = slower, more momentum |
 
-Distribute progress across items for cascading animations:
+**Example:**
+```typescript
+// Bouncy card entrance
+const bounce = std.createSpring({ stiffness: 150, damping: 12 });
+const scale = std.interpolate(enterProgress, [0, 1], [0.8, 1], bounce);
+const y = std.interpolate(enterProgress, [0, 1], [40, 0], bounce);
+```
+
+## std.stagger
+
+Distribute progress across items for cascading animations.
 
 ```typescript
-// Count-based: returns number[]
-std.stagger(5, progress, { duration: 0.3 })
+// Count-based: returns array of per-item progress values (each 0-1)
+const progresses = std.stagger(5, timeline.progress, { duration: 0.3 });
+// progresses[0] leads, progresses[4] trails
 
-// Items-based: returns StaggerItem<T>[]
-std.stagger(items, progress, { duration: 0.4, from: "center" })
-// Each item: { item, progress, index, active, done }
-
-// Lead index for syncing external UI (e.g. phone mockup) with staggered cards
-std.stagger.lead(features, t.within("features"), { duration: 0.48 })
-
-// Options: each, duration, from ("start"|"end"|"center"|"edges"), easing
+// Items-based: returns enriched objects with per-item progress
+const items = std.stagger(["A", "B", "C"], timeline.progress, { duration: 0.4 });
+items.map(({ item, progress }) =>
+  `<div style="opacity: ${progress}">${item}</div>`
+).join("");
 ```
 
-#### `std.interpolate` / `std.interpolateColor`
+**StaggerOptions:**
+| Param | Default | Description |
+|---|---|---|
+| `each` | auto | Delay between item starts (0-1 fraction) |
+| `duration` | auto | Each item's animation window (0-1 fraction) |
+| `from` | `"start"` | Direction: `"start"`, `"end"`, `"center"`, `"edges"` |
+| `easing` | linear | Per-item easing name or function |
 
-Multi-keyframe interpolation with arbitrary input ranges:
+**StaggerItem (items-based overload):**
+`{ item, progress, index, active, done }`
+
+**Lead index:** `std.stagger.lead(items, progress, opts?)` — index of the item with highest progress above threshold (sync phone mockups, highlights).
+
+**Example:**
+```typescript
+// Drive a staggered cascade off the "enter" phase of a director
+const d = ctx.director({ enter: "25%", hold: "50%", exit: "25%" });
+const items = std.stagger(["First", "Second", "Third"], d.in("enter"), {
+  duration: 0.4, from: "center", easing: "easeOutCubic"
+});
+return items.map(({ item, progress }) => {
+  const opacity = std.interpolate(progress, [0, 1], [0, 1]);
+  const y      = std.interpolate(progress, [0, 1], [20, 0]);
+  return `<div style="opacity: ${opacity}; transform: translateY(${y}px)">${item}</div>`;
+}).join("");
+```
+
+## std.interpolate / std.interpolateColor
+
+Multi-keyframe interpolation with arbitrary input ranges.
 
 ```typescript
 // Fade in, hold, fade out
-std.interpolate(progress, [0, 0.2, 0.8, 1], [0, 1, 1, 0])
+const opacity = std.interpolate(timeline.progress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
+
+// Multi-stop position with easing
+const x = std.interpolate(timeline.progress, [0, 0.5, 1], [0, 500, 300], {
+  easing: "easeInOutCubic"
+});
 
 // Color gradient over time
-std.interpolateColor(progress, [0, 0.5, 1], ["#f00", "#0f0", "#00f"])
-
-// Options: easing (per-segment), extrapolate ("clamp"|"extend")
+const bg = std.interpolateColor(timeline.progress, [0, 0.5, 1], ["#f00", "#0f0", "#00f"]);
 ```
 
-### Extended Modules
+**InterpolateOptions:**
+| Param | Default | Description |
+|---|---|---|
+| `easing` | linear | Applied per segment |
+| `extrapolate` | `"clamp"` | Behavior outside range: `"clamp"` or `"extend"` |
+| `extrapolateLeft` | — | Override for below-range values |
+| `extrapolateRight` | — | Override for above-range values |
 
-These modules provide specialized functionality beyond the core set.
-
-#### `std.text`
-
-Text manipulation utilities:
-
+**Example:**
 ```typescript
-std.text.truncate(str, len, suffix?)       // Truncate string (default suffix: "...")
-std.text.pluralize(n, singular, plural?)   // Pluralize word based on count
-std.text.formatNumber(num, locale?)        // Locale-specific number formatting
-std.text.formatCurrency(num, currency?, locale?)  // Format as currency
-std.text.escapeHtml(str)                   // Escape HTML special characters
-std.text.slugify(str)                      // Convert to URL-friendly slug
-std.text.pad(str, len, char?, side?)       // Pad string (side: 'left' | 'right' | 'both')
-std.text.wrap(text, maxCharsPerLine)       // Wrap text into lines, returns string[]
+// Ring animation: delay start, hold at end
+const ringProgress = std.interpolate(timeline.progress, [0, 0.1, 0.9, 1], [0, 0, 360, 360]);
+
+// Background transition through multiple colors
+const bg = std.interpolateColor(timeline.progress,
+  [0, 0.3, 0.7, 1],
+  ["#0f172a", "#1e1b4b", "#1e1b4b", "#0f172a"]
+);
 ```
 
-#### `std.date`
+## std.text
 
-Date formatting and manipulation:
+Text manipulation and typing animation primitives.
 
 ```typescript
-std.date.formatDate(date, formatStr)  // Format date (date-fns tokens; uses UTC)
-std.date.relativeTime(date)           // Relative time string (e.g., "2 hours ago")
-std.date.parseISO(str)                // Parse ISO date string to Date
-std.date.toISO(date)                  // Convert date to ISO string
-std.date.diffDays(d1, d2)             // Difference in days (absolute)
-std.date.diffSeconds(d1, d2)          // Difference in seconds (absolute)
+// Progress-driven text reveal (char, word, or line granularity)
+std.text.type(text: string, progress: number, options?: { by?: 'char' | 'word' | 'line' }): TypeResult
+
+interface TypeResult {
+  visible: string;   // The revealed portion
+  typing: boolean;   // True while 0 < progress < 1
+  done: boolean;     // True when progress >= 1
+  index: number;     // Visible unit count
+  total: number;     // Total unit count
+}
+
+// Calculate typing duration from speed
+std.text.typeDuration(text: string, options?: { by?: 'char' | 'word' | 'line', speed?: number }): number
+
+// Blinking cursor helper
+std.text.cursor(time: number, rate?: number): boolean
 ```
 
-Date inputs accept `Date`, `string`, or `number` (timestamp).
+**Default speeds for `typeDuration`:** char: 30/sec, word: 5/sec, line: 2/sec
 
-#### `std.cue`
-
-Absolute-time cue helpers for transcripts, markers, and scripted beats:
-
+**Examples:**
 ```typescript
-// Word-level sync from transcript data
-const t = std.cue.transcript(words, time);
-const current = t.current();
-const charProgress = t.charProgress();
+// Basic typewriter
+const dur = std.text.typeDuration("Hello, World!", { speed: 40 });
+const progress = std.math.clamp(time / dur, 0, 1);
+const { visible, typing } = std.text.type("Hello, World!", progress);
+const show = std.text.cursor(time);
+return `<div>${visible}${typing && show ? '▋' : ''}</div>`;
 
-// Progress between named timestamps
-const m = std.cue.markers({
-  intro: 0,
-  main: 2.5,
-  outro: 8,
-}, time);
-const fadeIn = m.progress("intro", "main");
-const segment = m.segment("main", "outro");
+// Code typing with Shiki highlighting
+const { visible } = std.text.type(CODE, progress, { by: 'line' });
+const highlighted = std.code.highlight(visible, { lang: 'typescript' });
 
-// Scripted events by ID
-const s = std.cue.script([
-  { id: "hero", time: 0.5 },
-  { id: "cta", time: 2.5, duration: 0.8 },
-], time);
-const cta = s.get("cta");
-
-// Adapters for STT providers
-const elevenLabsWords = std.cue.fromElevenLabs(response.words);
-const whisperWords = std.cue.fromWhisper(response.words);
+// Terminal commands with director()
+const d = ctx.director({ enter: "25%", hold: "50%", exit: "25%" });
+const cmdProgress = d.in("enter");
+const { visible: cmdVisible } = std.text.type("npm run dev", cmdProgress);
 ```
 
-Use `std.score(...)` for phase-based scene choreography. Use `std.cue.*` when the timing source is absolute timestamps from audio, transcripts, or scripted markers. See [Timing With Score And Cues](/docs/timing) for a guide-level walkthrough.
+**Other text utilities:** `truncate`, `pluralize`, `formatNumber`, `formatCurrency`, `escapeHtml`, `slugify`, `pad`, `wrap`
 
-#### `std.responsive`
+## Config Options
 
-Responsive layout helper based on canvas aspect ratio:
+Options for `define({ config: { ... } })`:
 
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `width` | number | 1920 | Canvas width in pixels |
+| `height` | number | 1080 | Canvas height in pixels |
+| `fps` | number | 30 | Frames per second |
+| `duration` | `Duration` | — | Scene duration. Accepts `number` (seconds), `"5s"`, `"500ms"`, or `"30f"` (frames). |
+| `fonts` | string[] | [] | Google Fonts to load |
+| `inlineCss` | string[] | [] | CSS injected into page |
+| `stylesheets` | string[] | [] | External CSS URLs |
+| `outputs` | Record | - | Named output variants |
+
+**Font Format:**
 ```typescript
-const direction = std.responsive.responsive({
-  portrait: 'column',
-  landscape: 'row',
-  square: 'row',
-  default: 'row',
-}, ctx);
+fonts: [
+  "Inter:wght@400;600;700",
+  "JetBrains+Mono:wght@400;600",
+  "Space+Grotesk:wght@400;700"
+]
 ```
 
+**Multiple Outputs:**
 ```typescript
-std.responsive.responsive(options, ctx)  // Choose value based on orientation
+outputs: {
+  youtube: { width: 1920, height: 1080 },
+  square: { width: 1080, height: 1080 },
+  stories: { width: 1080, height: 1920 },
+}
 ```
 
-Options: `{ portrait?, landscape?, square?, default? }`. Falls back to `default`, then first available.
+## define()
 
-#### `std.subtitle`
-
-Subtitle parsing, generation, and display utilities for SRT/VTT formats:
+Unified template factory — all templates live in `*.media.ts`:
 
 ```typescript
-// Parsing
-std.subtitle.parseSRT(content, options?)     // Parse SRT content to Cue[]
-std.subtitle.parseVTT(content, options?)     // Parse VTT content to Cue[]
-std.subtitle.parseTime(timeStr)              // Parse timestamp string to milliseconds
+import { define } from "superimg";
 
-// Generation
-std.subtitle.generateSRT(cues)              // Generate SRT content from Cue[]
-std.subtitle.generateVTT(cues, header?)     // Generate VTT content from Cue[]
-std.subtitle.formatTime(ms, format)         // Format ms to timestamp ('srt' | 'vtt')
-
-// Display
-std.subtitle.getCueAtTime(cues, timeMs)     // Get active cue at time (or null)
-std.subtitle.getCuesAtTime(cues, timeMs)    // Get all active cues at time
-std.subtitle.getCueProgress(cue, timeMs)    // Progress through a cue (0-1)
-```
-
-A `Cue` has: `{ index?, start, end, text, settings? }` (times in milliseconds).
-
-#### `std.presets`
-
-Platform presets for common social media dimensions:
-
-```typescript
-std.presets.getPreset(path)            // Get preset by dot-path (e.g., "instagram.video.reel")
-std.presets.listPresets()              // List all presets with paths
-std.presets.listVideoPresets()         // List video presets only
-std.presets.formatPresetLabel(path)    // Format path as display label (e.g., "Instagram Reel")
-std.presets.platforms                  // Raw platforms data object
-```
-
-Supported platforms: `instagram`, `facebook`, `x_twitter`, `linkedin`, `youtube`, `tiktok`, `pinterest`, `snapchat`, `threads`, `reddit`.
-
-A `Preset` has: `{ width, height, aspect_ratio?, fps?, duration_max_seconds?, notes? }`.
-
----
-
-## Template Module
-
-Use the factory that matches your file extension (see [Template kinds](#template-kinds) above).
-
-### defineScene (video)
-
-```typescript
-import { defineScene } from 'superimg';
-
-export default defineScene({
-  sample: {
-    title: 'Hello',
-    color: '#ffffff',
-  },
+// Animated (MP4/GIF) — fps + duration
+export default define({
+  sample: { title: "Hello", accentColor: "#667eea" },
   config: {
     width: 1920,
     height: 1080,
     fps: 30,
-    duration: 5,
+    duration: 4,
+    fonts: ["Inter:wght@400;700"],
+    inlineCss: [`* { margin: 0; box-sizing: border-box; } body { background: #0f0f23; }`],
   },
   render(ctx) {
-    const { std, sceneProgress, data } = ctx;
-    const opacity = std.interpolate(sceneProgress, [0, 1], [0, 1], 'easeOutCubic');
-
-    return `
-      <div style="color: ${data.color}; opacity: ${opacity}">
-        ${data.title}
-      </div>
-    `;
+    return `<div>...</div>`;
   },
 });
+
+// Still image — omit fps/duration
+export default define({
+  sample: { title: "OG Card" },
+  config: { width: 1200, height: 630, outputs: { og: { format: "png" } } },
+  render(ctx) { return `<div>...</div>`; },
+});
+
+// SVG — medium: "svg", return <svg xmlns="http://www.w3.org/2000/svg">...</svg>
+export default define({
+  medium: "svg",
+  config: { width: 800, height: 400 },
+  render(ctx) { return `<svg xmlns="http://www.w3.org/2000/svg">...</svg>`; },
+});
 ```
-
-`defineScene` infers types from `sample` — merged data is available as `ctx.data`.
-
-### defineImage / defineGif / defineSvg
-
-```typescript
-import { defineImage, defineGif, defineSvg } from 'superimg';
-
-// Still image — no fps/duration/score
-export default defineImage({ sample: { title: 'Hi' }, config: { width: 1200, height: 630 }, render: (ctx) => '...' });
-
-// Animated GIF — full RenderContext, same stdlib as video
-export default defineGif({ config: { fps: 24, duration: 2 }, render: (ctx) => '...' });
-
-// SVG — return <svg xmlns="http://www.w3.org/2000/svg">...</svg>
-export default defineSvg({ config: { width: 800, height: 400 }, render: (ctx) => '<svg>...</svg>' });
-```
-
-### TemplateModule Interface
-
-```typescript
-interface TemplateModule<TData = Record<string, unknown>> {
-  // Required
-  render: (ctx: RenderContext<TData>) => string;
-
-  // Optional
-  config?: TemplateConfig;
-  sample?: Partial<TData>;
-}
-
-interface TemplateConfig {
-  width?: number;           // Canvas width (default: 1920)
-  height?: number;          // Canvas height (default: 1080)
-  fps?: number;             // Frames per second (default: 30)
-  duration?: number; // Duration in seconds (see Duration Precedence)
-  fonts?: string[];        // Google Fonts to load
-  inlineCss?: string[];    // Raw CSS strings (e.g. utility classes, precompiled Tailwind)
-  stylesheets?: string[];  // Stylesheet URLs to load
-  outputs?: Record<string, OutputPreset>;
-}
-```
-
----
-
-## Result Types
-
-All async operations return discriminated union types for explicit error handling.
-
-### LoadResult
-
-Returned by `Player.load()`:
-
-```typescript
-type LoadResult =
-  | { status: 'success'; totalFrames: number; duration: number;
-      width: number; height: number; fps: number }
-  | { status: 'error'; errorType: 'compilation' | 'validation' | 'network';
-      message: string; suggestion: string; details?: Record<string, unknown> };
-```
-
-### RenderResult
-
-Returned by render operations:
-
-```typescript
-type RenderResult =
-  | { status: 'success'; outputPath: string; totalFrames: number;
-      duration: number; fileSizeBytes: number; renderTimeMs: number }
-  | { status: 'error'; errorType: 'template' | 'encoding' | 'io' | 'validation';
-      failedAtFrame: number; message: string; suggestion: string;
-      details?: Record<string, unknown> };
-```
-
-### Usage
-
-```typescript
-const result = await player.load(template);
-
-if (result.status === 'success') {
-  console.log(`Loaded ${result.totalFrames} frames`);
-  player.play();
-} else {
-  console.error(`Load failed: ${result.message}`);
-  console.error(`Suggestion: ${result.suggestion}`);
-}
-```
-
----
-
-## Error Classes
-
-Structured errors with actionable suggestions:
-
-```typescript
-class SuperImgError extends Error {
-  code: string;
-  details: Record<string, unknown>;
-  suggestion: string;
-  docsUrl?: string;
-}
-
-// Specific error types
-class TemplateCompilationError extends SuperImgError { }
-class TemplateRuntimeError extends SuperImgError { }
-class ValidationError extends SuperImgError { }
-class RenderError extends SuperImgError { }
-class IOError extends SuperImgError { }
-class PlayerNotReadyError extends SuperImgError { }
-```
-
----
-
-## Mode Enums
-
-Explicit modes replace boolean options:
-
-```typescript
-// Playback behavior
-type PlaybackMode = 'once' | 'loop' | 'ping-pong';
-
-// When to load content
-type LoadMode = 'eager' | 'lazy';
-
-// Hover interaction behavior
-type HoverBehavior = 'none' | 'play' | 'preview-scrub';
-```
-
----
-
-## Frame Capture & Testing
-
-Capture a single video frame using the same still-export path as `defineImage` — no `renderStill` API.
-
-```bash
-superimg render my.video.ts --format html --frame 45
-superimg render my.video.ts --format png --frame 45
-```
-
-```typescript
-import { renderToHtml } from "superimg";
-import { renderVideo } from "superimg/server";
-import { renderHtmlAtFrame } from "@superimg/core/testing";
-
-const html = renderToHtml({ template, frame: 45 });
-const snapshot = renderHtmlAtFrame(template, { progress: 0.5, composite: false });
-const png = await renderVideo("./t.video.ts", { frame: 45, encoding: { format: "png" } });
-```
-
-See [Testing](./testing.md) for Vitest snapshot patterns.
-
----
-
-## See Also
-
-- [Testing](./testing.md) - Frame capture and snapshot testing
-- [Project Configuration](./project-config.md) - Cascading config and video discovery
-- [Templates & Data](./templates-and-data.md) - Creating templates with data
-- [Player Guide](./player-guide.md) - Browser playback

@@ -1,6 +1,7 @@
 import { TopNav } from "@/components/landing/TopNav";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Github } from "lucide-react";
+import { GitHubIcon } from "@/components/icons/github";
+import { ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -82,7 +83,7 @@ export default function ShowcasePage() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2"
                 >
-                  <Github className="h-4 w-4" />
+                  <GitHubIcon className="h-4 w-4" />
                   Submit Your Project
                 </a>
               </Button>

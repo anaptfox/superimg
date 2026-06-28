@@ -1,5 +1,5 @@
 // Changelog Video — Animated release notes
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
 interface ChangelogEntry {
   version: string;
@@ -7,7 +7,7 @@ interface ChangelogEntry {
   items: string[];
 }
 
-export default defineScene<{ title: string; entries: ChangelogEntry[] }>({
+export default define<{ title: string; entries: ChangelogEntry[] }>({
   sample: {
     title: "What's New",
     entries: [
@@ -36,7 +36,7 @@ export default defineScene<{ title: string; entries: ChangelogEntry[] }>({
   },
 
   render(ctx) {
-    const { std, sceneTimeSeconds: time, width, height, data } = ctx;
+    const { std, timeline, width, height, data } = ctx;
     const entries = data.entries.slice(0, 5); // Show max 5 releases
 
     // Phase timing

@@ -1,21 +1,21 @@
 # Testing Templates
 
-SuperImg reuses the same still-export path as `defineImage` PNG output — no separate `renderStill` API. Capture a single video frame as HTML (fast, CI-friendly) or as a raster image (Playwright + Sharp).
+SuperImg captures stills via the same encoder path as image output — no separate `renderStill` API. Capture a single video frame as HTML (fast, CI-friendly) or as a raster image (Playwright + Sharp).
 
 ## CLI
 
 ```bash
 # HTML snapshot at frame 45 (no browser)
-superimg render my.video.ts --format html --frame 45
+superimg render my.media.ts --format html --frame 45
 
-# PNG still at frame 45 (same encoder as defineImage)
-superimg render my.video.ts --format png --frame 45
+# PNG still at frame 45
+superimg render my.media.ts --format png --frame 45
 
 # Progress-based (0–1) instead of frame index
-superimg render my.video.ts --format html --progress 0.5
+superimg render my.media.ts --format html --progress 0.5
 ```
 
-For static templates, use `defineImage` with `--format png` as usual. For animated templates, add `--frame` or `--progress`.
+For static templates (no `fps`/`duration` in config), add `--format png`. For animated templates, add `--frame` or `--progress`.
 
 ## Programmatic
 
@@ -32,14 +32,14 @@ const html = renderToHtml({ template: bundledCode, frame: 45, fps: 30, durationS
 const snapshot = renderHtmlAtFrame(template, { progress: 0.5, composite: false });
 ```
 
-`renderHtmlAtFrame` merges `template.sample` with optional `data` and binds `std.score()` at the requested frame.
+`renderHtmlAtFrame` merges `template.sample` with optional `data` and binds `timeline` + `ctx.director()` at the requested frame.
 
 ### Pixel snapshots (Playwright)
 
 ```typescript
 import { renderVideo } from "superimg/server";
 
-const png = await renderVideo("./intro.video.ts", {
+const png = await renderVideo("./intro.media.ts", {
   frame: 45,
   encoding: { format: "png" },
 });
@@ -73,5 +73,5 @@ Use `composite: false` when you only want the scene HTML (no background/watermar
 |------|-----|
 | CI HTML regression | `renderHtmlAtFrame` or `renderToHtml({ frame })` |
 | Visual pixel diff | `renderVideo({ frame, encoding: { format: "png" } })` |
-| Static OG card | `defineImage` + `--format png` (unchanged) |
+| Static OG card | `define()` (no fps/duration) + `--format png` |
 | Embedded video in frame | `std.video.sync` — Playwright seeks before capture |

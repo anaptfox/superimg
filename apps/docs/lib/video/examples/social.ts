@@ -7,10 +7,10 @@ const TESTIMONIALS = [
   { name: "Alex Kim", handle: "@alexk", text: "Finally, programmatic video that doesn't suck.", avatar: "🧑‍🚀" },
 ];
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   const cardWidth = (width - 100) / 3;
 
@@ -31,7 +31,7 @@ export default defineScene({
       <div style="display: flex; gap: 20px; justify-content: center;">
         \${TESTIMONIALS.map((t, i) => {
           const delay = i * 0.2;
-          const opacity = Math.min(1, Math.max(0, (sceneProgress - delay) * 3));
+          const opacity = Math.min(1, Math.max(0, (timeline.progress - delay) * 3));
           const translateY = (1 - opacity) * 30;
           return \`
             <div style="
@@ -67,21 +67,19 @@ export const MILESTONE = `// Follower Milestone
 const MILESTONE = 100000;
 const PLATFORM = "Twitter";
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Easing function for dramatic effect
-  const eased = 1 - Math.pow(1 - Math.min(1, sceneProgress * 1.2), 3);
+  const eased = 1 - Math.pow(1 - Math.min(1, timeline.progress * 1.2), 3);
   const count = Math.floor(MILESTONE * eased);
 
   // Particle effect
   const particles = Array.from({ length: 20 }, (_, i) => ({
-    x: width / 2 + Math.sin(i * 0.5 + sceneProgress * 10) * (100 + i * 10) * sceneProgress,
-    y: height / 2 + Math.cos(i * 0.7 + sceneProgress * 8) * (80 + i * 8) * sceneProgress,
-    size: 4 + Math.random() * 4,
-    opacity: Math.max(0, 1 - sceneProgress * 1.5 + 0.5),
+    x: width / 2 + Math.sin(i * 0.5 + timeline.progress * 10) * (100 + i * 10) * timeline,     y: height / 2 + Math.cos(i * 0.7 + timeline.progress * 8) * (80 + i * 8) * timeline,     size: 4 + Math.random() * 4,
+    opacity: Math.max(0, 1 - timeline.progress * 1.5 + 0.5),
   }));
 
   return \`
@@ -134,17 +132,17 @@ export const MRR = `// MRR Counter
 const TARGET_MRR = 50000;
 const CURRENCY = "$";
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Dramatic easing
-  const eased = 1 - Math.pow(1 - Math.min(1, sceneProgress * 1.1), 4);
+  const eased = 1 - Math.pow(1 - Math.min(1, timeline.progress * 1.1), 4);
   const amount = Math.floor(TARGET_MRR * eased);
 
   // Glow intensity based on progress
-  const glowIntensity = 20 + sceneProgress * 40;
+  const glowIntensity = 20 + timeline.progress * 40;
 
   return \`
     <div style="
@@ -200,10 +198,10 @@ const SCHEDULE = {
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   const padding = 40;
   const labelWidth = 60;
@@ -234,7 +232,7 @@ export default defineScene({
         margin-bottom: 10px;
       ">
         \${DAYS.map((day, i) => {
-          const opacity = Math.min(1, Math.max(0, (sceneProgress * 2 - i * 0.1) * 2));
+          const opacity = Math.min(1, Math.max(0, (timeline.progress * 2 - i * 0.1) * 2));
           return \`
             <div style="
               width: \${colWidth}px;
@@ -253,7 +251,7 @@ export default defineScene({
         <!-- Time labels -->
         <div style="width: \${labelWidth}px;">
           \${HOURS.map((hour, i) => {
-            const opacity = Math.min(1, Math.max(0, sceneProgress * 3 - i * 0.05));
+            const opacity = Math.min(1, Math.max(0, timeline.progress * 3 - i * 0.05));
             return \`
               <div style="
                 height: \${rowHeight}px;
@@ -299,7 +297,7 @@ export default defineScene({
 
           <!-- Schedule blocks -->
           \${DAYS.map((day, dayIndex) => {
-            const dayProgress = Math.max(0, Math.min(1, (sceneProgress - 0.2 - dayIndex * 0.1) * 3));
+            const dayProgress = Math.max(0, Math.min(1, (timeline.progress - 0.2 - dayIndex * 0.1) * 3));
             return SCHEDULE[day].map((block, blockIndex) => {
               const blockProgress = Math.max(0, Math.min(1, (dayProgress - blockIndex * 0.2) * 2));
               const x = dayIndex * colWidth + 4;
@@ -340,7 +338,7 @@ export default defineScene({
         gap: 24px;
         margin-top: 20px;
         margin-left: \${labelWidth}px;
-        opacity: \${Math.min(1, sceneProgress * 2)};
+        opacity: \${Math.min(1, timeline.progress * 2)};
       ">
         <div style="display: flex; align-items: center; gap: 8px;">
           <div style="width: 16px; height: 16px; background: #3b82f6; border-radius: 3px;"></div>
@@ -372,27 +370,27 @@ const TWEET = {
   views: 42800,
 };
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   // Animate engagement counters
-  const eased = 1 - Math.pow(1 - Math.min(1, sceneProgress * 1.5), 3);
+  const eased = 1 - Math.pow(1 - Math.min(1, timeline.progress * 1.5), 3);
   const likes = Math.floor(TWEET.likes * eased);
   const retweets = Math.floor(TWEET.retweets * eased);
   const replies = Math.floor(TWEET.replies * eased);
   const views = Math.floor(TWEET.views * eased);
 
   // Card animation
-  const cardOpacity = Math.min(1, sceneProgress * 3);
-  const cardScale = 0.95 + Math.min(0.05, sceneProgress * 0.1);
+  const cardOpacity = Math.min(1, timeline.progress * 3);
+  const cardScale = 0.95 + Math.min(0.05, timeline.progress * 0.1);
 
   // Content fade in
-  const contentOpacity = Math.min(1, Math.max(0, (sceneProgress - 0.1) * 2));
+  const contentOpacity = Math.min(1, Math.max(0, (timeline.progress - 0.1) * 2));
 
   // Stats animation
-  const statsOpacity = Math.min(1, Math.max(0, (sceneProgress - 0.3) * 2));
+  const statsOpacity = Math.min(1, Math.max(0, (timeline.progress - 0.3) * 2));
 
   return \`
     <div style="

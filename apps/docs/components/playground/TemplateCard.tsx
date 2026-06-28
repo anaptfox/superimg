@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import posthog from "posthog-js";
 import { Player, type PlayerRef } from "superimg/react";
 import type { EditorExample } from "@/lib/video/examples";
+import { usePlaygroundExample } from "@/lib/playground/example";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TemplateCardProps {
@@ -16,11 +17,11 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
   const hoverTimeoutRef = useRef<number | undefined>(undefined);
   const [isHovering, setIsHovering] = useState(false);
   const isMobile = useIsMobile();
+  const { template, assets, assetResolver, duration } = usePlaygroundExample(example);
 
   const handleMouseEnter = () => {
     if (isMobile) return;
     setIsHovering(true);
-    // Delay before starting playback
     hoverTimeoutRef.current = window.setTimeout(() => {
       playerRef.current?.play();
     }, 400);
@@ -44,11 +45,13 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
     onSelect?.(example);
   };
 
-  // Format category for display
   const categoryLabel = example.category
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+
+  const durationLabel =
+    Number.isInteger(duration) ? `${duration}s` : `${duration.toFixed(1)}s`;
 
   return (
     <button
@@ -64,11 +67,12 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
           ${isHovering ? "scale-[1.03] shadow-xl shadow-black/30" : "shadow-lg shadow-black/20"}
         `}
       >
-        {/* Video Preview Area */}
         <div className="relative aspect-video bg-neutral-950">
           <Player
             ref={playerRef}
-            code={example.code}
+            template={template ?? undefined}
+            assets={assets}
+            assetResolver={assetResolver}
             format="horizontal"
             playbackMode="loop"
             loadMode="lazy"
@@ -77,7 +81,6 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
             style={{ aspectRatio: "16/9" }}
           />
 
-          {/* Play icon overlay */}
           <div
             className={`
               pointer-events-none absolute inset-0 flex items-center justify-center
@@ -98,13 +101,17 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
             </div>
           </div>
 
-          {/* Duration badge */}
           <div className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">
-            5s
+            {durationLabel}
           </div>
+
+          {example.playground?.needsBundle && (
+            <div className="absolute left-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-200">
+              Bundle
+            </div>
+          )}
         </div>
 
-        {/* Card Info */}
         <div className="p-3">
           <h3 className="font-medium text-white group-hover:text-primary">
             {example.title}

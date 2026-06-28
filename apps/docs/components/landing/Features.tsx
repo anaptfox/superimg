@@ -24,7 +24,7 @@ const features = [
   {
     title: "Live Preview",
     description:
-      "See your changes instantly as you code. Scrub through the timeline, play, pause, and iterate on your design in real-time.",
+      "See your changes instantly as you code. Scrub through frames, play, pause, and iterate on your design in real-time.",
     icon: (
       <svg
         className="h-6 w-6"
@@ -50,7 +50,7 @@ const features = [
   {
     title: "Export Anywhere",
     description:
-      "Export to MP4 for social media, GIF for messaging, or PNG sequences for further editing. Quality output in seconds.",
+      "Export to MP4, GIF, PNG, or SVG from the same template system. One command, any platform.",
     icon: (
       <svg
         className="h-6 w-6"
@@ -74,11 +74,11 @@ export function Features() {
     <section className="px-6 py-24">
       <div className="mx-auto max-w-6xl">
         <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
-          Everything you need to create video content
+          Everything you need to create media from code
         </h2>
         <p className="mt-4 text-center text-muted-foreground">
-          A complete toolkit for developers who want to generate videos
-          programmatically
+          A complete toolkit for developers who want to generate video, images,
+          and graphics programmatically
         </p>
 
         <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

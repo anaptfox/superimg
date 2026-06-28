@@ -16,15 +16,15 @@ This guide covers how SuperImg discovers videos, loads configuration, and resolv
 
 SuperImg automatically discovers all templates in your project. No registration or manifest file is needed.
 
-| Kind | Pattern | Factory | Output |
-|------|---------|---------|--------|
-| Video | `*.video.ts`, `*.video.js` | `defineScene` | MP4 |
-| GIF | `*.gif.ts`, `*.gif.js` | `defineGif` | GIF |
-| Image | `*.image.ts`, `*.image.js` | `defineImage` | PNG / WebP / JPEG |
-| SVG | `*.svg.ts`, `*.svg.js` | `defineSvg` | SVG |
+| Output | Pattern | Factory | Config signal |
+|--------|---------|---------|---------------|
+| MP4/WebM | `*.media.ts`, `*.media.js` | `define()` | `fps` + `duration` |
+| GIF | `*.media.ts`, `*.media.js` | `define()` | `fps` + `duration` + `--format gif` |
+| Image | `*.media.ts`, `*.media.js` | `define()` | no `fps`/`duration` |
+| SVG | `*.media.ts`, `*.media.js` | `define({ medium: "svg" })` | `medium: "svg"` |
 
 - **Excluded directories:** `node_modules`, `.next`, `.vercel`, `dist`, `out`, `.git`, `build`, `.turbo`
-- **Template name:** Relative path without extension (e.g. `src/social/promo.video.ts` → `src/social/promo`)
+- **Template name:** Relative path without extension (e.g. `src/social/promo.media.ts` → `src/social/promo`)
 
 Use `superimg list` to see all discovered templates and their resolved dimensions.
 
@@ -32,7 +32,7 @@ Use `superimg list` to see all discovered templates and their resolved dimension
 
 ## Cascading Config (_config.ts)
 
-Instead of one global config file, SuperImg uses **cascading configuration**. Place a `_config.ts` file in any directory. When you render a video, SuperImg walks **up** the directory tree from the video file to the project root, collecting and merging every `_config.ts` it finds.
+Instead of one global config file, SuperImg uses **cascading configuration**. Place a `_config.ts` file in any directory. When you render a template, SuperImg walks **up** the directory tree from the template file to the project root, collecting and merging every `_config.ts` it finds.
 
 ### Merge Strategy
 
@@ -69,7 +69,7 @@ export default defineConfig({
 When multiple sources define the same setting, SuperImg resolves them in this order (highest wins):
 
 1. **CLI flags** — `superimg render --width 1280 --fps 60`
-2. **Template config** — The `config: { ... }` block inside `defineScene({ config: { ... } })`
+2. **Template config** — The `config: { ... }` block inside `define({ config: { ... } })`
 3. **Folder _config.ts** — The config file in the same directory as the video
 4. **Parent _config.ts** — Config files in ancestor directories up to the project root
 5. **Built-in defaults** — 1920×1080, 30 fps, 5 seconds
@@ -110,14 +110,14 @@ Output files are named with the preset suffix: `intro-tiktok.mp4`, `intro-youtub
 my-project/
 ├── _config.ts                    # Global: 1920×1080, 30fps, Inter font
 ├── videos/
-│   ├── intro.video.ts            # Inherits global config
-│   └── outro.video.ts
+│   ├── intro.media.ts            # Inherits global config
+│   └── outro.media.ts
 ├── social/
 │   ├── _config.ts                # Override: 1080×1920 (vertical)
-│   ├── tiktok.video.ts           # Uses 1080×1920, inherits Inter
-│   └── reels.video.ts
+│   ├── tiktok.media.ts           # Uses 1080×1920, inherits Inter
+│   └── reels.media.ts
 └── youtube/
-    └── trailer.video.ts          # Uses root 1920×1080
+    └── trailer.media.ts          # Uses root 1920×1080
 ```
 
 ---

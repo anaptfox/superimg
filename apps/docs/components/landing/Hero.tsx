@@ -24,7 +24,7 @@ export function Hero() {
       </a>
 
       <h1 className="max-w-4xl text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
-        Programmatic video,{" "}
+        Programmatic media,{" "}
         <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
           open source
         </span>

@@ -2,7 +2,7 @@
 
 In traditional video editors, you set keyframes and the software interpolates between them. In SuperImg, you write the interpolation logic directly.
 
-Use `std.score()` and its `t.tween()` helper when motion belongs to named scene phases like enter, hold, and exit. Use `std.interpolate()` when you already have a progress value and need custom ranges, multi-keyframes, loops, or non-phased math. Note: `tween` lives on the score object — there is no `std.tween()` at the top level. Always reach it via `const t = std.score(); t.tween(...)`.
+Use `ctx.director()` and its `d.tween()` helper when motion belongs to named scene phases like enter, hold, and exit. Use `std.interpolate()` when you already have a progress value and need custom ranges, multi-keyframes, loops, or non-phased math. Note: `tween` lives on the director — there is no `std.tween()` at the top level. Always reach it via `const d = ctx.director(); d.tween(...)`.
 
 ## The Mental Model
 
@@ -10,7 +10,7 @@ Instead of thinking "animate opacity from 0 to 1 over 1 second," think: **"What 
 
 ```typescript
 render(ctx) {
-  const { sceneTimeSeconds: time, std } = ctx;
+  const { timeline, std } = ctx;
 
   // If we're in the first second, fade in
   // Otherwise, stay fully visible
@@ -24,16 +24,16 @@ render(ctx) {
 
 Your `render` function is called 30 times per second (or whatever your fps is). Each call, you describe what's happening **at that exact moment**.
 
-## Sequenced Animations (std.score)
+## Sequenced Animations (ctx.director)
 
-`std.score()` is the primary orchestration primitive for layouts. It breaks your scene into logical phases (e.g. intro, content, outro) and gives you motions scoped to those phases.
+`ctx.director()` is the primary orchestration primitive for layouts. It breaks your scene into logical phases (e.g. intro, content, outro) and gives you motions scoped to those phases.
 
 ```typescript
 render(ctx) {
   const { std } = ctx;
 
   // Fractions of scene (must sum to ≤ 1)
-  const t = std.score({ enter: 0.25, hold: 0.5, exit: 0.25 });
+  const t = ctx.director({ enter: 0.25, hold: 0.5, exit: 0.25 });
 
   const title = t.motion({ y: 20 });               // auto fade-in + fade-out
   const body  = t.motion({ at: 0.3, duration: 0.8 }); // staggered 30% into enter phase
@@ -45,7 +45,7 @@ render(ctx) {
 }
 ```
 
-`score()` handles the exit-math automatically, eliminating the need to manually multiply by `(1 - exitProgress)`.
+`ctx.director()` handles the exit-math automatically, eliminating the need to manually multiply by `(1 - exitProgress)`.
 
 ### Common Motion Options
 
@@ -95,12 +95,12 @@ t.motion({ easing: "easeOutBack" });
 For organic, bouncy motion, use spring physics instead of easing curves. Springs overshoot their target and settle naturally.
 
 ```typescript
-// Inside a score(), use spring easing as a string
-const t = std.score();
+// Inside director motion, use spring easing as a string
+const t = ctx.director();
 const pop = t.motion({ scale: 0.5, easing: "spring(200,8)" });
 
 // Standalone spring interpolation
-const scale = std.spring(0.8, 1, ctx.sceneProgress, { stiffness: 200, damping: 8 });
+const scale = std.spring(0.8, 1, ctx.timeline, { stiffness: 200, damping: 8 });
 ```
 
 **Config options:**
@@ -113,17 +113,16 @@ const scale = std.spring(0.8, 1, ctx.sceneProgress, { stiffness: 200, damping: 8
 
 ```typescript
 // Fade in (0-20%), hold (20-80%), fade out (80-100%)
-const opacity = std.interpolate(ctx.sceneProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
+const opacity = std.interpolate(ctx.timeline, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
 
 // Multi-stop position
-const x = std.interpolate(ctx.sceneProgress, [0, 0.5, 1], [0, 500, 300]);
+const x = std.interpolate(ctx.timeline, [0, 0.5, 1], [0, 500, 300]);
 ```
 
 For color transitions:
 
 ```typescript
-const bg = std.interpolateColor(ctx.sceneProgress,
-  [0, 0.3, 0.7, 1],
+const bg = std.interpolateColor(ctx.timeline,   [0, 0.3, 0.7, 1],
   ["#0f172a", "#1e1b4b", "#1e1b4b", "#0f172a"]
 );
 ```
@@ -134,10 +133,10 @@ Use `std.stagger()` to cascade animations across multiple elements:
 
 ```typescript
 render(ctx) {
-  const { sceneProgress, std } = ctx;
+  const { timeline, std } = ctx;
   const items = ["First", "Second", "Third"];
 
-  const staggered = std.stagger(items, sceneProgress, {
+  const staggered = std.stagger(items, timeline, {
     duration: 0.3,
     easing: "easeOutCubic",
   });
@@ -156,7 +155,7 @@ For animations that repeat:
 
 ```typescript
 render(ctx) {
-  const { sceneTimeSeconds: time, std } = ctx;
+  const { timeline, std } = ctx;
 
   // Pulse every 2 seconds
   const cycleProgress = (time % 2) / 2;  // 0 to 1, repeating
@@ -183,7 +182,7 @@ std.math.mapClamp(value, inMin, inMax, outMin, outMax);
 
 ## Next Steps
 
-- [Timing With Score And Cues](/docs/timing) — Score phases, cue timestamps, and how to combine them
+- [Timing With Director And Cues](/docs/timing) — Director phases, cue timestamps, and how to combine them
 - [How It Works](/docs/how-it-works) — Understand the rendering pipeline
-- [CLI Reference](/docs/cli) — Commands for rendering to MP4
+- [CLI Reference](/docs/cli) — Commands for rendering to MP4, GIF, and stills
 - [Player](/docs/player) — Embed videos in web apps

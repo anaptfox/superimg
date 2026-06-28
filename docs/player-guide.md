@@ -41,7 +41,7 @@ const template = {
     duration: 5,
   },
   render: (ctx: RenderContext) => {
-    const { sceneProgress, sceneFrame, sceneTotalFrames } = ctx;
+    const { timeline } = ctx;
     return `
       <div style="
         width:100%;
@@ -54,7 +54,7 @@ const template = {
         color:white;
         background:linear-gradient(120deg, #667eea, #764ba2);
       ">
-        Frame ${sceneFrame} / ${sceneTotalFrames}
+        Frame ${timeline.frame} / ${timeline.totalFrames}
       </div>
     `;
   },
@@ -216,14 +216,16 @@ npm install superimg react react-dom
 
 ### Basic Usage
 
+For Next.js Server Components, import the Player from `superimg/react/player` (lighter, SSR-safe). In Client Components (`"use client"`), `superimg/react` is also fine.
+
 ```tsx
-import { Player } from "superimg/react";
+import { Player } from "superimg/react/player";
 import type { RenderContext } from "superimg";
 
 const template = {
   config: { width: 640, height: 360, fps: 30, duration: 5 },
   render: (ctx: RenderContext) => {
-    const { sceneProgress, sceneFrame } = ctx;
+    const { timeline } = ctx;
     return `
       <div style="
         width:100%;height:100%;
@@ -231,7 +233,7 @@ const template = {
         font-family:system-ui;font-size:44px;color:white;
         background:linear-gradient(120deg, #667eea, #764ba2);
       ">
-        Frame ${sceneFrame}
+        Frame ${timeline.frame}
       </div>
     `;
   },

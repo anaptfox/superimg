@@ -35,9 +35,9 @@ export function CreateWithAI() {
               AI generates code
             </div>
             <pre className="text-xs text-[var(--code-foreground)]">
-              <code>{`defineScene({
+              <code>{`define({
   render(ctx) {
-    const count = 5 - ctx.second;
+    const count = 5 - Math.floor(ctx.timeline.frame / ctx.fps);
     return \`<div>\${count}</div>\`;
   }
 })`}</code>

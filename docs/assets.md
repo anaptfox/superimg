@@ -18,20 +18,20 @@ SuperImg provides two ways to use assets (images, videos, audio) in templates:
 
 ## Quick Start
 
-Drop files into an `assets/` folder next to your template file (`.video.ts`, `.gif.ts`, `.image.ts`, or `.svg.ts`) and reference them with `ctx.asset()`:
+Drop files into an `assets/` folder next to your template file and reference them with `ctx.asset()`:
 
 ```
 my-template/
-  my-template.video.ts   # or .gif.ts, .image.ts, .svg.ts
+  my-template.media.ts
   assets/
     logo.png
     background.jpg
 ```
 
 ```typescript
-import { defineScene } from 'superimg';
+import { define } from 'superimg';
 
-export default defineScene({
+export default define({
   render(ctx) {
     return `
       <img src="${ctx.asset('logo.png')}" />
@@ -50,9 +50,9 @@ No config needed. `ctx.asset()` returns a URL string for any file in the co-loca
 When you need asset metadata (dimensions, duration, file size), declare assets in `config.assets`. The runtime preloads them and makes metadata available via `ctx.assets`:
 
 ```typescript
-import { defineScene } from 'superimg';
+import { define } from 'superimg';
 
-export default defineScene({
+export default define({
   config: {
     width: 1920,
     height: 1080,
@@ -168,14 +168,14 @@ render(ctx) {
 
   // Use video duration for timing
   const videoDuration = promo.duration;
-  const showVideo = ctx.sceneTimeSeconds < videoDuration;
+  const showVideo = ctx.timeline.seconds < videoDuration;
 
   return `
     <div class="${isWide ? 'landscape' : 'portrait'}">
       <img src="${productImage.url}"
            style="aspect-ratio: ${productImage.width}/${productImage.height}">
     </div>
-    ${showVideo ? std.video.sync({ src: promo.url, at: ctx.sceneTimeSeconds }, ctx.fps).html : ''}
+    ${showVideo ? std.video.sync({ src: promo.url, at: ctx.timeline.seconds }, ctx.fps).html : ''}
   `;
 }
 ```
@@ -187,13 +187,13 @@ render(ctx) {
 For templates where asset URLs come from data (e.g., user-provided images), pass assets as data properties:
 
 ```typescript
-import { defineScene } from 'superimg';
+import { define } from 'superimg';
 
-export default defineScene<{
+export default define<{
   title: string;
   productImage: string;  // URL provided by caller
 }>({
-  data: {
+  sample: {
     title: 'Product',
     productImage: '/images/placeholder.png',
   },
@@ -286,15 +286,15 @@ render(ctx) {
   const { std, fps } = ctx;
   const { intro } = ctx.assets;
 
-  const introDone = ctx.sceneTimeSeconds > intro.duration;
+  const introDone = ctx.timeline.seconds > intro.duration;
   if (introDone) return `<div class="content">...</div>`;
 
-  const clip = std.video.sync({ src: intro.url, at: ctx.sceneTimeSeconds }, fps);
+  const clip = std.video.sync({ src: intro.url, at: ctx.timeline.seconds }, fps);
   return clip.html;
 }
 ```
 
-Options: `src`, `at` (output timeline seconds, default caller passes `sceneTimeSeconds`), `start` (offset into source), `playbackRate`, `objectFit`, `muted`.
+Options: `src`, `at` (output timeline seconds, default caller passes `timeline.seconds`), `start` (offset into source), `playbackRate`, `objectFit`, `muted`.
 
 ---
 

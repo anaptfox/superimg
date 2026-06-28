@@ -15,8 +15,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SuperImg Editor",
-  description: "Programmatic video editor",
+  title: "SuperImg",
+  description: "Programmatic media generation — TypeScript templates to MP4, GIF, images, and SVG",
 };
 
 export default function RootLayout({

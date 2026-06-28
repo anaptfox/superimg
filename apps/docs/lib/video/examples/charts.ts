@@ -1,189 +1,151 @@
-export const STAR_HISTORY = `// Star History Chart
+export const STAR_HISTORY = `// Star History Chart — viz.charts.lineTime
 // Sample data for facebook/react
 
 const STARS = [
-  { date: "2013-05", count: 100 },
-  { date: "2015-01", count: 15000 },
-  { date: "2017-01", count: 60000 },
-  { date: "2020-01", count: 140000 },
-  { date: "2024-01", count: 220000 },
+  { date: "2013-05-01", count: 100 },
+  { date: "2015-01-01", count: 15000 },
+  { date: "2017-01-01", count: 60000 },
+  { date: "2020-01-01", count: 140000 },
+  { date: "2024-01-01", count: 220000 },
 ];
 const REPO = "facebook/react";
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
+  medium: "svg",
+  config: { width: 1920, height: 1080, fps: 30, duration: 5 },
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+    const { std, width, height, timeline } = ctx;
+    const viz = std.viz;
+    const progress = Math.min(1, timeline.progress * 2);
+    const dates = STARS.map((s) => new Date(s.date).getTime());
+    const maxStars = Math.max(...STARS.map((s) => s.count));
 
-  const padding = 60;
-  const chartWidth = width - padding * 2;
-  const chartHeight = height - padding * 2 - 60;
-  const maxStars = Math.max(...STARS.map(s => s.count));
+    const coords = viz.createCoords({
+      width,
+      height,
+      xRange: [Math.min(...dates), Math.max(...dates)],
+      yRange: [0, maxStars],
+      padding: { top: 100, bottom: 60, left: 80, right: 80 },
+    });
 
-  // Animate the line drawing
-  const animatedPoints = STARS.map((star, i) => {
-    const x = padding + (i / (STARS.length - 1)) * chartWidth;
-    const targetY = padding + 60 + chartHeight - (star.count / maxStars) * chartHeight;
-    const y = padding + 60 + chartHeight - ((star.count / maxStars) * chartHeight * Math.min(1, sceneProgress * 2));
-    return { x, y, date: star.date, count: star.count };
-  });
+    const chartEl = viz.charts.lineTime(
+      coords,
+      STARS.map((s) => ({ date: s.date, value: s.count })),
+      { animate: "draw", progress, colors: ["#f0c000"], fill: true },
+    );
 
-  const pathD = animatedPoints.map((p, i) =>
-    \`\${i === 0 ? 'M' : 'L'} \${p.x} \${p.y}\`
-  ).join(' ');
+    const currentStars = Math.floor(STARS[STARS.length - 1].count * progress);
 
-  const currentStars = Math.floor(STARS[STARS.length - 1].count * Math.min(1, sceneProgress * 2));
-
-  return \`
-    <div style="
-      width: \${width}px;
-      height: \${height}px;
-      background: #0d1117;
-      font-family: system-ui, sans-serif;
-      position: relative;
-    ">
-      <div style="
-        padding: 20px \${padding}px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      ">
-        <span style="font-size: 24px;">⭐</span>
-        <span style="color: white; font-size: 20px; font-weight: 600;">\${REPO}</span>
-        <span style="color: #f0c000; font-size: 20px; font-weight: bold; margin-left: auto;">
-          \${currentStars.toLocaleString()} stars
-        </span>
-      </div>
-      <svg width="\${width}" height="\${chartHeight + 40}" style="position: absolute; top: 60px;">
-        <path d="\${pathD}" fill="none" stroke="#f0c000" stroke-width="3"/>
-        \${animatedPoints.map(p => \`
-          <circle cx="\${p.x}" cy="\${p.y}" r="6" fill="#f0c000"/>
-        \`).join('')}
-      </svg>
-    </div>
-  \`;
+    return \`<svg xmlns="http://www.w3.org/2000/svg" width="\${width}" height="\${height}" viewBox="0 0 \${width} \${height}">
+  <rect width="\${width}" height="\${height}" fill="#0d1117"/>
+  <text x="80" y="56" font-family="system-ui,sans-serif" font-size="24">⭐</text>
+  <text x="120" y="56" font-family="system-ui,sans-serif" font-size="22" font-weight="600" fill="#ffffff">\${REPO}</text>
+  <text x="\${width - 80}" y="56" text-anchor="end" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#f0c000">\${currentStars.toLocaleString()} stars</text>
+  \${chartEl}
+</svg>\`;
   },
 });`;
 
-export const NPM_STATS = `// NPM Downloads
+export const NPM_STATS = `// NPM Downloads — viz.charts.bar
 // Sample data for lodash
 
 const DOWNLOADS = [
-  { week: "Week 1", count: 45000000 },
-  { week: "Week 2", count: 48000000 },
-  { week: "Week 3", count: 52000000 },
-  { week: "Week 4", count: 47000000 },
-  { week: "Week 5", count: 55000000 },
-  { week: "Week 6", count: 58000000 },
+  { label: "W1", value: 45 },
+  { label: "W2", value: 48 },
+  { label: "W3", value: 52 },
+  { label: "W4", value: 47 },
+  { label: "W5", value: 55 },
+  { label: "W6", value: 58 },
 ];
 const PACKAGE = "lodash";
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
+  medium: "svg",
+  config: { width: 1920, height: 1080, fps: 30, duration: 5 },
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+    const { std, width, height, timeline } = ctx;
+    const viz = std.viz;
+    const progress = Math.min(1, timeline.progress * 2);
+    const maxVal = Math.max(...DOWNLOADS.map((d) => d.value));
 
-  const padding = 40;
-  const barWidth = (width - padding * 2) / DOWNLOADS.length - 10;
-  const maxDownloads = Math.max(...DOWNLOADS.map(d => d.count));
-  const chartHeight = height - 140;
+    const coords = viz.createCoords({
+      width,
+      height,
+      xRange: [0, DOWNLOADS.length + 1],
+      yRange: [0, maxVal],
+      padding: { top: 120, bottom: 80, left: 80, right: 80 },
+    });
 
-  const totalDownloads = Math.floor(
-    DOWNLOADS.reduce((sum, d) => sum + d.count, 0) * Math.min(1, sceneProgress * 1.5)
-  );
+    const barsEl = viz.charts.bar(coords, DOWNLOADS, {
+      animate: "grow",
+      progress,
+      colors: ["#cc3534"],
+      showLabels: true,
+      barRadius: 6,
+    });
 
-  return \`
-    <div style="
-      width: \${width}px;
-      height: \${height}px;
-      background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-      font-family: system-ui, sans-serif;
-      padding: \${padding}px;
-      box-sizing: border-box;
-    ">
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-        <span style="font-size: 28px;">📦</span>
-        <span style="color: white; font-size: 24px; font-weight: 600;">\${PACKAGE}</span>
-      </div>
-      <div style="color: #cc3534; font-size: 36px; font-weight: bold; margin-bottom: 30px;">
-        \${(totalDownloads / 1000000).toFixed(1)}M weekly downloads
-      </div>
-      <div style="display: flex; align-items: flex-end; gap: 10px; height: \${chartHeight}px;">
-        \${DOWNLOADS.map((d, i) => {
-          const barHeight = (d.count / maxDownloads) * chartHeight * Math.min(1, sceneProgress * 2 - i * 0.1);
-          return \`
-            <div style="
-              width: \${barWidth}px;
-              height: \${Math.max(0, barHeight)}px;
-              background: linear-gradient(180deg, #cc3534 0%, #e74c3c 100%);
-              border-radius: 4px 4px 0 0;
-            "></div>
-          \`;
-        }).join('')}
-      </div>
-    </div>
-  \`;
+    const totalM = (DOWNLOADS.reduce((s, d) => s + d.value, 0) * progress / 10).toFixed(1);
+
+    return \`<svg xmlns="http://www.w3.org/2000/svg" width="\${width}" height="\${height}" viewBox="0 0 \${width} \${height}">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+  </defs>
+  <rect width="\${width}" height="\${height}" fill="url(#bg)"/>
+  <text x="80" y="72" font-family="system-ui,sans-serif" font-size="28">📦</text>
+  <text x="130" y="72" font-family="system-ui,sans-serif" font-size="26" font-weight="600" fill="#ffffff">\${PACKAGE}</text>
+  <text x="80" y="110" font-family="system-ui,sans-serif" font-size="34" font-weight="700" fill="#cc3534">\${totalM}M weekly downloads</text>
+  \${barsEl}
+</svg>\`;
   },
 });`;
 
-export const BENCHMARK = `// Benchmark Bars
+export const BENCHMARK = `// Benchmark Bars — viz.charts.barHorizontal
 // Performance comparison chart
 
 const BENCHMARKS = [
-  { name: "Our Tool", value: 150, color: "#10b981" },
-  { name: "Competitor A", value: 89, color: "#6366f1" },
-  { name: "Competitor B", value: 67, color: "#8b5cf6" },
-  { name: "Legacy", value: 23, color: "#64748b" },
+  { label: "Our Tool", value: 150 },
+  { label: "Competitor A", value: 89 },
+  { label: "Competitor B", value: 67 },
+  { label: "Legacy", value: 23 },
 ];
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
+  medium: "svg",
+  config: { width: 1920, height: 1080, fps: 30, duration: 5 },
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+    const { std, width, height, timeline } = ctx;
+    const viz = std.viz;
+    const progress = Math.min(1, timeline.progress * 2);
+    const maxVal = Math.max(...BENCHMARKS.map((b) => b.value));
 
-  const maxValue = Math.max(...BENCHMARKS.map(b => b.value));
-  const barHeight = 50;
-  const gap = 24;
+    const coords = viz.createCoords({
+      width,
+      height,
+      xRange: [0, maxVal],
+      yRange: [0, BENCHMARKS.length],
+      padding: { top: 100, bottom: 60, left: 160, right: 100 },
+    });
 
-  return \`
-    <div style="
-      width: \${width}px;
-      height: \${height}px;
-      background: #0f172a;
-      font-family: system-ui, sans-serif;
-      padding: 40px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    ">
-      <h2 style="color: white; font-size: 28px; margin-bottom: 40px;">
-        Performance Benchmark (ops/sec)
-      </h2>
-      \${BENCHMARKS.map((b, i) => {
-        const animatedWidth = (b.value / maxValue) * (width - 200) * Math.min(1, sceneProgress * 2 - i * 0.15);
-        return \`
-          <div style="margin-bottom: \${gap}px;">
-            <div style="color: #94a3b8; font-size: 16px; margin-bottom: 8px;">
-              \${b.name}
-            </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <div style="
-                width: \${Math.max(0, animatedWidth)}px;
-                height: \${barHeight}px;
-                background: \${b.color};
-                border-radius: 4px;
-                transition: width 0.3s;
-              "></div>
-              <span style="color: white; font-size: 20px; font-weight: bold;">
-                \${Math.floor(b.value * Math.min(1, sceneProgress * 2 - i * 0.15))}
-              </span>
-            </div>
-          </div>
-        \`;
-      }).join('')}
-    </div>
-  \`;
+    const barsEl = viz.charts.barHorizontal(coords, BENCHMARKS, {
+      animate: "grow",
+      progress,
+      colors: ["#10b981", "#6366f1", "#8b5cf6", "#64748b"],
+      showLabels: true,
+      showValueLabels: true,
+      barRadius: 6,
+    });
+
+    return \`<svg xmlns="http://www.w3.org/2000/svg" width="\${width}" height="\${height}" viewBox="0 0 \${width} \${height}">
+  <rect width="\${width}" height="\${height}" fill="#0f172a"/>
+  <text x="80" y="64" font-family="system-ui,sans-serif" font-size="28" font-weight="600" fill="#ffffff">Performance Benchmark (ops/sec)</text>
+  \${barsEl}
+</svg>\`;
   },
 });`;
 
@@ -198,10 +160,10 @@ const EVENTS = [
   { label: "Launch", title: "Public", icon: "🚀" },
 ];
 
-import { defineScene } from "superimg";
-export default defineScene({
+import { define } from "superimg";
+export default define({
   render(ctx) {
-  const { width, height, sceneProgress } = ctx;
+  const { width, height, timeline } = ctx;
 
   const padding = 60;
   const lineY = height / 2;
@@ -209,7 +171,7 @@ export default defineScene({
   const spacing = totalWidth / (EVENTS.length - 1);
 
   // Animated line drawing progress
-  const lineProgress = Math.min(1, sceneProgress * 1.5);
+  const lineProgress = Math.min(1, timeline.progress * 1.5);
   const lineWidth = totalWidth * lineProgress;
 
   return \`
@@ -242,7 +204,7 @@ export default defineScene({
       <!-- Events -->
       \${EVENTS.map((event, i) => {
         const x = padding + i * spacing;
-        const eventProgress = Math.max(0, Math.min(1, (sceneProgress * 1.5 - i * 0.15) * 3));
+        const eventProgress = Math.max(0, Math.min(1, (timeline.progress * 1.5 - i * 0.15) * 3));
         const opacity = eventProgress;
         const scale = 0.5 + eventProgress * 0.5;
 

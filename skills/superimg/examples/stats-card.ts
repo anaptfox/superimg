@@ -1,7 +1,7 @@
-// Advanced template demonstrating score + motion, staggered entrance, and responsive sizing
-import { defineScene } from "superimg";
+// Advanced template demonstrating director + motion, staggered entrance, and responsive sizing
+import { define } from "superimg";
 
-export default defineScene({
+export default define({
   sample: {
     label: "Conversion Rate",
     value: 94,
@@ -48,13 +48,13 @@ export default defineScene({
     const cardPadding = r({ portrait: 32, default: 48 });
 
     // Phase timing — 4s scene: enter 1.2s / hold 1.8s / exit 1.0s
-    const t = std.score({ enter: "1.2s", hold: "1.8s", exit: "1.0s" });
+    const t = ctx.director({ enter: "1.2s", hold: "1.8s", exit: "1.0s" });
 
     // Card fades in first, elements stagger behind it
     const cardAnim  = t.motion({ y: 20 });
-    const labelAnim = t.motion({ at: 0.0,  y: 10 });
-    const valueAnim = t.motion({ at: 0.15, y: 15, scale: 0.8, easing: "easeOutBack" });
-    const barAnim   = t.motion({ at: 0.3,  y: 10 });
+    const labelAnim = t.motion({ at: "0s",  y: 10 });
+    const valueAnim = t.motion({ at: "15%", y: 15, scale: 0.8, easing: "easeOutBack" });
+    const barAnim   = t.motion({ at: "30%",  y: 10 });
 
     // Animated counter — phase-scoped tween that runs during the hold phase
     const displayValue = Math.floor(t.tween(0, value, { during: "hold", easing: "easeOutCubic" }));

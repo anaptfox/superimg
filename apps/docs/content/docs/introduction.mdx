@@ -1,14 +1,14 @@
 # What is SuperImg?
 
-SuperImg is a TypeScript framework for programmatic video generation. Write a function that returns HTML — SuperImg renders every frame to a high-quality MP4.
+SuperImg is a TypeScript framework for programmatic media generation. Write a function that returns HTML or SVG — SuperImg renders it to MP4, GIF, PNG, or SVG.
 
 <CodeDemo templateId="intro" />
 
-## Why Video-as-Code?
+## Why Media-as-Code?
 
-Generating video manually does not scale. If you need 1,000 personalized videos, or you want an AI agent to produce video output, clicking around a timeline editor is not a viable path.
+Generating video and graphics manually does not scale. If you need 1,000 personalized videos, or you want an AI agent to produce media output, clicking around a timeline editor is not a viable path.
 
-SuperImg treats video as software. Here is what that changes:
+SuperImg treats media as software. Here is what that changes:
 
 **Without SuperImg:** Open a video editor. Drag assets onto a timeline. Export. Repeat for every variation. Ten videos takes a day. One thousand is impossible.
 
@@ -26,11 +26,18 @@ Every template accepts a `data` parameter. Pass a JSON array and get one video p
 
 ### One template, every format
 
-Because templates return HTML and CSS, they are inherently responsive. Write once, render in 16:9 for YouTube, 9:16 for TikTok, or 1:1 for Instagram — just change the canvas dimensions.
+All templates live in `*.media.ts` files. Output kind is determined by config — not the filename. Write once, render in 16:9 for YouTube, 9:16 for TikTok, 1:1 for Instagram, or as a still image or GIF.
+
+| Output | Config signal |
+|--------|---------------|
+| **MP4/WebM** | `fps` + `duration` |
+| **GIF** | `fps` + `duration` + `--format gif` |
+| **Image** | no `fps`/`duration` |
+| **SVG** | `medium: "svg"` |
 
 ### Version control
 
-Video templates live in your repo. Diff them in pull requests. Roll back a bad animation the same way you roll back a bad deploy.
+Templates live in your repo. Diff them in pull requests. Roll back a bad animation the same way you roll back a bad deploy.
 
 ## Core Concepts
 
@@ -40,15 +47,22 @@ Video templates live in your repo. Diff them in pull requests. Roll back a bad a
 f(time, data) = HTML
 ```
 
-A template receives the current `sceneProgress` (from 0 to 1) and your custom `data`. It uses these to calculate positions, colors, and opacities, and returns an HTML string for that specific frame. No timelines. No keyframes. No state.
+A template receives the current `timeline.progress` (from 0 to 1) and your custom `data`. It uses these to calculate positions, colors, and opacities, and returns an HTML string for that specific frame. No timeline editors. No keyframes. No state.
 
 ### The Standard Library
 
-SuperImg ships a built-in `std` library so you are not writing animation math from scratch. Use `std.score()` to orchestrate scene phases, `std.interpolate()` for lower-level value mapping, and `std.color` to work with gradients and palettes.
+SuperImg ships a built-in `std` library so you are not writing animation math from scratch:
+
+- **`ctx.director()`** — phase-based motion (enter/hold/exit), nested clips via `t.clip()`
+- **`std.layers()`** — declarative z-ordered layer stacks
+- **`std.reveal.*`** — full-frame transition effects (wipe, curtain, iris)
+- **`std.video.sync()`** — frame-accurate embedded video in headless render
+- **`std.interpolate()`** — low-level eased value mapping
+- **`std.cue.*`** — transcript and marker sync for voiceovers
 
 ### Use it where it fits
 
-**CLI:** Scaffold projects (`init`), preview templates at 60fps in your browser (`dev`), and render headlessly to MP4 (`render`).
+**CLI:** Scaffold projects (`init`), preview templates at 60fps in your browser (`dev`), and render headlessly to MP4, GIF, or stills (`render`).
 
 **React:** Embed live, interactive templates in your web app using the `<Player>` component. Pass data props to update the video dynamically.
 

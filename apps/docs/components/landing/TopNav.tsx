@@ -12,7 +12,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, Github } from "lucide-react";
+import { GitHubIcon } from "@/components/icons/github";
+import { Menu } from "lucide-react";
 
 export function TopNav() {
   return (
@@ -35,12 +36,18 @@ export function TopNav() {
             >
               Docs
             </Link>
+            <Link
+              href="/blog"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Blog
+            </Link>
           </div>
         </div>
         <div className="flex items-center gap-1">
           <Button asChild variant="ghost" size="icon" aria-label="GitHub">
             <a href="https://github.com/anaptfox/superimg" target="_blank" rel="noopener noreferrer" onClick={() => posthog.capture("github_link_clicked", { location: "topnav" })}>
-              <Github className="h-4 w-4" />
+              <GitHubIcon className="h-4 w-4" />
             </a>
           </Button>
           <ThemeToggle />
@@ -85,6 +92,14 @@ export function TopNav() {
                     className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     Docs
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link
+                    href="/blog"
+                    className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    Blog
                   </Link>
                 </SheetClose>
               </div>

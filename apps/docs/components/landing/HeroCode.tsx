@@ -4,9 +4,9 @@ import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 
-const HERO_CODE = `import { defineScene } from 'superimg'
+const HERO_CODE = `import { define } from 'superimg'
 
-export default defineScene({
+export default define({
   sample: {
     title: 'This video was made with',
     highlight: '100% code',
@@ -19,13 +19,13 @@ export default defineScene({
     height: 360,
   },
   render(ctx) {
-    const { sceneProgress: p, std, width, height, data } = ctx
+    const  { timeline, std, width, height, data } = ctx
 
     // Shifting gradient hue
-    const hue = 260 + p * 40
+    const hue = 260 + timeline.progress * 40
 
     // Text fade in
-    const textProgress = std.math.clamp(p / 0.4, 0, 1)
+    const textProgress = std.math.clamp(timeline.progress / 0.4, 0, 1)
     const opacity = std.interpolate(textProgress, [0, 1], [0, 1], 'easeOutCubic')
 
     return \`

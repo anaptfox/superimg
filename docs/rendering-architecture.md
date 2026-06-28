@@ -342,9 +342,11 @@ Only `superimg` is published. The `@superimg/*` packages shown here are private 
 │  │    globalFrame: 45,                                     │   │
 │  │    globalTimeSeconds: 1.5,                              │   │
 │  │    totalFrames: 150,                                    │   │
-│  │    sceneFrame: 45,         // defaults to global        │   │
-│  │    sceneTimeSeconds: 1.5,  // for single-scene          │   │
-│  │    sceneProgress: 0.3,                                  │   │
+│  │    timeline: {                                          │   │
+│  │      frame: 45, progress: 0.3,                          │   │
+│  │      seconds: 1.5,  // progress × durationSeconds       │   │
+│  │    },                                                   │   │
+│  │    director: (phases?) => Director,                   │   │
 │  │    fps: 30,                                             │   │
 │  │    width: 1920,                                         │   │
 │  │    height: 1080,                                        │   │
@@ -375,8 +377,8 @@ Only `superimg` is published. The `@superimg/*` packages shown here are private 
 │  │  COMPILE                                                 │   │
 │  │  compileTemplate(code) → TemplateModule { render() }     │   │
 │  │                                                          │   │
-│  │  Templates use defineScene({ render, config, data })       │   │
-│  │  Compiler extracts render, config, data from default       │   │
+│  │  Templates use define({ render, config, sample })          │   │
+│  │  Compiler extracts render, config, sample from default     │   │
 │  │                                                          │   │
 │  │  Injects: std (stdlib namespace)                         │   │
 │  └────────────────────────┬────────────────────────────────┘   │
@@ -462,7 +464,7 @@ Only `superimg` is published. The `@superimg/*` packages shown here are private 
 | File | Description |
 |------|-------------|
 | `packages/superimg-core/src/rendering/compiler.ts` | `compileTemplate()` - Template compilation, extracts data |
-| `packages/superimg-core/src/rendering/wasm.ts` | `createRenderContext()` |
+| `packages/superimg-core/src/rendering/create-render-context.ts` | `createRenderContext()` |
 | `packages/superimg-core/src/html/html.ts` | `buildCompositeHtml()` — background + template HTML compositing |
 | `packages/superimg-core/src/shared/constants.ts` | Default width, height, fps, duration |
 

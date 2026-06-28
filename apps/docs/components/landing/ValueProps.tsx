@@ -17,9 +17,9 @@ const VALUE_PROPS = [
       "Save the file. See the video update instantly in your browser. No refresh, no rebuild.",
   },
   {
-    title: "YouTube, Reels, TikTok — same code",
+    title: "YouTube, Reels, OG cards — same code",
     description:
-      "One template renders to any canvas size. Change dimensions, not your code.",
+      "One template renders to any canvas size or format. Change dimensions, not your code.",
   },
 ];
 

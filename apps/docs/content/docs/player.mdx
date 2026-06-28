@@ -15,8 +15,8 @@ For React projects, the `<Player>` component is included in the same package —
 ### Vanilla JavaScript
 
 ```typescript
-import { Player } from 'superimg/player';
-import template from './my-video.video';
+import { Player } from 'superimg/browser';
+import template from './my-video.media';
 
 // Create player
 const player = new Player({ container: '#video' });
@@ -30,7 +30,7 @@ player.play();
 
 ```tsx
 import { Player } from 'superimg/react/player';
-import template from './my-video.video';
+import template from './my-video.media';
 
 function App() {
   return (
@@ -87,7 +87,7 @@ player.setData({ title: "Hello" });
 // Update data later
 player.setData({ title: "Updated Title" });
 
-// Data is merged with template defaults
+// Data is merged with template sample defaults
 // Changes trigger immediate re-render
 ```
 
@@ -236,11 +236,14 @@ const player = new Player({
 ```tsx
 <Player
   template={template}
-  data={{ title: "Dynamic" }}    // Data passed to template
+  data={{ title: "Dynamic" }}
   format="horizontal"
+  duration={5}                   // Override scene duration (seconds)
+  fps={30}
   playbackMode="loop"
-  autoplay                       // Start playing on load
-  showControls={false}
+  autoPlay                       // Start playing on load
+  controls="full"                // false | "minimal" | true | "full"
+  onStore={(store) => {}}         // Runtime store for external VideoControls
   onPlay={() => {}}
   onPause={() => {}}
   onEnded={() => {}}
@@ -248,6 +251,76 @@ const player = new Player({
   style={{ width: '100%' }}
 />
 ```
+
+### Built-in controls
+
+The `controls` prop selects how much UI the Player renders:
+
+| Value | UI |
+|-------|-----|
+| `false` | Canvas only |
+| `"minimal"` | Play / pause |
+| `true` | Play + timeline + time |
+| `"full"` | Play + timeline + time + format + export |
+
+Use `controls="full"` for landing-page demos. For editor layouts that need a custom toolbar (duration picker, loop toggle, data panel), use `usePlayerSession` with external `VideoControls` instead.
+
+### Live code editing
+
+Pass `code` for WASM compile-on-change, or `bundled` for a pre-built single-file module (multi-file examples in the docs playground):
+
+```tsx
+<Player
+  code={source}
+  bundled={prebuilt}
+  wasmCompile={false}
+  assetResolver={(file) => `/assets/${file}`}
+/>
+```
+
+`data`, `assets`, `format`, `duration`, and `fps` hot-update without remounting the player.
+
+### usePlayerSession
+
+Orchestration hook for editor-grade layouts — exposes playback state, format, and export without rendering built-in controls:
+
+```tsx
+import { Player, VideoControls, usePlayerSession, usePlayerShortcuts } from 'superimg/react';
+
+const session = usePlayerSession({ template, data: formData, format: 'horizontal' });
+
+usePlayerShortcuts(session.playerRef, { onToggleLoop: () => setLooping((v) => !v) });
+
+<Player
+  ref={session.playerRef}
+  template={template}
+  data={formData}
+  format={session.format}
+  onStore={session.onStore}
+  autoPlay
+/>
+
+{session.store && (
+  <VideoControls
+    store={session.store}
+    showTimeline
+    showTime
+    showFormat
+    showExport
+    onExport={session.exportMp4}
+    onDownload={session.download}
+    exporting={session.exporting}
+    exportProgress={session.exportProgress}
+    currentFormat={session.format}
+    onFormatChange={session.setFormat}
+  />
+)}
+```
+
+### Browser limitations
+
+- **Composed templates** (`compose([...])`) load and play in the vanilla `Player`, but the React Player does not export multi-scene compositions in the browser.
+- **Scene navigation** (`ChapterNav`, `seekToScene`) is available on the core player API; the React `<Player>` does not include chapter UI.
 
 ## Cleanup
 
