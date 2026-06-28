@@ -1,4 +1,4 @@
-//! Single entry point for rendering errors across CLI, dev UI, and MCP surfaces.
+//! Single entry point for rendering errors across CLI and dev UI surfaces.
 
 import {
   SuperImgError,
@@ -15,7 +15,7 @@ export interface FormattedError {
   ansi: string;
   /** Self-contained HTML fragment for dev UI overlay */
   html: string;
-  /** Stable JSON shape for MCP / WebSocket transport */
+  /** Stable JSON shape for WebSocket / API transport */
   json: SuperImgErrorJSON;
   /** Plain-text fallback (no colors, no markup) */
   plain: string;
@@ -84,9 +84,9 @@ function renderAnsi(err: SuperImgError): string {
         pc.dim("Frame ") +
           pc.yellow(String(det.frame)) +
           pc.dim(" at ") +
-          pc.yellow(`${det.timeContext.sceneTimeSeconds.toFixed(3)}s`) +
+          pc.yellow(`${det.timeContext.timelineSeconds.toFixed(3)}s`) +
           pc.dim(" (") +
-          pc.yellow(`${(det.timeContext.sceneProgress * 100).toFixed(1)}%`) +
+          pc.yellow(`${(det.timeContext.timelineProgress * 100).toFixed(1)}%`) +
           pc.dim(" scene progress)"),
       );
     }
@@ -176,7 +176,7 @@ function renderHtml(err: SuperImgError): string {
     };
     if (det.frame !== undefined && det.timeContext) {
       parts.push(
-        `<div style="${META_STYLE}">Frame ${det.frame} at ${det.timeContext.sceneTimeSeconds.toFixed(3)}s (${(det.timeContext.sceneProgress * 100).toFixed(1)}% scene progress)</div>`,
+        `<div style="${META_STYLE}">Frame ${det.frame} at ${det.timeContext.timelineSeconds.toFixed(3)}s (${(det.timeContext.timelineProgress * 100).toFixed(1)}% scene progress)</div>`,
       );
     }
     if (det.dataSnapshot !== undefined) {
@@ -255,7 +255,7 @@ function renderPlain(err: SuperImgError): string {
     if (det.frame !== undefined && det.timeContext) {
       lines.push("");
       lines.push(
-        `Frame ${det.frame} at ${det.timeContext.sceneTimeSeconds.toFixed(3)}s (${(det.timeContext.sceneProgress * 100).toFixed(1)}% scene progress)`,
+        `Frame ${det.frame} at ${det.timeContext.timelineSeconds.toFixed(3)}s (${(det.timeContext.timelineProgress * 100).toFixed(1)}% scene progress)`,
       );
     }
   }

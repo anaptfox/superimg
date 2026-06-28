@@ -39,13 +39,16 @@ export function getCodeFrame(
     {
       // @babel/code-frame uses 1-indexed columns when present; we accept 0-indexed
       // (the convention in this module) and convert.
-      start: { line, column: column != null ? column + 1 : undefined },
+      start: {
+        line,
+        ...(column != null ? { column: column + 1 } : {}),
+      } as { line: number; column: number },
     },
     {
       highlightCode: opts.highlightCode ?? false,
       linesAbove: opts.linesAbove ?? 2,
       linesBelow: opts.linesBelow ?? 2,
-      message: opts.message,
+      ...(opts.message !== undefined ? { message: opts.message } : {}),
       forceColor: opts.highlightCode ?? false,
     },
   );

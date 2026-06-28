@@ -1,5 +1,7 @@
 //! Checkpoint type definitions for navigation and markers
 
+import type { JsonObject } from "./json.js";
+
 /**
  * A checkpoint represents a navigable position in the timeline.
  * Can be an explicit marker or runtime-added position.
@@ -14,7 +16,7 @@ export interface Checkpoint {
   /** Display label */
   label?: string;
   /** Arbitrary metadata */
-  metadata?: Record<string, unknown>;
+  metadata?: JsonObject;
   /** Source of this checkpoint */
   source: CheckpointSource;
 }
@@ -39,7 +41,7 @@ export interface Marker {
   /** Display label */
   label?: string;
   /** Arbitrary metadata */
-  metadata?: Record<string, unknown>;
+  metadata?: JsonObject;
 }
 
 /**

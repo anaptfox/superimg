@@ -1,11 +1,14 @@
 //! Asset resolution and type detection
 
 import type {
-  BackgroundValue,
+  AudioClip,
+  AudioTimeline,
   AudioValue,
+  BackgroundValue,
   FitMode,
   AssetDeclaration,
   ResolvedAssetDeclaration,
+  SceneDefinition,
 } from "@superimg/types";
 
 export type AssetType = "solid" | "image" | "video" | "audio";
@@ -18,15 +21,6 @@ export interface ResolvedBackground {
   fit: FitMode;
   loop?: boolean;
   opacity: number;
-}
-
-export interface ResolvedAudio {
-  type: "audio";
-  src: string;
-  loop: boolean;
-  volume: number;
-  fadeIn?: number;
-  fadeOut?: number;
 }
 
 /**
@@ -58,43 +52,85 @@ export function resolveBackground(value: BackgroundValue): ResolvedBackground {
       type,
       src: value,
       fit: "cover",
-      loop: type === "video" ? true : undefined,
+      ...(type === "video" ? { loop: true } : {}),
       opacity: 1,
     };
   }
 
   // Object form
   const type = detectBackgroundType(value.src);
+  const loop = value.loop ?? (type === "video" ? true : undefined);
   return {
     type,
     src: value.src,
     fit: value.fit ?? "cover",
-    loop: value.loop ?? (type === "video" ? true : undefined),
+    ...(loop !== undefined ? { loop } : {}),
     opacity: value.opacity ?? 1,
   };
 }
 
+export {
+  normalizeAudioInput,
+  resolveAudioTimeline,
+  ensureClipIds,
+  inferAudioRole,
+  sceneBoundariesFromResolved,
+
+  type SceneBoundary,
+  type ResolveAudioContext,
+} from "./audio-resolve.js";
+
+export {
+  mixAudioClips,
+  resampleChannels,
+  interleaveStereo,
+  TARGET_SAMPLE_RATE,
+  TARGET_CHANNELS,
+  type DecodedAudioClip,
+  type MixClipInput,
+} from "./audio-dsp.js";
+
+export { buildTimelineModel } from "./timeline-model.js";
+
+function flattenClips(value: AudioValue | undefined): AudioClip[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if ("clips" in value) return value.clips;
+  return [value];
+}
+
 /**
- * Resolve audio value to ResolvedAudio
+ * Merge compose-level config.audio with per-scene clips.
+ * Scene clips without at/atScene get atScene = scene.id.
  */
-export function resolveAudio(value: AudioValue): ResolvedAudio {
-  if (typeof value === "string") {
-    return {
-      type: "audio",
-      src: value,
-      loop: true,
-      volume: 1,
-    };
+export function collectComposeAudio(
+  scenes: SceneDefinition[],
+  globalAudio?: AudioValue,
+): AudioTimeline | undefined {
+  const clips: AudioClip[] = [...flattenClips(globalAudio)];
+
+  for (const def of scenes) {
+    if (!def.audio) continue;
+    const sceneId = def.id;
+    const sceneClips = Array.isArray(def.audio) ? def.audio : [def.audio];
+    for (const clip of sceneClips) {
+      clips.push({
+        ...clip,
+        ...(clip.at === undefined && clip.atScene === undefined && sceneId
+          ? { atScene: sceneId }
+          : {}),
+      });
+    }
   }
 
-  return {
-    type: "audio",
-    src: value.src,
-    loop: value.loop ?? true,
-    volume: value.volume ?? 1,
-    fadeIn: value.fadeIn,
-    fadeOut: value.fadeOut,
-  };
+  if (clips.length === 0) return undefined;
+
+  const mix =
+    globalAudio && "clips" in globalAudio && globalAudio.mix
+      ? globalAudio.mix
+      : undefined;
+
+  return { clips, ...(mix ? { mix } : {}) };
 }
 
 /**

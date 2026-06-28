@@ -8,16 +8,51 @@ import type {
   VideoEncoder,
   RenderContext,
   TemplateModule,
+  ComposedTemplate,
   TemplateBundle,
+  Rasterizer,
 } from "@superimg/types";
 import type { ResolvedAssetDeclaration } from "../shared/assets.js";
 import { TemplateRuntimeError, RenderError } from "@superimg/types";
 import { enrichError } from "../errors/enrich.js";
 import { resolve, isAbsolute } from "node:path";
 import { compileTemplate } from "./compiler.js";
-import { createRenderContext } from "./wasm.js";
+import { createRenderContext } from "./create-render-context.js";
 import { buildCompositeHtml } from "../html/html.js";
 import { parseDuration } from "../shared/utils.js";
+import { fonts as fontsRegistry } from "./fonts.js";
+import {
+  resolveAudioTimeline,
+  sceneBoundariesFromResolved,
+} from "../shared/assets.js";
+import type { ResolvedAudioTimeline } from "@superimg/types";
+
+function resolveAudioSrcToLocal(src: string, templateDir: string): string {
+  try {
+    const url = new URL(src);
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      const localPath = url.searchParams.get("path");
+      if (localPath) return localPath;
+    }
+    return src;
+  } catch {
+    if (src.startsWith("http") || src.startsWith("data:")) return src;
+    return isAbsolute(src) ? src : resolve(templateDir, src);
+  }
+}
+
+function resolveResolvedAudioPaths(
+  timeline: ResolvedAudioTimeline,
+  templateDir: string,
+): ResolvedAudioTimeline {
+  return {
+    ...timeline,
+    clips: timeline.clips.map((clip) => ({
+      ...clip,
+      src: resolveAudioSrcToLocal(clip.src, templateDir),
+    })),
+  };
+}
 
 /**
  * Truncate large data objects for error messages.
@@ -55,13 +90,13 @@ function safeRender(
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
     const tre = new TemplateRuntimeError({
-      templateName,
+      ...(templateName !== undefined ? { templateName } : {}),
       frame: ctx.globalFrame,
       originalError: err.message,
       timeContext: {
-        sceneFrame: ctx.sceneFrame,
-        sceneTimeSeconds: ctx.sceneTimeSeconds,
-        sceneProgress: ctx.sceneProgress,
+        timelineFrame: ctx.timeline.frame,
+        timelineSeconds: ctx.timeline.seconds,
+        timelineProgress: ctx.timeline.progress,
         globalTimeSeconds: ctx.globalTimeSeconds,
       },
       dataSnapshot: truncateForError(ctx.data),
@@ -99,7 +134,7 @@ export interface ExecuteRenderPlanCallbacks {
  * Create a render plan from a render job.
  * Pure computation: compile template, collect fonts, calculate total frames.
  */
-export function createRenderPlan(
+export async function createRenderPlan(
   job: RenderJob,
   options?: {
     assetBaseUrl?: string;
@@ -108,7 +143,7 @@ export function createRenderPlan(
     startFrame?: number;
     endFrame?: number;
   }
-): RenderPlan {
+): Promise<RenderPlan> {
   const {
     templateBundle,
     duration,
@@ -151,8 +186,12 @@ export function createRenderPlan(
   const templateTailwind = template.config?.tailwind;
   const tailwind = templateTailwind ?? globalTailwind;
 
-  // Resolve Duration → number (seconds)
-  const durationSeconds = parseDuration(duration, "duration", fps);
+  // Prefer compiled template duration (compose/composeSvg compute scene sums at runtime).
+  const durationSeconds = parseDuration(
+    template.config?.duration ?? duration,
+    "duration",
+    fps,
+  );
   const totalFrames = Math.ceil(durationSeconds * fps);
 
   const resolvedAssets = options?.resolvedAssets ?? [];
@@ -167,6 +206,29 @@ export function createRenderPlan(
     finalBackground = template.config?.background;
   }
 
+  // medium + animated live on the module (set by define()), not in config.
+  const medium = template.medium ?? "html";
+  const animated = template.animated ?? (!!template.config?.fps && template.config?.duration != null);
+  let fontBuffers: Uint8Array[] | undefined = undefined;
+  if (medium === "svg" && fonts.length > 0) {
+    const resolved = await fontsRegistry.resolve(fonts);
+    fontBuffers = resolved.map((f) => f.data);
+  }
+
+  const audioValue = audio ?? template.config?.audio;
+  const scenes =
+    "type" in template && (template as ComposedTemplate).type === "composed"
+      ? sceneBoundariesFromResolved((template as ComposedTemplate).scenes, fps)
+      : undefined;
+  let resolvedAudio = resolveAudioTimeline(audioValue, {
+    fps,
+    videoDurationSeconds: durationSeconds,
+    ...(scenes ? { scenes } : {}),
+  });
+  if (resolvedAudio && options?.templateDir) {
+    resolvedAudio = resolveResolvedAudioPaths(resolvedAudio, options.templateDir);
+  }
+
   return {
     template,
     bundle: templateBundle,
@@ -175,22 +237,26 @@ export function createRenderPlan(
     height,
     fps,
     totalFrames,
+    medium,
+    animated,
+    ...(fontBuffers !== undefined ? { fontBuffers } : {}),
     fonts,
     inlineCss,
     stylesheets,
-    tailwind,
-    audio,
+    ...(tailwind !== undefined ? { tailwind } : {}),
+    ...(audioValue !== undefined ? { audio: audioValue } : {}),
+    ...(resolvedAudio ? { resolvedAudio } : {}),
     outputName,
-    encoding,
-    data,
-    background: finalBackground,
-    watermark: finalWatermark,
-    assetBaseUrl: options?.assetBaseUrl,
-    templateDir: options?.templateDir,
+    ...(encoding !== undefined ? { encoding } : {}),
+    ...(data !== undefined ? { data } : {}),
+    ...(finalBackground !== undefined ? { background: finalBackground } : {}),
+    ...(finalWatermark !== undefined ? { watermark: finalWatermark } : {}),
+    ...(options?.assetBaseUrl !== undefined ? { assetBaseUrl: options.assetBaseUrl } : {}),
+    ...(options?.templateDir !== undefined ? { templateDir: options.templateDir } : {}),
     resolvedAssets,
     mode: template.config?.mode ?? 'frame',
-    startFrame: options?.startFrame,
-    endFrame: options?.endFrame,
+    ...(options?.startFrame !== undefined ? { startFrame: options.startFrame } : {}),
+    ...(options?.endFrame !== undefined ? { endFrame: options.endFrame } : {}),
   };
 }
 
@@ -231,7 +297,7 @@ function hashString(s: string): number {
  */
 export async function executeRenderPlan<TFrame>(
   plan: RenderPlan,
-  renderer: FrameRenderer<TFrame>,
+  renderer: FrameRenderer<TFrame> | Rasterizer<TFrame>,
   encoder: VideoEncoder<TFrame>,
   callbacks?: ExecuteRenderPlanCallbacks
 ): Promise<Uint8Array> {
@@ -266,7 +332,17 @@ export async function executeRenderPlan<TFrame>(
       }
     : undefined;
 
-  await renderer.init({ width, height, fps, fonts, inlineCss, stylesheets, tailwind, mode });
+  await renderer.init({
+    width,
+    height,
+    fps,
+    fonts,
+    inlineCss,
+    stylesheets,
+    ...(tailwind !== undefined ? { tailwind } : {}),
+    mode,
+    ...(plan.fontBuffers !== undefined ? { fontBuffers: plan.fontBuffers } : {}),
+  });
 
   let assetsMap: Record<string, import("@superimg/types").AssetMeta> = {};
   if (resolvedAssets.length > 0 && renderer.preloadAssets) {
@@ -277,8 +353,9 @@ export async function executeRenderPlan<TFrame>(
     width,
     height,
     fps,
-    encoding,
-    audio: plan.audio,
+    ...(encoding !== undefined ? { encoding } : {}),
+    ...(plan.audio !== undefined ? { audio: plan.audio } : {}),
+    ...(plan.resolvedAudio !== undefined ? { resolvedAudio: plan.resolvedAudio } : {}),
   });
 
   // Depth-1 pipeline: encode of frame N runs concurrently with capture of frame N+1.
@@ -321,14 +398,18 @@ export async function executeRenderPlan<TFrame>(
       const t1 = profile ? performance.now() : 0;
       const html = safeRender(template, ctx, outputName, plan.bundle);
 
-      // buildCompositeHtml — pure HTML manipulation; failures here are
-      // template-output problems (e.g., invalid HTML chunk).
+      // SVG medium: rasterize the markup string directly (no HTML shell).
+      // HTML medium: wrap with background/watermark for Chromium capture.
       let compositeHtml: string;
-      try {
-        compositeHtml = buildCompositeHtml(html, background, watermark, width, height);
-      } catch (e) {
-        const err = e as Error;
-        throw new RenderError({ frame, htmlError: err.message });
+      if (plan.medium === "svg") {
+        compositeHtml = html;
+      } else {
+        try {
+          compositeHtml = buildCompositeHtml(html, background, watermark, width, height);
+        } catch (e) {
+          const err = e as Error;
+          throw new RenderError({ frame, htmlError: err.message });
+        }
       }
       if (profile) profile.renderMs += performance.now() - t1;
 
@@ -355,9 +436,11 @@ export async function executeRenderPlan<TFrame>(
       } else {
         const t2 = profile ? performance.now() : 0;
         try {
-          capturedFrame = await renderer.captureFrame(compositeHtml, {
-            alpha: encoding?.video?.alpha === "keep",
-          });
+          const captureOpts = { alpha: encoding?.video?.alpha === "keep" };
+          const captureInput = plan.medium === "svg" ? html : compositeHtml;
+          capturedFrame = 'rasterize' in renderer
+            ? await (renderer as Rasterizer<TFrame>).rasterize(captureInput, captureOpts)
+            : await (renderer as FrameRenderer<TFrame>).captureFrame(captureInput, captureOpts);
         } catch (e) {
           const err = e as Error;
           throw new RenderError({ frame, browserError: err.message });
@@ -407,12 +490,12 @@ export async function executeRenderPlan<TFrame>(
  */
 export async function executeRenderPlanParallel<TFrame>(
   plan: RenderPlan,
-  renderers: FrameRenderer<TFrame>[],
+  renderers: (FrameRenderer<TFrame> | Rasterizer<TFrame>)[],
   encoder: VideoEncoder<TFrame>,
   callbacks?: ExecuteRenderPlanCallbacks
 ): Promise<Uint8Array> {
   if (renderers.length === 0) throw new Error("executeRenderPlanParallel: renderers array is empty");
-  if (renderers.length === 1) return executeRenderPlan(plan, renderers[0], encoder, callbacks);
+  if (renderers.length === 1) return executeRenderPlan(plan, renderers[0]!, encoder, callbacks);
 
   const {
     template,
@@ -449,14 +532,35 @@ export async function executeRenderPlanParallel<TFrame>(
     : undefined;
 
   // Initialize all renderers and the encoder in parallel.
-  await Promise.all(renderers.map((r) => r.init({ width, height, fonts, inlineCss, stylesheets, tailwind, mode })));
+  await Promise.all(
+    renderers.map((r) =>
+      r.init({
+        width,
+        height,
+        fonts,
+        inlineCss,
+        stylesheets,
+        ...(tailwind !== undefined ? { tailwind } : {}),
+        mode,
+        ...(plan.fontBuffers !== undefined ? { fontBuffers: plan.fontBuffers } : {}),
+      }),
+    ),
+  );
 
   let assetsMap: Record<string, import("@superimg/types").AssetMeta> = {};
-  if (resolvedAssets.length > 0 && renderers[0].preloadAssets) {
-    assetsMap = await renderers[0].preloadAssets(resolvedAssets);
+  const primaryRenderer = renderers[0]!;
+  if (resolvedAssets.length > 0 && primaryRenderer.preloadAssets) {
+    assetsMap = await primaryRenderer.preloadAssets(resolvedAssets);
   }
 
-  await encoder.init({ width, height, fps, encoding, audio: plan.audio });
+  await encoder.init({
+    width,
+    height,
+    fps,
+    ...(encoding !== undefined ? { encoding } : {}),
+    ...(plan.audio !== undefined ? { audio: plan.audio } : {}),
+    ...(plan.resolvedAudio !== undefined ? { resolvedAudio: plan.resolvedAudio } : {}),
+  });
 
   // Pre-allocate result buffer for the rendered frame range.
   const capturedFrames = new Array<TFrame>(totalFrames);
@@ -499,15 +603,16 @@ export async function executeRenderPlanParallel<TFrame>(
           } else {
             const t2 = profile ? performance.now() : 0;
             try {
-              capturedFrames[frame] = await renderer.captureFrame(compositeHtml, {
-                alpha: encoding?.video?.alpha === "keep",
-              });
+              const captureOpts = { alpha: encoding?.video?.alpha === "keep" };
+              capturedFrames[frame] = 'rasterize' in renderer
+                ? await (renderer as Rasterizer<TFrame>).rasterize(compositeHtml, captureOpts)
+                : await (renderer as FrameRenderer<TFrame>).captureFrame(compositeHtml, captureOpts);
             } catch (e) {
               throw new RenderError({ frame, browserError: (e as Error).message });
             }
             if (profile) profile.captureMs += performance.now() - t2;
             prevHtmlHash = htmlHash;
-            prevCapturedFrame = capturedFrames[frame];
+            prevCapturedFrame = capturedFrames[frame] ?? null;
           }
         }
       })
@@ -528,7 +633,7 @@ export async function executeRenderPlanParallel<TFrame>(
       await flushPending();
       const timestamp = frame / fps;
       const t3 = profile ? performance.now() : 0;
-      const encodePromise = encoder.addFrame(capturedFrames[frame], timestamp).then(() => {
+      const encodePromise = encoder.addFrame(capturedFrames[frame]!, timestamp).then(() => {
         if (profile) profile.encodeMs += performance.now() - t3;
       });
       pendingEncode = { frameIdx: frame, promise: encodePromise };

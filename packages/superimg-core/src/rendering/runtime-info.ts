@@ -1,7 +1,7 @@
 import type {
   AnyTemplateModule,
   ComposedTemplate,
-  TemplateKind,
+  Medium,
   TailwindConfig,
   Duration,
 } from "@superimg/types";
@@ -9,12 +9,7 @@ import { isComposedTemplate } from "@superimg/types";
 import { DEFAULT_FPS, DEFAULT_HEIGHT, DEFAULT_WIDTH } from "../shared/constants.js";
 import { parseDuration } from "../shared/utils.js";
 
-// Accept templates of any data shape: callers pass strongly-typed modules
-// (e.g. ImageModule<{ title: string }>) and a narrow TData is not assignable to
-// the Record<string, unknown> default through the module's contravariant render
-// signature. `any` keeps the public entry point permissive without widening the
-// data each template renders with.
-export type RuntimeTemplate = AnyTemplateModule<any> | ComposedTemplate;
+export type RuntimeTemplate = AnyTemplateModule | ComposedTemplate;
 
 export interface ResolveRuntimeTemplateInfoOptions {
   width?: number;
@@ -25,7 +20,7 @@ export interface ResolveRuntimeTemplateInfoOptions {
 }
 
 export interface RuntimeTemplateInfo {
-  kind: TemplateKind;
+  medium: Medium;
   isComposed: boolean;
   isAnimated: boolean;
   width: number;
@@ -40,8 +35,9 @@ export interface RuntimeTemplateInfo {
   tailwind?: boolean | TailwindConfig;
 }
 
-function getKind(template: RuntimeTemplate): TemplateKind {
-  return isComposedTemplate(template) ? "video" : template.kind;
+function getMedium(template: RuntimeTemplate): Medium {
+  if (isComposedTemplate(template)) return template.medium;
+  return template.medium;
 }
 
 function getConfig(template: RuntimeTemplate) {
@@ -52,9 +48,10 @@ export function resolveRuntimeTemplateInfo(
   template: RuntimeTemplate,
   options: ResolveRuntimeTemplateInfoOptions = {}
 ): RuntimeTemplateInfo {
-  const kind = getKind(template);
+  const medium = getMedium(template);
   const config = getConfig(template);
   const isComposed = isComposedTemplate(template);
+  const animated = isComposed ? true : template.animated;
 
   const width = options.width ?? config.width ?? DEFAULT_WIDTH;
   const height = options.height ?? config.height ?? DEFAULT_HEIGHT;
@@ -69,13 +66,12 @@ export function resolveRuntimeTemplateInfo(
       ? parseDuration(options.duration, "duration", fps)
       : template.duration;
     totalFrames = Math.ceil(duration * fps);
-  } else if (kind === "image") {
+  } else if (!animated) {
+    // Static template (one frame). SVG may declare a duration for CSS animation;
+    // HTML stills are fps 1 / duration 1.
     fps = 1;
-    duration = 1;
-    totalFrames = 1;
-  } else if (kind === "svg") {
-    fps = 1;
-    duration = "duration" in config && typeof config.duration === "number" ? config.duration : 1;
+    duration =
+      medium === "svg" && typeof config.duration === "number" ? config.duration : 1;
     totalFrames = 1;
   } else {
     const configuredDuration =
@@ -86,9 +82,9 @@ export function resolveRuntimeTemplateInfo(
   }
 
   return {
-    kind,
+    medium,
     isComposed,
-    isAnimated: kind === "video" || kind === "gif",
+    isAnimated: animated,
     width,
     height,
     fps,
@@ -101,6 +97,8 @@ export function resolveRuntimeTemplateInfo(
     fonts: config.fonts ?? [],
     inlineCss: "inlineCss" in config ? config.inlineCss ?? [] : [],
     stylesheets: "stylesheets" in config ? config.stylesheets ?? [] : [],
-    tailwind: "tailwind" in config ? config.tailwind : undefined,
+    ...("tailwind" in config && config.tailwind !== undefined
+      ? { tailwind: config.tailwind }
+      : {}),
   };
 }

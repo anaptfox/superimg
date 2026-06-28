@@ -1,8 +1,9 @@
 //! Scene helper for compose() - wraps a template with scene options
 
 import type {
+  AnimatedTemplateModule,
+  AudioClip,
   Duration,
-  TemplateModule,
   SceneDefinition,
   Transition,
 } from "@superimg/types";
@@ -12,6 +13,7 @@ export interface SceneOptions<TData = Record<string, unknown>> {
   id?: string;
   label?: string;
   data?: Partial<TData>;
+  audio?: AudioClip | AudioClip[];
   enter?: Transition;
   exit?: Transition;
 }
@@ -28,7 +30,7 @@ export interface SceneOptions<TData = Record<string, unknown>> {
  * ```
  */
 export function scene<TData extends Record<string, unknown>>(
-  template: TemplateModule<TData>,
+  template: AnimatedTemplateModule<TData>,
   options?: SceneOptions<TData>
 ): SceneDefinition<TData> {
   return { template, ...options };

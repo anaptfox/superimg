@@ -24,7 +24,7 @@ export function parseDuration(
         `Invalid ${fieldName}: "${d}". Frame duration requires fps to be specified.`
       );
     }
-    return parseFloat(frameMatch[1]) / fps;
+    return parseFloat(frameMatch[1]!) / fps;
   }
 
   // Seconds or milliseconds: "5s", "500ms", "2.5s"
@@ -35,7 +35,7 @@ export function parseDuration(
     );
   }
 
-  const value = parseFloat(match[1]);
-  const unit = match[2];
+  const value = parseFloat(match[1]!);
+  const unit = match[2]!;
   return unit === "ms" ? value / 1000 : value;
 }

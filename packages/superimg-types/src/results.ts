@@ -1,4 +1,6 @@
 //! Result types and structured errors
+
+import type { JsonObject } from "./json.js";
 //! Discriminated unions for async operations with actionable error messages
 
 // =============================================================================
@@ -22,7 +24,7 @@ export type LoadResult =
       errorType: "compilation" | "validation" | "network";
       message: string;
       suggestion: string;
-      details?: Record<string, unknown>;
+      details?: JsonObject;
     };
 
 /**
@@ -43,7 +45,7 @@ export type RenderResult =
       failedAtFrame: number;
       message: string;
       suggestion: string;
-      details?: Record<string, unknown>;
+      details?: JsonObject;
     };
 
 /**
@@ -63,7 +65,7 @@ export type RenderBufferResult =
       failedAtFrame: number;
       message: string;
       suggestion: string;
-      details?: Record<string, unknown>;
+      details?: JsonObject;
     };
 
 // =============================================================================
@@ -85,13 +87,13 @@ export interface SourceLocation {
 
 /**
  * Serialized form of a SuperImgError. Stable shape suitable for transport
- * over MCP / WebSocket / process boundaries.
+ * over WebSocket / API / process boundaries.
  */
 export interface SuperImgErrorJSON {
   name: string;
   code: string;
   message: string;
-  details: Record<string, unknown>;
+  details: JsonObject;
   suggestion: string;
   docsUrl?: string;
   /** Mapped source location (when sourcemap available) */
@@ -112,15 +114,20 @@ export class SuperImgError extends Error {
   constructor(
     message: string,
     public readonly code: string,
-    public readonly details: Record<string, unknown>,
+    public readonly details: JsonObject,
     public readonly suggestion: string,
     public readonly docsUrl?: string
   ) {
     super(message);
     this.name = "SuperImgError";
-    // Maintains proper stack trace in V8
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
+    // Maintains proper stack trace in V8 (Node / Chromium)
+    const captureStackTrace = (
+      Error as ErrorConstructor & {
+        captureStackTrace?(target: object, ctor?: Function): void;
+      }
+    ).captureStackTrace;
+    if (captureStackTrace) {
+      captureStackTrace(this, this.constructor);
     }
   }
 
@@ -132,9 +139,9 @@ export class SuperImgError extends Error {
       message: this.message,
       details: this.details,
       suggestion: this.suggestion,
-      docsUrl: this.docsUrl,
-      location: this.location,
-      codeFrame: this.codeFrame,
+      ...(this.docsUrl !== undefined ? { docsUrl: this.docsUrl } : {}),
+      ...(this.location !== undefined ? { location: this.location } : {}),
+      ...(this.codeFrame !== undefined ? { codeFrame: this.codeFrame } : {}),
     };
   }
 }
@@ -166,7 +173,7 @@ export class TemplateCompilationError extends SuperImgError {
       this.location = {
         file: details.file,
         line: details.line,
-        column: details.column,
+        ...(details.column !== undefined ? { column: details.column } : {}),
       };
     }
   }
@@ -176,9 +183,9 @@ export class TemplateCompilationError extends SuperImgError {
  * Timeline context at the point of failure (for debugging)
  */
 export interface TimeContext {
-  sceneFrame: number;
-  sceneTimeSeconds: number;
-  sceneProgress: number;
+  timelineFrame: number;
+  timelineSeconds: number;
+  timelineProgress: number;
   globalTimeSeconds: number;
 }
 
@@ -201,7 +208,7 @@ export class TemplateRuntimeError extends SuperImgError {
     suggestion?: string;
   }) {
     const timeInfo = details.timeContext
-      ? ` (${details.timeContext.sceneTimeSeconds.toFixed(3)}s, ${(details.timeContext.sceneProgress * 100).toFixed(1)}% progress)`
+      ? ` (${details.timeContext.timelineSeconds.toFixed(3)}s, ${(details.timeContext.timelineProgress * 100).toFixed(1)}% progress)`
       : "";
     const defaultSuggestion = `The render function threw an error. Check that all data properties exist and values aren't NaN/undefined at this point in the timeline.`;
     super(
@@ -216,7 +223,7 @@ export class TemplateRuntimeError extends SuperImgError {
       this.location = {
         file: details.file,
         line: details.line,
-        column: details.column,
+        ...(details.column !== undefined ? { column: details.column } : {}),
       };
     }
   }
@@ -251,7 +258,7 @@ export class ValidationError extends SuperImgError {
       this.location = {
         file: details.file,
         line: details.line,
-        column: details.column,
+        ...(details.column !== undefined ? { column: details.column } : {}),
       };
     }
   }
@@ -290,7 +297,7 @@ export class RenderError extends SuperImgError {
       this.location = {
         file: details.file,
         line: details.line,
-        column: details.column,
+        ...(details.column !== undefined ? { column: details.column } : {}),
       };
     }
   }

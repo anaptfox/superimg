@@ -7,7 +7,7 @@ export type { TemplateModule, CompileError, CompileResult } from "@superimg/type
 
 /**
  * Evaluates pre-bundled template code into a TemplateModule.
- * Expects IIFE-format code with __template global (output of esbuild bundling).
+ * Expects IIFE-format code with __template global (output of rolldown bundling).
  *
  * Returns a CompileResult — `error` is a SuperImgError subclass (TemplateCompilationError)
  * when compilation fails. Engine layer enriches the error with sourcemap-mapped
@@ -26,9 +26,9 @@ export function compileTemplate(bundledCode: string): CompileResult {
     };
   }
 
-  let exports: any;
+  let exports: { default?: TemplateModule };
   try {
-    exports = factory();
+    exports = factory() as { default?: TemplateModule };
   } catch (e) {
     const err = e as Error;
     const tce = new TemplateCompilationError({
@@ -42,8 +42,8 @@ export function compileTemplate(bundledCode: string): CompileResult {
   if (!def || typeof def.render !== "function") {
     return {
       error: new TemplateCompilationError({
-        syntaxError: "Template must use defineScene({ render(ctx) { ... } })",
-        suggestion: "Add `export default defineScene({ render(ctx) { return '<div/>' } })` to your template.",
+        syntaxError: "Template must use define({ render(ctx) { ... } })",
+        suggestion: "Add `export default define({ render(ctx) { return '<div/>' } })` to your template.",
       }),
     };
   }
@@ -52,21 +52,50 @@ export function compileTemplate(bundledCode: string): CompileResult {
   if (def.data && !def.sample) {
     return {
       error: new TemplateCompilationError({
-        syntaxError: "`data` has been renamed to `sample` in defineScene().",
+        syntaxError: "`data` has been renamed to `sample` in define().",
         suggestion:
-          "Rename `data` to `sample`. Before: `defineScene({ sample: { ... } })`. After: `defineScene({ sample: { ... } })`.",
+          "Rename `data` to `sample`. Before: `define({ data: { ... } })`. After: `define({ sample: { ... } })`.",
       }),
     };
   }
 
-  return {
-    template: {
-      kind: def.kind ?? "video",
-      render: def.render,
-      config: def.config,
-      sample: def.sample,
-    },
+  // Derive medium/animated if the runtime identity stamp is missing (e.g. a
+  // hand-built module object). define() normally provides both.
+  const config = def.config;
+  const animated =
+    typeof def.animated === "boolean"
+      ? def.animated
+      : !!config && typeof config.fps === "number" && config.duration != null;
+
+  const template: TemplateModule = {
+    medium: def.medium ?? "html",
+    animated:
+      typeof def.animated === "boolean"
+        ? def.animated
+        : def.type === "composed"
+          ? true
+          : animated,
+    render: def.render,
+    config: def.config,
+    sample: def.sample,
   };
+
+  // Preserve composed-template identity (scene list, totalFrames, helpers).
+  if (def.type === "composed") {
+    Object.assign(template, {
+      type: def.type,
+      scenes: def.scenes,
+      totalFrames: def.totalFrames,
+      duration: def.duration,
+      fps: def.fps,
+      getScene: def.getScene,
+      getSceneById: def.getSceneById,
+      getSceneAtFrame: def.getSceneAtFrame,
+      getCheckpoints: def.getCheckpoints,
+    });
+  }
+
+  return { template };
 }
 
 /**

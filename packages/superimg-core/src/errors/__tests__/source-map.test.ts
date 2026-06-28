@@ -5,6 +5,7 @@ import {
   findUserFrame,
 } from "../source-map.js";
 import { extractInlineSourceMap } from "../../bundler/bundler.js";
+import type { RenderContext } from "@superimg/types";
 
 describe("parseStackTrace", () => {
   it("parses standard V8 frames with fn name and (file:line:col)", () => {
@@ -94,7 +95,7 @@ describe("parseStackTrace", () => {
 
   it("returns empty array when stack is missing", () => {
     const err = new Error("no stack");
-    err.stack = undefined;
+    delete err.stack;
     expect(parseStackTrace(err)).toEqual([]);
   });
 });
@@ -104,9 +105,9 @@ describe("extractInlineSourceMap + mapFrame end-to-end through new Function()", 
     // Use the real bundler so we exercise the whole pipeline.
     const { bundleTemplateCodeWithMap } = await import("../../bundler/bundler.js");
 
-    const userSource = `import { defineScene } from "superimg";
+    const userSource = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   render(ctx) {
     if (ctx.frame === 0) {
       throw new Error("kaboom from line 6");
@@ -130,9 +131,9 @@ export default defineScene({
       tpl.render({
         frame: 0,
         globalFrame: 0,
-        sceneFrame: 0,
-        sceneTimeSeconds: 0,
-        sceneProgress: 0,
+        timelineFrame: 0,
+        timelineSeconds: 0,
+        timelineProgress: 0,
         globalTimeSeconds: 0,
         fps: 30,
         totalFrames: 1,
@@ -141,7 +142,7 @@ export default defineScene({
         sample: {},
         outputName: "test",
         assets: {},
-      } as any);
+      } as RenderContext);
     } catch (e) {
       caught = e as Error;
     }
@@ -157,11 +158,11 @@ export default defineScene({
     expect(mapped).toBeDefined();
     // Mapping should point at the test.video.ts source (or the entry source name).
     expect(mapped!.file).toMatch(/test\.video\.ts$/);
-    // sourcesContent should be embedded by esbuild.
+    // sourcesContent should be embedded by the bundler.
     expect(mapped!.source).toBeTruthy();
     expect(mapped!.source).toContain("kaboom from line 6");
     // Mapped line should land somewhere inside the render() function body.
-    // esbuild's mapping granularity isn't statement-precise, but the line
+    // Bundler mapping granularity isn't statement-precise, but the line
     // must be within the body (lines 4-8 in our source).
     expect(mapped!.line).toBeGreaterThanOrEqual(4);
     expect(mapped!.line).toBeLessThanOrEqual(8);
@@ -202,7 +203,7 @@ describe("extractInlineSourceMap", () => {
   it("extracts a real map from a bundle", async () => {
     const { bundleTemplateCodeWithMap } = await import("../../bundler/bundler.js");
     const bundled = await bundleTemplateCodeWithMap(
-      `import { defineScene } from "superimg";\nexport default defineScene({ render: () => "x" });`,
+      `import { define } from "superimg";\nexport default define({ render: () => "x" });`,
       { sourcefile: "x.video.ts" },
     );
     const map = bundled.sourceMap;

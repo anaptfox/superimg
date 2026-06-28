@@ -5,12 +5,14 @@ import { makeTestContext } from "./__test-utils__/index.js";
 describe("compose", () => {
   it("scene transitions at exact frame boundary", () => {
     const scene1 = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 1 },
       render: () => "scene1",
     };
     const scene2 = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 1 },
       render: () => "scene2",
     };
@@ -31,12 +33,13 @@ describe("compose", () => {
     expect(composed.render(ctx30)).toBe("scene2");
   });
 
-  it("std.score() uses scene-local progress inside composed render", () => {
+  it("ctx.director() uses scene-local progress inside composed render", () => {
     const scene = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 2 },
-      render: (ctx: { std: { score: () => { progress: number } } }) =>
-        String(ctx.std.score().progress),
+      render: (ctx: { director: () => { progress: number } }) =>
+        String(ctx.director().progress),
     };
     const composed = compose([scene, scene]);
     const fps = 30;
@@ -49,11 +52,12 @@ describe("compose", () => {
     expect(parseFloat(composed.render(ctxScene2Start))).toBe(0);
   });
 
-  it("sceneProgress is 0 at scene start, ~1 at scene end", () => {
+  it("timeline.progress is 0 at scene start, ~1 at scene end", () => {
     const scene = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 1 },
-      render: (ctx: { sceneProgress: number }) => String(ctx.sceneProgress),
+      render: (ctx: { timeline: { progress: number } }) => String(ctx.timeline.progress),
     };
     const composed = compose([scene]);
 
@@ -74,7 +78,8 @@ describe("compose", () => {
 
   it("data merges with correct precedence: data < scene data < CLI", () => {
     const scene = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       sample: { a: 1, b: 1, c: 1 },
       config: { duration: 1 },
       render: (ctx: { data: Record<string, unknown> }) =>
@@ -89,12 +94,14 @@ describe("compose", () => {
   it("warns on dimension mismatch", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const scene1 = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { width: 1920, duration: 1 },
       render: () => "",
     };
     const scene2 = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { width: 1080, duration: 1 },
       render: () => "",
     };
@@ -110,12 +117,14 @@ describe("compose", () => {
   it("warns on FPS mismatch", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const scene1 = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { fps: 30, duration: 1 },
       render: () => "",
     };
     const scene2 = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { fps: 60, duration: 1 },
       render: () => "",
     };
@@ -134,12 +143,14 @@ describe("compose", () => {
 
   it("getSceneAtFrame returns correct scene", () => {
     const scene1 = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 1 },
       render: () => "a",
     };
     const scene2 = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 1 },
       render: () => "b",
     };
@@ -156,7 +167,8 @@ describe("compose", () => {
 
   it("getCheckpoints returns scene start frames", () => {
     const scene = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 1 },
       render: () => "",
     };
@@ -173,19 +185,19 @@ describe("compose", () => {
 
   it("passes scene metadata into render context", () => {
     const scene = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 1 },
       render: (ctx: {
         sceneIndex: number;
         sceneId: string;
-        sceneFrame: number;
-        sceneProgress: number;
+        timeline: { frame: number; progress: number };
       }) =>
         JSON.stringify({
           sceneIndex: ctx.sceneIndex,
           sceneId: ctx.sceneId,
-          sceneFrame: ctx.sceneFrame,
-          sceneProgress: ctx.sceneProgress,
+          timelineFrame: ctx.timeline.frame,
+          timelineProgress: ctx.timeline.progress,
         }),
     };
     const composed = compose([{ template: scene, id: "hero" }]);
@@ -195,13 +207,14 @@ describe("compose", () => {
 
     expect(parsed.sceneIndex).toBe(0);
     expect(parsed.sceneId).toBe("hero");
-    expect(parsed.sceneFrame).toBe(15);
-    expect(parsed.sceneProgress).toBeCloseTo(15 / 29, 5);
+    expect(parsed.timelineFrame).toBe(15);
+    expect(parsed.timelineProgress).toBeCloseTo(15 / 29, 5);
   });
 
   it("applies exit transition at scene end", () => {
     const scene = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 1 },
       render: () => "<div>content</div>",
     };
@@ -216,12 +229,13 @@ describe("compose", () => {
     const html = composed.render(nearEnd);
     const match = html.match(/opacity:([\d.]+)/);
     expect(match).not.toBeNull();
-    expect(parseFloat(match![1])).toBeLessThan(1);
+    expect(parseFloat(match![1]!)).toBeLessThan(1);
   });
 
   it("parses frame-based scene duration", () => {
     const scene = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { fps: 30 },
       render: () => "",
     };
@@ -232,7 +246,8 @@ describe("compose", () => {
 
   it("applies easing to transitions", () => {
     const scene = {
-      kind: "video" as const,
+      medium: "html" as const,
+      animated: true as const,
       config: { duration: 1 },
       render: () => "<div>content</div>",
     };
@@ -256,7 +271,7 @@ describe("compose", () => {
     expect(html).toContain("opacity:");
     const match = html.match(/opacity:([\d.]+)/);
     expect(match).not.toBeNull();
-    const opacity = parseFloat(match![1]);
+    const opacity = parseFloat(match![1]!);
     // Linear would give ~0.47, easeOutCubic gives ~0.85
     expect(opacity).toBeGreaterThan(0.7);
   });

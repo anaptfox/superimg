@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineGif, defineImage, defineScene, defineSvg } from "@superimg/types";
+import { define } from "@superimg/types";
 import {
   createImageRenderContext,
   createRenderContext,
@@ -10,7 +10,7 @@ import type { AnyTemplateModule } from "@superimg/types";
 
 describe("runtime template info", () => {
   it("resolves still image defaults without temporal frames", () => {
-    const template = defineImage({
+    const template = define({
       sample: { title: "default" },
       config: { width: 1200, height: 630 },
       render: () => "<div />",
@@ -18,7 +18,7 @@ describe("runtime template info", () => {
 
     const info = resolveRuntimeTemplateInfo(template, { data: { title: "override" } });
 
-    expect(info.kind).toBe("image");
+    expect(info.medium).toBe("html");
     expect(info.isAnimated).toBe(false);
     expect(info.width).toBe(1200);
     expect(info.height).toBe(630);
@@ -27,36 +27,38 @@ describe("runtime template info", () => {
     expect(info.data.title).toBe("override");
   });
 
-  it("resolves SVG, GIF, and video timing consistently", () => {
-    const svg = defineSvg({
+  it("resolves static-SVG, animated, and video timing consistently", () => {
+    // Static SVG: declares only duration (for CSS) — not animated.
+    const svg = define({ medium: "svg",
       config: { width: 400, height: 300, duration: 2 },
       render: () => "<svg />",
     });
-    const gif = defineGif({
+    // Animated HTML (formerly "gif") — fps + duration ⇒ N frames.
+    const animatedShort = define({
       config: { width: 320, height: 180, fps: 12, duration: 2 },
       render: () => "<div />",
     });
-    const video = defineScene({
+    const video = define({
       config: { width: 640, height: 360, fps: 24, duration: 2 },
       render: () => "<div />",
     });
 
     expect(resolveRuntimeTemplateInfo(svg)).toMatchObject({
-      kind: "svg",
+      medium: "svg",
       isAnimated: false,
       fps: 1,
       duration: 2,
       totalFrames: 1,
     });
-    expect(resolveRuntimeTemplateInfo(gif)).toMatchObject({
-      kind: "gif",
+    expect(resolveRuntimeTemplateInfo(animatedShort)).toMatchObject({
+      medium: "html",
       isAnimated: true,
       fps: 12,
       duration: 2,
       totalFrames: 24,
     });
     expect(resolveRuntimeTemplateInfo(video)).toMatchObject({
-      kind: "video",
+      medium: "html",
       isAnimated: true,
       fps: 24,
       duration: 2,
@@ -67,7 +69,7 @@ describe("runtime template info", () => {
 
 describe("sample field in resolveRuntimeTemplateInfo", () => {
   it("uses template.sample as default data when no options.data is provided", () => {
-    const template = defineImage({
+    const template = define({
       sample: { title: "from sample" },
       config: { width: 800, height: 600 },
       render: () => "<div />",
@@ -79,7 +81,7 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("options.data fully overrides template.sample", () => {
-    const template = defineImage({
+    const template = define({
       sample: { title: "sample value", extra: "keep" },
       config: { width: 800, height: 600 },
       render: () => "<div />",
@@ -92,7 +94,7 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("merges sample and options.data — sample provides base, options.data overrides", () => {
-    const template = defineScene({
+    const template = define({
       sample: { title: "default title", color: "#000" },
       config: { width: 1920, height: 1080, fps: 30, duration: 2 },
       render: () => "<div />",
@@ -107,7 +109,7 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("produces empty data object when neither sample nor options.data is supplied", () => {
-    const template = defineImage({
+    const template = define({
       config: { width: 400, height: 400 },
       render: () => "<div />",
     });
@@ -118,8 +120,8 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("works correctly for gif templates with sample", () => {
-    const template = defineGif({
-      sample: { text: "animated" } as any,
+    const template = define({
+      sample: { text: "animated" },
       config: { width: 320, height: 180, fps: 10, duration: 1 },
       render: () => "<div />",
     });
@@ -127,12 +129,12 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
     const info = resolveRuntimeTemplateInfo(template);
 
     expect(info.data).toEqual({ text: "animated" });
-    expect(info.kind).toBe("gif");
+    expect(info.isAnimated).toBe(true);
   });
 
   it("works correctly for svg templates with sample", () => {
-    const template = defineSvg({
-      sample: { label: "svg sample" } as any,
+    const template = define({ medium: "svg",
+      sample: { label: "svg sample" },
       config: { width: 400, height: 300 },
       render: () => "<svg />",
     });
@@ -140,13 +142,14 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
     const info = resolveRuntimeTemplateInfo(template);
 
     expect(info.data).toEqual({ label: "svg sample" });
-    expect(info.kind).toBe("svg");
+    expect(info.medium).toBe("svg");
   });
 
   it("handles a template without a sample field (no own property)", () => {
     // Build a raw module object that truly lacks the sample property
     const template: AnyTemplateModule = {
-      kind: "image",
+      medium: "html",
+      animated: false,
       config: { width: 200, height: 200 },
       render: () => "<div />",
     };

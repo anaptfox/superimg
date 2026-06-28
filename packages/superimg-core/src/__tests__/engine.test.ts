@@ -19,14 +19,14 @@ async function jobFromCode(code: string): Promise<RenderJob> {
 describe("createRenderPlan", () => {
   it("creates plan from valid template", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         config: { fps: 30 },
         render(ctx) { return '<div>Hello</div>'; }
       });
     `;
     const job = await jobFromCode(code);
-    const plan = createRenderPlan(job);
+    const plan = await createRenderPlan(job);
     expect(plan.template).toBeDefined();
     expect(plan.template.render).toBeInstanceOf(Function);
     expect(plan.durationSeconds).toBe(2);
@@ -39,36 +39,36 @@ describe("createRenderPlan", () => {
 
   it("collects fonts from template config", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         config: { fonts: ['Roboto:wght@400'] },
         render(ctx) { return '<div></div>'; }
       });
     `;
     const job = await jobFromCode(code);
-    const plan = createRenderPlan(job);
+    const plan = await createRenderPlan(job);
     expect(plan.fonts).toContain("Roboto:wght@400");
   });
 
   it("merges global fonts with template fonts", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         config: { fonts: ['TemplateFont'] },
         render(ctx) { return '<div></div>'; }
       });
     `;
     const job = await jobFromCode(code);
     job.fonts = ["GlobalFont"];
-    const plan = createRenderPlan(job);
+    const plan = await createRenderPlan(job);
     expect(plan.fonts).toContain("GlobalFont");
     expect(plan.fonts).toContain("TemplateFont");
   });
 
   it("passes through resolvedAssets from caller", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         render(ctx) { return '<div></div>'; }
       });
     `;
@@ -77,7 +77,7 @@ describe("createRenderPlan", () => {
       { key: "logo", type: "image" as const, src: "/images/logo.png", sourceDir: "/tmp" },
       { key: "hero", type: "video" as const, src: "/videos/hero.mp4", sourceDir: "/tmp" },
     ];
-    const plan = createRenderPlan(job, { resolvedAssets });
+    const plan = await createRenderPlan(job, { resolvedAssets });
     expect(plan.resolvedAssets).toHaveLength(2);
     expect(plan.resolvedAssets.find((a) => a.key === "logo")).toMatchObject({
       key: "logo",
@@ -93,20 +93,20 @@ describe("createRenderPlan", () => {
 
   it("defaults to empty assets when none provided", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         render(ctx) { return '<div></div>'; }
       });
     `;
     const job = await jobFromCode(code);
-    const plan = createRenderPlan(job);
+    const plan = await createRenderPlan(job);
     expect(plan.resolvedAssets).toEqual([]);
   });
 
   it("collects inlineCss and stylesheets from template config", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         config: {
           inlineCss: ['.foo { color: red; }'],
           stylesheets: ['https://example.com/style.css'],
@@ -115,15 +115,15 @@ describe("createRenderPlan", () => {
       });
     `;
     const job = await jobFromCode(code);
-    const plan = createRenderPlan(job);
+    const plan = await createRenderPlan(job);
     expect(plan.inlineCss).toContain(".foo { color: red; }");
     expect(plan.stylesheets).toContain("https://example.com/style.css");
   });
 
   it("merges global inlineCss and stylesheets with template config", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         config: {
           inlineCss: ['.template { }'],
           stylesheets: ['https://template.css'],
@@ -134,27 +134,27 @@ describe("createRenderPlan", () => {
     const job = await jobFromCode(code);
     job.inlineCss = [".global { }"];
     job.stylesheets = ["https://global.css"];
-    const plan = createRenderPlan(job);
+    const plan = await createRenderPlan(job);
     expect(plan.inlineCss).toEqual([".global { }", ".template { }"]);
     expect(plan.stylesheets).toEqual(["https://global.css", "https://template.css"]);
   });
 
   it("throws on invalid template", async () => {
     const job = await jobFromCode("export default { config: {} };");
-    expect(() => createRenderPlan(job)).toThrow(/compilation failed/i);
+    await expect(createRenderPlan(job)).rejects.toThrow(/compilation failed/i);
   });
 });
 
 describe("executeRenderPlan", () => {
   it("calls renderer and encoder in order", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
-        render(ctx) { return '<div>' + ctx.sceneProgress + '</div>'; }
+      import { define } from 'superimg';
+      export default define({
+        render(ctx) { return '<div>' + ctx.timeline.progress + '</div>'; }
       });
     `;
     const job = await jobFromCode(code);
-    const plan = createRenderPlan(job);
+    const plan = await createRenderPlan(job);
 
     const capturedFrames: string[] = [];
     const renderer = {
@@ -185,15 +185,15 @@ describe("executeRenderPlan", () => {
 
   it("calls onProgress callback", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         render(ctx) { return '<div></div>'; }
       });
     `;
     const job = await jobFromCode(code);
     job.duration = 0.1;
     job.fps = 10;
-    const plan = createRenderPlan(job);
+    const plan = await createRenderPlan(job);
 
     const progressUpdates: Array<{ frame: number; totalFrames: number }> = [];
     const renderer = {
@@ -213,15 +213,15 @@ describe("executeRenderPlan", () => {
     });
 
     expect(progressUpdates.length).toBeGreaterThan(0);
-    expect(progressUpdates[0].totalFrames).toBe(1);
+    expect(progressUpdates[0]!.totalFrames).toBe(1);
   });
 
   it("wraps render errors with TemplateRuntimeError containing frame context", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         render(ctx) {
-          if (ctx.sceneProgress > 0.5) {
+          if (ctx.timeline.progress > 0.5) {
             throw new Error('Intentional fail at 50%');
           }
           return '<div>ok</div>';
@@ -231,7 +231,7 @@ describe("executeRenderPlan", () => {
     const job = await jobFromCode(code);
     job.duration = 1;
     job.fps = 10;
-    const plan = createRenderPlan(job);
+    const plan = await createRenderPlan(job);
 
     const renderer = {
       init: async () => {},
@@ -258,10 +258,10 @@ describe("executeRenderPlan", () => {
       expect(runtimeErr.details.frame).toBeGreaterThanOrEqual(5); // Fails at ~50%
       expect(runtimeErr.details.timeContext).toBeDefined();
       const timeCtx = runtimeErr.details.timeContext as {
-        sceneProgress: number;
-        sceneTimeSeconds: number;
+        timelineProgress: number;
+        timelineSeconds: number;
       };
-      expect(timeCtx.sceneProgress).toBeGreaterThan(0.5);
+      expect(timeCtx.timelineProgress).toBeGreaterThan(0.5);
       expect(runtimeErr.message).toContain("Intentional fail at 50%");
       expect(runtimeErr.message).toContain("progress");
     }

@@ -36,8 +36,8 @@ describe("renderWithTransition", () => {
       0.5,
       "enter"
     );
-    const linearOpacity = parseFloat(linear.match(/opacity:([\d.]+)/)![1]);
-    const easedOpacity = parseFloat(eased.match(/opacity:([\d.]+)/)![1]);
+    const linearOpacity = parseFloat(linear.match(/opacity:([\d.]+)/)![1]!);
+    const easedOpacity = parseFloat(eased.match(/opacity:([\d.]+)/)![1]!);
     expect(easedOpacity).toBeGreaterThan(linearOpacity);
   });
 

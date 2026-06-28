@@ -29,6 +29,8 @@ export type RenderEvent =
       outputPath: string;
       format: OutputFormat;
       durationMs: number;
+      /** SHA-256 prefix of the rendered file bytes (cache busting). */
+      contentHash?: string;
     }
   | {
       v: 1;
@@ -39,6 +41,8 @@ export type RenderEvent =
       reason: string;
       /** Opaque key the caller used to decide staleness — surfaced for debugging. */
       fingerprint?: string;
+      /** SHA-256 prefix when the cached output file exists on disk. */
+      contentHash?: string;
     }
   | {
       v: 1;
@@ -48,6 +52,8 @@ export type RenderEvent =
       format?: OutputFormat;
       message: string;
       code?: string;
+      /** Full stack trace when the failure was an Error. */
+      stack?: string;
     }
   | {
       v: 1;

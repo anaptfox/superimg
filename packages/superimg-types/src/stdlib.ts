@@ -9,14 +9,13 @@ import type * as responsive from "@superimg/stdlib/responsive";
 import type * as subtitle from "@superimg/stdlib/subtitle";
 import type * as presets from "@superimg/stdlib/presets";
 import type * as code from "@superimg/stdlib/code";
-import type * as cue from "@superimg/stdlib/cue";
 import type {
-  PhaseConfig,
-  ScoreOf,
   MotionResult,
   MotionValue,
   mergeMotion,
-} from "@superimg/stdlib/score";
+} from "@superimg/stdlib/director";
+import type { carousel, Carousel, CarouselOpts, CarouselItemState } from "@superimg/stdlib/carousel";
+import type { stack, Stack, StackOpts, StackItemState } from "@superimg/stdlib/stack";
 import type * as backgrounds from "@superimg/stdlib/backgrounds";
 import type { montage } from "@superimg/stdlib/montage";
 import type { spring } from "@superimg/stdlib/spring";
@@ -24,23 +23,35 @@ import type { clamp01 } from "@superimg/stdlib/easing";
 import type { stagger } from "@superimg/stdlib/stagger";
 import type { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
 import type { path, createMotionPath } from "@superimg/stdlib/path";
-import type { draw, filter, morph, reveal, shape, textPath } from "@superimg/stdlib/svg";
+import type {
+  draw,
+  filter,
+  morph,
+  shape,
+  textPath,
+  bezier,
+  gradient as svgGradient,
+  measureText,
+  wrapText,
+  fitText,
+} from "@superimg/stdlib/svg";
+
 import type * as layout from "@superimg/stdlib/layout";
 import type { oscillate, loop, pingpong, wiggle } from "@superimg/stdlib/oscillate";
 import type * as viz from "@superimg/stdlib/viz";
 import type { layers, LayerStack } from "@superimg/stdlib/layers";
 import type { revealFx } from "@superimg/stdlib/reveal";
-import type { sync as videoSync, VideoSyncOptions, VideoSyncResult } from "@superimg/stdlib/video";
+import type { sync as videoSync, ClipSyncOptions, ClipSyncResult } from "@superimg/stdlib/video";
 
 /**
  * Standard library available via `ctx.std` in render functions.
+ * Phase choreography lives on `ctx.director()`, not std.
  */
 export interface Stdlib {
   math: Omit<typeof math, "lerp">;
   color: typeof color;
   text: typeof text;
   date: typeof date;
-  /** @core CSS helpers. Presets: fill(), center(), column(), row() */
   css: typeof css & {
     fill: typeof fill;
     center: typeof center;
@@ -51,19 +62,10 @@ export interface Stdlib {
   subtitle: typeof subtitle;
   presets: typeof presets;
   code: typeof code;
-  cue: typeof cue;
-  /**
-   * @core Scene-local phase choreography. Layer the frame with `std.layers()`;
-   * score when things move.
-   *
-   * ```ts
-   * const s = std.score({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
-   * const card = s.motion();
-   * ```
-   */
-  score: <P extends PhaseConfig | undefined = undefined>(phases?: P) => ScoreOf<P>;
+  carousel: typeof carousel;
+  stack: typeof stack;
   video: {
-    sync: (opts: VideoSyncOptions) => VideoSyncResult;
+    sync: (opts: ClipSyncOptions) => ClipSyncResult;
   };
   mergeMotion: typeof mergeMotion;
   layers: typeof layers;
@@ -81,9 +83,13 @@ export interface Stdlib {
     draw: typeof draw;
     filter: typeof filter;
     morph: typeof morph;
-    reveal: typeof reveal;
     shape: typeof shape;
     textPath: typeof textPath;
+    bezier: typeof bezier;
+    gradient: typeof svgGradient;
+    measureText: typeof measureText;
+    wrapText: typeof wrapText;
+    fitText: typeof fitText;
   };
   layout: typeof layout;
   oscillate: typeof oscillate;
@@ -95,11 +101,17 @@ export interface Stdlib {
   scale: number;
 }
 
-export type { LayerStack };
+export type { Carousel, CarouselOpts, CarouselItemState, Stack, StackOpts, StackItemState, LayerStack };
 
 export type ImageStdlib = Omit<
   Stdlib,
-  "score" | "video" | "oscillate" | "loop" | "pingpong" | "wiggle" | "montage" | "backgrounds" | "cue" | "mergeMotion" | "reveal"
+  "video" | "oscillate" | "loop" | "pingpong" | "wiggle" | "montage" | "backgrounds" | "mergeMotion" | "reveal" | "carousel" | "stack"
 >;
 
 export type SvgStdlib = ImageStdlib;
+
+export type SvgAnimatedStdlib = ImageStdlib &
+  Pick<
+    Stdlib,
+    "video" | "oscillate" | "loop" | "pingpong" | "wiggle" | "mergeMotion" | "carousel" | "stack"
+  >;

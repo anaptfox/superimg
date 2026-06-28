@@ -8,8 +8,9 @@ import type {
   AssetMeta,
   ComposedTemplate,
 } from "@superimg/types";
+import { isComposedTemplate } from "@superimg/types";
 import { buildCompositeHtml } from "../html/html.js";
-import { createRenderContext } from "./wasm.js";
+import { createRenderContext } from "./create-render-context.js";
 import { parseDuration } from "../shared/utils.js";
 export interface RenderTemplateFrameOptions {
   template: AnyTemplateModule | ComposedTemplate;
@@ -38,7 +39,7 @@ export interface RenderTemplateFrameResult {
 function isComposed(
   template: AnyTemplateModule | ComposedTemplate,
 ): template is ComposedTemplate {
-  return (template as ComposedTemplate).type === "composed";
+  return isComposedTemplate(template);
 }
 
 export function resolveFrameIndex(
@@ -83,8 +84,8 @@ export function renderTemplateFrame(
   const height = options.height ?? config?.height ?? 1080;
   const totalFrames = Math.max(1, Math.ceil(resolvedDuration * fps));
   const frame = resolveFrameIndex({
-    frame: options.frame,
-    progress: options.progress,
+    ...(options.frame !== undefined ? { frame: options.frame } : {}),
+    ...(options.progress !== undefined ? { progress: options.progress } : {}),
     fps,
     durationSeconds: resolvedDuration,
   });
@@ -133,8 +134,9 @@ export function renderTemplateFrame(
 
   const background = options.background ?? config?.background;
   const watermark = options.watermark ?? config?.watermark;
+  const isSvg = isComposed(template) ? template.medium === "svg" : template.medium === "svg";
   const composite =
-    options.composite !== false
+    options.composite !== false && !isSvg
       ? buildCompositeHtml(html, background, watermark, width, height)
       : html;
 

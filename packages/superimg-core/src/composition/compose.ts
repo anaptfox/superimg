@@ -1,6 +1,7 @@
 //! Scene composition - combine multiple templates into a single video
 
 import type {
+  AnimatedTemplateModule,
   TemplateModule,
   RenderContext,
   TemplateConfig,
@@ -13,18 +14,23 @@ import type {
 } from "@superimg/types";
 import type { Checkpoint } from "@superimg/types";
 import { parseDuration } from "../shared/utils.js";
+import { collectComposeAudio } from "../shared/assets.js";
 import { bindStdTiming } from "../shared/bind-std-timing.js";
+import { createTimeline } from "../shared/create-timeline.js";
 import { stdlib } from "../shared/stdlib.js";
-import { renderWithTransition } from "./transitions.js";
+import { createDirector } from "@superimg/stdlib/director";
+import { createTrack } from "@superimg/stdlib/track";
+import { renderWithTransition, renderSvgWithTransition } from "./transitions.js";
+import type { Medium } from "@superimg/types";
 
 function isSceneDefinition(
-  item: TemplateModule | SceneDefinition
+  item: AnimatedTemplateModule | SceneDefinition
 ): item is SceneDefinition {
   return "template" in item && typeof (item as SceneDefinition).template === "object";
 }
 
 function normalizeToSceneDefinitions(
-  items: (TemplateModule | SceneDefinition)[]
+  items: (AnimatedTemplateModule | SceneDefinition)[]
 ): SceneDefinition[] {
   return items.map((item) =>
     isSceneDefinition(item)
@@ -46,7 +52,7 @@ function resolveTransition(
   return {
     type: t.type as ResolvedTransition["type"],
     duration: durationSeconds,
-    easing: t.easing,
+    ...(t.easing !== undefined ? { easing: t.easing } : {}),
   };
 }
 
@@ -58,21 +64,35 @@ function resolveTransition(
  * @returns ComposedTemplate with scene access and navigation
  */
 export function compose(
-  scenes: (TemplateModule | SceneDefinition)[],
+  scenes: (AnimatedTemplateModule | SceneDefinition)[],
+  options?: { config?: TemplateConfig },
 ): ComposedTemplate {
   if (scenes.length === 0) {
     throw new Error("compose() requires at least one scene");
   }
 
   const definitions = normalizeToSceneDefinitions(scenes);
-  const mergedConfig = mergeConfigs(definitions.map((d) => d.template));
+  const mediums = new Set(definitions.map((d) => d.template.medium ?? "html"));
+  if (mediums.size > 1) {
+    throw new Error(
+      `compose() requires all scenes to share the same medium (got: ${[...mediums].join(", ")})`,
+    );
+  }
+  const medium = (mediums.values().next().value ?? "html") as Medium;
+
+  const mergedConfig = mergeConfigs(
+    definitions.map((d) => d.template),
+    options?.config,
+  );
   const fps = mergedConfig.fps ?? 30;
+  const width = mergedConfig.width ?? 1920;
+  const height = mergedConfig.height ?? 1080;
 
   const resolvedScenes: ResolvedScene[] = [];
   let currentFrame = 0;
 
   for (let i = 0; i < definitions.length; i++) {
-    const def = definitions[i];
+    const def = definitions[i]!;
     const template = def.template;
     const cfg = template.config;
 
@@ -91,7 +111,7 @@ export function compose(
 
     resolvedScenes.push({
       id,
-      label: def.label,
+      ...(def.label !== undefined ? { label: def.label } : {}),
       index: i,
       template,
       startFrame: currentFrame,
@@ -99,8 +119,8 @@ export function compose(
       totalFrames,
       duration: durationSeconds,
       data: { ...template.sample, ...def.data } as Record<string, unknown>,
-      enterTransition,
-      exitTransition,
+      ...(enterTransition !== undefined ? { enterTransition } : {}),
+      ...(exitTransition !== undefined ? { exitTransition } : {}),
     });
     currentFrame += totalFrames;
   }
@@ -115,13 +135,17 @@ export function compose(
     }
   }
 
+  const collectedAudio = collectComposeAudio(definitions, mergedConfig.audio);
+
   const config: TemplateConfig = {
     ...mergedConfig,
     duration: totalDurationSeconds,
+    ...(collectedAudio ? { audio: collectedAudio } : {}),
   };
 
   const result: ComposedTemplate = {
-    kind: "video",
+    medium,
+    animated: true,
     type: "composed",
     scenes: resolvedScenes,
     totalFrames,
@@ -139,77 +163,72 @@ export function compose(
 
     getSceneAtFrame(frame: number): ResolvedScene {
       const clamped = Math.max(0, Math.min(Math.floor(frame), totalFrames - 1));
-      const idx = frameToSceneIndex[clamped];
+      const idx = frameToSceneIndex[clamped] ?? 0;
       return resolvedScenes[idx]!;
     },
 
     render(ctx: RenderContext): string {
       const frame = Math.min(ctx.globalFrame, totalFrames - 1);
       const scene = result.getSceneAtFrame(frame);
-      const sceneFrame = frame - scene.startFrame;
-      const sceneProgress =
-        scene.totalFrames > 1
-          ? Math.min(sceneFrame / (scene.totalFrames - 1), 1)
-          : 1;
-      const sceneTimeSeconds = sceneFrame / ctx.fps;
+      const localFrame = frame - scene.startFrame;
+      const sceneTimeline = createTimeline(localFrame, ctx.fps, scene.totalFrames);
+      const directorCtx = { timeline: sceneTimeline, fps: ctx.fps };
 
       const sceneCtx: RenderContext = {
         ...ctx,
         sceneIndex: scene.index,
         sceneId: scene.id,
-        sceneFrame,
-        sceneTimeSeconds,
-        sceneProgress,
-        sceneTotalFrames: scene.totalFrames,
-        sceneDurationSeconds: scene.duration,
-        // scene.data already has: defaults + def.data
-        // Only merge runtime ctx.data on top
+        timeline: sceneTimeline,
+        director: (phases) => createDirector(directorCtx, phases),
+        track: (source) => createTrack(sceneTimeline, source),
         data: { ...scene.data, ...ctx.data } as RenderContext["data"],
         std: bindStdTiming(
           stdlib,
           {
             fps: ctx.fps,
-            frame: sceneFrame,
+            frame: localFrame,
             totalFrames: scene.totalFrames,
-            progress: sceneProgress,
-            timeSeconds: sceneTimeSeconds,
+            progress: sceneTimeline.progress,
+            timeSeconds: sceneTimeline.seconds,
             durationSeconds: scene.duration,
           },
           ctx.std.scale ?? 1,
         ),
       };
 
-      let html = scene.template.render(sceneCtx);
+      let markup = scene.template.render(sceneCtx);
 
-      // Apply enter transition at scene start
+      const applyTransition = (
+        t: ResolvedTransition,
+        progress: number,
+        phase: "enter" | "exit",
+      ) => {
+        if (medium === "svg") {
+          return renderSvgWithTransition(markup, t, progress, phase, width, height);
+        }
+        return renderWithTransition(markup, t, progress, phase);
+      };
+
       if (scene.enterTransition && scene.enterTransition.duration > 0) {
-        const enterFrames = Math.round(
-          scene.enterTransition.duration * fps
-        );
-        if (sceneFrame < enterFrames) {
-          const progress = sceneFrame / enterFrames;
-          html = renderWithTransition(html, scene.enterTransition, progress);
+        const enterFrames = Math.round(scene.enterTransition.duration * fps);
+        if (localFrame < enterFrames) {
+          markup = applyTransition(scene.enterTransition, localFrame / enterFrames, "enter");
         }
       }
 
-      // Apply exit transition at scene end
       if (scene.exitTransition && scene.exitTransition.duration > 0) {
-        const exitFrames = Math.round(
-          scene.exitTransition.duration * fps
-        );
+        const exitFrames = Math.round(scene.exitTransition.duration * fps);
         const exitStartFrame = scene.totalFrames - exitFrames;
-        if (sceneFrame >= exitStartFrame) {
-          const progress = (sceneFrame - exitStartFrame) / exitFrames;
-          html = renderWithTransition(
-            html,
+        if (localFrame >= exitStartFrame) {
+          markup = applyTransition(
             scene.exitTransition,
-            progress,
-            "exit"
+            (localFrame - exitStartFrame) / exitFrames,
+            "exit",
           );
         }
       }
 
-      return html;
+      return markup;
     },
 
     getCheckpoints(): Checkpoint[] {
@@ -217,7 +236,7 @@ export function compose(
         id: s.id,
         frame: s.startFrame,
         time: s.startFrame / fps,
-        label: s.label,
+        ...(s.label !== undefined ? { label: s.label } : {}),
         metasample: { sceneIndex: s.index },
         source: { type: "scene" as const, sceneId: s.id },
       }));
@@ -227,14 +246,14 @@ export function compose(
   return result;
 }
 
-function mergeConfigs(scenes: TemplateModule[]): TemplateConfig {
-  const fonts = new Set<string>();
-  const stylesheets = new Set<string>();
-  const inlineCss: string[] = [];
+function mergeConfigs(scenes: TemplateModule[], override?: TemplateConfig): TemplateConfig {
+  const fonts = new Set<string>(override?.fonts ?? []);
+  const stylesheets = new Set<string>(override?.stylesheets ?? []);
+  const inlineCss = [...(override?.inlineCss ?? [])];
 
-  let width: number | undefined;
-  let height: number | undefined;
-  let fps: number | undefined;
+  let width = override?.width;
+  let height = override?.height;
+  let fps = override?.fps;
 
   let widthSource: number | undefined;
   let heightSource: number | undefined;
@@ -243,7 +262,7 @@ function mergeConfigs(scenes: TemplateModule[]): TemplateConfig {
   const warnings: string[] = [];
 
   for (let i = 0; i < scenes.length; i++) {
-    const cfg = scenes[i].config;
+    const cfg = scenes[i]!.config;
     if (!cfg) continue;
 
     cfg.fonts?.forEach((f) => fonts.add(f));
@@ -256,7 +275,7 @@ function mergeConfigs(scenes: TemplateModule[]): TemplateConfig {
         widthSource = i;
       } else if (cfg.width !== width) {
         warnings.push(
-          `Width conflict: scene[${widthSource}] defines ${width}px, scene[${i}] defines ${cfg.width}px. Using ${width}px.`
+          `Width conflict: scene[${widthSource}] defines ${width}px, scene[${i}] defines ${cfg.width}px. Using ${width}px.`,
         );
       }
     }
@@ -267,7 +286,7 @@ function mergeConfigs(scenes: TemplateModule[]): TemplateConfig {
         heightSource = i;
       } else if (cfg.height !== height) {
         warnings.push(
-          `Height conflict: scene[${heightSource}] defines ${height}px, scene[${i}] defines ${cfg.height}px. Using ${height}px.`
+          `Height conflict: scene[${heightSource}] defines ${height}px, scene[${i}] defines ${cfg.height}px. Using ${height}px.`,
         );
       }
     }
@@ -278,7 +297,7 @@ function mergeConfigs(scenes: TemplateModule[]): TemplateConfig {
         fpsSource = i;
       } else if (cfg.fps !== fps) {
         warnings.push(
-          `FPS conflict: scene[${fpsSource}] defines ${fps}fps, scene[${i}] defines ${cfg.fps}fps. Using ${fps}fps.`
+          `FPS conflict: scene[${fpsSource}] defines ${fps}fps, scene[${i}] defines ${cfg.fps}fps. Using ${fps}fps.`,
         );
       }
     }
@@ -289,9 +308,10 @@ function mergeConfigs(scenes: TemplateModule[]): TemplateConfig {
   }
 
   return {
-    width,
-    height,
-    fps,
+    ...override,
+    ...(width !== undefined ? { width } : {}),
+    ...(height !== undefined ? { height } : {}),
+    ...(fps !== undefined ? { fps } : {}),
     fonts: [...fonts],
     stylesheets: [...stylesheets],
     inlineCss,

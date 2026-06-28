@@ -1,7 +1,8 @@
 //! Browser-side template bundling with @rolldown/browser
 
 import { rolldown } from "@rolldown/browser";
-import { createSuperimgPlugin } from "./plugin.js";
+import { createSuperimgPlugin } from "./plugin.browser.js";
+import { toTemplateSourceMap } from "./source-map.js";
 import type { TemplateBundle as BundledTemplate } from "@superimg/types";
 
 const templateImportAliases = {
@@ -45,9 +46,7 @@ export async function bundleTemplateBrowser(
   code: string,
 ): Promise<BundledTemplate> {
   if (typeof globalThis.crossOriginIsolated !== "undefined" && !globalThis.crossOriginIsolated) {
-    const error = new Error("In-browser compilation requires a cross-origin-isolated browser.") as any;
-    error.name = "BrowserNotSupportedError";
-    throw error;
+    throw new BrowserNotSupportedError();
   }
 
   // Non-`\0` id: Rolldown omits `\0`-prefixed modules from the sourcemap, which
@@ -87,7 +86,7 @@ export async function bundleTemplateBrowser(
     
     return {
       code: output[0]!.code,
-      sourceMap: map as any,
+      sourceMap: toTemplateSourceMap(map),
       sourceFile: "<browser>",
     };
   } finally {

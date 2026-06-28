@@ -7,6 +7,12 @@
 export { formatError, type FormattedError } from "./format.js";
 export { enrichError, type EnrichContext } from "./enrich.js";
 export {
+  hasRollupMetadata,
+  isNodeSystemError,
+  isModuleNotFoundError,
+  type RollupError,
+} from "./guards.js";
+export {
   parseStackTrace,
   mapFrame,
   findUserFrame,

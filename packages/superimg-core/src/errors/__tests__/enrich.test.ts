@@ -3,15 +3,26 @@ import {
   SuperImgError,
   TemplateRuntimeError,
   TemplateCompilationError,
+  type RenderContext,
 } from "@superimg/types";
 import { enrichError } from "../enrich.js";
+import type { RollupError } from "../guards.js";
+
+function rollupShapedError(
+  message: string,
+  fields: Partial<Pick<RollupError, "loc" | "frame" | "id">>,
+): RollupError {
+  const err = new Error(message) as RollupError;
+  Object.assign(err, fields);
+  return err;
+}
 import { bundleTemplateCodeWithMap } from "../../bundler/bundler.js";
 
 describe("enrichError", () => {
   it("augments an existing SuperImgError with mapped location + codeFrame", async () => {
-    const userSource = `import { defineScene } from "superimg";
+    const userSource = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   render(ctx) {
     if (ctx.frame === 0) {
       throw new Error("kaboom");
@@ -32,9 +43,9 @@ export default defineScene({
       tpl.render({
         frame: 0,
         globalFrame: 0,
-        sceneFrame: 0,
-        sceneTimeSeconds: 0,
-        sceneProgress: 0,
+        timelineFrame: 0,
+        timelineSeconds: 0,
+        timelineProgress: 0,
         globalTimeSeconds: 0,
         fps: 30,
         totalFrames: 1,
@@ -43,7 +54,7 @@ export default defineScene({
         sample: {},
         outputName: "test",
         assets: {},
-      } as any);
+      } as RenderContext);
     } catch (e) {
       caught = e as Error;
     }
@@ -55,7 +66,7 @@ export default defineScene({
       originalError: caught!.message,
     });
     // Carry the original stack so enrichError can map it.
-    tre.stack = caught!.stack;
+    if (caught!.stack) tre.stack = caught!.stack;
 
     const enriched = enrichError(tre, {
       sourceMap: bundled.sourceMap,
@@ -70,24 +81,27 @@ export default defineScene({
   });
 
   it("wraps an untyped rolldown-shaped error as TemplateCompilationError", () => {
-    const fake = new Error('Transform failed: Unexpected ")"');
-    (fake as any).loc = { file: "test.ts", line: 1, column: 1 };
-    const enriched = enrichError(fake);
+    const enriched = enrichError(
+      rollupShapedError('Transform failed: Unexpected ")"', {
+        loc: { file: "test.ts", line: 1, column: 1 },
+      }),
+    );
     expect(enriched).toBeInstanceOf(TemplateCompilationError);
     expect(enriched.message).toContain("Template compilation failed");
   });
 
   it("extracts location + synthetic code frame from rolldown error loc and frame", () => {
     // Mirrors what rolldown throws on Build failure
-    const fake = new Error('Unexpected token "return"');
-    (fake as any).loc = {
-      file: "/abs/path/to/demo.video.ts",
-      line: 7,
-      column: 4,
-    };
-    (fake as any).frame = "> 7 |     return '<div>oops</div>';\n    |    ^";
-
-    const enriched = enrichError(fake);
+    const enriched = enrichError(
+      rollupShapedError('Unexpected token "return"', {
+        loc: {
+          file: "/abs/path/to/demo.video.ts",
+          line: 7,
+          column: 4,
+        },
+        frame: "> 7 |     return '<div>oops</div>';\n    |    ^",
+      }),
+    );
     expect(enriched).toBeInstanceOf(TemplateCompilationError);
     expect(enriched.message).toContain('Unexpected token "return"');
     expect(enriched.location).toEqual({
@@ -108,15 +122,17 @@ export default defineScene({
       Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n"),
     );
 
-    const fake = new Error("Transform failed");
-    (fake as any).loc = {
-      file: "/demo.video.ts",
-      line: 5,
-      column: 0,
-    };
-    (fake as any).frame = "> 5 | line 5\n    | ^"; // single line frame
-
-    const enriched = enrichError(fake, { sourceCache });
+    const enriched = enrichError(
+      rollupShapedError("Transform failed", {
+        loc: {
+          file: "/demo.video.ts",
+          line: 5,
+          column: 0,
+        },
+        frame: "> 5 | line 5\n    | ^",
+      }),
+      { sourceCache },
+    );
     // With cache, we render multi-line context (default linesAbove/linesBelow=2).
     expect(enriched.codeFrame).toContain("line 3");
     expect(enriched.codeFrame).toContain("line 7");
@@ -126,9 +142,9 @@ export default defineScene({
     // Build a real bundle so we have a real sourcemap, then synthesize a stack
     // whose top frame is a `blob:` URL pointing at a known generated position.
     const { bundleTemplateCodeWithMap } = await import("../../bundler/bundler.js");
-    const userSource = `import { defineScene } from "superimg";
+    const userSource = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   render(ctx) {
     if (ctx.frame === 0) {
       throw new Error("from blob");

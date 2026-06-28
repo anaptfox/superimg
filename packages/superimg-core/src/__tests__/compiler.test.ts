@@ -1,16 +1,21 @@
 import { describe, it, expect } from "vitest";
 import { compileTemplate, validateTemplate } from "../rendering/compiler.js";
 import { bundleTemplateCode } from "../bundler/bundler.js";
-import { makeTestContext, compileFromString } from "./__test-utils__/index.js";
+import {
+  makeTestContext,
+  makeTestContextAtProgress,
+  makeTestContextAtSeconds,
+  compileFromString,
+} from "./__test-utils__/index.js";
 
 function wrapDefineTemplate(code: string) {
-  return `import { defineScene } from 'superimg';\n${code}`;
+  return `import { define } from 'superimg';\n${code}`;
 }
 
 describe("compileTemplate (with bundled code)", () => {
   it("compiles a simple template with render function", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) { return '<div>Hello</div>'; }
       });
     `));
@@ -21,7 +26,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("compiles template with config export", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         config: { fps: 30 },
         render(ctx) { return '<div>Test</div>'; }
       });
@@ -32,7 +37,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("compiles template with sample export", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         sample: { title: 'Hello', count: 42 },
         render(ctx) { return '<div>' + ctx.data.title + '</div>'; }
       });
@@ -43,84 +48,83 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("provides stdlib access via ctx.std", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) {
-          const eased = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], 'easeInOutCubic');
+          const eased = ctx.std.interpolate(ctx.timeline.progress, [0, 1], [0, 1], 'easeInOutCubic');
           return \`<div style="opacity: \${eased}">\${eased}</div>\`;
         }
       });
     `));
     expect(result.error).toBeUndefined();
 
-    const testCtx = makeTestContext({ sceneProgress: 0.5 });
+    const testCtx = makeTestContextAtProgress(0.5);
 
     const html = result.template!.render(testCtx);
     expect(html).toContain("0.5");
   });
 
-  it("provides ctx.std.cue helpers", async () => {
+  it("provides ctx.track() transcript sync", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) {
-          const t = ctx.std.cue.transcript([
-            { text: 'hello', start: 0, end: 1 }
-          ], ctx.sceneTimeSeconds);
+          const vo = ctx.track({ words: [{ text: 'hello', start: 0, end: 1 }] });
+          const t = vo.transcript();
           return '<div>' + (t.current()?.text ?? 'none') + ':' + t.count() + '</div>';
         }
       });
     `));
     expect(result.error).toBeUndefined();
 
-    const html = result.template!.render(makeTestContext({ sceneTimeSeconds: 0.5 }));
+    const html = result.template!.render(makeTestContextAtSeconds(0.5));
     expect(html).toBe("<div>hello:1</div>");
   });
 
   it("bundles direct imports from @superimg/stdlib/cue", async () => {
     const result = await compileFromString(`
-      import { defineScene } from 'superimg';
+      import { define } from 'superimg';
       import { transcript } from '@superimg/stdlib/cue';
 
-      export default defineScene({
+      export default define({
         render(ctx) {
           const t = transcript([
             { text: 'hello', start: 0, end: 1 }
-          ], ctx.sceneTimeSeconds);
+          ], ctx.timeline.seconds);
           return '<div>' + (t.current()?.text ?? 'none') + '</div>';
         }
       });
     `);
     expect(result.error).toBeUndefined();
 
-    const html = result.template!.render(makeTestContext({ sceneTimeSeconds: 0.5 }));
+    const html = result.template!.render(makeTestContextAtSeconds(0.5));
     expect(html).toBe("<div>hello</div>");
   });
 
   it("bundles public direct imports from superimg/stdlib/cue", async () => {
     const result = await compileFromString(`
-      import { defineScene } from 'superimg';
+      import { define } from 'superimg';
       import { transcript } from 'superimg/stdlib/cue';
 
-      export default defineScene({
+      export default define({
         render(ctx) {
           const t = transcript([
             { text: 'hello', start: 0, end: 1 }
-          ], ctx.sceneTimeSeconds);
+          ], ctx.timeline.seconds);
           return '<div>' + (t.current()?.text ?? 'none') + '</div>';
         }
       });
     `);
     expect(result.error).toBeUndefined();
 
-    const html = result.template!.render(makeTestContext({ sceneTimeSeconds: 0.5 }));
+    const html = result.template!.render(makeTestContextAtSeconds(0.5));
     expect(html).toBe("<div>hello</div>");
   });
 
   it("bundles public direct imports from superimg/stdlib/text", async () => {
     const result = await compileFromString(`
-      import { defineScene } from 'superimg';
+      import { define } from 'superimg';
       import { formatCompact } from 'superimg/stdlib/text';
 
-      export default defineScene({
+      export default define({
         render() {
           return '<div>' + formatCompact(1200) + '</div>';
         }
@@ -134,26 +138,26 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("provides ctx.std.interpolate for eased interpolation", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) {
-          const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'easeOutCubic');
+          const x = ctx.std.interpolate(ctx.timeline.progress, [0, 1], [0, 100], 'easeOutCubic');
           return \`<div style="left: \${x}px">\${x}</div>\`;
         }
       });
     `));
     expect(result.error).toBeUndefined();
-    const html = result.template!.render(makeTestContext({ sceneProgress: 0.5 }));
+    const html = result.template!.render(makeTestContextAtProgress(0.5));
     expect(html).toContain("left:");
     const match = html.match(/left: (\d+(?:\.\d+)?)px/);
     expect(match).toBeTruthy();
-    const x = parseFloat(match![1]);
+    const x = parseFloat(match![1]!);
     expect(x).toBeGreaterThan(50);
     expect(x).toBeLessThanOrEqual(100);
   });
 
   it("preserves function declarations (hoisting and .name)", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) { return '<div>Test</div>'; }
       });
     `));
@@ -164,7 +168,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("compiles export const correctly", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         config: { width: 1920 },
         render(ctx) { return '<div></div>'; }
       });
@@ -176,7 +180,7 @@ describe("compileTemplate (with bundled code)", () => {
   it("compiles export let correctly", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
       let config = { height: 1080 };
-      export default defineScene({ config, render(ctx) { return '<div></div>'; } });
+      export default define({ config, render(ctx) { return '<div></div>'; } });
     `));
     expect(result.error).toBeUndefined();
     expect(result.template?.config).toEqual({ height: 1080 });
@@ -184,17 +188,17 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("returns error when render function is missing", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({ config: { fps: 30 } });
+      export default define({ config: { fps: 30 } });
     `));
     expect(result.error).toBeDefined();
-    expect(result.error?.message).toContain("defineScene");
+    expect(result.error?.message).toContain("define");
     expect(result.template).toBeUndefined();
   });
 
   it("returns error for bundling syntax errors", async () => {
     const code = `
-      import { defineScene } from 'superimg';
-      export default defineScene({
+      import { define } from 'superimg';
+      export default define({
         render(ctx) {
           return '<div>Unclosed
         }
@@ -206,7 +210,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("returns error for runtime errors", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) { throw new Error('Test error'); }
       });
     `));
@@ -216,7 +220,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("handles complex template with ctx.std usage", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         config: { fps: 30, width: 1920 },
         render(ctx) {
           const color = ctx.std.color.parseColor('#ff0000');
@@ -231,7 +235,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("does not mangle export keyword inside string literals", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) { return '<div>export default is a keyword</div>'; }
       });
     `));
@@ -242,7 +246,7 @@ describe("compileTemplate (with bundled code)", () => {
 
   it("compiles export async function", async () => {
     const result = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         async render(ctx) { return '<div>async</div>'; }
       });
     `));
@@ -271,15 +275,15 @@ describe("compileTemplate (with bundled code)", () => {
     expect(html).toBe("<div>Object default</div>");
   });
 
-  it("compiles export default defineScene({ render, config, sample })", async () => {
+  it("compiles export default define({ render, config, sample })", async () => {
     const code = `
-      import { defineScene } from 'superimg';
+      import { define } from 'superimg';
       function render(ctx) {
         return '<div>' + ctx.data.title + '</div>';
       }
       const config = { fps: 24 };
       const sample = { title: 'Define default' };
-      export default defineScene({ render, config, sample });
+      export default define({ render, config, sample });
     `;
 
     const result = await compileFromString(code);
@@ -299,14 +303,14 @@ describe("compileTemplate (with bundled code)", () => {
       export default { config: { fps: 30 } };
     `);
     expect(result.error).toBeDefined();
-    expect(result.error?.message).toContain("defineScene");
+    expect(result.error?.message).toContain("define");
   });
 });
 
 describe("validateTemplate", () => {
   it("validates a working template", async () => {
     const code = wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) { return '<div>Valid</div>'; }
       });
     `);
@@ -322,7 +326,7 @@ describe("validateTemplate", () => {
 
   it("returns error when render returns non-string", async () => {
     const compileResult = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) { return 123; }
       });
     `));
@@ -337,7 +341,7 @@ describe("validateTemplate", () => {
 
   it("returns error for runtime exceptions", async () => {
     const compileResult = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) { throw new Error('Runtime error'); }
       });
     `));
@@ -352,20 +356,16 @@ describe("validateTemplate", () => {
 
   it("validates template with ctx.std usage", async () => {
     const compileResult = await compileFromString(wrapDefineTemplate(`
-      export default defineScene({
+      export default define({
         render(ctx) {
-          const eased = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], 'easeInOutCubic');
+          const eased = ctx.std.interpolate(ctx.timeline.progress, [0, 1], [0, 1], 'easeInOutCubic');
           return \`<div style="opacity: \${eased}">\${eased}</div>\`;
         }
       });
     `));
     expect(compileResult.template).toBeDefined();
 
-    const testCtx = makeTestContext({
-      globalFrame: 30,
-      sceneFrame: 30,
-      sceneProgress: 0.5,
-    });
+    const testCtx = makeTestContextAtProgress(0.5);
 
     const error = validateTemplate(compileResult.template!, testCtx);
     expect(error).toBeNull();

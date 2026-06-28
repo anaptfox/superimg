@@ -4,6 +4,7 @@ import { rolldown } from "rolldown";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createSuperimgPlugin } from "./plugin.js";
+import { toTemplateSourceMap } from "./source-map.js";
 import type {
   TemplateBundle as BundledTemplate,
   TemplateSourceMap as RawSourceMap,
@@ -86,7 +87,7 @@ export async function bundleTemplateWithMap(
       sourcemap: true,
     });
     const map = output[0]!.map || { version: 3, sources: [], mappings: "" };
-    return { code: output[0]!.code, sourceMap: map as any, sourceFile: resolve(entryPoint) };
+    return { code: output[0]!.code, sourceMap: toTemplateSourceMap(map), sourceFile: resolve(entryPoint) };
   } finally {
     await bundle.close();
   }
@@ -125,7 +126,7 @@ export async function bundleTemplateESMWithMap(
       sourcemap: true,
     });
     const map = output[0]!.map || { version: 3, sources: [], mappings: "" };
-    return { code: output[0]!.code, sourceMap: map as any, sourceFile: resolve(entryPoint) };
+    return { code: output[0]!.code, sourceMap: toTemplateSourceMap(map), sourceFile: resolve(entryPoint) };
   } finally {
     await bundle.close();
   }
@@ -231,7 +232,7 @@ export async function bundleTemplateCodeWithMap(
     const map = output[0]!.map || { version: 3, sources: [], mappings: "" };
     return {
       code: output[0]!.code,
-      sourceMap: map as any,
+      sourceMap: toTemplateSourceMap(map),
       sourceFile: options.sourcefile ?? "<stdin>",
     };
   } finally {

@@ -10,6 +10,7 @@ import {
   type SourceLocation,
 } from "@superimg/types";
 import { getCodeFrame } from "./code-frame.js";
+import { hasRollupMetadata, isNodeSystemError, type RollupError } from "./guards.js";
 import {
   parseStackTrace,
   findUserFrame,
@@ -55,21 +56,6 @@ function isLikelyUserTemplate(file: string): boolean {
 }
 
 /**
- * Rolldown/Rollup error shape — structurally typed so we don't import rolldown here.
- */
-interface RollupLocation {
-  file?: string;
-  line?: number;
-  column?: number;
-}
-
-interface RollupError extends Error {
-  loc?: RollupLocation;
-  frame?: string;
-  id?: string;
-}
-
-/**
  * If `err` looks like a RollupError, extract location + code frame.
  * Returns null for non-rollup errors.
  */
@@ -100,7 +86,7 @@ function locateFromRolldown(
       line: line ?? 1,
       column: column ?? 0,
     },
-    codeFrame,
+    ...(codeFrame !== undefined ? { codeFrame } : {}),
   };
 }
 
@@ -145,7 +131,7 @@ function locateFromError(
       line: mapped.line,
       column: mapped.column,
     },
-    codeFrame,
+    ...(codeFrame !== undefined ? { codeFrame } : {}),
   };
 }
 
@@ -156,11 +142,14 @@ function locateFromError(
 function classifyUntypedError(err: Error): "compilation" | "runtime" | "io" | "generic" {
   const msg = err.message;
   // Rolldown errors usually carry `loc` and `frame`, or contain "Transform failed"
-  if ((err as any).loc || (err as any).frame || /^Build failed/i.test(msg) || /^Transform failed/i.test(msg) || /^Unexpected token/i.test(msg)) {
+  if (hasRollupMetadata(err) || /^Build failed/i.test(msg) || /^Transform failed/i.test(msg) || /^Unexpected token/i.test(msg)) {
     return "compilation";
   }
   // Common Node fs errors
-  if ((err as any).code === "ENOENT" || (err as any).code === "EACCES" || (err as any).code === "EISDIR") {
+  if (
+    isNodeSystemError(err) &&
+    (err.code === "ENOENT" || err.code === "EACCES" || err.code === "EISDIR")
+  ) {
     return "io";
   }
   // Default: assume runtime (most thrown-from-render errors)
@@ -205,15 +194,17 @@ export function enrichError(
     // Prefer rolldown's specific message over the generic ones
     const rollupErr = e as RollupError;
     const specificText = rollupErr.message || e.message;
+    const file = located.location?.file ?? ctx?.sourceFile;
     wrapped = new TemplateCompilationError({
-      file: located.location?.file ?? ctx?.sourceFile,
-      line: located.location?.line,
-      column: located.location?.column,
       syntaxError: specificText,
+      ...(file !== undefined ? { file } : {}),
+      ...(located.location?.line !== undefined ? { line: located.location.line } : {}),
+      ...(located.location?.column !== undefined ? { column: located.location.column } : {}),
     });
   } else if (kind === "io") {
-    const path = (e as any).path ?? "";
-    const op = (e as any).code === "ENOENT" ? "read" : "read";
+    const sysErr = isNodeSystemError(e) ? e : undefined;
+    const path = sysErr?.path ?? "";
+    const op = sysErr?.code === "ENOENT" ? "read" : "read";
     wrapped = new IOError({
       operation: op,
       path,
@@ -222,12 +213,13 @@ export function enrichError(
   } else {
     // Default: wrap as runtime error with frame=0 (callers with frame context
     // should call TemplateRuntimeError directly via `enrichError(new TRE(...))`).
+    const file = located.location?.file ?? ctx?.sourceFile;
     wrapped = new TemplateRuntimeError({
       frame: 0,
       originalError: e.message,
-      file: located.location?.file ?? ctx?.sourceFile,
-      line: located.location?.line,
-      column: located.location?.column,
+      ...(file !== undefined ? { file } : {}),
+      ...(located.location?.line !== undefined ? { line: located.location.line } : {}),
+      ...(located.location?.column !== undefined ? { column: located.location.column } : {}),
     });
   }
 

@@ -55,8 +55,8 @@ export class CheckpointResolver {
           id: `marker:${marker.id}`,
           frame,
           time: frame / this.fps,
-          label: marker.label,
-          metadata: marker.metadata,
+          ...(marker.label !== undefined ? { label: marker.label } : {}),
+          ...(marker.metadata !== undefined ? { metadata: marker.metadata } : {}),
           source: { type: "marker", markerId: marker.id },
         });
       }
@@ -137,8 +137,8 @@ export class CheckpointResolver {
       id,
       frame,
       time: frame / this.fps,
-      label: options?.label,
-      metadata: options?.metadata,
+      ...(options?.label !== undefined ? { label: options.label } : {}),
+      ...(options?.metadata !== undefined ? { metadata: options.metadata } : {}),
       source: { type: "runtime" },
     };
     this.runtimeCheckpoints.push(checkpoint);

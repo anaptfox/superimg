@@ -6,14 +6,14 @@ import {
 } from "../validation/validation.js";
 
 function wrapDefineTemplate(code: string) {
-  return `import { defineScene } from 'superimg';\n${code}`;
+  return `import { define } from 'superimg';\n${code}`;
 }
 
 describe("validateAITemplate", () => {
   it("passes for valid template", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) { return '<div>Hello</div>'; }
         });
       `)
@@ -25,7 +25,7 @@ describe("validateAITemplate", () => {
   it("catches syntax errors", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) { return '<div>Unclosed
         });
       `)
@@ -37,7 +37,7 @@ describe("validateAITemplate", () => {
   it("catches missing render function", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           config: { fps: 30 }
         });
       `)
@@ -49,9 +49,9 @@ describe("validateAITemplate", () => {
   it("catches frame-dependent errors", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
-            if (ctx.sceneProgress > 0.5) throw new Error('Mid-video crash');
+            if (ctx.timeline.progress > 0.5) throw new Error('Mid-video crash');
             return '<div>OK</div>';
           }
         });
@@ -67,7 +67,7 @@ describe("validateAITemplate", () => {
   it("catches NaN in output", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
             const x = 0 / 0;
             return \`<div style="left: \${x}px">Test</div>\`;
@@ -81,7 +81,7 @@ describe("validateAITemplate", () => {
   it("catches undefined in style attributes", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
             const value = ctx.data.nonexistent;
             return \`<div style="color: \${value}">Test</div>\`;
@@ -95,9 +95,9 @@ describe("validateAITemplate", () => {
   it("catches invalid easing names", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
-            const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'easeInOutBogus');
+            const x = ctx.std.interpolate(ctx.timeline.progress, [0, 1], [0, 100], 'easeInOutBogus');
             return \`<div style="left: \${x}px">Test</div>\`;
           }
         });
@@ -109,9 +109,9 @@ describe("validateAITemplate", () => {
   it("accepts valid easing names", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
-            const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'easeOutCubic');
+            const x = ctx.std.interpolate(ctx.timeline.progress, [0, 1], [0, 100], 'easeOutCubic');
             return \`<div style="left: \${x}px">Test</div>\`;
           }
         });
@@ -124,7 +124,7 @@ describe("validateAITemplate", () => {
   it("catches non-string return type", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) { return 123; }
         });
       `)
@@ -136,7 +136,7 @@ describe("validateAITemplate", () => {
   it("warns on empty string return", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) { return ''; }
         });
       `)
@@ -149,20 +149,20 @@ describe("validateAITemplate", () => {
   it("includes samples for valid renders", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) { return '<div>Frame ' + ctx.globalFrame + '</div>'; }
         });
       `)
     );
     expect(result.samples).toBeDefined();
     expect(result.samples!.length).toBeGreaterThan(0);
-    expect(result.samples![0].html).toContain("<div>Frame");
+    expect(result.samples![0]!.html).toContain("<div>Frame");
   });
 
   it("warns on undeclared assets (soft validation)", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) { return '<img src="/images/icon.png">'; }
         });
       `)
@@ -176,7 +176,7 @@ describe("validateAITemplate", () => {
   it("does not warn when asset is declared in config", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           config: { assets: { icon: '/images/icon.png' } },
           render(ctx) { return '<img src="/images/icon.png">'; }
         });
@@ -188,7 +188,7 @@ describe("validateAITemplate", () => {
   it("validates with custom options", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           sample: { title: 'Test' },
           render(ctx) { return '<div>' + ctx.data.title + '</div>'; }
         });
@@ -207,7 +207,7 @@ describe("validateAITemplate", () => {
   it("tracks validation time", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) { return '<div>Test</div>'; }
         });
       `)
@@ -218,7 +218,7 @@ describe("validateAITemplate", () => {
   it("catches null in style attributes", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
             const value = null;
             return \`<div style="color: \${value}">Test</div>\`;
@@ -232,7 +232,7 @@ describe("validateAITemplate", () => {
   it("skips output checks when checkOutput is false", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) { return '<div style="left: NaN">Test</div>'; }
         });
       `),
@@ -244,9 +244,9 @@ describe("validateAITemplate", () => {
   it("skips easing checks when checkEasingNames is false", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
-            ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], 'badEasing');
+            ctx.std.interpolate(ctx.timeline.progress, [0, 1], [0, 1], 'badEasing');
             return '<div>OK</div>';
           }
         });
@@ -259,9 +259,9 @@ describe("validateAITemplate", () => {
   it("reports multiple issues from the same template", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
-            const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'badEasing');
+            const x = ctx.std.interpolate(ctx.timeline.progress, [0, 1], [0, 100], 'badEasing');
             return \`<div style="left: \${0/0}px">Test</div>\`;
           }
         });
@@ -273,7 +273,7 @@ describe("validateAITemplate", () => {
   it("uses custom sampleFrames", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
             return '<div>Frame ' + ctx.globalFrame + '</div>';
           }
@@ -287,7 +287,7 @@ describe("validateAITemplate", () => {
   it("merges template data with provided data", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           sample: { name: 'Default' },
           render(ctx) { return '<div>' + ctx.data.name + '</div>'; }
         });
@@ -316,7 +316,7 @@ describe("formatValidationForAI", () => {
   it("returns VALIDATION_PASSED for valid templates", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) { return '<div>OK</div>'; }
         });
       `)
@@ -328,9 +328,9 @@ describe("formatValidationForAI", () => {
   it("formats errors with suggestions", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
-            const x = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 100], 'badEasing');
+            const x = ctx.std.interpolate(ctx.timeline.progress, [0, 1], [0, 100], 'badEasing');
             return '<div>' + x + '</div>';
           }
         });
@@ -345,9 +345,9 @@ describe("formatValidationForAI", () => {
   it("includes frame info for frame-specific errors", async () => {
     const result = await validateAITemplate(
       wrapDefineTemplate(`
-        export default defineScene({
+        export default define({
           render(ctx) {
-            if (ctx.sceneProgress > 0.4) throw new Error('Crash');
+            if (ctx.timeline.progress > 0.4) throw new Error('Crash');
             return '<div>OK</div>';
           }
         });

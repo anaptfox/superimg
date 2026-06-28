@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
-import type { ImageModule } from "@superimg/types";
+import type { TemplateModule } from "@superimg/types";
 import { renderNativeToHtml, renderToHtml } from "../edge.js";
 import { bundleTemplateCode } from "../bundler/bundler.js";
 
 describe("renderNativeToHtml", () => {
   it("renders a TemplateModule object to HTML without Playwright", () => {
-    const template: ImageModule = {
-      kind: "image",
+    const template: TemplateModule = {
+      medium: "html",
+      animated: false,
       config: { width: 800, height: 600 },
       render: (ctx) => `<div data-w="${ctx.width}">hello ${ctx.data?.name ?? ""}</div>`,
     };
@@ -19,8 +20,8 @@ describe("renderNativeToHtml", () => {
 
   it("compiles and renders an IIFE-bundled template string", async () => {
     const code = `
-      import { defineImage } from "superimg";
-      export default defineImage({
+      import { define } from "superimg";
+      export default define({
         config: { width: 400, height: 400 },
         render: (ctx) => \`<h1>\${ctx.data.title}</h1>\`,
       });
@@ -40,11 +41,12 @@ describe("renderNativeToHtml", () => {
 
 describe("renderToHtml — sample field fallback", () => {
   it("uses module.sample when options.data is not provided", () => {
-    const template: ImageModule & { sample?: Record<string, unknown> } = {
-      kind: "image",
+    const template: TemplateModule<{ greeting: string }> & { sample: { greeting: string } } = {
+      medium: "html",
+      animated: false,
       config: { width: 600, height: 400 },
       sample: { greeting: "from sample" },
-      render: (ctx) => `<span>${(ctx.data as any).greeting ?? ""}</span>`,
+      render: (ctx) => `<span>${ctx.data.greeting}</span>`,
     };
 
     const html = renderToHtml({ template });
@@ -53,11 +55,12 @@ describe("renderToHtml — sample field fallback", () => {
   });
 
   it("options.data overrides module.sample", () => {
-    const template: ImageModule & { sample?: Record<string, unknown> } = {
-      kind: "image",
+    const template: TemplateModule<{ greeting: string }> & { sample: { greeting: string } } = {
+      medium: "html",
+      animated: false,
       config: { width: 600, height: 400 },
       sample: { greeting: "sample value" },
-      render: (ctx) => `<span>${(ctx.data as any).greeting ?? ""}</span>`,
+      render: (ctx) => `<span>${ctx.data.greeting}</span>`,
     };
 
     const html = renderToHtml({ template, data: { greeting: "runtime override" } });
@@ -67,8 +70,9 @@ describe("renderToHtml — sample field fallback", () => {
   });
 
   it("falls back to empty object when neither sample nor data is provided", () => {
-    const template: ImageModule = {
-      kind: "image",
+    const template: TemplateModule = {
+      medium: "html",
+      animated: false,
       config: { width: 400, height: 400 },
       render: (ctx) => `<div data-empty="${JSON.stringify(ctx.data)}"></div>`,
     };
@@ -79,11 +83,12 @@ describe("renderToHtml — sample field fallback", () => {
   });
 
   it("renderToHtml and renderNativeToHtml are aliases — both accept sample-bearing modules", () => {
-    const template: ImageModule & { sample?: Record<string, unknown> } = {
-      kind: "image",
+    const template: TemplateModule<{ tag: string }> & { sample: { tag: string } } = {
+      medium: "html",
+      animated: false,
       config: { width: 300, height: 200 },
       sample: { tag: "alias-check" },
-      render: (ctx) => `<p>${(ctx.data as any).tag ?? ""}</p>`,
+      render: (ctx) => `<p>${ctx.data.tag}</p>`,
     };
 
     const html1 = renderToHtml({ template });
@@ -94,8 +99,9 @@ describe("renderToHtml — sample field fallback", () => {
   });
 
   it("respects explicit width/height options over module.config", () => {
-    const template: ImageModule = {
-      kind: "image",
+    const template: TemplateModule = {
+      medium: "html",
+      animated: false,
       config: { width: 100, height: 100 },
       render: (ctx) => `<div data-w="${ctx.width}" data-h="${ctx.height}"></div>`,
     };
@@ -107,10 +113,11 @@ describe("renderToHtml — sample field fallback", () => {
   });
 
   it("renders a specific frame via frame option", () => {
-    const template: ImageModule & { sample?: Record<string, unknown> } = {
-      kind: "video",
+    const template: TemplateModule & { sample?: Record<string, unknown> } = {
+      medium: "html",
+      animated: true,
       config: { fps: 30, duration: 2, width: 640, height: 360 },
-      render: (ctx) => `<div data-progress="${ctx.sceneProgress}"></div>`,
+      render: (ctx) => `<div data-progress="${ctx.timeline.progress}"></div>`,
     };
 
     const start = renderToHtml({ template, frame: 0, composite: false });
@@ -122,8 +129,8 @@ describe("renderToHtml — sample field fallback", () => {
 
   it("renders a bundled template string using sample as default data", async () => {
     const code = `
-      import { defineImage } from "superimg";
-      export default defineImage({
+      import { define } from "superimg";
+      export default define({
         sample: { headline: "bundled sample" },
         config: { width: 800, height: 400 },
         render: (ctx) => \`<h2>\${ctx.data.headline}</h2>\`,

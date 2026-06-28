@@ -43,15 +43,15 @@ export function renderToHtml(options: NativeRenderOptions): string {
 
   const { compositeHtml } = renderTemplateFrame({
     template: module,
-    width: options.width,
-    height: options.height,
-    data: options.data,
-    frame: options.frame,
-    progress: options.progress,
-    fps: options.fps,
-    durationSeconds: options.durationSeconds,
-    composite: options.composite,
-    assetResolver: options.assetResolver,
+    ...(options.width !== undefined ? { width: options.width } : {}),
+    ...(options.height !== undefined ? { height: options.height } : {}),
+    ...(options.data !== undefined ? { data: options.data } : {}),
+    ...(options.frame !== undefined ? { frame: options.frame } : {}),
+    ...(options.progress !== undefined ? { progress: options.progress } : {}),
+    ...(options.fps !== undefined ? { fps: options.fps } : {}),
+    ...(options.durationSeconds !== undefined ? { durationSeconds: options.durationSeconds } : {}),
+    ...(options.composite !== undefined ? { composite: options.composite } : {}),
+    ...(options.assetResolver !== undefined ? { assetResolver: options.assetResolver } : {}),
   });
 
   return compositeHtml;

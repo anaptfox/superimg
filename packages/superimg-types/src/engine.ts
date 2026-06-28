@@ -10,7 +10,9 @@ import type {
   AssetMeta,
   WatermarkValue,
 } from "./types.js";
+import type { ResolvedAudioTimeline } from "./audio.js";
 import type { EncodingOptions } from "./encoding-types.js";
+import type { JsonObject } from "./json.js";
 
 export interface ResolvedAssetDeclaration {
   key: string;
@@ -63,7 +65,7 @@ export interface RenderJob {
   audio?: AudioValue;
   outputName?: string;
   encoding?: EncodingOptions;
-  data?: Record<string, unknown>;
+  data?: JsonObject;
   background?: BackgroundValue;
   watermark?: WatermarkValue;
 }
@@ -103,12 +105,71 @@ export interface FrameRenderer<TFrame = unknown> {
   ): Promise<Record<string, AssetMeta>>;
 }
 
+/**
+ * The medium an authored template targets — i.e. which family of rasterizer
+ * can turn its markup into pixels.
+ *  - "html": full-CSS markup, rasterized by Chromium (Playwright) or the
+ *    in-page iframe presenter.
+ *  - "svg": vector markup, rasterized by the browser-free resvg-wasm lane
+ *    (identical bytes at build time and at the edge).
+ */
+export type Medium = "html" | "svg";
+
+export interface RasterizerCapabilities {
+  /** Which media this rasterizer can turn into pixels. */
+  media: ReadonlyArray<Medium>;
+  /** True if it needs no browser (resvg-wasm); false for Chromium. */
+  browserFree: boolean;
+  /** True if it runs inside a Cloudflare Worker / V8 isolate (no node builtins). */
+  workerSafe: boolean;
+}
+
+export interface RasterizerConfig extends FrameRendererConfig {
+  /**
+   * Pre-resolved font buffers (woff/ttf bytes). Required by the resvg lane —
+   * it cannot fetch Google Fonts CSS the way Chromium does. Ignored by the
+   * Playwright rasterizer, which loads fonts via <link> tags.
+   */
+  fontBuffers?: Uint8Array[];
+}
+
+/**
+ * A pluggable rasterizer: turns authored markup (HTML or SVG) into a frame.
+ * Generalises the (Playwright-coupled) FrameRenderer so rendering location is
+ * chosen by `medium` rather than hardcoded. The resvg lane and the Playwright
+ * adapter both implement this contract.
+ */
+export interface Rasterizer<TFrame = unknown> {
+  /** Capability descriptor used by the registry to pick a rasterizer by medium. */
+  capabilities: RasterizerCapabilities;
+  /** True if this rasterizer can render the given medium. */
+  accepts(medium: Medium): boolean;
+  init(config: RasterizerConfig): Promise<void>;
+  /** Rasterize one markup string (HTML or SVG) into a frame. */
+  rasterize(markup: string, options?: { alpha?: boolean }): Promise<TFrame>;
+  dispose(): Promise<void>;
+  /**
+   * Optional: Advance the fake clock by `ms` milliseconds before the next capture.
+   * Required when mode is 'animation' — implement via page.clock.runFor().
+   */
+  advanceClock?(ms: number): Promise<void>;
+  /**
+   * Optional: Preload config.assets and extract metadata.
+   * Called before the frame loop. If not implemented, ctx.assets will be empty.
+   */
+  preloadAssets?(
+    declarations: ResolvedAssetDeclaration[]
+  ): Promise<Record<string, AssetMeta>>;
+}
+
 export interface VideoEncoderConfig {
   width: number;
   height: number;
   fps: number;
   encoding?: EncodingOptions;
   audio?: AudioValue;
+  /** Pre-resolved clip placements for multi-track mix */
+  resolvedAudio?: ResolvedAudioTimeline | null;
 }
 
 export interface VideoEncoder<TFrame = unknown> {
@@ -135,14 +196,24 @@ export interface RenderPlan {
   height: number;
   fps: number;
   totalFrames: number;
+  /**
+   * Which rasterizer family renders this plan. Defaults to "html" when absent
+   * (Stage A: optional/additive; Stage B makes it authoritative from `medium`).
+   */
+  medium?: Medium;
+  /** True when the plan renders N frames (fps + duration present). */
+  animated?: boolean;
+  /** Pre-resolved font buffers for the resvg lane (svg medium only). */
+  fontBuffers?: Uint8Array[];
   fonts: string[];
   inlineCss: string[];
   stylesheets: string[];
   tailwind?: boolean | TailwindConfig;
   audio?: AudioValue;
+  resolvedAudio?: ResolvedAudioTimeline | null;
   outputName: string;
   encoding?: EncodingOptions;
-  data?: Record<string, unknown>;
+  data?: JsonObject;
   background?: BackgroundValue;
   watermark?: WatermarkValue;
   /** Base URL for serving local relative assets to browser context */

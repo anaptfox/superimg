@@ -3,13 +3,13 @@ import { compileFromString } from "./__test-utils__/index.js";
 import { renderHtmlAtFrame } from "../testing/index.js";
 
 const REFERENCE_TEMPLATE = `
-  import { defineScene } from 'superimg';
-  export default defineScene({
+  import { define } from 'superimg';
+  export default define({
     config: { fps: 30, duration: 2, width: 640, height: 360 },
     sample: { title: 'Snapshot Test' },
     render(ctx) {
-      const eased = ctx.std.interpolate(ctx.sceneProgress, [0, 1], [0, 1], 'easeOutCubic');
-      return '<div class="frame" data-progress="' + ctx.sceneProgress + '" data-eased="' + eased + '">' + ctx.data.title + '</div>';
+      const eased = ctx.std.interpolate(ctx.timeline.progress, [0, 1], [0, 1], 'easeOutCubic');
+      return '<div class="frame" data-progress="' + ctx.timeline.progress + '" data-eased="' + eased + '">' + ctx.data.title + '</div>';
     }
   });
 `;

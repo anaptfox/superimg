@@ -8,7 +8,6 @@ import {
 import { formatError } from "../format.js";
 
 function stripAnsi(s: string): string {
-  // eslint-disable-next-line no-control-regex
   return s.replace(/\x1b\[[0-9;]*m/g, "");
 }
 
@@ -18,9 +17,9 @@ describe("formatError", () => {
       frame: 30,
       originalError: "ctx.std.tween is not a function",
       timeContext: {
-        sceneFrame: 30,
-        sceneTimeSeconds: 1.0,
-        sceneProgress: 0.25,
+        timelineFrame: 30,
+        timelineSeconds: 1.0,
+        timelineProgress: 0.25,
         globalTimeSeconds: 1.0,
       },
       dataSnapshot: { hello: "world" },

@@ -1,16 +1,19 @@
 import { parseSync } from "oxc-parser";
 import { TemplateCompilationError } from "@superimg/types";
+import type { AstExpr, AstNode, AstObjectExpression } from "./ast.js";
 
 export interface TailwindMetadataConfig {
   css?: string;
 }
 
 export interface AudioMetadataConfig {
+  id?: string;
   src: string;
+  role?: string;
   loop?: boolean;
   volume?: number;
-  fadeIn?: number;
-  fadeOut?: number;
+  fadeIn?: number | string;
+  fadeOut?: number | string;
 }
 
 export interface TemplateMetadataConfig {
@@ -27,24 +30,28 @@ export interface TemplateMetadataConfig {
   type?: string;
   watermark?: import("@superimg/types").WatermarkValue;
   background?: import("@superimg/types").BackgroundValue;
-  audio?: string | AudioMetadataConfig;
+  audio?: AudioMetadataConfig | { clips: AudioMetadataConfig[] };
   assets?: Record<string, string | import("@superimg/types").AssetDeclaration>;
 }
 
 export interface TemplateMetadata {
   hasRenderExport: boolean;
   hasDefaultExport: boolean;
+  /** True when the default export is compose() or composeSvg(). */
+  isComposed?: boolean;
+  /** The `medium` field on the define() argument (string literal), default "html". */
+  medium?: "html" | "svg";
   config?: TemplateMetadataConfig;
 }
 
-type VariableInitMap = Map<string, any | null>;
+type VariableInitMap = Map<string, AstExpr | null>;
 
-function getIdentifierName(node: any): string | undefined {
+function getIdentifierName(node: AstNode): string | undefined {
   if (!node || node.type !== "Identifier") return undefined;
   return node.name;
 }
 
-function readPositiveNumberLiteral(node: any): number | undefined {
+function readPositiveNumberLiteral(node: AstNode): number | undefined {
   if (!node) return undefined;
   if (node.type === "Literal" && typeof node.value === "number" && Number.isFinite(node.value) && node.value > 0) {
     return node.value;
@@ -61,40 +68,68 @@ function readPositiveNumberLiteral(node: any): number | undefined {
   return undefined;
 }
 
-function readAudioConfig(node: any): string | AudioMetadataConfig | undefined {
-  // audio: "path/to/audio.mp3"
-  if (node.type === "Literal" && typeof node.value === "string") {
-    return node.value;
+function readAudioClipObject(node: AstNode): AudioMetadataConfig | undefined {
+  if (node.type !== "ObjectExpression") return undefined;
+  const config: AudioMetadataConfig = { src: "" };
+  for (const prop of node.properties) {
+    if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
+    if (prop.computed) continue;
+    const key = prop.key.type === "Identifier" ? prop.key.name : undefined;
+    if (key === "id" && prop.value.type === "Literal" && typeof prop.value.value === "string") {
+      config.id = prop.value.value;
+    }
+    if (key === "src" && prop.value.type === "Literal" && typeof prop.value.value === "string") {
+      config.src = prop.value.value;
+    }
+    if (key === "role" && prop.value.type === "Literal" && typeof prop.value.value === "string") {
+      config.role = prop.value.value;
+    }
+    if (key === "loop" && prop.value.type === "Literal" && typeof prop.value.value === "boolean") {
+      config.loop = prop.value.value;
+    }
+    if (key === "volume" && prop.value.type === "Literal" && typeof prop.value.value === "number") {
+      config.volume = prop.value.value;
+    }
+    if (key === "fadeIn" && prop.value.type === "Literal") {
+      if (typeof prop.value.value === "number" || typeof prop.value.value === "string") {
+        config.fadeIn = prop.value.value;
+      }
+    }
+    if (key === "fadeOut" && prop.value.type === "Literal") {
+      if (typeof prop.value.value === "number" || typeof prop.value.value === "string") {
+        config.fadeOut = prop.value.value;
+      }
+    }
   }
-  // audio: { src: "...", volume: 0.6, ... }
+  return config.src ? config : undefined;
+}
+
+function readAudioConfig(node: AstNode): AudioMetadataConfig | { clips: AudioMetadataConfig[] } | undefined {
+  // audio: { id, src, role, volume, fadeIn: "0.5s", ... }
+  const clip = readAudioClipObject(node);
+  if (clip) return clip;
+
+  // audio: { clips: [...] }
   if (node.type === "ObjectExpression") {
-    const config: AudioMetadataConfig = { src: "" };
     for (const prop of node.properties) {
       if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
       if (prop.computed) continue;
       const key = prop.key.type === "Identifier" ? prop.key.name : undefined;
-      if (key === "src" && prop.value.type === "Literal" && typeof prop.value.value === "string") {
-        config.src = prop.value.value;
-      }
-      if (key === "loop" && prop.value.type === "Literal" && typeof prop.value.value === "boolean") {
-        config.loop = prop.value.value;
-      }
-      if (key === "volume" && prop.value.type === "Literal" && typeof prop.value.value === "number") {
-        config.volume = prop.value.value;
-      }
-      if (key === "fadeIn" && prop.value.type === "Literal" && typeof prop.value.value === "number") {
-        config.fadeIn = prop.value.value;
-      }
-      if (key === "fadeOut" && prop.value.type === "Literal" && typeof prop.value.value === "number") {
-        config.fadeOut = prop.value.value;
+      if (key === "clips" && prop.value.type === "ArrayExpression") {
+        const clips: AudioMetadataConfig[] = [];
+        for (const el of prop.value.elements) {
+          if (!el) continue;
+          const parsed = readAudioClipObject(el);
+          if (parsed) clips.push(parsed);
+        }
+        return clips.length > 0 ? { clips } : undefined;
       }
     }
-    return config.src ? config : undefined;
   }
   return undefined;
 }
 
-function readTailwindConfig(node: any): boolean | TailwindMetadataConfig | undefined {
+function readTailwindConfig(node: AstNode): boolean | TailwindMetadataConfig | undefined {
   // tailwind: true
   if (node.type === "Literal" && node.value === true) {
     return true;
@@ -119,9 +154,11 @@ function readTailwindConfig(node: any): boolean | TailwindMetadataConfig | undef
   return undefined;
 }
 
-function readAssetsConfig(node: any): Record<string, string | import("@superimg/types").AssetDeclaration> | undefined {
+function readAssetsConfig(
+  node: AstNode,
+): Record<string, string | import("@superimg/types").AssetDeclaration> | undefined {
   if (node.type !== "ObjectExpression") return undefined;
-  const assets: Record<string, any> = {};
+  const assets: Record<string, string | import("@superimg/types").AssetDeclaration> = {};
   for (const prop of node.properties) {
     if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
     if (prop.computed) continue;
@@ -133,7 +170,7 @@ function readAssetsConfig(node: any): Record<string, string | import("@superimg/
     if (prop.value.type === "Literal" && typeof prop.value.value === "string") {
       assets[key] = prop.value.value;
     } else if (prop.value.type === "ObjectExpression") {
-      const decl: any = {};
+      const decl: { src?: string; type?: string } = {};
       for (const field of prop.value.properties) {
         if (field.type !== "Property" && field.type !== "ObjectProperty") continue;
         if (field.computed) continue;
@@ -154,7 +191,7 @@ function readAssetsConfig(node: any): Record<string, string | import("@superimg/
   return Object.keys(assets).length > 0 ? assets : undefined;
 }
 
-function readConfigObject(expr: any): TemplateMetadataConfig | undefined {
+function readConfigObject(expr: AstObjectExpression): TemplateMetadataConfig | undefined {
   if (expr.type !== "ObjectExpression") return undefined;
 
   const config: TemplateMetadataConfig = {};
@@ -225,12 +262,12 @@ function readConfigObject(expr: any): TemplateMetadataConfig | undefined {
     }
 
     if (key === "watermark") {
-      config.watermark = "extracted-by-bundler" as any;
+      config.watermark = "extracted-by-bundler";
       continue;
     }
 
     if (key === "background") {
-      config.background = "extracted-by-bundler" as any;
+      config.background = "extracted-by-bundler";
       continue;
     }
 
@@ -310,7 +347,7 @@ function resolveExpression(
   name: string,
   variableInits: VariableInitMap,
   visited: Set<string> = new Set()
-): any | undefined {
+): AstExpr | undefined {
   if (visited.has(name)) return undefined;
   visited.add(name);
 
@@ -324,7 +361,7 @@ function resolveExpression(
   return init;
 }
 
-function unwrapDefineTemplate(expr: any): any {
+function unwrapDefineTemplate(expr: AstExpr): AstExpr {
   if (
     expr.type === "CallExpression" &&
     expr.arguments.length === 1 &&
@@ -371,8 +408,8 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
     const loc = label != null ? offsetToLineColumn(code, label.start) : undefined;
     const tce = new TemplateCompilationError({
       syntaxError: first.message ?? "Syntax error",
-      line: loc?.line,
-      column: loc?.column,
+      ...(loc?.line !== undefined ? { line: loc.line } : {}),
+      ...(loc?.column !== undefined ? { column: loc.column } : {}),
     });
     // oxc-parser already renders a Vite-style code frame; use it directly so
     // surfaces (CLI / dev UI) get a useful snippet without us reading the file.
@@ -384,10 +421,12 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
   const variableInits: VariableInitMap = new Map();
   let hasDefaultExport = false;
   let hasRenderExport = false;
+  let isComposed = false;
   let config: TemplateMetadataConfig | undefined;
+  let medium: "html" | "svg" | undefined;
 
-  function analyzeExportedExpression(declExpr: any) {
-    let expr: any | undefined;
+  function analyzeExportedExpression(declExpr: AstExpr) {
+    let expr: AstExpr | undefined;
 
     if (declExpr.type === "Identifier") {
       expr = resolveExpression(declExpr.name, variableInits);
@@ -409,10 +448,15 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
           if (configExpr.type === "ObjectExpression") {
             config = readConfigObject(configExpr);
           }
+        } else if (key === "medium") {
+          // Top-level string literal: define({ medium: "svg", ... }).
+          if (prop.value.type === "Literal" && (prop.value.value === "svg" || prop.value.value === "html")) {
+            medium = prop.value.value;
+          }
         }
       }
     }
-    // compose([...]) returns a TemplateModule with render
+    // compose([...]) / composeSvg([...]) return a TemplateModule with render
     if (expr && expr.type === "CallExpression") {
       const callee = expr.callee;
       const calleeName =
@@ -424,6 +468,29 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
           : undefined;
       if (calleeName === "compose") {
         hasRenderExport = true;
+        isComposed = true;
+        const configArg = expr.arguments[1];
+        if (configArg?.type === "ObjectExpression") {
+          const props = configArg.properties;
+          for (const prop of props) {
+            if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
+            const key = getIdentifierName(prop.key);
+            if (key === "config" && prop.value.type === "ObjectExpression") {
+              config = readConfigObject(prop.value);
+              if (config && !medium) {
+                for (const p2 of prop.value.properties) {
+                  if (p2.type !== "Property" && p2.type !== "ObjectProperty") continue;
+                  if (getIdentifierName(p2.key) === "medium" && p2.value.type === "Literal" && p2.value.value === "svg") {
+                    medium = "svg";
+                  }
+                }
+              }
+            }
+          }
+          if (!config && configArg.properties) {
+            config = readConfigObject(configArg);
+          }
+        }
       }
     }
   }
@@ -459,14 +526,16 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
 
   if (!hasDefaultExport) {
     throw new TemplateCompilationError({
-      syntaxError: "Template must use `export default defineScene({ ... })` (or defineImage / defineGif). Named exports are no longer supported.",
-      suggestion: "Change `export const myScene = defineScene(...)` to `export default defineScene(...)`. If you're seeing this on a file with a syntax error, fix the syntax first.",
+      syntaxError: "Template must use `export default define({ ... })`. Named exports are no longer supported.",
+      suggestion: "Change `export const myTemplate = define(...)` to `export default define(...)`. If you're seeing this on a file with a syntax error, fix the syntax first.",
     });
   }
 
   return {
     hasRenderExport,
     hasDefaultExport,
-    config,
+    ...(isComposed ? { isComposed } : {}),
+    ...(medium !== undefined ? { medium } : {}),
+    ...(config !== undefined ? { config } : {}),
   };
 }

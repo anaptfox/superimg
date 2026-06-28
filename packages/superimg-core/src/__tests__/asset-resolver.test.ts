@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createRenderContext } from "../rendering/wasm.js";
+import { createRenderContext } from "../rendering/create-render-context.js";
 
 describe("ctx.asset()", () => {
   it("returns filename as-is with no resolver", () => {
@@ -19,6 +19,6 @@ describe("ctx.asset()", () => {
       brandMark: { type: "image" as const, url: "http://example.com/brand.png", mimeType: "image/png", size: 1024, width: 100, height: 100 },
     });
     expect(ctx.asset("brand.png")).toBe("brand.png");
-    expect(ctx.assets.brandMark.url).toBe("http://example.com/brand.png");
+    expect(ctx.assets.brandMark!.url).toBe("http://example.com/brand.png");
   });
 });

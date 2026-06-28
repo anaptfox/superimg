@@ -12,7 +12,7 @@ import { resolveConfigAssets } from "../shared/assets.js";
 import { EASING_NAMES } from "@superimg/stdlib/easing";
 import { bundleTemplateCode } from "../bundler/bundler.js";
 import { compileTemplate } from "../rendering/compiler.js";
-import { createRenderContext } from "../rendering/wasm.js";
+import { createRenderContext } from "../rendering/create-render-context.js";
 import { extractTemplateMetadata } from "../shared/template-metadata.js";
 
 /** Default validation options */
@@ -56,7 +56,7 @@ function extractProblemContext(html: string, needle: string): string {
 /** Check easing names in source code */
 function checkEasingNames(code: string): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const validEasings = new Set(EASING_NAMES);
+  const validEasings = new Set<string>(EASING_NAMES);
 
   // Match calls with string easing: interpolate(p, ir, or, 'easingName'), t.tween(a, b, 'easingName'),
   // or { easing: 'easingName' } in options objects.
@@ -68,7 +68,7 @@ function checkEasingNames(code: string): ValidationIssue[] {
   for (const pattern of patterns) {
     for (const match of code.matchAll(pattern)) {
       const easingName = match[1];
-      if (easingName && !validEasings.has(easingName as any)) {
+      if (easingName && !validEasings.has(easingName)) {
         issues.push({
           severity: "error",
           code: "INVALID_EASING_NAME",
@@ -180,7 +180,7 @@ export function detectUndeclaredAssets(
  * Validate an AI-generated template.
  *
  * Runs comprehensive checks:
- * 1. Syntax validation (via esbuild bundling)
+ * 1. Syntax validation (via rolldown bundling)
  * 2. Structure validation (export default, render function)
  * 3. Multi-frame rendering (catches frame-dependent errors)
  * 4. Output validation (NaN, undefined, null)
@@ -228,7 +228,7 @@ export async function validateAITemplate(
     bundledCode = await bundleTemplateCode(code);
   } catch (e) {
     const error = e as Error;
-    // Extract line/column from esbuild error if available
+    // Extract line/column from bundler error if available
     const lineMatch = error.message.match(/(\d+):(\d+)/);
     issues.push({
       severity: "error",
@@ -253,7 +253,7 @@ export async function validateAITemplate(
         severity: "error",
         code: "MISSING_DEFAULT_EXPORT",
         message: "Template must have a default export",
-        suggestion: 'Add "export default defineScene({ render(ctx) { ... } })"',
+        suggestion: 'Add "export default define({ render(ctx) { ... } })"',
       });
     }
     if (!metadata.hasRenderExport) {
@@ -261,7 +261,7 @@ export async function validateAITemplate(
         severity: "error",
         code: "MISSING_RENDER_FUNCTION",
         message: "Template must have a render function",
-        suggestion: 'Add "render(ctx) { return `<div>...</div>`; }" to defineScene',
+        suggestion: 'Add "render(ctx) { return `<div>...</div>`; }" to define',
       });
     }
   } catch (e) {
@@ -275,7 +275,7 @@ export async function validateAITemplate(
       severity: "error",
       code: "MISSING_RENDER_FUNCTION",
       message: compileResult.error.message,
-      suggestion: "Ensure template uses defineScene({ render(ctx) { ... } })",
+      suggestion: "Ensure template uses define({ render(ctx) { ... } })",
     });
     return {
       valid: false,
@@ -391,7 +391,7 @@ export async function validateAITemplate(
   return {
     valid: !hasErrors,
     issues,
-    samples: samples.length > 0 ? samples : undefined,
+    ...(samples.length > 0 ? { samples } : {}),
     validationTimeMs: performance.now() - startTime,
   };
 }
@@ -404,7 +404,7 @@ function extractSuggestionFromError(error: Error): string {
     return "Check that all data properties exist. Use ctx.data.property with fallbacks.";
   }
   if (msg.includes("is not a function")) {
-    return "Check function names. Use ctx.std.score, ctx.std.interpolate, ctx.std.math, etc.";
+    return "Check function names. Use ctx.director(), ctx.std.interpolate, ctx.std.math, etc.";
   }
   if (msg.includes("cannot read property") || msg.includes("cannot read properties")) {
     return "A value is undefined. Check data properties and intermediate values.";

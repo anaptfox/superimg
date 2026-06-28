@@ -23,8 +23,8 @@ This package provides the core rendering capabilities shared across browser and 
 These are separate entry points that require Node.js (not bundled into the browser-safe main export):
 
 - **`@superimg/core/engine`** — `createRenderPlan()` and `executeRenderPlan()` for generic render orchestration with pluggable adapters
-- **`@superimg/core/bundler`** — `bundleTemplate()` using esbuild (native)
-- **`@superimg/core/bundler-browser`** — `bundleTemplate()` using esbuild-wasm (browser)
+- **`@superimg/core/bundler`** — `bundleTemplate()` using rolldown (native)
+- **`@superimg/core/bundler-browser`** — `bundleTemplate()` using @rolldown/browser
 
 ## Internal Usage
 

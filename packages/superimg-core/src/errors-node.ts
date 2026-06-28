@@ -26,7 +26,7 @@ export function readSourceForFrame(file: string): string | null {
 /**
  * Build a Map of file path → source text from a list of paths.
  * Used to seed `EnrichContext.sourceCache` when the sourcemap lacks
- * `sourcesContent` (rare with esbuild — it embeds by default).
+ * `sourcesContent` (rare with rolldown — it embeds by default).
  */
 export function buildSourceCache(files: readonly string[]): Map<string, string> {
   const cache = new Map<string, string>();

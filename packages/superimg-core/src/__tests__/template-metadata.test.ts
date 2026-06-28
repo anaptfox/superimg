@@ -16,11 +16,11 @@ describe("extractTemplateMetadata", () => {
     expect(metadata.config).toEqual({ width: 1920, fps: 30 });
   });
 
-  it("extracts render and config from defineScene call", async () => {
+  it("extracts render and config from define call", async () => {
     const code = `
       function render(ctx) { return "<div>ok</div>"; }
       const config = { height: 720 };
-      export default defineScene({ render, config });
+      export default define({ render, config });
     `;
 
     const metadata = await extractTemplateMetadata(code);
@@ -28,9 +28,9 @@ describe("extractTemplateMetadata", () => {
     expect(metadata.hasRenderExport).toBe(true);
   });
 
-  it("extracts metadata from variable-referenced defineScene", async () => {
+  it("extracts metadata from variable-referenced define", async () => {
     const code = `
-      const mod = defineScene({
+      const mod = define({
         render(ctx) { return "<div>ok</div>"; },
         config: { width: 1280, height: 720 }
       });
@@ -64,7 +64,7 @@ describe("extractTemplateMetadata", () => {
 
     await expect(extractTemplateMetadata(code)).rejects.toThrow(
       expect.objectContaining({
-        message: expect.stringContaining("defineScene"),
+        message: expect.stringContaining("define"),
       })
     );
   });
@@ -100,7 +100,7 @@ describe("extractTemplateMetadata", () => {
 
   it("extracts metadata from late re-export", async () => {
     const code = `
-      const myTemplate = defineScene({
+      const myTemplate = define({
         render(ctx) { return "ok"; },
         config: { width: 1080, height: 1080 }
       });

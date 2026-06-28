@@ -1,6 +1,4 @@
-//! Shared stdlib construction - used by wasm.ts and other runtime code
-//! The static members live in `stdlib`; ctx-scoped members (`score` timing, `px`,
-//! `scale`) are appended per-frame inside createRenderContext.
+//! Shared stdlib construction - used by create-render-context and other runtime code
 
 import type { Stdlib } from "@superimg/types";
 import * as math from "@superimg/stdlib/math";
@@ -12,8 +10,9 @@ import * as responsive from "@superimg/stdlib/responsive";
 import * as subtitle from "@superimg/stdlib/subtitle";
 import * as presets from "@superimg/stdlib/presets";
 import * as code from "@superimg/stdlib/code";
-import * as cue from "@superimg/stdlib/cue";
-import { mergeMotion } from "@superimg/stdlib/score";
+import { mergeMotion } from "@superimg/stdlib/director";
+import { carousel } from "@superimg/stdlib/carousel";
+import { stack } from "@superimg/stdlib/stack";
 import { layers } from "@superimg/stdlib/layers";
 import { revealFx } from "@superimg/stdlib/reveal";
 import { oscillate, loop, pingpong, wiggle } from "@superimg/stdlib/oscillate";
@@ -24,7 +23,18 @@ import { clamp01 } from "@superimg/stdlib/easing";
 import { stagger } from "@superimg/stdlib/stagger";
 import { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
 import { path, createMotionPath } from "@superimg/stdlib/path";
-import { draw, filter, morph, reveal, shape, textPath } from "@superimg/stdlib/svg";
+import {
+  draw,
+  filter,
+  morph,
+  shape,
+  textPath,
+  bezier,
+  gradient as svgGradient,
+  measureText,
+  wrapText,
+  fitText,
+} from "@superimg/stdlib/svg";
 import * as layout from "@superimg/stdlib/layout";
 import * as viz from "@superimg/stdlib/viz";
 
@@ -32,8 +42,7 @@ const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
 ) as Omit<typeof math, "lerp">;
 
-/** Per-frame parts bound by createRenderContext: score, video, px, scale. */
-export type StaticStdlib = Omit<Stdlib, "score" | "video" | "px" | "scale">;
+export type StaticStdlib = Omit<Stdlib, "video" | "px" | "scale">;
 
 export const stdlib: StaticStdlib = {
   math: mathWithoutLerp,
@@ -45,7 +54,8 @@ export const stdlib: StaticStdlib = {
   subtitle,
   presets,
   code,
-  cue,
+  carousel,
+  stack,
   backgrounds,
   montage,
   createResponsive: responsive.createResponsive,
@@ -55,7 +65,18 @@ export const stdlib: StaticStdlib = {
   interpolate,
   interpolateColor,
   path: Object.assign(path, { parse: createMotionPath }),
-  svg: { draw, filter, morph, reveal, shape, textPath },
+  svg: {
+    draw,
+    filter,
+    morph,
+    shape,
+    textPath,
+    bezier,
+    gradient: svgGradient,
+    measureText,
+    wrapText,
+    fitText,
+  },
   layout,
   mergeMotion,
   layers,

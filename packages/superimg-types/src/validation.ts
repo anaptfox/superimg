@@ -1,5 +1,7 @@
 //! Validation types for AI-generated templates
 
+import type { JsonObject } from "./json.js";
+
 /**
  * Error codes for AI template validation.
  * Machine-readable codes for AI self-correction.
@@ -75,7 +77,7 @@ export interface ValidationOptions {
   /** Video duration (default: 3). Accepts number (seconds), "5s", "500ms", or "30f". */
   duration?: number | string;
   /** Optional data to merge with template defaults */
-  data?: Record<string, unknown>;
+  data?: JsonObject;
   /** Check for NaN/undefined in output (default: true) */
   checkOutput?: boolean;
   /** Check for invalid easing names in code (default: true) */

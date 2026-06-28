@@ -29,7 +29,7 @@ describe("buildCompositeHtml", () => {
   it("renders image background with cover fit", () => {
     const html = buildCompositeHtml(
       "<div />",
-      { type: "image", src: "https://example.com/bg.jpg", fit: "cover", opacity: 1 },
+      { src: "https://example.com/bg.jpg", fit: "cover", opacity: 1 },
       undefined,
       width,
       height

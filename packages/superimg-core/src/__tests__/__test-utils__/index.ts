@@ -1,1 +1,6 @@
-export { makeTestContext, compileFromString } from "./context.js";
+export {
+  makeTestContext,
+  makeTestContextAtProgress,
+  makeTestContextAtSeconds,
+  compileFromString,
+} from "./context.js";

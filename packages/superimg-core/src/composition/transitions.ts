@@ -41,7 +41,7 @@ import {
 } from "@superimg/stdlib";
 
 /** Lookup map for easing functions by name */
-const EASING_MAP: Record<string, (t: number) => number> = {
+const EASING_MAP = {
   linear,
   easeInQuad,
   easeOutQuad,
@@ -73,7 +73,7 @@ const EASING_MAP: Record<string, (t: number) => number> = {
   easeInBounce,
   easeOutBounce,
   easeInOutBounce,
-};
+} satisfies Record<EasingName, (t: number) => number>;
 
 /**
  * Apply an easing function to a linear progress value.
@@ -81,37 +81,34 @@ const EASING_MAP: Record<string, (t: number) => number> = {
  */
 function applyEasing(t: number, easingName?: string): number {
   if (!easingName) return t;
-  const fn = EASING_MAP[easingName];
-  return fn ? fn(t) : t;
+  if (!(easingName in EASING_MAP)) return t;
+  return EASING_MAP[easingName as EasingName](t);
+}
+
+function makeTransition(
+  type: Transition["type"],
+  duration: Duration,
+  easing?: EasingName,
+): Transition {
+  return {
+    type,
+    duration,
+    ...(easing !== undefined ? { easing } : {}),
+  };
 }
 
 /** Transition presets for common enter/exit effects */
 export const transitions = {
-  fade: (duration: Duration, easing?: EasingName): Transition => ({
-    type: "fade",
-    duration,
-    easing,
-  }),
-  slideLeft: (duration: Duration, easing?: EasingName): Transition => ({
-    type: "slide-left",
-    duration,
-    easing,
-  }),
-  slideRight: (duration: Duration, easing?: EasingName): Transition => ({
-    type: "slide-right",
-    duration,
-    easing,
-  }),
-  slideUp: (duration: Duration, easing?: EasingName): Transition => ({
-    type: "slide-up",
-    duration,
-    easing,
-  }),
-  slideDown: (duration: Duration, easing?: EasingName): Transition => ({
-    type: "slide-down",
-    duration,
-    easing,
-  }),
+  fade: (duration: Duration, easing?: EasingName): Transition =>
+    makeTransition("fade", duration, easing),
+  slideLeft: (duration: Duration, easing?: EasingName): Transition =>
+    makeTransition("slide-left", duration, easing),
+  slideRight: (duration: Duration, easing?: EasingName): Transition =>
+    makeTransition("slide-right", duration, easing),
+  slideUp: (duration: Duration, easing?: EasingName): Transition =>
+    makeTransition("slide-up", duration, easing),
+  slideDown: (duration: Duration, easing?: EasingName): Transition =>
+    makeTransition("slide-down", duration, easing),
   none: (): Transition => ({ type: "none", duration: 0 }),
 };
 
@@ -194,4 +191,63 @@ export function renderWithTransition(
   }
 
   return `<div style="${styles.join(";")}">${html}</div>`;
+}
+
+/**
+ * Apply enter/exit transitions to SVG scene markup (opacity / translate on root).
+ * Scenes must return a root `<svg xmlns="...">` element.
+ */
+export function renderSvgWithTransition(
+  svg: string,
+  transition: ResolvedTransition,
+  progress: number,
+  phase: TransitionPhase = "enter",
+  width = 1920,
+  height = 1080,
+): string {
+  if (transition.type === "none") return svg;
+
+  const clampedProgress = Math.max(0, Math.min(progress, 1));
+  const linearT = phase === "exit" ? 1 - clampedProgress : clampedProgress;
+  const t = applyEasing(linearT, transition.easing);
+
+  const openMatch = svg.match(/^<svg([^>]*)>/i);
+  if (!openMatch) return svg;
+
+  const attrs = openMatch[1] ?? "";
+  const inner = svg
+    .replace(/^<svg[^>]*>/i, "")
+    .replace(/<\/svg>\s*$/i, "");
+
+  let opacity = 1;
+  let tx = 0;
+  let ty = 0;
+
+  switch (transition.type) {
+    case "fade":
+      opacity = t;
+      break;
+    case "slide-left":
+      tx = phase === "enter" ? (1 - t) * width : -t * width;
+      break;
+    case "slide-right":
+      tx = phase === "enter" ? (1 - t) * -width : t * width;
+      break;
+    case "slide-up":
+      ty = phase === "enter" ? (1 - t) * height : -t * height;
+      break;
+    case "slide-down":
+      ty = phase === "enter" ? (1 - t) * -height : t * height;
+      break;
+    default:
+      return svg;
+  }
+
+  const opacityAttr = opacity < 0.999 ? ` opacity="${opacity.toFixed(4)}"` : "";
+  const transform =
+    tx !== 0 || ty !== 0
+      ? `<g transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)})">${inner}</g>`
+      : inner;
+
+  return `<svg${attrs}${opacityAttr}>${transform}</svg>`;
 }
