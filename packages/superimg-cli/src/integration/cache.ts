@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { rolldown } from "rolldown";
+import { createSuperimgPlugin } from "@superimg/core/bundler-plugin";
 
 export async function fingerprint(entrypoint: string, extra?: unknown): Promise<string> {
   const hash = createHash("sha256");
@@ -9,6 +10,7 @@ export async function fingerprint(entrypoint: string, extra?: unknown): Promise<
     // Bundle to capture transitive deps — a changed helper invalidates the hash
     const bundle = await rolldown({
       input: entrypoint,
+      plugins: [createSuperimgPlugin()],
     });
     try {
       const { output } = await bundle.generate({ format: "es" });

@@ -23,7 +23,7 @@ export interface LoadedTemplateRenderOptions {
 }
 
 export interface LoadedTemplate {
-  /** Template data (from defineScene) */
+  /** Template data (from define) */
   readonly data: Record<string, unknown> | undefined;
   /** Template config (width, height, fps, duration, etc.) */
   readonly config: { width?: number; height?: number; fps?: number; duration?: Duration; fonts?: string[]; inlineCss?: string[]; stylesheets?: string[] } | undefined;
@@ -79,12 +79,15 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
       overrides: options,
     });
 
-    const { renderer, encoder } = pw.createAdapters({ encoding: job.encoding, audio: job.audio });
-    const plan = createRenderPlan(job, { assetBaseUrl, resolvedAssets, templateDir });
+    const { renderer, encoder } = pw.createAdapters({
+      ...(job.encoding !== undefined ? { encoding: job.encoding } : {}),
+      ...(job.audio !== undefined ? { audio: job.audio } : {}),
+    });
+    const plan = await createRenderPlan(job, { assetBaseUrl, resolvedAssets, templateDir });
     return executeRenderPlan(plan, renderer, encoder, {
-      onProgress: options.onProgress
-        ? (p) => options.onProgress!(p.frame, p.totalFrames)
-        : undefined,
+      ...(options.onProgress
+        ? { onProgress: (p) => options.onProgress!(p.frame, p.totalFrames) }
+        : {}),
     });
   }
 

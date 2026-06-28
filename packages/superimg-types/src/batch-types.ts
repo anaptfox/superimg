@@ -3,6 +3,7 @@
 //! A template module optionally exports `batch` (built with `defineBatch`) to
 //! generate many outputs from one template — no separate loader file.
 
+import type { JsonObject } from "./json.js";
 import type { AnyTemplateModule } from "./index.js";
 
 /**
@@ -10,7 +11,7 @@ import type { AnyTemplateModule } from "./index.js";
  * `slug` is REQUIRED and EXPLICIT — it becomes the output suffix
  * (e.g. `og-<slug>.png`) and the host's typed media key.
  */
-export interface BatchEntry<TData = Record<string, unknown>> {
+export interface BatchEntry<TData = JsonObject> {
   /** Filename-safe slug for this entry (output: `<stem>-<slug>.<ext>`) */
   slug: string;
   /** Data passed into the template for this entry */
@@ -26,7 +27,7 @@ export interface BatchEntry<TData = Record<string, unknown>> {
 }
 
 /** Build-time data generator: returns one entry per output. */
-export type BatchProvider<TData = Record<string, unknown>> =
+export type BatchProvider<TData = JsonObject> =
   () => BatchEntry<TData>[] | Promise<BatchEntry<TData>[]>;
 
 /**
@@ -41,10 +42,10 @@ export type BatchProvider<TData = Record<string, unknown>> =
  *
  * @example
  * ```typescript
- * // og.image.ts
- * import { defineImage, defineBatch } from "superimg";
+ * // og.media.ts
+ * import { define, defineBatch } from "superimg";
  *
- * const template = defineImage({ sample: { title: "Hi" }, config: { width: 1200, height: 630 }, render });
+ * const template = define({ sample: { title: "Hi" }, config: { width: 1200, height: 630 }, render });
  * export default template;
  *
  * export const batch = defineBatch(template, async () => {

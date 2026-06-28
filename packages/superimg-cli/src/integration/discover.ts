@@ -16,7 +16,7 @@ export interface DiscoveredBatch {
   /** Absolute path to the template file that exports `batch`. */
   entrypoint: string;
   /** The resolved batch provider (call it to get the entries). */
-  batch: BatchProvider<any>;
+  batch: BatchProvider;
 }
 
 // Quick source pre-filter: only bundle+import templates that look like they
@@ -29,7 +29,7 @@ function mentionsBatchExport(source: string): boolean {
 }
 
 // Stub `superimg` so discovery only needs the `batch` provider — the template's
-// define*() calls become identity and the (unused) default export is harmless.
+// define() call becomes identity and the (unused) default export is harmless.
 // `defineBatch(template, fn)` returns `fn`, so `mod.batch` is directly callable.
 const superimgStub: Plugin = {
   name: "superimg-discover-stub",
@@ -42,10 +42,7 @@ const superimgStub: Plugin = {
   load(id) {
     if (id === "\0superimg-stub") {
       return [
-        "export const defineImage = (c) => c;",
-        "export const defineScene = (c) => c;",
-        "export const defineSvg = (c) => c;",
-        "export const defineGif = (c) => c;",
+        "export const define = (c) => c;",
         "export const defineConfig = (c) => c;",
         "export const defineBatch = (_t, fn) => fn;",
       ].join("\n");

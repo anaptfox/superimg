@@ -2,54 +2,71 @@
 //! Explicit, typed, self-documenting interfaces for templates, rendering, and playback
 
 import type { Stdlib } from "./stdlib.js";
+import type { DirectorOf, PhaseConfig } from "@superimg/stdlib/director";
+import type { Track } from "@superimg/stdlib/track";
 import type { Checkpoint } from "./checkpoint.js";
 import type { EncodingOptions, OutputFormat } from "./encoding-types.js";
+import type { JsonObject } from "./json.js";
+import type { AudioClip, AudioValue } from "./audio.js";
 
-export type TemplateKind = "video" | "image" | "gif" | "svg";
-
-export type DefineSceneInput<TData = Record<string, unknown>> =
-  Omit<TemplateModule<TData>, "kind" | "sample"> & { kind?: "video"; sample?: TData };
+export type { AudioClip, AudioValue } from "./audio.js";
 
 /**
- * Define a template module with full type inference.
- * This is the recommended way to create templates.
- *
- * @example
- * ```typescript
- * import { defineScene } from 'superimg';
- *
- * export default defineScene({
- *   sample: { title: 'Hello', color: '#fff' },
- *   config: { width: 1920, height: 1080, fps: 30, duration: 5 },
- *   render(ctx) {
- *     return `<div style="color: ${ctx.data.color}">${ctx.data.title}</div>`;
- *   },
- * });
- * ```
+ * The medium a template targets — i.e. which rasterizer family turns its markup
+ * into pixels.
+ *  - "html": full-CSS markup → Chromium (Playwright) / in-page iframe.
+ *  - "svg": vector markup → browser-free resvg-wasm (build time + edge).
  */
-export function defineScene<TData>(
-  module: DefineSceneInput<TData>
-): TemplateModule<TData> {
-  return { ...module, kind: "video" };
-}
-
+export type Medium = "html" | "svg";
 
 // =============================================================================
-// RENDER CONTEXT - Explicit, non-overlapping field names
+// TIMELINE — single scene clock
+// =============================================================================
+
+/** Unified scene-local clock. `seconds` is always `progress × durationSeconds`. */
+export interface Timeline {
+  frame: number;
+  fps: number;
+  /** Normalized scene progress 0→1 (inclusive on last frame). */
+  progress: number;
+  /** Scene time in seconds: progress × durationSeconds. */
+  seconds: number;
+  durationSeconds: number;
+  totalFrames: number;
+}
+
+/** Input for `ctx.track()` — transcript / marker sources. */
+export interface TrackSource {
+  words?: Array<{ text: string; start: number; end: number; type?: string }>;
+  markers?: Record<string, number>;
+}
+
+// =============================================================================
+// RENDER CONTEXT
 // =============================================================================
 
 /**
  * Context passed to template render functions.
- *
- * Field naming convention:
- * - `global*` - Position within entire video
- * - `scene*` - Position within current template (equals global* in single-template mode)
- * - Explicit units in names (Seconds, Frames)
  */
-export interface RenderContext<TData = Record<string, unknown>> {
+export interface RenderContext<TData = JsonObject> {
   // === Stdlib (explicit, no ambient global) ===
   /** Standard library utilities (easing, math, color, etc.) */
   std: Stdlib;
+
+  /** Scene-local unified clock. */
+  timeline: Timeline;
+
+  /**
+   * Phase choreography factory. Replaces the former `ctx.director()`.
+   * @example const d = ctx.director({ intro: "10%", main: "75%", hold: "15%" });
+   */
+  director: <P extends PhaseConfig | undefined = undefined>(phases?: P) => DirectorOf<P>;
+
+  /**
+   * Named sync track (transcript, markers). Uses `timeline.seconds`.
+   * @example const vo = ctx.track({ words: data.words });
+   */
+  track: (opts: TrackSource) => Track;
 
   // === Global Position (entire video) ===
   /** Current frame number across entire video (0-indexed) */
@@ -60,18 +77,6 @@ export interface RenderContext<TData = Record<string, unknown>> {
   totalFrames: number;
   /** Total duration in seconds */
   totalDurationSeconds: number;
-
-  // === Scene Position (kept for backward compat, equals global in single-template mode) ===
-  /** Current frame within this scene (0-indexed) */
-  sceneFrame: number;
-  /** Current time in seconds within this scene */
-  sceneTimeSeconds: number;
-  /** Progress through this scene (0-1) */
-  sceneProgress: number;
-  /** Total frames in this scene */
-  sceneTotalFrames: number;
-  /** Duration of this scene in seconds */
-  sceneDurationSeconds: number;
 
   // === Scene Metadata ===
   /** Index of current scene (0-indexed) */
@@ -143,12 +148,25 @@ export interface CssViewport {
 /**
  * A template module exports a render function and optional config/sample.
  */
+/**
+ * A template module — the unified result of `define()`.
+ *
+ * The two axes that used to be separate factories are now fields:
+ *  - `medium`   — "html" | "svg" (which rasterizer renders it).
+ *  - `animated` — true when the config declares both `fps` and `duration`.
+ *
+ * `render`'s context is narrowed to the precise variant at the `define()` call
+ * site (via overloads); the stored type is permissive so the engine — which
+ * always builds a full temporal `RenderContext` — can call it uniformly.
+ */
 export interface TemplateModule<
-  TData = Record<string, unknown>,
+  TData = JsonObject,
 > {
-  /** Template kind discriminator. */
-  readonly kind: "video";
-  /** Render function that returns HTML string */
+  /** Which rasterizer family renders this template. */
+  readonly medium: Medium;
+  /** True when the template renders N frames (config has fps + duration). */
+  readonly animated: boolean;
+  /** Render function that returns HTML or SVG markup. */
   render: (ctx: RenderContext<TData>) => string;
   /** Optional configuration */
   config?: TemplateConfig;
@@ -230,8 +248,8 @@ export interface BaseConfig {
    */
   background?: BackgroundValue;
   /**
-   * Audio track to mix into the rendered video.
-   * Can be a file path string or an AudioOptions object with volume, fade, and loop controls.
+   * Audio clips to mix into the rendered video.
+   * Accepts a single clip, clip array, or full timeline with mix options.
    */
   audio?: AudioValue;
 }
@@ -290,6 +308,15 @@ export interface TemplateConfig extends BaseConfig {
    * - 'animation': Playwright fake clock advances per frame so CSS transitions/animations work deterministically
    */
   mode?: 'frame' | 'animation';
+  /**
+   * GIF encoding options, applied when a target's sink format is `gif`.
+   * (GIF is now an output sink, not a template kind.)
+   */
+  gif?: {
+    loop?: number;
+    maxColors?: number;
+    dither?: string;
+  };
 }
 
 // =============================================================================
@@ -330,12 +357,13 @@ export interface Transition {
 }
 
 /** Input definition for a scene in compose() */
-export interface SceneDefinition<TData = Record<string, unknown>> {
+export interface SceneDefinition<TData = JsonObject> {
   template: TemplateModule<TData>;
   duration?: Duration;
   id?: string;
   label?: string;
   data?: Partial<TData>;
+  audio?: AudioClip | AudioClip[];
   enter?: Transition;
   exit?: Transition;
 }
@@ -357,15 +385,13 @@ export interface ResolvedScene {
   endFrame: number;
   totalFrames: number;
   duration: number;
-  data: Record<string, unknown>;
+  data: JsonObject;
   enterTransition?: ResolvedTransition;
   exitTransition?: ResolvedTransition;
 }
 
-/** Output of compose() - first-class composed video with scene access */
-export interface ComposedTemplate {
-  readonly kind: "video";
-  readonly type: "composed";
+/** Shared scene API for composed templates (HTML and SVG). */
+export interface ComposedTemplateBase {
   readonly scenes: readonly ResolvedScene[];
   readonly totalFrames: number;
   readonly duration: number;
@@ -378,10 +404,17 @@ export interface ComposedTemplate {
   getSceneById(id: string): ResolvedScene | undefined;
   /** Get scene at given frame */
   getSceneAtFrame(frame: number): ResolvedScene;
-  /** Render HTML for given frame */
+  /** Render markup for given frame */
   render(ctx: RenderContext): string;
   /** Get checkpoints from scene boundaries */
   getCheckpoints(): Checkpoint[];
+}
+
+/** Output of compose() - multi-scene animated reel (HTML or SVG). */
+export interface ComposedTemplate extends ComposedTemplateBase {
+  readonly medium: Medium;
+  readonly animated: true;
+  readonly type: "composed";
 }
 
 // =============================================================================
@@ -455,16 +488,7 @@ export interface BackgroundOptions {
   opacity?: number;
 }
 
-export interface AudioOptions {
-  src: string;
-  loop?: boolean;
-  volume?: number;
-  fadeIn?: number;
-  fadeOut?: number;
-}
-
 export type BackgroundValue = string | BackgroundOptions;
-export type AudioValue = string | AudioOptions;
 
 export interface WatermarkOptions {
   /** The type of watermark to render */

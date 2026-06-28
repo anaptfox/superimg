@@ -1,4 +1,6 @@
-//! Discover all *.video.ts, *.image.ts, and *.gif.ts files under the project root
+//! Discover all *.media.ts / *.media.js template files under the project root.
+//! (The medium — html vs svg — and animated-ness are read from each file's
+//! config at parse time, not inferred from the filename.)
 
 import { join, relative } from "node:path";
 import { readdirSync, existsSync } from "node:fs";
@@ -16,12 +18,10 @@ const EXCLUDE_DIRS = new Set([
   ".superimg",
 ]);
 
-export type TemplateKind = "video" | "image" | "gif" | "svg";
-
 export interface DiscoveredVideo {
-  /** e.g. "summer-campaign/promo" (relative path minus .video.ts) */
+  /** e.g. "summer-campaign/promo" (relative path minus .media.ts) */
   name: string;
-  /** Short name extracted from pattern (e.g. "hello-world" from hello-world/hello-world.video.ts) */
+  /** Short name extracted from pattern (e.g. "hello-world" from hello-world/hello-world.media.ts) */
   shortName: string;
   /** Absolute path to the template file */
   entrypoint: string;
@@ -31,43 +31,35 @@ export interface DiscoveredVideo {
   relativePath: string;
   /** true if folder contains its own _config.ts */
   hasLocalConfig: boolean;
-  /** Template kind inferred from file extension */
-  kind: TemplateKind;
 }
 
 function stripTemplateExtension(filename: string): string {
-  return filename
-    .replace(/\.video\.(ts|js)$/, "")
-    .replace(/\.image\.ts$/, "")
-    .replace(/\.gif\.ts$/, "")
-    .replace(/\.svg\.ts$/, "");
+  return filename.replace(/\.media\.(ts|js)$/, "");
 }
 
-function inferKind(filename: string): TemplateKind {
-  if (filename.endsWith(".image.ts")) return "image";
-  if (filename.endsWith(".gif.ts")) return "gif";
-  if (filename.endsWith(".svg.ts")) return "svg";
-  return "video";
+/** True for the single `*.media.ts` / `*.media.js` template extension. */
+export function isTemplateFile(filename: string): boolean {
+  return filename.endsWith(".media.ts") || filename.endsWith(".media.js");
 }
 
 /**
  * Extract a short name from a template file path.
- * - {folder}/{folder}.video.ts → folder name
- * - {any}/index.video.ts → parent folder name
+ * - {folder}/{folder}.media.ts → folder name
+ * - {any}/index.media.ts → parent folder name
  * - Fallback: filename without extension
  */
 export function extractShortName(relPath: string): string {
   const parts = relPath.replace(/\\/g, "/").split("/");
-  const filename = parts[parts.length - 1];
+  const filename = parts[parts.length - 1] ?? "";
   const baseName = stripTemplateExtension(filename);
   const parentFolder = parts.length > 1 ? parts[parts.length - 2] : "";
 
-  // Pattern: {folder}/{folder}.video.ts
+  // Pattern: {folder}/{folder}.media.ts
   if (parentFolder && baseName === parentFolder) {
     return parentFolder;
   }
 
-  // Pattern: {any}/index.video.ts
+  // Pattern: {any}/index.media.ts
   if (baseName === "index" && parentFolder) {
     return parentFolder;
   }
@@ -97,7 +89,7 @@ export function checkDuplicateVideoNames(videos: DiscoveredVideo[]): string | nu
 }
 
 /**
- * Discovers all *.video.ts and *.video.js files under the project root.
+ * Discovers all *.media.ts and *.media.js files under the project root.
  * Excludes node_modules, .next, .vercel, dist, out, .git, build, .turbo.
  */
 export function discoverVideos(projectRoot: string): DiscoveredVideo[] {
@@ -116,20 +108,13 @@ export function discoverVideos(projectRoot: string): DiscoveredVideo[] {
           walk(fullPath);
         }
       } else if (entry.isFile()) {
-        const isTemplate =
-          entry.name.endsWith(".video.ts") ||
-          entry.name.endsWith(".video.js") ||
-          entry.name.endsWith(".image.ts") ||
-          entry.name.endsWith(".gif.ts") ||
-          entry.name.endsWith(".svg.ts");
-        if (isTemplate) {
+        if (isTemplateFile(entry.name)) {
           const relPath = relative(projectRoot, fullPath);
           const name = stripTemplateExtension(relPath.replace(/\\/g, "/"));
           const shortName = extractShortName(relPath);
           const directory = join(dir);
           const configPath = join(directory, "_config.ts");
           const hasLocalConfig = existsSync(configPath);
-          const kind = inferKind(entry.name);
 
           results.push({
             name,
@@ -138,7 +123,6 @@ export function discoverVideos(projectRoot: string): DiscoveredVideo[] {
             directory,
             relativePath: relPath.replace(/\\/g, "/"),
             hasLocalConfig,
-            kind,
           });
         }
       }

@@ -1,16 +1,18 @@
 //! SuperImg Types - Pure TypeScript type definitions
 //! Core types, interfaces, and error classes for templates, rendering, and playback
 
+import type { JsonObject } from "./json.js";
 import type { TemplateModule } from "./types.js";
-import type { ImageModule } from "./image-types.js";
-import type { GifModule } from "./gif-types.js";
-import type { SvgModule } from "./svg-types.js";
 
-export type AnyTemplateModule<TData = Record<string, unknown>> =
-  | TemplateModule<TData>
-  | ImageModule<TData>
-  | GifModule<TData>
-  | SvgModule<TData>;
+/**
+ * Any template module. After the `define()` collapse there is a single module
+ * shape (medium + animated discriminate behaviour), so this is just an alias —
+ * kept for the many call sites that import it.
+ */
+export type { JsonPrimitive, JsonObject, JsonValue, TemplateData } from "./json.js";
+export { isJsonObject } from "./json.js";
+
+export type AnyTemplateModule<TData = JsonObject> = TemplateModule<TData>;
 
 // =============================================================================
 // CORE TYPES
@@ -19,6 +21,8 @@ export type AnyTemplateModule<TData = Record<string, unknown>> =
 export type {
   // Render Context
   RenderContext,
+  Timeline,
+  TrackSource,
   OutputInfo,
   CssViewport,
 
@@ -29,8 +33,7 @@ export type {
   FitMode,
 
   // Template Types
-  TemplateKind,
-  DefineSceneInput,
+  Medium,
   TemplateModule,
   TemplateConfig,
   OutputPreset,
@@ -47,6 +50,7 @@ export type {
   ResolvedTransition,
   ResolvedScene,
   ComposedTemplate,
+  ComposedTemplateBase,
 
   RenderOptions,
 
@@ -58,8 +62,8 @@ export type {
   AudioAssetMeta,
   BackgroundValue,
   AudioValue,
+  AudioClip,
   BackgroundOptions,
-  AudioOptions,
 
   // Watermarks
   WatermarkOptions,
@@ -68,6 +72,27 @@ export type {
   // Tailwind
   TailwindConfig,
 } from "./types.js";
+
+export type {
+  AudioRole,
+  AudioSource,
+  AudioTimeline,
+  AudioMixOptions,
+  TranscriptWord,
+  DocumentaryScript,
+  ResolvedAudioClip,
+  ResolvedAudioMix,
+  ResolvedAudioTimeline,
+} from "./audio.js";
+
+export type {
+  TimelineModel,
+  TimelineTrack,
+  TimelineTrackKind,
+  TimelineItem,
+  VideoTimelineItem,
+  AudioTimelineItem,
+} from "./timeline-model.js";
 
 export type {
   EncodingOptions,
@@ -81,10 +106,24 @@ export type {
 } from "./encoding-types.js";
 
 // Template helpers
-export { defineScene, defineConfig } from "./types.js";
-export { defineImage, type DefineImageInput, type ImageModule, type ImageConfig, type ImageRenderContext, type ImageOutputPreset, type StillOutputFormat } from "./image-types.js";
-export { defineGif, type DefineGifInput, type GifModule, type GifConfig } from "./gif-types.js";
-export { defineSvg, type DefineSvgInput, type SvgModule, type SvgConfig, type SvgRenderContext, type SvgOutputPreset } from "./svg-types.js";
+export { defineConfig } from "./types.js";
+export {
+  define,
+  isAnimatedTemplate,
+  isStaticTemplate,
+  type ImageRenderContext,
+  type SvgRenderContext,
+  type SvgAnimatedRenderContext,
+  type AnimatedConfig,
+  type StaticConfig,
+  type AnimatedTemplateModule,
+  type StaticTemplateModule,
+  type DefineInput,
+  type DefineSvgAnimatedInput,
+  type DefineSvgStaticInput,
+  type DefineHtmlAnimatedInput,
+  type DefineHtmlStaticInput,
+} from "./define.js";
 
 // =============================================================================
 // RESULT TYPES & ERRORS
@@ -115,13 +154,17 @@ export {
 // =============================================================================
 
 export type { PlayerOptions, PlayerEvents, PlayerInput } from "./player.js";
-export { isComposedTemplate } from "./player.js";
+export {
+  isComposedTemplate,
+  isComposedSvgTemplate,
+  isAnyComposedTemplate,
+} from "./player.js";
 
 // =============================================================================
 // STDLIB TYPES
 // =============================================================================
 
-export type { Stdlib, ImageStdlib, SvgStdlib } from "./stdlib.js";
+export type { Stdlib, ImageStdlib, SvgStdlib, SvgAnimatedStdlib } from "./stdlib.js";
 
 // =============================================================================
 // CHECKPOINT TYPES
@@ -152,6 +195,9 @@ export type {
   RenderProgress,
   FrameRendererConfig,
   FrameRenderer,
+  RasterizerCapabilities,
+  RasterizerConfig,
+  Rasterizer,
   VideoEncoderConfig,
   VideoEncoder,
   RenderEngine,

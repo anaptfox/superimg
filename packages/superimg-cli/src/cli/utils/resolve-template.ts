@@ -1,9 +1,9 @@
 //! Smart template path resolution for CLI commands
 //!
-//! Resolves bare names through *.video.ts convention:
-//!   superimg dev intro        -> videos/intro.video.ts or project-wide search
-//!   superimg dev intro.video.ts -> explicit or videos/intro.video.ts
-//!   superimg dev ./path.video.ts -> explicit path
+//! Resolves bare names through *.media.ts convention:
+//!   superimg dev intro        -> videos/intro.media.ts or project-wide search
+//!   superimg dev intro.media.ts -> explicit or videos/intro.media.ts
+//!   superimg dev ./path.media.ts -> explicit path
 
 import { resolve, join } from "node:path";
 import { existsSync } from "node:fs";
@@ -17,7 +17,7 @@ import {
 
 /**
  * Resolve template path. Bare names are resolved through:
- * 1. videos/ convention (standalone .video.ts or folder with index.video.ts)
+ * 1. videos/ convention (standalone .media.ts or folder with index.media.ts)
  * 2. Project-wide fallback via discoverVideos
  */
 export function resolveTemplatePath(input: string, cwd = process.cwd()): string {
@@ -25,9 +25,9 @@ export function resolveTemplatePath(input: string, cwd = process.cwd()): string 
   if (!trimmed) {
     throw new ValidationError({
       field: "template",
-      expectedType: "non-empty path or video name",
+      expectedType: "non-empty path or template name",
       receivedValue: input,
-      suggestion: "Pass a video name (e.g. `superimg dev intro`) or a path (e.g. `./videos/intro.video.ts`).",
+      suggestion: "Pass a template name (e.g. `superimg dev intro`) or a path (e.g. `./videos/intro.media.ts`).",
     });
   }
 
@@ -42,29 +42,21 @@ export function resolveTemplatePath(input: string, cwd = process.cwd()): string 
       });
     }
     const validExt =
-      resolved.endsWith(".video.ts") ||
-      resolved.endsWith(".video.js") ||
-      resolved.endsWith(".image.ts") ||
-      resolved.endsWith(".gif.ts") ||
-      resolved.endsWith(".svg.ts");
+      resolved.endsWith(".media.ts") || resolved.endsWith(".media.js");
     if (!validExt) {
       throw new ValidationError({
         field: "template",
-        expectedType: ".video.ts, .image.ts, .gif.ts, or .svg.ts file",
+        expectedType: ".media.ts or .media.js file",
         receivedValue: trimmed,
-        suggestion: "Rename the file to end in `.video.ts`, `.image.ts`, `.gif.ts`, or `.svg.ts`.",
+        suggestion: "Rename the file to end in `.media.ts`.",
       });
     }
     return resolved;
   }
 
-  // Bare name: strip template extensions if present
+  // Bare name: strip the template extension if present
   const baseName = trimmed
-    .replace(/\.video\.ts$/, "")
-    .replace(/\.video\.js$/, "")
-    .replace(/\.image\.ts$/, "")
-    .replace(/\.gif\.ts$/, "")
-    .replace(/\.svg\.ts$/, "")
+    .replace(/\.media\.(ts|js)$/, "")
     .replace(/\.ts$/, "")
     .replace(/\.js$/, "");
 
@@ -73,10 +65,10 @@ export function resolveTemplatePath(input: string, cwd = process.cwd()): string 
 
   // 1. videos/ convention
   const candidates = [
-    join(videosDir, `${baseName}.video.ts`),
-    join(videosDir, `${baseName}.video.js`),
-    join(videosDir, baseName, "index.video.ts"),
-    join(videosDir, baseName, "index.video.js"),
+    join(videosDir, `${baseName}.media.ts`),
+    join(videosDir, `${baseName}.media.js`),
+    join(videosDir, baseName, "index.media.ts"),
+    join(videosDir, baseName, "index.media.js"),
   ];
 
   for (const p of candidates) {
@@ -92,17 +84,18 @@ export function resolveTemplatePath(input: string, cwd = process.cwd()): string 
     console.warn(`Warning: ${dupWarning}`);
   }
 
-  // Try short name match first (e.g. "hello-world" matches hello-world/hello-world.video.ts)
+  // Try short name match first (e.g. "hello-world" matches hello-world/hello-world.media.ts)
   const shortMatches = videos.filter((v) => v.shortName === baseName);
   if (shortMatches.length === 1) {
-    return shortMatches[0].entrypoint;
+    const match = shortMatches[0];
+    if (match) return match.entrypoint;
   }
   if (shortMatches.length > 1) {
     throw new ValidationError({
       field: "template",
-      expectedType: "unambiguous video name",
+      expectedType: "unambiguous template name",
       receivedValue: baseName,
-      suggestion: `Found ${shortMatches.length} matches:\n${shortMatches.map((v) => `  - ${v.relativePath}`).join("\n")}\nUse an explicit path (e.g. ./${shortMatches[0].relativePath}).`,
+      suggestion: `Found ${shortMatches.length} matches:\n${shortMatches.map((v) => `  - ${v.relativePath}`).join("\n")}\nUse an explicit path (e.g. ./${shortMatches[0]?.relativePath ?? baseName}).`,
     });
   }
 
@@ -111,9 +104,9 @@ export function resolveTemplatePath(input: string, cwd = process.cwd()): string 
   if (fullMatches.length > 1) {
     throw new ValidationError({
       field: "template",
-      expectedType: "unambiguous video name",
+      expectedType: "unambiguous template name",
       receivedValue: baseName,
-      suggestion: `Found ${fullMatches.length} matches:\n${fullMatches.map((v) => `  - ${v.relativePath}`).join("\n")}\nUse an explicit path (e.g. ./${fullMatches[0].relativePath}).`,
+      suggestion: `Found ${fullMatches.length} matches:\n${fullMatches.map((v) => `  - ${v.relativePath}`).join("\n")}\nUse an explicit path (e.g. ./${fullMatches[0]?.relativePath ?? baseName}).`,
     });
   }
   const match = fullMatches[0];
@@ -133,13 +126,13 @@ export function resolveTemplatePath(input: string, cwd = process.cwd()): string 
       hint = list;
     }
   } else {
-    hint = "No *.video.ts files found in this project. Run `superimg init` to create one.";
+    hint = "No *.media.ts files found in this project. Run `superimg init` to create one.";
   }
 
   throw new IOError({
     operation: "read",
     path: trimmed,
-    originalError: `Video not found. Tried videos/${baseName}.video.ts, videos/${baseName}/index.video.ts, and project-wide search. ${hint}`,
+    originalError: `Template not found. Tried videos/${baseName}.media.ts, videos/${baseName}/index.media.ts, and project-wide search. ${hint}`,
   });
 }
 
@@ -164,17 +157,17 @@ function levenshtein(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-  for (let i = 0; i <= m; i++) dp[i][0] = i;
-  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 0; i <= m; i++) dp[i]![0] = i;
+  for (let j = 0; j <= n; j++) dp[0]![j] = j;
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,
-        dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + cost
+      dp[i]![j] = Math.min(
+        (dp[i - 1]?.[j] ?? 0) + 1,
+        (dp[i]?.[j - 1] ?? 0) + 1,
+        (dp[i - 1]?.[j - 1] ?? 0) + cost
       );
     }
   }
-  return dp[m][n];
+  return dp[m]?.[n] ?? 0;
 }

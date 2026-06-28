@@ -30,7 +30,7 @@ export async function discoverCommand(options: { json?: boolean } = {}) {
 
   if (videos.length === 0) {
     console.log("\n  No templates found.");
-    console.log("  Create a *.video.ts, *.image.ts, *.gif.ts, or *.svg.ts file.\n");
+    console.log("  Create a *.media.ts file, or run 'superimg init' to scaffold.\n");
     return;
   }
 
@@ -39,14 +39,13 @@ export async function discoverCommand(options: { json?: boolean } = {}) {
   console.log(`\n  ${videos.length} template(s) found:\n`);
 
   const maxName = Math.max(4, ...videos.map((v) => v.shortName.length));
-  const maxKind = Math.max(4, ...videos.map((v) => v.kind.length));
   const pad = (s: string, n: number) => s.padEnd(n);
 
-  console.log(`  ${pad("Name", maxName)}  ${pad("Kind", maxKind)}  Path`);
-  console.log(`  ${"-".repeat(maxName)}  ${"-".repeat(maxKind)}  ${"-".repeat(40)}`);
+  console.log(`  ${pad("Name", maxName)}  Path`);
+  console.log(`  ${"-".repeat(maxName)}  ${"-".repeat(40)}`);
 
   for (const v of videos) {
-    console.log(`  ${pad(v.shortName, maxName)}  ${pad(v.kind, maxKind)}  ${v.relativePath}`);
+    console.log(`  ${pad(v.shortName, maxName)}  ${v.relativePath}`);
   }
 
   console.log("\n");

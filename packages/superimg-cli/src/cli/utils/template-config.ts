@@ -40,6 +40,10 @@ export interface ParsedTemplate {
     hasRenderExport: boolean;
     hasDefaultExport: boolean;
   };
+  /** Rasterizer family — from `define({ medium })`, default "html". */
+  medium: "html" | "svg";
+  /** True when the config declares both fps and duration (renders N frames). */
+  animated: boolean;
   templateConfig?: TemplateConfig;
   resolvedAssets: ResolvedAssetDeclaration[];
   config: {
@@ -157,9 +161,9 @@ export async function parseTemplate(
   if (!metadata.hasRenderExport) {
     throw new TemplateCompilationError({
       file: fullPath,
-      syntaxError: "Template must define a `render` function inside `defineScene({ render(ctx) { ... } })`.",
+      syntaxError: "Template must define a `render` function inside `define({ render(ctx) { ... } })`.",
       suggestion:
-        "Add `export default defineScene({ render(ctx) { return '<div/>' } })` to your template.",
+        "Add `export default define({ render(ctx) { return '<div/>' } })` to your template.",
     });
   }
 
@@ -185,8 +189,14 @@ export async function parseTemplate(
 
   const resolvedConfig = resolveRenderConfig({
     templateConfig,
-    cascadingConfig: options?.cascadingConfig,
+    ...(options?.cascadingConfig !== undefined
+      ? { cascadingConfig: options.cascadingConfig }
+      : {}),
   });
+
+  const animated =
+    !!metadata.isComposed ||
+    (typeof metadata.config?.fps === "number" && metadata.config?.duration != null);
 
   return {
     templateCode,
@@ -194,6 +204,8 @@ export async function parseTemplate(
       hasRenderExport: metadata.hasRenderExport,
       hasDefaultExport: metadata.hasDefaultExport,
     },
+    medium: metadata.medium ?? "html",
+    animated,
     templateConfig,
     resolvedAssets,
     config: resolvedConfig,
@@ -228,9 +240,9 @@ export function resolvePresetConfig(
     width: preset.width ?? baseConfig.width,
     height: preset.height ?? baseConfig.height,
     fps: preset.fps ?? baseConfig.fps,
-    format: preset.format,
-    outDir: preset.outDir,
-    outFile: preset.outFile,
+    ...(preset.format !== undefined ? { format: preset.format } : {}),
+    ...(preset.outDir !== undefined ? { outDir: preset.outDir } : {}),
+    ...(preset.outFile !== undefined ? { outFile: preset.outFile } : {}),
   };
 }
 
