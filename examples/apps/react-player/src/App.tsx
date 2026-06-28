@@ -1,36 +1,36 @@
 import { useRef } from "react";
-import { Player, type PlayerRef } from "superimg/react";
-import { defineScene } from "superimg";
+import { Player, type PlayerRef } from "superimg/react/player";
+import { define } from "superimg";
 
 // =============================================================================
 // TEMPLATE MODULES - Templates are responsive, no dimensions needed
 // =============================================================================
 
 // Gradient rotation template
-const gradientTemplate = defineScene({
+const gradientTemplate = define({
   config: { fps: 24, duration: 2 },
   render(ctx) {
-    const { sceneProgress: progress } = ctx;
-    const hue = Math.floor(progress * 360);
+    const  { timeline } = ctx;
+    const hue = Math.floor(timeline.progress * 360);
     return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:system-ui;font-size:32px;color:white;background:linear-gradient(120deg, hsl(${hue}, 80%, 40%), #0f0f0f)">Gradient ${(progress * 100).toFixed(0)}%</div>`;
   },
 });
 
 // Pulse animation template
-const pulseTemplate = defineScene({
+const pulseTemplate = define({
   config: { fps: 24, duration: 2 },
   render(ctx) {
-    const { sceneProgress: progress } = ctx;
+    const  { timeline } = ctx;
     const scale = 0.8 + Math.sin(progress * Math.PI * 4) * 0.2;
     return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1a1a2e"><div style="width:80px;height:80px;border-radius:50%;background:#16213e;transform:scale(${scale});box-shadow:0 0 40px rgba(0,149,255,0.8)"></div></div>`;
   },
 });
 
 // Color bars template
-const barsTemplate = defineScene({
+const barsTemplate = define({
   config: { fps: 24, duration: 2 },
   render(ctx) {
-    const { sceneProgress: progress } = ctx;
+    const  { timeline } = ctx;
     const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
     const bars = colors
       .map((c, i) => {
@@ -43,29 +43,29 @@ const barsTemplate = defineScene({
 });
 
 // Spinning squares template
-const spinTemplate = defineScene({
+const spinTemplate = define({
   config: { fps: 24, duration: 2 },
   render(ctx) {
-    const { sceneProgress: progress } = ctx;
+    const  { timeline } = ctx;
     const rotate = progress * 360;
     return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%)"><div style="width:60px;height:60px;background:white;transform:rotate(${rotate}deg)"></div></div>`;
   },
 });
 
 // Wave pattern template
-const waveTemplate = defineScene({
+const waveTemplate = define({
   config: { fps: 24, duration: 2 },
   render(ctx) {
-    const { sceneProgress: progress } = ctx;
+    const  { timeline } = ctx;
     return `<div style="width:100%;height:100%;background:#0a0e27;display:flex;align-items:center;justify-content:center;font-size:24px;color:#64ffda">◆ ◇ ◆ ◇<br>Wave ${Math.floor(progress * 100)}%</div>`;
   },
 });
 
 // Gradient sweep template
-const sweepTemplate = defineScene({
+const sweepTemplate = define({
   config: { fps: 24, duration: 2 },
   render(ctx) {
-    const { sceneProgress: progress } = ctx;
+    const  { timeline } = ctx;
     const angle = progress * 360;
     return `<div style="width:100%;height:100%;background:linear-gradient(${angle}deg, #ee0979 0%, #ff6a00 100%);display:flex;align-items:center;justify-content:center;font-size:28px;color:white;font-weight:bold">SWEEP</div>`;
   },

@@ -4,6 +4,11 @@
     "category": "basics",
     "description": "Multi-scene composition with transitions between templates"
   },
+  "documentary-reel": {
+    "title": "Documentary Reel",
+    "category": "composed",
+    "description": "Compose multi-chapter reel with music bed, per-scene voice clips, ducking, and transcript sync"
+  },
   "hello-world": {
     "title": "Hello World",
     "category": "basics",
@@ -32,17 +37,22 @@
   "og-card": {
     "title": "OG Card",
     "category": "basics",
-    "description": "Still image template (defineImage) with multi-format outputs"
+    "description": "Static Open Graph image with multi-format outputs (PNG + WebP)"
   },
   "spinner": {
     "title": "Spinner",
     "category": "basics",
-    "description": "Animated GIF loop (defineGif)"
+    "description": "Animated loading spinner GIF loop"
   },
   "sine-wave": {
     "title": "Sine Wave",
     "category": "vector",
-    "description": "SVG chart template (defineSvg) with std.viz"
+    "description": "Static SVG chart with std.viz grid, axes, and plots"
+  },
+  "pelican-bicycle": {
+    "title": "Pelican Bicycle",
+    "category": "vector",
+    "description": "Whimsical video loop — pelican pedaling a bike with scene-time SVG motion"
   },
   "watermark-demo": {
     "title": "Watermark Demo",
@@ -77,7 +87,7 @@
   "logo-reveal": {
     "title": "Logo Reveal",
     "category": "marketing",
-    "description": "Brand intro with named std.score phases for logo and tagline reveals"
+    "description": "Brand intro with named director phases for logo and tagline reveals"
   },
   "lower-thirds": {
     "title": "Lower Thirds",
@@ -87,7 +97,7 @@
   "shorts": {
     "title": "Shorts",
     "category": "marketing",
-    "description": "Simple title/subtitle card for vertical shorts"
+    "description": "Vertical 9:16 title card for TikTok, Reels, and Stories"
   },
   "testimonial-split": {
     "title": "Testimonial Split",
@@ -324,9 +334,114 @@
     "category": "developer",
     "description": "Score-driven terminal commands and output"
   },
-  "walk-cycle": {
-    "title": "Walk Cycle",
-    "category": "developer",
-    "description": "Biomechanics-driven character animation built with SVG primitives"
+  "math-explainer": {
+    "title": "Math Explainer",
+    "category": "vector",
+    "description": "Animated equation reveal with coordinate grid and curve tracing"
+  },
+  "wow-demo": {
+    "title": "Fourier Wow",
+    "category": "vector",
+    "description": "Epicycle chain tracing a square wave — the classic Fourier series reveal"
+  },
+  "svg-reel": {
+    "title": "SVG Reel",
+    "category": "vector",
+    "description": "Multi-scene compose reel — Fourier epicycles, shape morph, orbital trails, rendered browser-free via resvg"
+  },
+  "gradient-wash": {
+    "title": "Gradient Wash",
+    "category": "vector",
+    "description": "Animated SVG gradient morph — linear to radial via std.svg.gradient.animate and animateGradientStops"
+  },
+  "spline-draw": {
+    "title": "Spline Draw",
+    "category": "vector",
+    "description": "Catmull-Rom spline stroke reveal with std.svg.bezier.smooth and std.svg.draw"
+  },
+  "wireframe-cube": {
+    "title": "Wireframe Cube",
+    "category": "vector",
+    "description": "3D wireframe cube with viz.project3d perspective projection and rotating camera"
+  },
+  "torus-orbit": {
+    "title": "Torus Orbit",
+    "category": "vector",
+    "description": "Parametric 3D torus ring projected with viz.project3d.path3d and stroke draw reveal"
+  },
+  "designer-reel": {
+    "title": "Designer Reel",
+    "category": "vector",
+    "description": "Flagship SVG compose reel — gradient wash, spline draw, bar race, and wireframe cube scenes"
+  },
+  "grid-dashboard": {
+    "title": "Grid Dashboard",
+    "category": "data",
+    "description": "2×2 dashboard panels with std.layout.grid, std.layout.inset, and staggered entrance"
+  },
+  "bar-race": {
+    "title": "Bar Race",
+    "category": "data",
+    "description": "Animated bar chart race with viz.createCoords, viz.grid, viz.axes, and viz.charts.bar grow animation"
+  },
+  "line-trend": {
+    "title": "Line Trend",
+    "category": "data",
+    "description": "Line chart with area fill and draw animation via viz.charts.line"
+  },
+  "pie-breakdown": {
+    "title": "Pie Breakdown",
+    "category": "data",
+    "description": "Donut chart with animated slices and legend via viz.charts.pie"
+  },
+  "scatter-plot": {
+    "title": "Scatter Plot",
+    "category": "data",
+    "description": "Scatter plot with sequential point reveal via viz.charts.scatter"
+  },
+  "earnings-card": {
+    "title": "Earnings Card",
+    "category": "data",
+    "description": "Composite earnings card — bar + pie in layout.grid cells with std.svg.fitText headline"
+  },
+  "treemap-breakdown": {
+    "title": "Treemap Breakdown",
+    "category": "data",
+    "description": "Hierarchical treemap layout via viz.charts.treemap (d3-hierarchy)"
+  },
+  "density-plot": {
+    "title": "Density Plot",
+    "category": "data",
+    "description": "Kernel density contours from scattered points via viz.charts.density"
+  },
+  "force-graph": {
+    "title": "Force Graph",
+    "category": "data",
+    "description": "Animated force-directed network graph via viz.charts.force"
+  },
+  "chart-reel": {
+    "title": "Chart Reel",
+    "category": "data",
+    "description": "Multi-scene compose reel combining bar-race and line-trend chart scenes"
+  },
+  "product-spin": {
+    "title": "Product Spin",
+    "category": "marketing",
+    "description": "Rotating 3D product box with viz.three.scene — HTML medium WebGL capture"
+  },
+  "mesh-reveal": {
+    "title": "Mesh Reveal",
+    "category": "marketing",
+    "description": "Torus knot mesh with color morph via viz.three.scene — HTML medium WebGL capture"
+  },
+  "code-galaxy": {
+    "title": "Code Galaxy",
+    "category": "marketing",
+    "description": "14k particle logarithmic spiral — parametric positions/colors from pure math, not filmed footage"
+  },
+  "math-tunnel": {
+    "title": "Math Tunnel",
+    "category": "marketing",
+    "description": "Fly-through tube with morphing cross-section — control points driven by timeline.progress"
   }
 }

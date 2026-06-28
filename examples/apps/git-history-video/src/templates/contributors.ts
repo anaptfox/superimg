@@ -1,6 +1,6 @@
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: {
     fps: 30,
     duration: 12,
@@ -17,13 +17,13 @@ export default defineScene({
       linesDeleted: number;
     }>,
   },
-  render({ sceneTimeSeconds: t, data, std, width, height }) {
+  render({ timeline, data, std, width, height }) {
     const { title, contributors, accentColor } = data;
     const list = contributors.slice(0, 6);
     const maxCommits = Math.max(1, ...list.map((c) => c.commits));
-    const enterP = std.math.clamp(t / 1.2, 0, 1);
-    const rowsP = std.math.clamp((t - 1.1) / 8.5, 0, 1);
-    const exitP = std.math.clamp((t - 10.5) / 1.5, 0, 1);
+    const enterP = std.math.clamp(timeline.seconds / 1.2, 0, 1);
+    const rowsP = std.math.clamp((timeline.seconds - 1.1) / 8.5, 0, 1);
+    const exitP = std.math.clamp((timeline.seconds - 10.5) / 1.5, 0, 1);
 
     const rows = list
       .map((c, i) => {

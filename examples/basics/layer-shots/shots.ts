@@ -14,7 +14,7 @@ export function lowerThirdOverlay(L, html, opts = {}) {
 
 /** Full-bleed hero: Ken Burns background + tinted headline. */
 export function heroShot(L, std, data) {
-  const t = std.score();
+  const t = ctx.director();
   const bg = std.backgrounds.kenBurns({
     src: data.backgroundImage,
     progress: t.progress,

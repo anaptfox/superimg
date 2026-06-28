@@ -115,7 +115,7 @@ export interface StreamCodeOptions {
  * grows, and renders a blinking accent cursor at the leading edge.
  *
  * @param std       The render context's `std` namespace (for `std.text.type`).
- *                  Pass `ctx.std` from inside `defineScene({ render })`.
+ *                  Pass `ctx.std` from inside `define({ render })`.
  * @param fullText  The complete code/JSON that will eventually be revealed.
  * @param progress  0..1 — how much of `fullText` has streamed in.
  * @param options   Language, theme, cadence variance, time, accent color.

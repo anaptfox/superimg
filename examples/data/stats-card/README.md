@@ -18,10 +18,10 @@ pnpm render     # Render to output.mp4
 
 ## Customize
 
-Edit `defaults` in the template or pass data when rendering:
+Edit `sample` in the template or pass data when rendering:
 
 ```ts
-defaults: {
+sample: {
   label: "Conversion Rate",
   value: 94,
   unit: "%",

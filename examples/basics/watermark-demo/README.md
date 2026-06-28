@@ -41,11 +41,11 @@ This template defines two output presets via `config.outputs`:
 
 ## Customize It
 
-This template uses `defaults` inside `defineScene`. Override values by passing data, or edit the defaults in `template.js`:
+This template uses `sample` inside `define`. Override values by passing data, or edit the sample in the template file:
 
 ```js
-export default defineScene({
-  defaults: {
+export default define({
+  sample: {
     title: "Hello, SuperImg!",
     subtitle: "Create stunning videos from code",
     accentColor: "#667eea",

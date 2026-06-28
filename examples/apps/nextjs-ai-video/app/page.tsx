@@ -1,8 +1,12 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
-import { useVideoSession } from "superimg/react";
-import { type TemplateModule } from "superimg/browser";
+import { useRef, useState, useCallback } from "react";
+import {
+  Player,
+  usePlaygroundExport,
+  type PlayerRef,
+  type TemplateModule,
+} from "superimg/react";
 import { timelineTemplate, type TimelineData } from "@/lib/template";
 
 const SUGGESTIONS = [
@@ -14,54 +18,47 @@ const SUGGESTIONS = [
 ];
 
 export default function Page() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<PlayerRef>(null);
   const [topic, setTopic] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
-    "idle"
+    "idle",
   );
   const [videoData, setVideoData] = useState<TimelineData | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  const session = useVideoSession({
-    containerRef,
-    initialFormat: "horizontal",
-    duration: 7,
+  const { exporting, exportProgress, exportMp4, download } = usePlaygroundExport({
+    template: timelineTemplate as unknown as TemplateModule,
+    data: videoData ?? undefined,
   });
 
-  // Load the report card template once on mount
-  useEffect(() => {
-    session.setTemplate(timelineTemplate as unknown as TemplateModule);
+  const generate = useCallback(async (inputTopic: string) => {
+    const trimmed = inputTopic.trim();
+    if (!trimmed) return;
+
+    setStatus("loading");
+    setErrorMsg("");
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: trimmed }),
+      });
+
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+      const data: TimelineData = await res.json();
+      setVideoData(data);
+      playerRef.current?.update({ data });
+      playerRef.current?.play();
+      setIsPlaying(true);
+      setStatus("ready");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
+      setStatus("error");
+    }
   }, []);
-
-  const generate = useCallback(
-    async (inputTopic: string) => {
-      const trimmed = inputTopic.trim();
-      if (!trimmed) return;
-
-      setStatus("loading");
-      setErrorMsg("");
-
-      try {
-        const res = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topic: trimmed }),
-        });
-
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
-
-        const data: TimelineData = await res.json();
-        setVideoData(data);
-        session.setData(data);
-        session.play();
-        setStatus("ready");
-      } catch (err) {
-        setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
-        setStatus("error");
-      }
-    },
-    [session]
-  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,17 +66,16 @@ export default function Page() {
   };
 
   const handleExport = async () => {
-    if (session.exporting) return;
-    const blob = await session.exportMp4();
+    if (exporting) return;
+    const blob = await exportMp4();
     if (blob) {
       const filename = `${topic.slice(0, 40).replace(/\s+/g, "-").toLowerCase()}-timeline.mp4`;
-      session.download(blob, filename);
+      download(blob, filename);
     }
   };
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Header */}
       <header
         style={{
           borderBottom: "1px solid rgba(255,255,255,0.08)",
@@ -103,7 +99,6 @@ export default function Page() {
         </a>
       </header>
 
-      {/* Main */}
       <main
         style={{
           flex: 1,
@@ -117,7 +112,6 @@ export default function Page() {
           width: "100%",
         }}
       >
-        {/* Hero text */}
         <div style={{ textAlign: "center" }}>
           <h1
             style={{
@@ -140,12 +134,11 @@ export default function Page() {
               Get a video.
             </span>
           </h1>
-        <p style={{ color: "rgba(255,255,255,0.45)", margin: 0, fontSize: 16 }}>
-          AI generates the timeline. SuperImg renders every frame.
-        </p>
+          <p style={{ color: "rgba(255,255,255,0.45)", margin: 0, fontSize: 16 }}>
+            AI generates the timeline. SuperImg renders every frame.
+          </p>
         </div>
 
-        {/* Input form */}
         <form
           onSubmit={handleSubmit}
           style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 12 }}
@@ -189,7 +182,6 @@ export default function Page() {
             </button>
           </div>
 
-          {/* Suggestion chips */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {SUGGESTIONS.map((s) => (
               <button
@@ -222,7 +214,6 @@ export default function Page() {
           )}
         </form>
 
-        {/* Video player */}
         <div
           style={{
             width: "100%",
@@ -233,7 +224,6 @@ export default function Page() {
             boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
           }}
         >
-          {/* Player canvas */}
           <div
             style={{
               position: "relative",
@@ -242,7 +232,6 @@ export default function Page() {
               background: "#0a0a14",
             }}
           >
-            {/* Overlay when idle */}
             {status === "idle" && (
               <div
                 style={{
@@ -264,7 +253,6 @@ export default function Page() {
               </div>
             )}
 
-            {/* Loading overlay */}
             {status === "loading" && (
               <div
                 style={{
@@ -296,13 +284,19 @@ export default function Page() {
               </div>
             )}
 
-            <div
-              ref={containerRef}
-              style={{ width: "100%", height: "100%", display: "block" }}
+            <Player
+              ref={playerRef}
+              template={timelineTemplate as unknown as TemplateModule}
+              data={videoData ?? undefined}
+              format="horizontal"
+              playbackMode="loop"
+              loadMode="eager"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              style={{ width: "100%", height: "100%" }}
             />
           </div>
 
-          {/* Controls bar */}
           <div
             style={{
               padding: "12px 16px",
@@ -321,7 +315,9 @@ export default function Page() {
               {status === "ready" && (
                 <>
                   <button
-                    onClick={() => (session.isPlaying ? session.pause() : session.play())}
+                    onClick={() =>
+                      isPlaying ? playerRef.current?.pause() : playerRef.current?.play()
+                    }
                     style={{
                       padding: "6px 14px",
                       fontSize: 12,
@@ -333,24 +329,24 @@ export default function Page() {
                       cursor: "pointer",
                     }}
                   >
-                    {session.isPlaying ? "Pause" : "Play"}
+                    {isPlaying ? "Pause" : "Play"}
                   </button>
                   <button
                     onClick={handleExport}
-                    disabled={session.exporting}
+                    disabled={exporting}
                     style={{
                       padding: "6px 14px",
                       fontSize: 12,
                       fontWeight: 600,
-                      background: session.exporting ? "rgba(255,255,255,0.1)" : "white",
-                      color: session.exporting ? "rgba(255,255,255,0.4)" : "#09090b",
+                      background: exporting ? "rgba(255,255,255,0.1)" : "white",
+                      color: exporting ? "rgba(255,255,255,0.4)" : "#09090b",
                       border: "none",
                       borderRadius: 6,
-                      cursor: session.exporting ? "not-allowed" : "pointer",
+                      cursor: exporting ? "not-allowed" : "pointer",
                     }}
                   >
-                    {session.exporting
-                      ? `Exporting ${Math.round((session.exportProgress ?? 0) * 100)}%…`
+                    {exporting
+                      ? `Exporting ${Math.round((exportProgress ?? 0) * 100)}%…`
                       : "Download MP4"}
                   </button>
                 </>
@@ -359,7 +355,6 @@ export default function Page() {
           </div>
         </div>
 
-        {/* How it works callout */}
         <div
           style={{
             width: "100%",

@@ -4,7 +4,7 @@ import { resolve, dirname } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { renderVideo } from "superimg/server";
-import { extractGitAnalytics } from "./git.js";
+import { extractGitAnalytics, type GitAnalytics } from "./git.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -125,7 +125,7 @@ async function main() {
 
   // 1. Extract git history
   console.log("  Extracting git history...");
-  let analytics;
+  let analytics: GitAnalytics;
   try {
     analytics = extractGitAnalytics({
       count: args.count,

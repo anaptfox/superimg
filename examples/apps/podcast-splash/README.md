@@ -16,7 +16,7 @@ The canonical SDK demo of **`renderBatch`** — render the same template once pe
 
 ## How it works
 
-- **One template** — `src/templates/splash.video.ts` — declares `config.outputs: { youtube, reel }` and uses `std.createResponsive(ctx)` so the layout adapts per orientation.
+- **One template** — `src/templates/splash.media.ts` — declares `config.outputs: { youtube, reel }` and uses `std.createResponsive(ctx)` so the layout adapts per orientation.
 - **One JSON** — `speakers.json` — an array of speaker entries. Each entry's fields become the template's `data`. The `slug` field (or `name`, falling back to index) drives the per-entry filename suffix.
 - **One call** — `renderBatch(templatePath, { dataset, presets: true })` — boots Playwright + bundles the template **once**, then renders `entries × presets` MP4s.
 
@@ -37,7 +37,7 @@ Edit `speakers.json` to add/remove speakers. Re-run.
 The same flow runs through `superimg render --data`:
 
 ```bash
-superimg render examples/apps/podcast-splash/src/templates/splash.video.ts \
+superimg render examples/apps/podcast-splash/src/templates/splash.media.ts \
   --data examples/apps/podcast-splash/speakers.json \
   --presets -y
 ```

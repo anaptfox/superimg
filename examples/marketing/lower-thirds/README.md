@@ -43,11 +43,11 @@ Title:      =====>                    <=====
 
 ## Customize It
 
-Edit the defaults in `template.js`:
+Edit the sample in the template file:
 
 ```js
-export default defineScene({
-  defaults: {
+export default define({
+  sample: {
     name: "Jane Doe",
     title: "Senior Engineer, Acme Corp",
     accentColor: "#3b82f6",

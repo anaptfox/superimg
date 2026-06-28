@@ -37,7 +37,7 @@ Options:
 - `src/cli.ts` owns the product workflow: fetch/read, extract title/body text, estimate timings, and call `renderVideo`.
 - `src/article.ts` is a deliberately dependency-free readability pass. Real apps can swap in Mozilla Readability, Mercury Parser, or an LLM cleanup step.
 - `src/timing.ts` converts article text into word-level timing data.
-- `src/templates/karaoke.video.ts` renders a responsive teleprompter-style video using the current word time.
+- `src/templates/karaoke.media.ts` renders a responsive teleprompter-style video using the current word time.
 
 ## Readability defaults
 

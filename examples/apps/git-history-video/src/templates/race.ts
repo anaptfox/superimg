@@ -1,6 +1,6 @@
-import { defineScene } from "superimg";
+import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: {
     fps: 30,
     duration: 12,
@@ -13,7 +13,7 @@ export default defineScene({
     months: [] as string[],
     series: [] as Array<{ name: string; values: number[] }>,
   },
-  render({ sceneTimeSeconds: t, data, std, width, height }) {
+  render({ timeline, data, std, width, height }) {
     const { title, months, series, accentColor } = data;
     if (!series.length || !months.length) {
       return `<div style="${std.css({ width, height, background: "#090a10" }, std.css.center())}">
@@ -27,8 +27,8 @@ export default defineScene({
     const chartH = height - 420;
     const points = months.length;
     const maxValue = Math.max(1, ...series.flatMap((s) => s.values));
-    const drawP = std.math.clamp((t - 1.2) / 8.8, 0, 1);
-    const exitP = std.math.clamp((t - 10.5) / 1.5, 0, 1);
+    const drawP = std.math.clamp((timeline.seconds - 1.2) / 8.8, 0, 1);
+    const exitP = std.math.clamp((timeline.seconds - 10.5) / 1.5, 0, 1);
     const colors = [accentColor, "#40d9a8", "#ffa452", "#9d86ff"];
 
     const monthLabels = months

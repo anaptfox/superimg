@@ -1,17 +1,19 @@
 #!/usr/bin/env npx tsx
 /**
  * Generate playground examples from category folders under examples/
- * Reads template files (*.video.ts, *.gif.ts, *.image.ts, *.svg.ts, …) and outputs TypeScript with code as strings
+ * Reads template files (*.media.ts, *.media.js) and outputs TypeScript with code as strings.
+ * Complex templates are pre-bundled with rolldown for in-browser playback.
  */
 
 import * as fs from "fs";
 import * as path from "path";
+import { bundleTemplate } from "../packages/superimg-core/dist/bundler.js";
 
 const EXAMPLES_DIR = path.join(__dirname, "../examples");
 const METADATA_PATH = path.join(EXAMPLES_DIR, "_templates.json");
 const OUTPUT_FILE = path.join(
   __dirname,
-  "../apps/docs/lib/video/examples/from-templates.ts"
+  "../apps/docs/lib/video/examples/from-templates.ts",
 );
 
 type TemplateCategory =
@@ -30,21 +32,62 @@ interface TemplateMetadata {
   description?: string;
 }
 
+interface PlaygroundMeta {
+  liveEdit?: boolean;
+  needsAssets?: boolean;
+  needsBundle?: boolean;
+  duration?: number;
+}
+
+function hasRelativeImports(code: string): boolean {
+  return /from\s+["'][./]/.test(code) || /import\s+["'][./]/.test(code);
+}
+
+function hasConfigAssets(code: string): boolean {
+  return /\bassets\s*:\s*\{/.test(code);
+}
+
+function parseDuration(code: string): number | undefined {
+  const match = code.match(/\bduration\s*:\s*(\d+(?:\.\d+)?)/);
+  return match ? Number(match[1]) : undefined;
+}
+
+function needsPreBundle(dirPath: string, code: string): boolean {
+  if (hasRelativeImports(code)) return true;
+
+  const files = fs.readdirSync(dirPath);
+  const mediaFiles = files.filter(
+    (f) => f.endsWith(".media.ts") || f.endsWith(".media.js"),
+  );
+  if (mediaFiles.length > 1) return true;
+
+  const companionFiles = files.filter(
+    (f) =>
+      (f.endsWith(".ts") || f.endsWith(".js")) &&
+      !mediaFiles.includes(f) &&
+      !f.endsWith(".test.ts") &&
+      !f.endsWith(".test.js"),
+  );
+  return companionFiles.length > 0;
+}
+
 // Read metadata
 const metadata: Record<string, TemplateMetadata> = JSON.parse(
-  fs.readFileSync(METADATA_PATH, "utf-8")
+  fs.readFileSync(METADATA_PATH, "utf-8"),
 );
 
-// Read each template
 const examples: Array<{
   id: string;
   title: TemplateMetadata["title"];
   category: TemplateCategory;
   code: string;
+  bundled?: string;
+  playground?: PlaygroundMeta;
 }> = [];
 
+async function main() {
 for (const [id, meta] of Object.entries(metadata).sort(([a], [b]) =>
-  a.localeCompare(b)
+  a.localeCompare(b),
 )) {
   const dirPath = path.join(EXAMPLES_DIR, meta.category, id);
   if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
@@ -53,45 +96,84 @@ for (const [id, meta] of Object.entries(metadata).sort(([a], [b]) =>
   }
 
   const files = fs.readdirSync(dirPath);
-  const TEMPLATE_SUFFIXES = [".video.ts", ".video.js", ".gif.ts", ".gif.js", ".image.ts", ".image.js", ".svg.ts", ".svg.js"];
+  const TEMPLATE_SUFFIXES = [".media.ts", ".media.js"];
   const templateFiles = files.filter((file) =>
-    TEMPLATE_SUFFIXES.some((suffix) => file.endsWith(suffix))
+    TEMPLATE_SUFFIXES.some((suffix) => file.endsWith(suffix)),
   );
   if (templateFiles.length !== 1) continue;
 
   const [templateFile] = templateFiles;
   const filePath = path.join(dirPath, templateFile);
   const code = fs.readFileSync(filePath, "utf-8");
+  const mustBundle = needsPreBundle(dirPath, code);
+  const needsAssets = hasConfigAssets(code);
+  const duration = parseDuration(code);
+
+  let bundled: string | undefined;
+  if (mustBundle) {
+    try {
+      bundled = await bundleTemplate(filePath);
+      console.log(`  ✓ ${meta.category}/${id} → ${meta.title} (bundled)`);
+    } catch (err) {
+      console.warn(
+        `Warning: Bundle failed for ${id}: ${err instanceof Error ? err.message : err}`,
+      );
+      console.log(`  ✓ ${meta.category}/${id} → ${meta.title} (code only)`);
+    }
+  } else {
+    console.log(`  ✓ ${meta.category}/${id} → ${meta.title}`);
+  }
+
+  const playground: PlaygroundMeta = {
+    liveEdit: !bundled,
+    needsBundle: mustBundle,
+    needsAssets,
+    ...(duration !== undefined ? { duration } : {}),
+  };
 
   examples.push({
     id,
     title: meta.title,
     category: meta.category,
     code,
+    ...(bundled !== undefined ? { bundled } : {}),
+    playground,
   });
-
-  console.log(`  ✓ ${meta.category}/${id} → ${meta.title}`);
 }
 
-// Generate output file
+function formatExample(ex: (typeof examples)[number]): string {
+  const lines = [
+    `  {`,
+    `    id: ${JSON.stringify(ex.id)},`,
+    `    title: ${JSON.stringify(ex.title)},`,
+    `    category: ${JSON.stringify(ex.category)},`,
+    `    code: ${JSON.stringify(ex.code)},`,
+  ];
+  if (ex.bundled !== undefined) {
+    lines.push(`    bundled: ${JSON.stringify(ex.bundled)},`);
+  }
+  if (ex.playground) {
+    lines.push(`    playground: ${JSON.stringify(ex.playground)},`);
+  }
+  lines.push(`  }`);
+  return lines.join("\n");
+}
+
 const output = `// AUTO-GENERATED by scripts/generate-examples.ts
 // Do not edit directly - edit examples/_templates.json and examples/<category>/ instead
 
 import type { EditorExample } from "./index";
 
 export const TEMPLATE_EXAMPLES: EditorExample[] = [
-${examples
-  .map(
-    (ex) => `  {
-    id: ${JSON.stringify(ex.id)},
-    title: ${JSON.stringify(ex.title)},
-    category: ${JSON.stringify(ex.category)},
-    code: ${JSON.stringify(ex.code)},
-  }`
-  )
-  .join(",\n")}
+${examples.map(formatExample).join(",\n")}
 ];
 `;
 
 fs.writeFileSync(OUTPUT_FILE, output);
 console.log(`\nGenerated ${OUTPUT_FILE} with ${examples.length} examples`);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

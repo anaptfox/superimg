@@ -5,8 +5,8 @@ import type { RenderContext, TemplateModule } from "superimg";
 const template: TemplateModule = {
   config: { width: 640, height: 360, fps: 30, duration: 5 },
   render: (ctx: RenderContext) => {
-    const { sceneProgress: progress, sceneFrame: frame, sceneTotalFrames } = ctx;
-    const hue = Math.floor(progress * 360);
+    const { timeline } = ctx;
+    const hue = Math.floor(timeline.progress * 360);
     return `
       <div style="
         width:100%;height:100%;
@@ -15,7 +15,7 @@ const template: TemplateModule = {
         background:linear-gradient(120deg, hsl(${hue}, 80%, 35%), #111);
       ">
         <div style="font-size:28px;margin-bottom:12px">Demo Player</div>
-        <div style="font-size:18px;opacity:0.8">Frame ${frame} / ${sceneTotalFrames}</div>
+        <div style="font-size:18px;opacity:0.8">Frame ${timeline.frame} / ${timeline.totalFrames}</div>
       </div>
     `;
   },

@@ -49,7 +49,7 @@ app/
   page.tsx                Main UI: prompt input + Player + export
   api/generate/route.ts   AI SDK generateObject endpoint
 lib/
-  template.ts             SuperImg defineScene (the report card)
+  template.ts             SuperImg define() template (the report card)
 ```
 
 ## Key Code
@@ -67,9 +67,9 @@ const { output } = await generateText({
 **`lib/template.ts`** — The template is fixed; only the data changes:
 
 ```ts
-export const reportCardTemplate = defineScene<VideoData>({
-  render({ sceneTimeSeconds: t, data, std, width, height }) {
-    // Animate headline, stats, summary based on `t` and `data`
+export const reportCardTemplate = define<VideoData>({
+  render({ timeline, data, std, width, height }) {
+    // Animate headline, stats, summary based on `timeline.seconds` and `data`
     return `<div>...</div>`
   },
 })

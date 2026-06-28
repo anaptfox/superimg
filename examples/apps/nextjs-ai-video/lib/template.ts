@@ -1,4 +1,4 @@
-import { defineScene } from "superimg/browser";
+import { define } from "superimg";
 
 export interface TimelineData extends Record<string, unknown> {
   title: string;
@@ -6,7 +6,7 @@ export interface TimelineData extends Record<string, unknown> {
   accentColor: string;
 }
 
-export const timelineTemplate = defineScene<TimelineData>({
+export const timelineTemplate = define<TimelineData>({
   config: {
     fps: 30,
     duration: 7,
@@ -24,18 +24,18 @@ export const timelineTemplate = defineScene<TimelineData>({
     ],
     accentColor: "#667eea",
   },
-  render({ sceneTimeSeconds: t, data, std, width, height }) {
+  render({ timeline, data, std, width, height }) {
     const { title, events, accentColor } = data;
 
     const EVENT_SPACING = 160;
     const TITLE_AREA = 220;
 
     // --- Phase progress ---
-    const titleEnterP = std.math.clamp(t / 1.2, 0, 1);
-    const accentLineP = std.math.clamp((t - 0.4) / 0.8, 0, 1);
-    const scrollP = std.math.clamp((t - 1.2) / 5.0, 0, 1);
-    const spineDrawP = std.math.clamp((t - 1.3) / 4.5, 0, 1);
-    const exitP = std.math.clamp((t - 6.0) / 1.0, 0, 1);
+    const titleEnterP = std.math.clamp(timeline.seconds / 1.2, 0, 1);
+    const accentLineP = std.math.clamp((timeline.seconds - 0.4) / 0.8, 0, 1);
+    const scrollP = std.math.clamp((timeline.seconds - 1.2) / 5.0, 0, 1);
+    const spineDrawP = std.math.clamp((timeline.seconds - 1.3) / 4.5, 0, 1);
+    const exitP = std.math.clamp((timeline.seconds - 6.0) / 1.0, 0, 1);
 
     // --- Title ---
     const titleOpacity = std.interpolate(titleEnterP, [0, 1], [0, 1], "easeOutCubic");
@@ -61,9 +61,9 @@ export const timelineTemplate = defineScene<TimelineData>({
     const eventsHtml = events
       .map((event, i) => {
         const eventStart = 1.5 + i * staggerInterval;
-        const eventP = std.math.clamp((t - eventStart) / 0.6, 0, 1);
-        const dotP = std.math.clamp((t - eventStart) / 0.5, 0, 1);
-        const ringP = std.math.clamp((t - eventStart - 0.08) / 0.5, 0, 1);
+        const eventP = std.math.clamp((timeline.seconds - eventStart) / 0.6, 0, 1);
+        const dotP = std.math.clamp((timeline.seconds - eventStart) / 0.5, 0, 1);
+        const ringP = std.math.clamp((timeline.seconds - eventStart - 0.08) / 0.5, 0, 1);
 
         const eventOpacity = std.interpolate(eventP, [0, 1], [0, 1], "easeOutCubic");
         const eventSlideX = std.interpolate(eventP, [0, 1], [50, 0], "easeOutCubic");

@@ -102,7 +102,7 @@ async function main() {
     data: d
   }));
 
-  const templatePath = resolve(__dirname, "templates", "splash.video.ts");
+  const templatePath = resolve(__dirname, "templates", "splash.media.ts");
 
   const isBoth = args.format === "both";
   const useAllPresets = isBoth;

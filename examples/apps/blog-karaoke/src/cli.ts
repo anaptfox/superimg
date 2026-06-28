@@ -134,7 +134,7 @@ async function main() {
     process.exit(1);
   }
 
-  const templatePath = resolve(APP_ROOT, "src", "templates", "karaoke.video.ts");
+  const templatePath = resolve(APP_ROOT, "src", "templates", "karaoke.media.ts");
   const outputDir = resolve(APP_ROOT, "output");
   mkdirSync(outputDir, { recursive: true });
 
