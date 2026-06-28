@@ -4,7 +4,7 @@
 export * from "./index.shared.js";
 
 // =============================================================================
-// SERVER BUNDLER (esbuild native for template bundling)
+// SERVER BUNDLER (rolldown for template bundling)
 // =============================================================================
 
 export { bundleTemplate, bundleTemplateCode } from "@superimg/cli/server";
@@ -56,7 +56,7 @@ export type { VideoSummary } from "@superimg/cli/server";
 // =============================================================================
 
 export { discoverVideos, extractShortName, checkDuplicateVideoNames } from "@superimg/cli/server";
-export type { DiscoveredVideo, TemplateKind } from "@superimg/cli/server";
+export type { DiscoveredVideo } from "@superimg/cli/server";
 export { RENDER_EVENT_VERSION } from "@superimg/cli/server";
 export type { RenderEvent } from "@superimg/cli/server";
 export { renderTemplates } from "@superimg/cli/server";

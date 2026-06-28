@@ -1,16 +1,26 @@
 //! Timeline scrubbing component
+"use client";
 
-import { useRef, forwardRef, useImperativeHandle, useSyncExternalStore, useState } from "react";
+import {
+  useRef,
+  useImperativeHandle,
+  useSyncExternalStore,
+  useState,
+  type Ref,
+  type CSSProperties,
+} from "react";
 import { useTimeline, type UseTimelineReturn } from "../hooks/useTimeline.js";
 import type { RuntimeStore, Checkpoint } from "../../index.browser.js";
 
 export interface TimelineProps {
+  /** Imperative API ref (React 19 ref-as-prop) */
+  ref?: Ref<TimelineRef>;
   /** The player store to control */
   store: RuntimeStore;
   /** Optional CSS class name for the container */
   className?: string;
   /** Optional inline styles for the container */
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   /** Custom class for the progress bar */
   progressClassName?: string;
   /** Custom class for the playhead */
@@ -41,31 +51,29 @@ export interface TimelineRef {
  *
  * @example
  * ```tsx
- * const { store } = usePlayer(config);
+ * const playerRef = useRef<PlayerRef>(null);
  *
  * <Timeline
- *   store={store}
+ *   store={playerRef.current!.store!}
  *   className="timeline"
  *   showTime
  * />
  * ```
  */
-export const Timeline = forwardRef<TimelineRef, TimelineProps>(function Timeline(
-  {
-    store,
-    className,
-    style,
-    progressClassName,
-    playheadClassName,
-    showTime = false,
-    timeClassName,
-    checkpoints,
-    onCheckpointClick,
-    markerClassName,
-    showMarkerTooltip = true,
-  },
-  ref
-) {
+export function Timeline({
+  ref,
+  store,
+  className,
+  style,
+  progressClassName,
+  playheadClassName,
+  showTime = false,
+  timeClassName,
+  checkpoints,
+  onCheckpointClick,
+  markerClassName,
+  showMarkerTooltip = true,
+}: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const timeline = useTimeline(containerRef, store);
   const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
@@ -99,6 +107,7 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(function Timeline
         position: "relative",
         cursor: "pointer",
         userSelect: "none",
+        touchAction: "none",
         ...style,
       }}
     >
@@ -197,4 +206,4 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(function Timeline
       )}
     </div>
   );
-});
+}

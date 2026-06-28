@@ -1,4 +1,4 @@
-//! React hook for template compilation (browser - uses esbuild-wasm)
+//! React hook for template compilation (browser - uses @rolldown/browser)
 
 import { useState, useCallback, useEffect } from "react";
 import {
@@ -14,13 +14,13 @@ import {
 import { loadBundler } from "./bundler-loader.js";
 
 export interface UseCompilerReturn {
-  /** Whether the bundler is ready (esbuild-wasm initialized) */
+  /** Whether the bundler is ready (@rolldown/browser initialized) */
   ready: boolean;
   /** The compiled template (null if not compiled or has errors) */
   template: TemplateModule | null;
   /** Compilation error (null if successful) */
   error: SuperImgError | null;
-  /** Compile code into a template (async - bundles with esbuild-wasm first) */
+  /** Compile code into a template (async - bundles with @rolldown/browser first) */
   compile: (code: string) => Promise<CompileResult>;
   /** Validate a template with a test context */
   validate: (template: TemplateModule, testContext: RenderContext) => CompileError | null;
@@ -30,7 +30,7 @@ export interface UseCompilerReturn {
 
 /**
  * Hook for compiling user code into template modules.
- * Uses esbuild-wasm for bundling in the browser.
+ * Uses @rolldown/browser for bundling in the browser.
  *
  * @example
  * ```tsx
@@ -53,18 +53,18 @@ export function useCompiler(): UseCompilerReturn {
     loadBundler()
       .then(({ initBundler }) => initBundler())
       .then(() => setReady(true))
-      .catch((e: any) => {
-      if (e?.name === "BrowserNotSupportedError") {
-        setError(e);
-      }
-    });
+      .catch((e: unknown) => {
+        if (e instanceof Error && e.name === "BrowserNotSupportedError") {
+          setError(new TemplateCompilationError({ syntaxError: e.message }));
+        }
+      });
   }, []);
 
   const compile = useCallback(async (code: string): Promise<CompileResult> => {
     try {
       const { initBundler, bundleTemplateBrowser } = await loadBundler();
       await initBundler();
-      if (!ready) setReady(true);
+      setReady(true);
 
       const bundled = await bundleTemplateBrowser(code);
       const result = compileTemplate(bundled.code);
@@ -78,13 +78,10 @@ export function useCompiler(): UseCompilerReturn {
       }
 
       return result;
-    } catch (e: any) {
-      // Don't wrap our specific browser support error
-      const err = e?.name === "BrowserNotSupportedError" 
-        ? e 
-        : new TemplateCompilationError({
-            syntaxError: e instanceof Error ? e.message : String(e),
-          });
+    } catch (e: unknown) {
+      const err = new TemplateCompilationError({
+        syntaxError: e instanceof Error ? e.message : String(e),
+      });
       setError(err);
       setTemplate(null);
       return { error: err };

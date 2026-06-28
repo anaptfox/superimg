@@ -26,7 +26,7 @@ export class CanvasPresenter implements FramePresenter {
 
   async present(html: string, ctx: RenderContext): Promise<void> {
     // Check cache first
-    const cached = this.frameCache.get(ctx.sceneFrame);
+    const cached = this.frameCache.get(ctx.timeline.frame);
     if (cached) {
       const ctx2d = this.canvas.getContext("2d")!;
       ctx2d.putImageData(cached, 0, 0);
@@ -43,7 +43,7 @@ export class CanvasPresenter implements FramePresenter {
         this.frameCache.delete(firstKey);
       }
     }
-    this.frameCache.set(ctx.sceneFrame, imageData);
+    this.frameCache.set(ctx.timeline.frame, imageData);
   }
 
   getElement(): HTMLElement {

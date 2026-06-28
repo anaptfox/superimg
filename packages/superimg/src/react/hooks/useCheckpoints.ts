@@ -1,8 +1,12 @@
 //! Hook for checkpoint navigation and state
 
-import { useState, useEffect, useCallback, useMemo, type RefObject } from "react";
+import { useState, useEffect, useCallback, useMemo, useSyncExternalStore, type RefObject } from "react";
 import type { Checkpoint } from "../../index.browser.js";
 import type { PlayerRef } from "../components/Player.js";
+import {
+  getPlayerRefStateSnapshot,
+  subscribeToPlayerRefStore,
+} from "../utils/subscribeToPlayerRef.js";
 
 export interface UseCheckpointsReturn {
   /** All checkpoints sorted by frame */
@@ -50,23 +54,16 @@ export interface UseCheckpointsReturn {
 export function useCheckpoints(playerRef: RefObject<PlayerRef | null>): UseCheckpointsReturn {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [current, setCurrent] = useState<Checkpoint | undefined>(undefined);
-  const [currentFrame, setCurrentFrame] = useState(0);
 
-  // Get player instance
+  // Reactive frame + readiness via PlayerRef store (useSyncExternalStore)
+  const playerState = useSyncExternalStore(
+    (onChange) => subscribeToPlayerRefStore(playerRef, onChange),
+    () => getPlayerRefStateSnapshot(playerRef),
+    () => getPlayerRefStateSnapshot(playerRef)
+  );
+
   const player = playerRef.current?.player;
-
-  // Subscribe to runtime state changes for current frame
-  useEffect(() => {
-    if (!player?.isReady) return;
-
-    const unsubscribe = player.subscribe(() => {
-      setCurrentFrame(player.getState().currentFrame);
-    });
-
-    setCurrentFrame(player.getState().currentFrame);
-
-    return () => unsubscribe();
-  }, [player]);
+  const currentFrame = playerState.currentFrame;
 
   // Update checkpoints when player is ready
   useEffect(() => {
@@ -76,7 +73,7 @@ export function useCheckpoints(playerRef: RefObject<PlayerRef | null>): UseCheck
     }
 
     setCheckpoints(player.getCheckpoints());
-  }, [player]);
+  }, [player, playerState.isReady]);
 
   // Update current checkpoint based on frame
   useEffect(() => {
@@ -85,55 +82,56 @@ export function useCheckpoints(playerRef: RefObject<PlayerRef | null>): UseCheck
       return;
     }
 
-    const currentCheckpoint = player.getCurrentCheckpoint();
-    setCurrent(currentCheckpoint);
-  }, [player, currentFrame]);
+    setCurrent(player.getCurrentCheckpoint());
+  }, [player, currentFrame, playerState.isReady]);
 
   // Navigation actions
   const goTo = useCallback((id: string) => {
-    player?.goToCheckpoint(id);
-  }, [player]);
+    playerRef.current?.player?.goToCheckpoint(id);
+  }, [playerRef]);
 
   const next = useCallback(() => {
-    player?.nextCheckpoint();
-  }, [player]);
+    playerRef.current?.player?.nextCheckpoint();
+  }, [playerRef]);
 
   const prev = useCallback(() => {
-    player?.prevCheckpoint();
-  }, [player]);
+    playerRef.current?.player?.prevCheckpoint();
+  }, [playerRef]);
 
   const add = useCallback((
     id: string,
     frame?: number,
     options?: { label?: string; metadata?: Record<string, unknown> }
   ) => {
-    const checkpoint = player?.addCheckpoint(id, frame, options);
+    const activePlayer = playerRef.current?.player;
+    const checkpoint = activePlayer?.addCheckpoint(id, frame, options);
     if (checkpoint) {
-      // Refresh checkpoints list
-      setCheckpoints(player?.getCheckpoints() ?? []);
+      setCheckpoints(activePlayer?.getCheckpoints() ?? []);
     }
     return checkpoint;
-  }, [player]);
+  }, [playerRef]);
 
   const remove = useCallback((id: string) => {
-    const result = player?.removeCheckpoint(id) ?? false;
+    const activePlayer = playerRef.current?.player;
+    const result = activePlayer?.removeCheckpoint(id) ?? false;
     if (result) {
-      // Refresh checkpoints list
-      setCheckpoints(player?.getCheckpoints() ?? []);
+      setCheckpoints(activePlayer?.getCheckpoints() ?? []);
     }
     return result;
-  }, [player]);
+  }, [playerRef]);
 
   // Compute hasNext/hasPrev
   const hasNext = useMemo(() => {
-    if (!player?.checkpointResolver) return false;
-    return player.checkpointResolver.getNext(currentFrame) !== undefined;
-  }, [player, currentFrame]);
+    const resolver = playerRef.current?.player?.checkpointResolver;
+    if (!resolver) return false;
+    return resolver.getNext(currentFrame) !== undefined;
+  }, [playerRef, currentFrame, playerState.isReady]);
 
   const hasPrev = useMemo(() => {
-    if (!player?.checkpointResolver) return false;
-    return player.checkpointResolver.getPrevious(currentFrame) !== undefined;
-  }, [player, currentFrame]);
+    const resolver = playerRef.current?.player?.checkpointResolver;
+    if (!resolver) return false;
+    return resolver.getPrevious(currentFrame) !== undefined;
+  }, [playerRef, currentFrame, playerState.isReady]);
 
   return {
     checkpoints,

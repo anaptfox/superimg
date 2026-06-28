@@ -60,11 +60,11 @@ function AspectIcon({ type, size = 14 }: { type: "landscape" | "portrait" | "squ
  *
  * @example
  * ```tsx
- * const session = useVideoSession(config);
+ * const [format, setFormat] = useState<FormatOption>("horizontal");
  *
  * <FormatSelector
- *   value={session.format}
- *   onChange={session.setFormat}
+ *   value={format}
+ *   onChange={setFormat}
  * />
  * ```
  */

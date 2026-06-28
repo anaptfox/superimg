@@ -1,4 +1,5 @@
 //! PlayButton - Reusable play/pause button component
+"use client";
 
 import { useSyncExternalStore } from "react";
 import type { RuntimeStore } from "../../index.browser.js";
@@ -42,9 +43,9 @@ function PauseIcon({ size }: { size: number }) {
  *
  * @example
  * ```tsx
- * const { store } = useVideoSession(config);
+ * const playerRef = useRef<PlayerRef>(null);
  *
- * <PlayButton store={store} size="md" />
+ * <PlayButton store={playerRef.current!.store!} size="md" />
  * ```
  */
 export function PlayButton({ store, className, size = "md" }: PlayButtonProps) {

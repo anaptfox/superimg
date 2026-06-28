@@ -64,7 +64,9 @@ describe("createPlaybackController", () => {
     const ctrl = createPlaybackController(store, { onFrame, onEnd });
     ctrl.play(0);
     expect(rafCallbacks.size).toBe(1);
-    const tick = rafCallbacks.get(Array.from(rafCallbacks.keys())[0])!;
+    const rafKey = Array.from(rafCallbacks.keys())[0];
+    expect(rafKey).toBeDefined();
+    const tick = rafCallbacks.get(rafKey!)!;
     now = 1000;
     tick();
     expect(onFrame).toHaveBeenCalledWith(30);
@@ -78,7 +80,9 @@ describe("createPlaybackController", () => {
     const onEnd = vi.fn();
     const ctrl = createPlaybackController(store, { onFrame, onEnd });
     ctrl.play(0);
-    const tick = rafCallbacks.get(Array.from(rafCallbacks.keys())[0])!;
+    const rafKey = Array.from(rafCallbacks.keys())[0];
+    expect(rafKey).toBeDefined();
+    const tick = rafCallbacks.get(rafKey!)!;
     now = 2000;
     tick();
     expect(onEnd).toHaveBeenCalled();

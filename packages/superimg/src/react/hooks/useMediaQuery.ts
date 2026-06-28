@@ -1,23 +1,31 @@
 //! useMediaQuery - React hook for media query matching
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
+
+function subscribe(query: string, onChange: () => void): () => void {
+  const mql = window.matchMedia(query);
+  mql.addEventListener("change", onChange);
+  return () => mql.removeEventListener("change", onChange);
+}
+
+function getSnapshot(query: string): boolean {
+  return window.matchMedia(query).matches;
+}
+
+function getServerSnapshot(): boolean {
+  return false;
+}
 
 /**
  * Returns true when the media query matches.
- * Uses 768px as mobile breakpoint (matches Tailwind md).
+ * Uses useSyncExternalStore for tear-free reads and SSR-safe hydration.
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia(query);
-    const handler = () => setMatches(mql.matches);
-    handler(); // initial
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, [query]);
-
-  return matches;
+  return useSyncExternalStore(
+    (onChange) => subscribe(query, onChange),
+    () => getSnapshot(query),
+    getServerSnapshot
+  );
 }
 
 /** True when viewport is below 768px (mobile) */

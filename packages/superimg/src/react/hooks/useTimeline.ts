@@ -1,6 +1,13 @@
 //! React hook for timeline scrubbing
 
-import { useEffect, useCallback, useRef, type RefObject } from "react";
+import {
+  useEffect,
+  useCallback,
+  useRef,
+  useLayoutEffect,
+  useState,
+  type RefObject,
+} from "react";
 import { formatTime, type RuntimeStore } from "../../index.browser.js";
 
 export interface UseTimelineReturn {
@@ -14,28 +21,31 @@ export interface UseTimelineReturn {
   formatTime: (seconds: number) => string;
 }
 
+function positionFromPointerEvent(
+  event: PointerEvent,
+  container: HTMLElement
+): number {
+  const rect = container.getBoundingClientRect();
+  if (rect.width === 0) return 0;
+  return (event.clientX - rect.left) / rect.width;
+}
+
 /**
  * Hook for timeline scrubbing functionality.
- *
- * @example
- * ```tsx
- * const containerRef = useRef<HTMLDivElement>(null);
- * const { player } = usePlayer(config);
- * const { startScrub, scrubTo, stopScrub } = useTimeline(containerRef, player.store);
- *
- * // In your Timeline component, attach mouse handlers
- * const handleMouseDown = (e: MouseEvent) => {
- *   const rect = containerRef.current.getBoundingClientRect();
- *   const position = (e.clientX - rect.left) / rect.width;
- *   startScrub(position);
- * };
- * ```
+ * Uses pointer events for mouse, touch, and pen input.
  */
 export function useTimeline(
   containerRef: RefObject<HTMLElement | null>,
   store: RuntimeStore
 ): UseTimelineReturn {
   const isScrubbing = useRef(false);
+  const activePointerId = useRef<number | null>(null);
+  const [container, setContainer] = useState<HTMLElement | null>(null);
+
+  // Sync ref to state (refs don't trigger re-renders when .current changes)
+  useLayoutEffect(() => {
+    setContainer(containerRef.current);
+  });
 
   const positionToFrame = useCallback((position: number): number => {
     const { totalFrames } = store.getState();
@@ -57,40 +67,58 @@ export function useTimeline(
 
   const stopScrub = useCallback(() => {
     isScrubbing.current = false;
+    activePointerId.current = null;
   }, []);
 
-  // Set up mouse event handlers on container
+  // Pointer events for mouse + touch scrubbing
   useEffect(() => {
-    const container = containerRef.current;
     if (!container) return;
 
-    const handleMouseDown = (e: MouseEvent) => {
-      const rect = container.getBoundingClientRect();
-      const position = (e.clientX - rect.left) / rect.width;
-      startScrub(position);
-
-      const handleMouseMove = (e: MouseEvent) => {
-        const rect = container.getBoundingClientRect();
-        const position = (e.clientX - rect.left) / rect.width;
-        scrubTo(position);
-      };
-
-      const handleMouseUp = () => {
-        stopScrub();
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
-      };
-
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+    const endScrub = (event: PointerEvent) => {
+      if (
+        activePointerId.current !== null &&
+        event.pointerId !== activePointerId.current
+      ) {
+        return;
+      }
+      stopScrub();
+      if (container.hasPointerCapture(event.pointerId)) {
+        container.releasePointerCapture(event.pointerId);
+      }
     };
 
-    container.addEventListener("mousedown", handleMouseDown);
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+
+      event.preventDefault();
+      activePointerId.current = event.pointerId;
+      container.setPointerCapture(event.pointerId);
+      startScrub(positionFromPointerEvent(event, container));
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (
+        !isScrubbing.current ||
+        activePointerId.current !== event.pointerId
+      ) {
+        return;
+      }
+      event.preventDefault();
+      scrubTo(positionFromPointerEvent(event, container));
+    };
+
+    container.addEventListener("pointerdown", handlePointerDown);
+    container.addEventListener("pointermove", handlePointerMove);
+    container.addEventListener("pointerup", endScrub);
+    container.addEventListener("pointercancel", endScrub);
 
     return () => {
-      container.removeEventListener("mousedown", handleMouseDown);
+      container.removeEventListener("pointerdown", handlePointerDown);
+      container.removeEventListener("pointermove", handlePointerMove);
+      container.removeEventListener("pointerup", endScrub);
+      container.removeEventListener("pointercancel", endScrub);
     };
-  }, [containerRef.current, startScrub, scrubTo, stopScrub]);
+  }, [container, startScrub, scrubTo, stopScrub]);
 
   return {
     startScrub,

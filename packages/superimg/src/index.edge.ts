@@ -20,8 +20,24 @@ export {
 } from "@superimg/core";
 export { buildCompositeHtml } from "@superimg/core/html";
 
+// Browser-free SVG rasterization (resvg-wasm) + font registry — the edge image lane
+export {
+  rasterize,
+  rasterizeSvgSync,
+  ensureInit,
+  ResvgRasterizer,
+  fonts,
+  resolveFontBuffers,
+  selectRasterizer,
+  type RasterizeSvgOptions,
+  type ResolvedFont,
+  type FontRegistry,
+  type WasmSource,
+  type RasterizerRegistryOptions,
+} from "@superimg/core";
+
 // Template helpers
-export { defineBatch, defineScene, defineImage, defineSvg, defineGif, defineConfig } from "@superimg/types";
+export { defineBatch, define, defineConfig } from "@superimg/types";
 export { isComposedTemplate } from "@superimg/types";
 
 // Error classes
@@ -43,7 +59,7 @@ export type {
   LoadMode,
   HoverBehavior,
   FitMode,
-  TemplateKind,
+  Medium,
   AnyTemplateModule,
   TemplateModule,
   TemplateConfig,
@@ -63,8 +79,10 @@ export type {
   QualityPreset,
   BackgroundValue,
   AudioValue,
+  AudioClip,
+  AudioTimeline,
+  ResolvedAudioTimeline,
   BackgroundOptions,
-  AudioOptions,
   LoadResult,
   RenderResult,
   RenderBufferResult,
@@ -79,18 +97,17 @@ export type {
   Stdlib,
   ImageStdlib,
   SvgStdlib,
-  ImageModule,
-  ImageConfig,
+  SvgAnimatedStdlib,
   ImageRenderContext,
-  GifModule,
-  GifConfig,
-  SvgModule,
-  SvgConfig,
   SvgRenderContext,
+  SvgAnimatedRenderContext,
   RenderJob,
   RenderProgress,
   FrameRendererConfig,
   FrameRenderer,
+  Rasterizer,
+  RasterizerCapabilities,
+  RasterizerConfig,
   VideoEncoderConfig,
   VideoEncoder,
   RenderEngine,

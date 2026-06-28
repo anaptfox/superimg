@@ -174,10 +174,14 @@ export function setNestedValue(
   let current = result;
   for (let i = 0; i < keys.length - 1; i++) {
     const key = keys[i];
+    if (key === undefined) continue;
     current[key] = { ...(current[key] as Record<string, unknown> || {}) };
     current = current[key] as Record<string, unknown>;
   }
 
-  current[keys[keys.length - 1]] = value;
+  const leaf = keys[keys.length - 1];
+  if (leaf !== undefined) {
+    current[leaf] = value;
+  }
   return result;
 }

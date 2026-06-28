@@ -5,10 +5,11 @@
 import {
   useRef,
   useEffect,
-  forwardRef,
   useImperativeHandle,
   useState,
   useCallback,
+  type Ref,
+  type CSSProperties,
 } from "react";
 import {
   Player as CorePlayer,
@@ -19,11 +20,19 @@ import {
   type HoverBehavior,
   type FormatOption,
 } from "../../index.player.js";
-import type { RuntimeStore, CompileError } from "../../index.browser.js";
+import {
+  isComposedTemplate,
+  type AssetMeta,
+  type RuntimeStore,
+  type CompileError,
+  type EncodingOptions,
+  type TemplateModule,
+} from "../../index.browser.js";
 import { VideoControls } from "./VideoControls.js";
 import { useCompiledTemplate } from "../hooks/useCompiledTemplate.js";
+import { usePlaygroundExport } from "../hooks/usePlaygroundExport.js";
+import type { ExportOptions } from "./ExportDialog.js";
 
-// Inject shimmer keyframes once into the document
 let shimmerInjected = false;
 function ensureShimmerStyle() {
   if (shimmerInjected || typeof document === "undefined") return;
@@ -33,192 +42,176 @@ function ensureShimmerStyle() {
   shimmerInjected = true;
 }
 
+export type PlayerControlsMode = boolean | "minimal" | "full";
+
 export interface PlayerProps {
-  /** Template module to render (use this OR code, not both) */
+  ref?: Ref<PlayerRef>;
   template?: PlayerInput;
-  /** Raw code string to compile (use this OR template, not both) */
   code?: string;
-  /** Debounce delay for code compilation in ms (default: 300) */
+  bundled?: string;
+  wasmCompile?: boolean;
+  data?: Record<string, unknown>;
+  assets?: Record<string, AssetMeta>;
+  assetResolver?: (filename: string) => string;
   compileDebounceMs?: number;
-  /** Called when compilation starts/ends */
   onCompiling?: (compiling: boolean) => void;
-  /** Called when compilation fails */
   onCompileError?: (error: CompileError) => void;
-  /**
-   * Format for rendering - simple alias, stdlib preset path, or custom dimensions.
-   * If not provided, uses template config or defaults to 1920x1080.
-   * Examples: "vertical", "horizontal", "square", "youtube.video.short", { width: 800, height: 600 }
-   */
   format?: FormatOption;
-  /** Playback mode (default: 'loop') */
+  /** Override scene duration in seconds */
+  duration?: number;
+  /** Override frames per second */
+  fps?: number;
   playbackMode?: PlaybackMode;
-  /** Load mode (default: 'eager') */
   loadMode?: LoadMode;
-  /** Behavior on hover (default: 'none') */
   hoverBehavior?: HoverBehavior;
-  /** Delay before hover behavior triggers, in ms (default: 200) */
   hoverDelayMs?: number;
-  /**
-   * What happens to the video when the mouse leaves during hoverBehavior="play".
-   * "reset" (default): pauses and seeks back to frame 0.
-   * "pause": pauses at current frame.
-   */
   hoverResetBehavior?: "reset" | "pause";
-  /** Optional CSS class */
   className?: string;
-  /** Optional inline styles */
-  style?: React.CSSProperties;
-  /** Show built-in controls: true = PlayButton + Timeline, "minimal" = PlayButton only */
-  controls?: boolean | "minimal";
-  /** Called when player is loaded */
+  style?: CSSProperties;
+  /**
+   * Built-in controls:
+   * - false: canvas only
+   * - "minimal": play/pause
+   * - true: play + timeline + time
+   * - "full": play + timeline + time + format + export
+   */
+  controls?: PlayerControlsMode;
+  showTime?: boolean;
+  showFormat?: boolean;
+  showExport?: boolean;
+  encoding?: EncodingOptions;
+  onExport?: (options: ExportOptions) => Promise<Blob | null>;
+  onDownload?: (blob: Blob, filename: string) => void;
+  exporting?: boolean;
+  exportProgress?: number;
+  exportDialogOpen?: boolean;
+  onExportDialogOpenChange?: (open: boolean) => void;
+  onStore?: (store: RuntimeStore | null) => void;
   onLoad?: (result: LoadResult) => void;
-  /** Called on each frame */
   onFrame?: (frame: number) => void;
-  /** Called when playback starts */
   onPlay?: () => void;
-  /** Called when playback pauses */
   onPause?: () => void;
-  /** Called when playback ends */
   onEnded?: () => void;
-  /** Auto-play when template loads successfully (default: false) */
   autoPlay?: boolean;
 }
 
 export interface PlayerRef {
-  /** The underlying Player instance */
   player: CorePlayer | null;
-  /** Play */
+  store: RuntimeStore | null;
   play: () => void;
-  /** Pause */
   pause: () => void;
-  /** Seek to specific frame */
   seekFrame: (frame: number) => void;
-  /** Seek to progress (0-1) */
   seekProgress: (progress: number) => void;
-  /** Seek to time in seconds */
   seekTimeSeconds: (seconds: number) => void;
-  /** Update runtime data or dimensions */
-  update: (update: { data?: Record<string, unknown>; format?: FormatOption }) => void;
-  /** Whether player is ready */
+  update: (update: {
+    data?: Record<string, unknown>;
+    format?: FormatOption;
+    duration?: number;
+    fps?: number;
+    assets?: Record<string, AssetMeta>;
+    assetResolver?: (filename: string) => string;
+  }) => void;
   isReady: boolean;
-  /** Whether currently playing */
   isPlaying: boolean;
-  /** Current frame */
   currentFrame: number;
-  /** Total frames */
   totalFrames: number;
 }
 
-/**
- * React component wrapper for SuperImg Player.
- *
- * Templates render at logical dimensions (e.g., 1920x1080) and scale
- * via CSS transform to fit the container while maintaining aspect ratio.
- *
- * Clicking the video canvas toggles play/pause (when hoverBehavior="none").
- * When hoverBehavior="play", a play icon overlay hints that hovering will play.
- *
- * @example
- * ```tsx
- * import { Player } from 'superimg/react';
- * import myTemplate from './templates/my-template';
- *
- * function App() {
- *   return (
- *     <Player
- *       template={myTemplate}
- *       format="horizontal"
- *       playbackMode="loop"
- *       loadMode="eager"
- *       style={{ width: "100%", aspectRatio: "16/9" }}
- *     />
- *   );
- * }
- * ```
- *
- * @example
- * ```tsx
- * // With ref for imperative control
- * const playerRef = useRef<PlayerRef>(null);
- *
- * <Player
- *   ref={playerRef}
- *   template={myTemplate}
- *   format="vertical"
- *   onLoad={(result) => {
- *     if (result.status === 'success') {
- *       console.log(`Loaded ${result.totalFrames} frames`);
- *     }
- *   }}
- * />
- *
- * <button onClick={() => playerRef.current?.play()}>Play</button>
- * <button onClick={() => playerRef.current?.seekFrame(0)}>Reset</button>
- * ```
- */
-export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
-  {
-    template: templateProp,
-    code,
-    compileDebounceMs = 300,
-    onCompiling,
-    onCompileError,
-    format,
-    playbackMode = "loop",
-    loadMode = "eager",
-    hoverBehavior = "none",
-    hoverDelayMs = 200,
-    hoverResetBehavior = "reset",
-    className,
-    style,
-    controls,
-    onLoad,
-    onFrame,
-    onPlay,
-    onPause,
-    onEnded,
-    autoPlay,
-  },
-  ref
-) {
+export function Player({
+  ref,
+  template: templateProp,
+  code,
+  bundled,
+  wasmCompile = true,
+  data,
+  assets,
+  assetResolver,
+  compileDebounceMs = 300,
+  onCompiling,
+  onCompileError,
+  format: formatProp,
+  duration,
+  fps,
+  playbackMode = "loop",
+  loadMode = "eager",
+  hoverBehavior = "none",
+  hoverDelayMs = 200,
+  hoverResetBehavior = "reset",
+  className,
+  style,
+  controls,
+  showTime,
+  showFormat,
+  showExport,
+  encoding,
+  onExport: onExportProp,
+  onDownload: onDownloadProp,
+  exporting: exportingProp,
+  exportProgress: exportProgressProp,
+  exportDialogOpen,
+  onExportDialogOpenChange,
+  onStore,
+  onLoad,
+  onFrame,
+  onPlay,
+  onPause,
+  onEnded,
+  autoPlay,
+}: PlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<CorePlayer | null>(null);
   const hoverTimeoutRef = useRef<number | undefined>(undefined);
+  const loadSnapshotRef = useRef({
+    data,
+    assets,
+    assetResolver,
+  });
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [store, setStore] = useState<RuntimeStore | null>(null);
+  const [internalFormat, setInternalFormat] = useState<FormatOption>(
+    formatProp ?? "horizontal",
+  );
 
-  // Store callbacks in refs to avoid recreation when they change
-  // This prevents the player/iframe from being destroyed and recreated on every parent render
   const onLoadRef = useRef(onLoad);
   const onPlayRef = useRef(onPlay);
   const onPauseRef = useRef(onPause);
   const onEndedRef = useRef(onEnded);
   const onFrameRef = useRef(onFrame);
+  const onStoreRef = useRef(onStore);
 
-  // Keep refs updated
   onLoadRef.current = onLoad;
   onPlayRef.current = onPlay;
   onPauseRef.current = onPause;
   onEndedRef.current = onEnded;
   onFrameRef.current = onFrame;
+  onStoreRef.current = onStore;
+
+  const ownsFormatState = controls === "full";
+  const effectiveFormat = ownsFormatState ? internalFormat : formatProp;
+
+  useEffect(() => {
+    if (formatProp !== undefined) {
+      setInternalFormat(formatProp);
+    }
+  }, [formatProp]);
 
   useEffect(() => {
     ensureShimmerStyle();
   }, []);
 
-  // Compile code if provided (instead of template)
   const {
     template: compiledTemplate,
     compiling,
     error: compileError,
   } = useCompiledTemplate({
     code: code ?? "",
+    ...(bundled !== undefined ? { bundled } : {}),
+    wasmCompile,
     debounceMs: compileDebounceMs,
-    enabled: !!code,
+    enabled: !!code || (!!bundled && !wasmCompile),
   });
 
-  // Report compilation state changes
   useEffect(() => {
     onCompiling?.(compiling);
   }, [compiling, onCompiling]);
@@ -229,28 +222,43 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     }
   }, [compileError, onCompileError]);
 
-  // Determine the effective template (prop takes precedence over compiled)
   const template = templateProp ?? compiledTemplate;
+  const exportTemplate =
+    template && !isComposedTemplate(template)
+      ? (template as TemplateModule)
+      : null;
 
-  // Show shimmer while compiling code or while template is loading into the player
+  const builtInExport = usePlaygroundExport({
+    template: controls === "full" && !onExportProp ? exportTemplate : null,
+    data: data ?? {},
+    ...(fps !== undefined ? { fps } : {}),
+    ...(encoding !== undefined ? { encoding } : {}),
+  });
+
   const isLoading = compiling || (!!template && !isReady);
 
-  // Initialize player
+  const notifyStore = useCallback((next: RuntimeStore | null) => {
+    setStore(next);
+    onStoreRef.current?.(next);
+  }, []);
+
+  // Mount / reload only when template or structural options change
   useEffect(() => {
     if (!containerRef.current || !template) return;
 
+    loadSnapshotRef.current = { data, assets, assetResolver };
+
     const player = new CorePlayer({
       container: containerRef.current,
-      format,
+      ...(effectiveFormat !== undefined ? { format: effectiveFormat } : {}),
       playbackMode: hoverBehavior !== "none" ? "loop" : playbackMode,
       loadMode,
-      hoverBehavior: "none", // We handle hover manually for React
+      hoverBehavior: "none",
       hoverDelayMs,
     });
 
     playerRef.current = player;
 
-    // Set up event listeners (use refs to avoid recreation when callbacks change)
     player.on("play", () => {
       setIsPlaying(true);
       onPlayRef.current?.();
@@ -269,65 +277,90 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
       onFrameRef.current?.(frame);
     });
 
-    // Load template
     const loadPlayer = async () => {
-      const result = await player.load(template);
-      setIsReady(result.status === "success");
-      if (result.status === "success") {
-        setStore(player.getRuntimeStore());
+      const snap = loadSnapshotRef.current;
+      const loadOpts = {
+        ...(snap.data !== undefined ? { data: snap.data } : {}),
+        ...(snap.assets !== undefined ? { assets: snap.assets } : {}),
+        ...(snap.assetResolver !== undefined ? { assetResolver: snap.assetResolver } : {}),
+      };
+      const result = await player.load(template, loadOpts);
+      const loaded = result.status === "success";
+      setIsReady(loaded);
+      if (loaded) {
+        const runtimeStore = player.getRuntimeStore();
+        notifyStore(runtimeStore);
+        if (duration !== undefined || fps !== undefined) {
+          player.update({
+            ...(duration !== undefined ? { duration } : {}),
+            ...(fps !== undefined ? { fps } : {}),
+          });
+        }
         if (autoPlay) {
           player.play();
         }
+      } else {
+        notifyStore(null);
       }
       onLoadRef.current?.(result);
     };
 
     if (loadMode === "lazy") {
-      // Intersection observer for lazy loading
       const observer = new IntersectionObserver(
         (entries) => {
-          if (entries[0].isIntersecting) {
+          if (entries[0]?.isIntersecting) {
             loadPlayer();
             observer.disconnect();
           }
         },
-        { rootMargin: "100px" }
+        { rootMargin: "100px" },
       );
       observer.observe(containerRef.current);
       return () => {
         observer.disconnect();
         player.dispose();
         playerRef.current = null;
-        setStore(null);
+        notifyStore(null);
         setIsReady(false);
         setIsPlaying(false);
       };
-    } else {
-      loadPlayer();
     }
+
+    loadPlayer();
 
     return () => {
       player.dispose();
       playerRef.current = null;
-      setStore(null);
+      notifyStore(null);
       setIsReady(false);
       setIsPlaying(false);
     };
   }, [
     template,
-    format,
+    effectiveFormat,
     playbackMode,
     loadMode,
     hoverBehavior,
     hoverDelayMs,
     autoPlay,
-    // Callbacks removed - using refs instead to avoid iframe recreation
+    notifyStore,
   ]);
 
-  // Hover handlers for hoverBehavior="play"
+  // Hot-update runtime without remounting
+  useEffect(() => {
+    if (!playerRef.current?.isReady) return;
+    playerRef.current.update({
+      ...(data !== undefined ? { data } : {}),
+      ...(assets !== undefined ? { assets } : {}),
+      ...(assetResolver !== undefined ? { assetResolver } : {}),
+      ...(effectiveFormat !== undefined ? { format: effectiveFormat } : {}),
+      ...(duration !== undefined ? { duration } : {}),
+      ...(fps !== undefined ? { fps } : {}),
+    });
+  }, [data, assets, assetResolver, effectiveFormat, duration, fps]);
+
   const handleMouseEnter = useCallback(() => {
     if (hoverBehavior === "none" || !playerRef.current?.isReady) return;
-
     hoverTimeoutRef.current = window.setTimeout(() => {
       playerRef.current?.play();
     }, hoverDelayMs);
@@ -335,7 +368,6 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
 
   const handleMouseLeave = useCallback(() => {
     if (hoverBehavior === "none") return;
-
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
@@ -347,17 +379,26 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
     }
   }, [hoverBehavior, hoverResetBehavior]);
 
-  // Click-to-play/pause — only when hoverBehavior="none" (hover owns state otherwise)
   const handleClick = useCallback(() => {
     if (hoverBehavior !== "none" || !isReady || !store) return;
     store.togglePlayPause();
   }, [hoverBehavior, isReady, store]);
 
-  // Expose ref API
+  const handleFormatChange = useCallback(
+    (next: FormatOption) => {
+      if (ownsFormatState) {
+        setInternalFormat(next);
+      }
+      playerRef.current?.update({ format: next });
+    },
+    [ownsFormatState],
+  );
+
   useImperativeHandle(
     ref,
     () => ({
       player: playerRef.current,
+      store,
       isReady,
       isPlaying,
       get currentFrame() {
@@ -375,17 +416,26 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
         playerRef.current?.seekTimeSeconds(seconds),
       update: (update) => playerRef.current?.update(update),
     }),
-    [isReady, isPlaying]
+    [isReady, isPlaying, store],
   );
 
-  // Render controls based on the controls prop
-  const showControls = controls && store;
-  const showTimeline = controls === true;
+  const hasControls = !!controls && !!store;
+  const isMinimal = controls === "minimal";
+  const isFull = controls === "full";
+  const showTimeline = controls === true || isFull;
+  const resolvedShowTime = showTime ?? (controls === true || isFull);
+  const resolvedShowFormat = showFormat ?? isFull;
+  const resolvedShowExport = showExport ?? isFull;
 
-  // Show play icon overlay when hoverBehavior="play" and video is at rest
+  const handleExport =
+    onExportProp ?? (isFull ? builtInExport.exportMp4 : undefined);
+  const handleDownload =
+    onDownloadProp ?? (isFull ? builtInExport.download : undefined);
+  const resolvedExporting = exportingProp ?? (isFull ? builtInExport.exporting : false);
+  const resolvedExportProgress =
+    exportProgressProp ?? (isFull ? builtInExport.exportProgress : 0);
+
   const showHoverPlayOverlay = hoverBehavior === "play" && isReady && !isPlaying;
-
-  // Click is active when hoverBehavior="none" and player is ready
   const clickable = hoverBehavior === "none" && isReady;
 
   return (
@@ -406,7 +456,6 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Loading shimmer */}
         {isLoading && (
           <div
             aria-hidden="true"
@@ -423,7 +472,6 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
           />
         )}
 
-        {/* Hover play affordance — shown at rest when hoverBehavior="play" */}
         {showHoverPlayOverlay && (
           <div
             aria-hidden="true"
@@ -463,9 +511,23 @@ export const Player = forwardRef<PlayerRef, PlayerProps>(function Player(
         )}
       </div>
 
-      {showControls && (
-        <VideoControls store={store} showTimeline={showTimeline} showTime />
+      {hasControls && (
+        <VideoControls
+          store={store}
+          showTimeline={!isMinimal && showTimeline}
+          showTime={resolvedShowTime}
+          showFormat={resolvedShowFormat}
+          showExport={resolvedShowExport}
+          onExport={handleExport}
+          onDownload={handleDownload}
+          exporting={resolvedExporting}
+          exportProgress={resolvedExportProgress}
+          currentFormat={effectiveFormat ?? "horizontal"}
+          onFormatChange={handleFormatChange}
+          exportDialogOpen={exportDialogOpen}
+          onExportDialogOpenChange={onExportDialogOpenChange}
+        />
       )}
     </div>
   );
-});
+}

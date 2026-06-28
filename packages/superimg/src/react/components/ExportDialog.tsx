@@ -1,6 +1,15 @@
 //! ExportDialog - Self-contained export modal with size, format, and progress
+"use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useActionState,
+  startTransition,
+} from "react";
+import { createPortal } from "react-dom";
 import type { FormatOption } from "../../index.browser.js";
 
 // ============================================================================
@@ -35,6 +44,16 @@ export interface ExportOptions {
   };
 }
 
+type ExportActionState = {
+  blob: Blob | null;
+  error: string | null;
+};
+
+type ExportActionPayload = {
+  resolution: string;
+  outputFmt: OutputFormat;
+};
+
 // ============================================================================
 // Format presets
 // ============================================================================
@@ -49,6 +68,18 @@ const OUTPUT_FORMATS: { id: OutputFormat; label: string }[] = [
   { id: "mp4", label: "MP4" },
   { id: "webm", label: "WebM" },
 ];
+
+const INITIAL_EXPORT_STATE: ExportActionState = { blob: null, error: null };
+
+function resolveDefaultResolution(currentFormat?: FormatOption): string {
+  if (
+    typeof currentFormat === "string" &&
+    FORMAT_PRESETS.some((preset) => preset.id === currentFormat)
+  ) {
+    return currentFormat;
+  }
+  return "horizontal";
+}
 
 // ============================================================================
 // Inline styles (no CSS framework dependency)
@@ -193,28 +224,220 @@ const S = {
 } as const;
 
 // ============================================================================
+// Panel (remounted when dialog opens so useActionState resets)
+// ============================================================================
+
+interface ExportDialogPanelProps {
+  onClose: () => void;
+  onExport: (options: ExportOptions) => Promise<Blob | null>;
+  onDownload: (blob: Blob, filename: string) => void;
+  exporting: boolean;
+  exportProgress: number;
+  currentFormat?: FormatOption;
+  className?: string;
+}
+
+function ExportDialogPanel({
+  onClose,
+  onExport,
+  onDownload,
+  exporting,
+  exportProgress,
+  currentFormat,
+  className,
+}: ExportDialogPanelProps) {
+  const [resolution, setResolution] = useState(() =>
+    resolveDefaultResolution(currentFormat)
+  );
+  const [outputFmt, setOutputFmt] = useState<OutputFormat>("mp4");
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const onExportRef = useRef(onExport);
+  onExportRef.current = onExport;
+
+  const [exportState, submitExport, isPending] = useActionState(
+    async (
+      _prev: ExportActionState,
+      payload: ExportActionPayload
+    ): Promise<ExportActionState> => {
+      const blob = await onExportRef.current({
+        format: payload.resolution as FormatOption,
+        encoding: { format: payload.outputFmt },
+      });
+
+      if (blob) {
+        return { blob, error: null };
+      }
+
+      return {
+        blob: null,
+        error: "Export failed. Check browser console for details.",
+      };
+    },
+    INITIAL_EXPORT_STATE
+  );
+
+  const isExporting = isPending || exporting;
+  const resultBlob = exportState.blob;
+  const error = exportState.error;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isExporting) onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [isExporting, onClose]);
+
+  const handleExport = useCallback(() => {
+    startTransition(() => {
+      submitExport({ resolution, outputFmt });
+    });
+  }, [submitExport, resolution, outputFmt]);
+
+  const handleDownload = useCallback(() => {
+    if (!resultBlob) return;
+    const ext = outputFmt === "webm" ? "webm" : "mp4";
+    onDownload(resultBlob, `superimg-export.${ext}`);
+  }, [resultBlob, outputFmt, onDownload]);
+
+  const handleOverlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === overlayRef.current && !isExporting) {
+        onClose();
+      }
+    },
+    [isExporting, onClose]
+  );
+
+  const pct = Math.round(exportProgress * 100);
+  const done = resultBlob !== null;
+
+  return (
+    <div
+      ref={overlayRef}
+      className={className}
+      style={S.overlay}
+      onClick={handleOverlayClick}
+      role="presentation"
+    >
+      <div
+        style={S.panel}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="superimg-export-dialog-title"
+      >
+        <div style={S.header}>
+          <h3 id="superimg-export-dialog-title" style={S.title}>
+            Export Video
+          </h3>
+          {!isExporting && (
+            <button
+              type="button"
+              style={S.closeBtn}
+              onClick={onClose}
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {done ? (
+          <>
+            <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>
+                Export complete
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.35)",
+                  marginTop: 4,
+                }}
+              >
+                {(resultBlob.size / (1024 * 1024)).toFixed(1)} MB
+              </div>
+            </div>
+            <div style={S.doneRow}>
+              <button type="button" style={S.doneBtn(false)} onClick={onClose}>
+                Close
+              </button>
+              <button type="button" style={S.doneBtn(true)} onClick={handleDownload}>
+                Download
+              </button>
+            </div>
+          </>
+        ) : isExporting ? (
+          <div style={S.progressWrap}>
+            <div style={S.progressTrack}>
+              <div style={S.progressFill(pct)} />
+            </div>
+            <div style={S.progressLabel}>Exporting… {pct}%</div>
+          </div>
+        ) : (
+          <>
+            <div style={S.fieldGroup}>
+              <span style={S.label}>Resolution</span>
+              <div style={S.pillRow}>
+                {FORMAT_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    style={S.pill(resolution === preset.id)}
+                    onClick={() => setResolution(preset.id)}
+                  >
+                    {preset.sub}
+                    <span style={S.pillSub}>{preset.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={S.fieldGroup}>
+              <span style={S.label}>Format</span>
+              <div style={S.pillRow}>
+                {OUTPUT_FORMATS.map((format) => (
+                  <button
+                    key={format.id}
+                    type="button"
+                    style={S.pill(outputFmt === format.id)}
+                    onClick={() => setOutputFmt(format.id)}
+                  >
+                    {format.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {error && (
+              <div style={{ fontSize: 12, color: "#f87171", marginBottom: 12 }}>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="button"
+              style={S.exportBtn(false)}
+              onClick={handleExport}
+            >
+              Export
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
 /**
  * A self-contained export dialog with size and format pickers.
  * Renders as a portal overlay.
- *
- * @example
- * ```tsx
- * const session = useVideoSession(config);
- * const [showExport, setShowExport] = useState(false);
- *
- * <ExportDialog
- *   open={showExport}
- *   onClose={() => setShowExport(false)}
- *   onExport={(opts) => session.exportMp4(opts)}
- *   onDownload={session.download}
- *   exporting={session.exporting}
- *   exportProgress={session.exportProgress}
- *   currentFormat={session.format}
- * />
- * ```
  */
 export function ExportDialog({
   open,
@@ -226,172 +449,27 @@ export function ExportDialog({
   currentFormat,
   className,
 }: ExportDialogProps) {
-  const [resolution, setResolution] = useState<string>(
-    () => {
-      if (typeof currentFormat === "string" && FORMAT_PRESETS.some(p => p.id === currentFormat)) {
-        return currentFormat;
-      }
-      return "horizontal";
-    }
-  );
-  const [outputFmt, setOutputFmt] = useState<OutputFormat>("mp4");
-  const [resultBlob, setResultBlob] = useState<Blob | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const [panelKey, setPanelKey] = useState(0);
 
-  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
-      setResultBlob(null);
-      setError(null);
-      if (typeof currentFormat === "string" && FORMAT_PRESETS.some(p => p.id === currentFormat)) {
-        setResolution(currentFormat);
-      }
+      setPanelKey((key) => key + 1);
     }
-  }, [open, currentFormat]);
+  }, [open]);
 
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !exporting) onClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, exporting, onClose]);
+  if (!open || typeof document === "undefined") return null;
 
-  const handleExport = useCallback(async () => {
-    setError(null);
-    setResultBlob(null);
-
-    const blob = await onExport({
-      format: resolution as FormatOption,
-      encoding: {
-        format: outputFmt,
-      },
-    });
-
-    if (blob) {
-      setResultBlob(blob);
-    } else {
-      setError("Export failed. Check browser console for details.");
-    }
-  }, [onExport, resolution, outputFmt]);
-
-  const handleDownload = useCallback(() => {
-    if (!resultBlob) return;
-    const ext = outputFmt === "webm" ? "webm" : "mp4";
-    onDownload(resultBlob, `superimg-export.${ext}`);
-  }, [resultBlob, outputFmt, onDownload]);
-
-  const handleOverlayClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === overlayRef.current && !exporting) {
-      onClose();
-    }
-  }, [exporting, onClose]);
-
-  if (!open) return null;
-
-  const pct = Math.round(exportProgress * 100);
-  const done = resultBlob !== null;
-
-  return (
-    <div ref={overlayRef} className={className} style={S.overlay} onClick={handleOverlayClick}>
-      <div style={S.panel} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div style={S.header}>
-          <h3 style={S.title}>Export Video</h3>
-          {!exporting && (
-            <button style={S.closeBtn} onClick={onClose} aria-label="Close">
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Done state */}
-        {done ? (
-          <>
-            <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
-              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)" }}>
-                Export complete
-              </div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>
-                {(resultBlob.size / (1024 * 1024)).toFixed(1)} MB
-              </div>
-            </div>
-            <div style={S.doneRow}>
-              <button style={S.doneBtn(false)} onClick={onClose}>
-                Close
-              </button>
-              <button style={S.doneBtn(true)} onClick={handleDownload}>
-                Download
-              </button>
-            </div>
-          </>
-        ) : exporting ? (
-          /* Progress state */
-          <div style={S.progressWrap}>
-            <div style={S.progressTrack}>
-              <div style={S.progressFill(pct)} />
-            </div>
-            <div style={S.progressLabel}>
-              Exporting… {pct}%
-            </div>
-          </div>
-        ) : (
-          /* Config state */
-          <>
-            {/* Resolution */}
-            <div style={S.fieldGroup}>
-              <span style={S.label}>Resolution</span>
-              <div style={S.pillRow}>
-                {FORMAT_PRESETS.map((p) => (
-                  <button
-                    key={p.id}
-                    style={S.pill(resolution === p.id)}
-                    onClick={() => setResolution(p.id)}
-                  >
-                    {p.sub}
-                    <span style={S.pillSub}>{p.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Output Format */}
-            <div style={S.fieldGroup}>
-              <span style={S.label}>Format</span>
-              <div style={S.pillRow}>
-                {OUTPUT_FORMATS.map((f) => (
-                  <button
-                    key={f.id}
-                    style={S.pill(outputFmt === f.id)}
-                    onClick={() => setOutputFmt(f.id)}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div style={{ fontSize: 12, color: "#f87171", marginBottom: 12 }}>
-                {error}
-              </div>
-            )}
-
-            {/* Export button */}
-            <button
-              style={S.exportBtn(false)}
-              onClick={handleExport}
-            >
-              Export
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+  return createPortal(
+    <ExportDialogPanel
+      key={panelKey}
+      onClose={onClose}
+      onExport={onExport}
+      onDownload={onDownload}
+      exporting={exporting}
+      exportProgress={exportProgress}
+      {...(currentFormat !== undefined ? { currentFormat } : {})}
+      {...(className !== undefined ? { className } : {})}
+    />,
+    document.body
   );
 }

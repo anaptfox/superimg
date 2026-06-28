@@ -6,7 +6,7 @@ export default defineConfig({
     alias: {
       // The skill examples import from "superimg" but we don't want to depend on
       // the built dist for tests. Map to the source-level shared entrypoint, which
-      // re-exports defineScene/defineConfig.
+      // re-exports define/defineConfig.
       superimg: fileURLToPath(new URL("./src/index.shared.ts", import.meta.url)),
     },
   },

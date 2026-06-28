@@ -1,22 +1,13 @@
-//! SuperImg - Template and core SDK exports
-
-// =============================================================================
-// TYPES
-// =============================================================================
+//! RSC-safe entry — template authoring only (define, types). No browser/CLI deps.
 
 export type {
-  // Core render context
   RenderContext,
   OutputInfo,
   CssViewport,
-
-  // Mode types
   PlaybackMode,
   LoadMode,
   HoverBehavior,
   FitMode,
-
-  // Template types
   Medium,
   AnyTemplateModule,
   TemplateModule,
@@ -25,8 +16,6 @@ export type {
   DefineInput,
   TemplateConfig,
   ProjectConfig,
-
-  // Scene composition
   Duration,
   Transition,
   TransitionType,
@@ -34,18 +23,12 @@ export type {
   ResolvedScene,
   ResolvedTransition,
   ComposedTemplate,
-
-
   RenderOptions,
-
-  // Encoding options
   EncodingOptions,
   OutputFormat,
   VideoCodecPreference,
   AudioCodecPreference,
   QualityPreset,
-
-  // Asset types
   AssetMeta,
   ImageAssetMeta,
   VideoAssetMeta,
@@ -56,59 +39,36 @@ export type {
   AudioTimeline,
   ResolvedAudioTimeline,
   BackgroundOptions,
-
-  // Result types
   LoadResult,
   RenderResult,
   RenderBufferResult,
-
-  // Checkpoint types
   Checkpoint,
   CheckpointSource,
   Marker,
   MarkerPosition,
-
-  // Batch types
   BatchEntry,
   BatchProvider,
-
-  // Compiler types
   CompileError,
   CompileResult,
-
-  // Stdlib type
   Stdlib,
   ImageStdlib,
   SvgStdlib,
   SvgAnimatedStdlib,
-
-  // Render contexts (static / svg / animated-svg)
   ImageRenderContext,
   SvgRenderContext,
   SvgAnimatedRenderContext,
-
-  // Engine contract types
-  RenderJob,
-  RenderProgress,
-  FrameRendererConfig,
-  FrameRenderer,
-  VideoEncoderConfig,
-  VideoEncoder,
-  RenderEngine,
-  RenderPlan,
-  FramePresenter,
 } from "@superimg/types";
 
-// Template helpers
 export {
   define,
   defineConfig,
   defineBatch,
   isAnimatedTemplate,
   isStaticTemplate,
+  isComposedTemplate,
+  isAnyComposedTemplate,
 } from "@superimg/types";
 
-// Error classes
 export {
   SuperImgError,
   TemplateCompilationError,
@@ -117,10 +77,6 @@ export {
   RenderError,
   IOError,
 } from "@superimg/types";
-
-// =============================================================================
-// CORE UTILITIES
-// =============================================================================
 
 export {
   createRenderContext,
@@ -135,5 +91,5 @@ export {
   transitions,
   parseDuration,
 } from "@superimg/core";
+
 export { buildCompositeHtml } from "@superimg/core/html";
-export { isComposedTemplate, isAnyComposedTemplate } from "@superimg/types";

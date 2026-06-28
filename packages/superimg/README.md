@@ -17,10 +17,10 @@ npm install superimg
 Create a template:
 
 ```typescript
-// hello.video.ts
-import { defineScene } from 'superimg'
+// hello.media.ts
+import { define } from 'superimg'
 
-export default defineScene({
+export default define({
   config: { width: 1920, height: 1080, fps: 30, duration: 3 },
   render(ctx) {
     return `
@@ -39,7 +39,7 @@ export default defineScene({
 Render it:
 
 ```bash
-npx superimg render hello.video.ts -o hello.mp4
+npx superimg render hello.media.ts -o hello.mp4
 ```
 
 That's it. A function that returns HTML → an MP4 file.
@@ -54,21 +54,21 @@ That's it. A function that returns HTML → an MP4 file.
 
 ## Add Animation
 
-Every frame receives a context with a standard library for animation. `std.score()` breaks the scene into enter/hold/exit phases and `t.motion()` gives each element a fade-in, transform, and fade-out automatically:
+Every frame receives a context with a standard library for animation. `ctx.director()` breaks the scene into enter/hold/exit phases and `d.motion()` gives each element a fade-in, transform, and fade-out automatically:
 
 ```typescript
-import { defineScene } from 'superimg'
+import { define } from 'superimg'
 
-export default defineScene({
+export default define({
   config: { width: 1920, height: 1080, fps: 30, duration: 5 },
   render(ctx) {
     const { std, width, height } = ctx
 
     // Phases default to enter 15% / hold 70% / exit 15%
-    const t = std.score()
+    const d = ctx.director()
 
     // scale 0.8 → 1 on enter, hold, then auto fade + scale back on exit
-    const card = t.motion({ scale: 0.8, easing: 'easeOutCubic' })
+    const card = d.motion({ scale: 0.8, easing: 'easeOutCubic' })
 
     return `
       <div style="
@@ -83,15 +83,15 @@ export default defineScene({
 })
 ```
 
-`std.score` handles phase timing. For custom-progress math (loops, non-phase curves) reach for `std.interpolate(progress, inputRange, outputRange, easing?)`. [See the full API →](https://github.com/anaptfox/superimg/blob/main/docs/api.md)
+`ctx.director()` handles phase timing. For custom-progress math (loops, non-phase curves) reach for `std.interpolate(progress, inputRange, outputRange, easing?)`. [See the full API →](https://github.com/anaptfox/superimg/blob/main/docs/api.md)
 
 ## Data-Driven Templates
 
 Pass data at render time. Same template, different content:
 
 ```typescript
-export default defineScene({
-  data: {
+export default define({
+  sample: {
     productName: 'Widget',
     price: '$99',
   },
@@ -104,14 +104,14 @@ export default defineScene({
 
 ```bash
 # Single video with inline data
-npx superimg render template.video.ts --data '{"productName": "Gadget", "price": "$149"}'
+npx superimg render template.media.ts --data '{"productName": "Gadget", "price": "$149"}'
 
 # Batch render from a JSON file — one video per entry. Filenames pick a slug
 # from each entry's `slug` / `name` / `title` / `id` field (else array index).
-npx superimg render template.video.ts --data products.json -y
+npx superimg render template.media.ts --data products.json -y
 
 # Composes with --presets: 10 entries × 2 presets = 20 MP4s in one Playwright session.
-npx superimg render template.video.ts --data products.json --presets -y
+npx superimg render template.media.ts --data products.json --presets -y
 ```
 
 ## Multi-Format Output
@@ -119,7 +119,7 @@ npx superimg render template.video.ts --data products.json --presets -y
 One template, every platform. Declare named output presets in `config.outputs`:
 
 ```typescript
-export default defineScene({
+export default define({
   config: {
     duration: 5,
     outputs: {
@@ -136,10 +136,10 @@ Then render every preset in one pass (one MP4 per output, single Playwright sess
 
 ```bash
 # All declared presets
-npx superimg render template.video.ts --presets
+npx superimg render template.media.ts --presets
 
 # Or pick specific ones
-npx superimg render template.video.ts --presets youtube,reel
+npx superimg render template.media.ts --presets youtube,reel
 ```
 
 ## Where It Runs
@@ -147,7 +147,7 @@ npx superimg render template.video.ts --presets youtube,reel
 **CLI** — Render locally or in CI. This is the primary workflow:
 
 ```bash
-npx superimg render hello.video.ts -o video.mp4
+npx superimg render hello.media.ts -o video.mp4
 
 # Render every video in the project. Multi-output templates (those declaring
 # config.outputs) automatically render all presets; single-output templates
@@ -184,7 +184,7 @@ SuperImg ships a skill that teaches your AI coding agent the framework. One comm
 npx superimg skill install
 ```
 
-Codex users can also install the official plugin (skill + MCP tools, versioned, no AGENTS.md edits):
+Codex users can also install the official plugin (skill only, versioned, no AGENTS.md edits):
 
 ```bash
 codex marketplace add github.com/anaptfox/superimg
@@ -193,7 +193,7 @@ codex plugin install superimg@anaptfox
 
 ## Documentation
 
-- [API Reference](https://github.com/anaptfox/superimg/blob/main/docs/api.md) — RenderContext, std.score, std.interpolate, and the full standard library
+- [API Reference](https://github.com/anaptfox/superimg/blob/main/docs/api.md) — RenderContext, ctx.director(), std.interpolate, and the full standard library
 - [Project Configuration](https://github.com/anaptfox/superimg/blob/main/docs/project-config.md) — Cascading config and video discovery
 - [Templates & Data](https://github.com/anaptfox/superimg/blob/main/docs/templates-and-data.md) — Creating templates with data
 - [Examples](https://github.com/anaptfox/superimg/tree/main/examples/) — Working templates to copy from

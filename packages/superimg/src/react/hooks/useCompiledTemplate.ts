@@ -62,16 +62,22 @@ function hashCode(str: string): string {
 // =============================================================================
 
 export interface UseCompiledTemplateOptions {
-  /** The code string to compile */
-  code: string;
+  /** The code string to compile via WASM bundler */
+  code?: string;
+  /** URL to fetch source code (alternative to inline `code`) */
+  codeUrl?: string;
+  /** Pre-bundled IIFE from build-time rolldown (skips WASM when wasmCompile is false) */
+  bundled?: string;
+  /** URL to fetch pre-bundled IIFE (alternative to inline `bundled`) */
+  bundledUrl?: string;
+  /** When false, use `bundled` instead of WASM (default: true) */
+  wasmCompile?: boolean;
   /** Whether to use the global cache (default: true) */
   cache?: boolean;
-  /** Custom cache key (default: hash of code) */
+  /** Custom cache key (default: hash of code or bundled) */
   cacheKey?: string;
   /** Debounce delay in ms (default: 300) */
   debounceMs?: number;
-  /** Custom WASM URL for esbuild */
-  wasmURL?: string;
   /** Whether compilation is enabled (default: true) */
   enabled?: boolean;
 }
@@ -117,24 +123,78 @@ export function useCompiledTemplate(
   options: UseCompiledTemplateOptions
 ): UseCompiledTemplateReturn {
   const {
-    code,
+    code: inlineCode = "",
+    codeUrl,
+    bundled: inlineBundled,
+    bundledUrl,
+    wasmCompile = true,
     cache = true,
     cacheKey,
     debounceMs = 300,
-    wasmURL,
     enabled = true,
   } = options;
 
   const [template, setTemplate] = useState<TemplateModule | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [error, setError] = useState<CompileError | null>(null);
+  const [fetchedCode, setFetchedCode] = useState<string | null>(null);
+  const [fetchedBundled, setFetchedBundled] = useState<string | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const compilationIdRef = useRef(0);
 
+  const code = inlineCode || fetchedCode || "";
+  const bundled = inlineBundled ?? fetchedBundled ?? undefined;
+
   // Compute cache key
-  const effectiveCacheKey = cacheKey ?? hashCode(code);
+  const effectiveCacheKey =
+    cacheKey ??
+    hashCode(
+      wasmCompile ? (codeUrl ?? code) : (bundledUrl ?? bundled ?? codeUrl ?? code),
+    );
+
+  const doCompileBundled = useCallback(
+    (iife: string, key: string) => {
+      const compilationId = ++compilationIdRef.current;
+
+      if (cache) {
+        const cached = getCached(key);
+        if (cached) {
+          setTemplate(cached);
+          setError(null);
+          setCompiling(false);
+          return;
+        }
+      }
+
+      setCompiling(true);
+      setError(null);
+
+      try {
+        const result = compileTemplate(iife);
+        if (compilationId !== compilationIdRef.current) return;
+
+        if (result.error) {
+          setError(result.error);
+          setTemplate(null);
+        } else if (result.template) {
+          if (cache) setCache(key, result.template);
+          setTemplate(result.template);
+          setError(null);
+        }
+      } catch (e) {
+        if (compilationId !== compilationIdRef.current) return;
+        setError({ message: e instanceof Error ? e.message : String(e) });
+        setTemplate(null);
+      } finally {
+        if (compilationId === compilationIdRef.current) {
+          setCompiling(false);
+        }
+      }
+    },
+    [cache],
+  );
 
   const doCompile = useCallback(async (compileCode: string, key: string) => {
     const compilationId = ++compilationIdRef.current;
@@ -196,11 +256,74 @@ export function useCompiledTemplate(
         setCompiling(false);
       }
     }
-  }, [cache, wasmURL]);
+  }, [cache]);
+
+  // Fetch remote code / bundled IIFE when URLs are provided
+  useEffect(() => {
+    if (!enabled) return;
+
+    let cancelled = false;
+    const needsCode = !inlineCode && !!codeUrl;
+    const needsBundled = !wasmCompile && !inlineBundled && !!bundledUrl;
+
+    if (!needsCode && !needsBundled) return;
+
+    setCompiling(true);
+    setError(null);
+
+    (async () => {
+      try {
+        if (needsCode && codeUrl) {
+          const res = await fetch(codeUrl);
+          if (!res.ok) throw new Error(`Failed to fetch ${codeUrl}: ${res.status}`);
+          const text = await res.text();
+          if (!cancelled) setFetchedCode(text);
+        }
+        if (needsBundled && bundledUrl) {
+          const res = await fetch(bundledUrl);
+          if (!res.ok) throw new Error(`Failed to fetch ${bundledUrl}: ${res.status}`);
+          const text = await res.text();
+          if (!cancelled) setFetchedBundled(text);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError({
+            message: e instanceof Error ? e.message : String(e),
+          });
+          setTemplate(null);
+          setCompiling(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, inlineCode, codeUrl, inlineBundled, bundledUrl, wasmCompile]);
 
   // Effect to handle code changes with debouncing
   useEffect(() => {
-    if (!enabled || !code.trim()) {
+    if (!enabled) {
+      setTemplate(null);
+      setError(null);
+      setCompiling(false);
+      return;
+    }
+
+    // Wait for URL fetches before compiling
+    if (!inlineCode && codeUrl && fetchedCode === null) return;
+    if (!wasmCompile && !inlineBundled && bundledUrl && fetchedBundled === null) {
+      return;
+    }
+
+    // Pre-bundled path (build-time rolldown)
+    if (!wasmCompile && bundled) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      doCompileBundled(bundled, effectiveCacheKey);
+      return;
+    }
+
+    if (!code.trim()) {
       setTemplate(null);
       setError(null);
       setCompiling(false);
@@ -241,7 +364,23 @@ export function useCompiledTemplate(
       }
       abortRef.current?.abort();
     };
-  }, [code, effectiveCacheKey, cache, debounceMs, enabled, doCompile]);
+  }, [
+    code,
+    bundled,
+    wasmCompile,
+    effectiveCacheKey,
+    cache,
+    debounceMs,
+    enabled,
+    inlineCode,
+    codeUrl,
+    fetchedCode,
+    inlineBundled,
+    bundledUrl,
+    fetchedBundled,
+    doCompile,
+    doCompileBundled,
+  ]);
 
   // Manual recompile function
   const recompile = useCallback(async () => {

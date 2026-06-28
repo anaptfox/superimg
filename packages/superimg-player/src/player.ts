@@ -186,9 +186,9 @@ export class Player {
       const dimensions = this.format ? resolveFormat(this.format) : {};
       this.runtime = createRuntime(input, {
         ...dimensions,
-        data: options.data,
-        assets: options.assets,
-        assetResolver: options.assetResolver,
+        ...(options.data !== undefined ? { data: options.data } : {}),
+        ...(options.assets !== undefined ? { assets: options.assets } : {}),
+        ...(options.assetResolver !== undefined ? { assetResolver: options.assetResolver } : {}),
         playbackMode: this.options.playbackMode,
       });
       this.runtimeStore = this.runtime.asStore();
@@ -213,7 +213,7 @@ export class Player {
         status: "error",
         errorType: "validation",
         message: err.message,
-        suggestion: "Verify the template was created with defineScene(), defineImage(), defineGif(), or defineSvg().",
+        suggestion: "Verify the template was created with define().",
         details: { error: err.name },
       };
     }
@@ -271,7 +271,7 @@ export class Player {
   }
 
   on<K extends keyof PlayerEvents>(event: K, callback: PlayerEvents[K]): () => void {
-    const set = (this.events[event] ??= new Set() as any);
+    const set = (this.events[event] ??= new Set<PlayerEvents[K]>());
     set.add(callback);
     return () => this.off(event, callback);
   }

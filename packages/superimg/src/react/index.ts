@@ -1,5 +1,6 @@
 //! SuperImg React - Hooks and components for React applications
-//! Player component, timeline, preview, and video session hooks
+//! Player component, timeline, and session hooks
+"use client";
 
 // =============================================================================
 // PLAYER COMPONENT (main export)
@@ -14,39 +15,44 @@ export { Player, type PlayerProps, type PlayerRef } from "./components/Player.js
 export {
   useMediaQuery,
   useIsMobile,
-  usePlayer,
-  usePreview,
   useCompiler,
   useCompiledTemplate,
   clearTemplateCache,
   getTemplateCacheSize,
+  usePlaygroundCatalog,
+  usePlaygroundExport,
+  usePlayerSession,
+  usePlayerShortcuts,
+  checkBrowserCompileSupport,
   useExport,
   useTimeline,
   useCheckpoints,
-  useVideoSession,
-  type UsePlayerConfig,
-  type UsePlayerReturn,
-  type UsePreviewReturn,
   type UseCompilerReturn,
   type UseCompiledTemplateOptions,
   type UseCompiledTemplateReturn,
+  type PlaygroundCatalogEntry,
+  type PlaygroundCategory,
+  type PlaygroundCategoryId,
+  type PlaygroundManifest,
+  type PlaygroundMeta,
+  type UsePlaygroundCatalogOptions,
+  type UsePlaygroundCatalogReturn,
+  type UsePlaygroundExportOptions,
+  type UsePlayerSessionOptions,
+  type UsePlayerSessionReturn,
+  type UsePlayerShortcutsOptions,
+  type BrowserCompileSupport,
   type UseExportReturn,
   type UseTimelineReturn,
   type UseCheckpointsReturn,
-  type VideoSessionConfig,
-  type VideoSessionReturn,
   type FormatOption,
-  type ExportOutput,
-  type RenderFn,
 } from "./hooks/index.js";
 
 // =============================================================================
 // OTHER COMPONENTS
 // =============================================================================
 
-export { Preview, type PreviewProps, type PreviewRef } from "./components/Preview.js";
 export { Timeline, type TimelineProps, type TimelineRef } from "./components/Timeline.js";
-export { VideoCanvas, type VideoCanvasProps } from "./components/VideoCanvas.js";
 export { ChapterNav, type ChapterNavProps } from "./components/ChapterNav.js";
 export { PlayButton, type PlayButtonProps } from "./components/PlayButton.js";
 export { ExportButton, type ExportButtonProps } from "./components/ExportButton.js";
@@ -104,6 +110,12 @@ export type {
   // Composition types
   ComposedTemplate,
   ResolvedScene,
+
+  // Asset types
+  AssetMeta,
+  ImageAssetMeta,
+  VideoAssetMeta,
+  AudioAssetMeta,
 
   // Stdlib
   Stdlib,

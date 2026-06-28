@@ -1,4 +1,5 @@
 //! VideoControls - Composite component for PlayButton + Timeline + ExportButton
+"use client";
 
 import { useState, useCallback } from "react";
 import type { RuntimeStore, FormatOption } from "../../index.browser.js";
@@ -34,6 +35,10 @@ export interface VideoControlsProps {
   onFormatChange?: (format: FormatOption) => void;
   /** Optional CSS class */
   className?: string;
+  /** Controlled export dialog open state */
+  exportDialogOpen?: boolean;
+  /** Called when export dialog open state changes */
+  onExportDialogOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -41,17 +46,18 @@ export interface VideoControlsProps {
  *
  * @example
  * ```tsx
- * const session = useVideoSession(config);
+ * const playerRef = useRef<PlayerRef>(null);
+ * const { exportMp4, download, exporting, exportProgress } = usePlaygroundExport({ template, data });
  *
  * <VideoControls
- *   store={session.store}
+ *   store={playerRef.current!.store!}
  *   showTime
  *   showExport
- *   onExport={(opts) => session.exportMp4(opts)}
- *   onDownload={session.download}
- *   exporting={session.exporting}
- *   exportProgress={session.exportProgress}
- *   currentFormat={session.format}
+ *   onExport={exportMp4}
+ *   onDownload={download}
+ *   exporting={exporting}
+ *   exportProgress={exportProgress}
+ *   currentFormat="horizontal"
  * />
  * ```
  */
@@ -68,16 +74,20 @@ export function VideoControls({
   currentFormat,
   onFormatChange,
   className,
+  exportDialogOpen,
+  onExportDialogOpenChange,
 }: VideoControlsProps) {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const dialogOpen = exportDialogOpen ?? uncontrolledOpen;
+  const setDialogOpen = onExportDialogOpenChange ?? setUncontrolledOpen;
 
   const handleExportClick = useCallback(() => {
     setDialogOpen(true);
-  }, []);
+  }, [setDialogOpen]);
 
   const handleClose = useCallback(() => {
     if (!exporting) setDialogOpen(false);
-  }, [exporting]);
+  }, [exporting, setDialogOpen]);
 
   const canExport = showExport && onExport && onDownload;
   const canFormat = showFormat && currentFormat !== undefined && onFormatChange;
@@ -195,7 +205,7 @@ export function VideoControls({
           onDownload={onDownload}
           exporting={exporting}
           exportProgress={exportProgress}
-          currentFormat={currentFormat}
+          {...(currentFormat !== undefined ? { currentFormat } : {})}
         />
       )}
     </>

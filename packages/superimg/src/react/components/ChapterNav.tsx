@@ -1,4 +1,5 @@
 //! Chapter/checkpoint navigation component
+"use client";
 
 import { type RefObject } from "react";
 import { useCheckpoints } from "../hooks/useCheckpoints.js";

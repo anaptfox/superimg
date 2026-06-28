@@ -1,20 +1,20 @@
 /** @vitest-environment happy-dom */
 
 import { describe, expect, it } from "vitest";
-import { defineScene } from "@superimg/types";
-import { Player } from "./player.js";
+import { define } from "@superimg/types";
+import { Player, type PlayerInput } from "./player.js";
 
 describe("Player vNext runtime-web integration", () => {
   it("loads, seeks, updates, and disposes through runtime-web", async () => {
     const container = document.createElement("div");
-    const template = defineScene({
+    const template = define({
       sample: { label: "initial" },
       config: { width: 320, height: 180, fps: 10, duration: 1 },
       render: (ctx) => `<div>${ctx.globalFrame}:${ctx.data.label}</div>`,
     });
     const player = new Player({ container });
 
-    const result = await player.load(template);
+    const result = await player.load(template as unknown as PlayerInput);
 
     expect(result.status).toBe("success");
     expect(player.getState().totalFrames).toBe(10);
@@ -22,7 +22,7 @@ describe("Player vNext runtime-web integration", () => {
     player.seekFrame(999);
     expect(player.currentFrame).toBe(9);
 
-    player.update({ sample: { label: "updated" } });
+    player.update({ data: { label: "updated" } });
     expect(player.getState().currentFrame).toBe(9);
 
     player.dispose();

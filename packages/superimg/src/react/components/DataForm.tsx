@@ -1,6 +1,14 @@
 //! DataForm - Auto-generated form from template data
+"use client";
 
-import { useState, useCallback, createContext, useContext, type CSSProperties } from "react";
+import {
+  useCallback,
+  useRef,
+  useActionState,
+  createContext,
+  useContext,
+  type CSSProperties,
+} from "react";
 import {
   inferSchema,
   humanizeKey,
@@ -10,6 +18,13 @@ import {
 
 export type DataFormTheme = "light" | "dark";
 
+type SubmitState = {
+  error: string | null;
+  success: boolean;
+};
+
+const INITIAL_SUBMIT_STATE: SubmitState = { error: null, success: false };
+
 export interface DataFormProps {
   /** Template data to infer schema from */
   templateData: Record<string, unknown>;
@@ -17,6 +32,10 @@ export interface DataFormProps {
   data: Record<string, unknown>;
   /** Called when any field value changes */
   onChange: (data: Record<string, unknown>) => void;
+  /** Optional async submit handler — renders a Save button via useActionState */
+  onSubmit?: (data: Record<string, unknown>) => Promise<void>;
+  /** Label for the submit button (default: "Save") */
+  submitLabel?: string;
   /** Optional CSS class for container */
   className?: string;
   /** Optional inline styles for container */
@@ -140,6 +159,30 @@ function getStyles(theme: DataFormTheme) {
       maxHeight: 100,
     },
     toggleOff: isDark ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.2)",
+    submitButton: {
+      marginTop: 8,
+      padding: "8px 14px",
+      fontSize: 13,
+      fontWeight: 600 as const,
+      borderRadius: 6,
+      border: "none",
+      background: "rgba(102, 126, 234, 0.9)",
+      color: "#fff",
+      cursor: "pointer",
+      alignSelf: "flex-start" as const,
+    },
+    submitButtonDisabled: {
+      opacity: 0.6,
+      cursor: "default",
+    },
+    submitError: {
+      fontSize: 12,
+      color: "#f87171",
+    },
+    submitSuccess: {
+      fontSize: 12,
+      color: isDark ? "rgba(134, 239, 172, 0.9)" : "rgba(22, 101, 52, 0.9)",
+    },
   };
 }
 
@@ -268,21 +311,28 @@ function BooleanField({ schema, value, onChange, prefix }: FieldProps) {
 
   return (
     <div style={styles.fieldGroup}>
-      <label style={styles.label}>{schema.label}</label>
-      <div
+      <label id={`${fullKey}-label`} style={styles.label}>{schema.label}</label>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={boolValue}
+        aria-labelledby={`${fullKey}-label`}
         onClick={() => onChange(fullKey, !boolValue)}
         style={{
           ...styles.toggle,
           background: boolValue ? "rgba(102, 126, 234, 0.8)" : styles.toggleOff,
+          border: "none",
+          padding: 0,
         }}
       >
-        <div
+        <span
+          aria-hidden="true"
           style={{
             ...styles.toggleKnob,
             left: boolValue ? 18 : 2,
           }}
         />
-      </div>
+      </button>
     </div>
   );
 }
@@ -337,8 +387,17 @@ function ArrayField({ schema, value, prefix }: FieldProps) {
   );
 }
 
+function fieldProps(
+  schema: FieldSchema,
+  value: unknown,
+  onChange: (key: string, value: unknown) => void,
+  prefix?: string,
+): FieldProps {
+  return { schema, value, onChange, ...(prefix !== undefined ? { prefix } : {}) };
+}
+
 function FieldRenderer({ schema, value, onChange, prefix }: FieldProps) {
-  const props = { schema, value, onChange, prefix };
+  const props = fieldProps(schema, value, onChange, prefix);
 
   switch (schema.type) {
     case "color":
@@ -383,12 +442,39 @@ export function DataForm({
   templateData,
   data,
   onChange,
+  onSubmit,
+  submitLabel = "Save",
   className,
   style,
   theme = "dark",
 }: DataFormProps) {
   const schema = inferSchema(templateData);
   const styles = getStyles(theme);
+  const mergedData = { ...templateData, ...data };
+  const mergedDataRef = useRef(mergedData);
+  mergedDataRef.current = mergedData;
+  const onSubmitRef = useRef(onSubmit);
+  onSubmitRef.current = onSubmit;
+
+  const [submitState, submitAction, isSubmitting] = useActionState(
+    async (_prev: SubmitState): Promise<SubmitState> => {
+      const handler = onSubmitRef.current;
+      if (!handler) {
+        return { error: null, success: false };
+      }
+
+      try {
+        await handler(mergedDataRef.current);
+        return { error: null, success: true };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error.message : String(error),
+          success: false,
+        };
+      }
+    },
+    INITIAL_SUBMIT_STATE
+  );
 
   const handleFieldChange = useCallback(
     (key: string, value: unknown) => {
@@ -400,11 +486,15 @@ export function DataForm({
 
         for (let i = 0; i < keys.length - 1; i++) {
           const k = keys[i];
+          if (k === undefined) continue;
           current[k] = { ...(current[k] as Record<string, unknown> || {}) };
           current = current[k] as Record<string, unknown>;
         }
 
-        current[keys[keys.length - 1]] = value;
+        const leaf = keys[keys.length - 1];
+        if (leaf !== undefined) {
+          current[leaf] = value;
+        }
         onChange(newData);
       } else {
         onChange({ ...data, [key]: value });
@@ -423,21 +513,54 @@ export function DataForm({
     );
   }
 
-  // Merge template data with overrides for display
-  const mergedData = { ...templateData, ...data };
+  const fields = schema.map((field) => (
+    <FieldRenderer
+      key={field.key}
+      schema={field}
+      value={mergedData[field.key]}
+      onChange={handleFieldChange}
+    />
+  ));
+
+  const submitSection = onSubmit ? (
+    <>
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        style={{
+          ...styles.submitButton,
+          ...(isSubmitting ? styles.submitButtonDisabled : {}),
+        }}
+      >
+        {isSubmitting ? "Saving…" : submitLabel}
+      </button>
+      {submitState.error && (
+        <p style={styles.submitError} role="alert">
+          {submitState.error}
+        </p>
+      )}
+      {submitState.success && !submitState.error && (
+        <p style={styles.submitSuccess}>Saved</p>
+      )}
+    </>
+  ) : null;
 
   return (
     <ThemeContext.Provider value={theme}>
-      <div className={className} style={{ ...styles.container, ...style }}>
-        {schema.map((field) => (
-          <FieldRenderer
-            key={field.key}
-            schema={field}
-            value={mergedData[field.key]}
-            onChange={handleFieldChange}
-          />
-        ))}
-      </div>
+      {onSubmit ? (
+        <form
+          className={className}
+          style={{ ...styles.container, ...style }}
+          action={submitAction}
+        >
+          {fields}
+          {submitSection}
+        </form>
+      ) : (
+        <div className={className} style={{ ...styles.container, ...style }}>
+          {fields}
+        </div>
+      )}
     </ThemeContext.Provider>
   );
 }

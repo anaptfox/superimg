@@ -139,42 +139,33 @@ export function createPlayerStore(
     },
 
     // Checkpoint actions (only available if checkpointResolver is provided)
-    goToCheckpoint: checkpointResolver
-      ? (id: string) => {
-          const checkpoint = checkpointResolver.get(id);
-          if (checkpoint) {
-            get().setFrame(checkpoint.frame);
-            callbacks?.onCheckpoint?.(checkpoint);
-          }
+    ...(checkpointResolver
+      ? {
+          goToCheckpoint: (id: string) => {
+            const checkpoint = checkpointResolver.get(id);
+            if (checkpoint) {
+              get().setFrame(checkpoint.frame);
+              callbacks?.onCheckpoint?.(checkpoint);
+            }
+          },
+          goToNextCheckpoint: () => {
+            const { currentFrame } = get();
+            const next = checkpointResolver.getNext(currentFrame);
+            if (next) {
+              get().setFrame(next.frame);
+              callbacks?.onCheckpoint?.(next);
+            }
+          },
+          goToPreviousCheckpoint: () => {
+            const { currentFrame } = get();
+            const prev = checkpointResolver.getPrevious(currentFrame);
+            if (prev) {
+              get().setFrame(prev.frame);
+              callbacks?.onCheckpoint?.(prev);
+            }
+          },
+          getCurrentCheckpoint: () => checkpointResolver.getAt(get().currentFrame),
         }
-      : undefined,
-
-    goToNextCheckpoint: checkpointResolver
-      ? () => {
-          const { currentFrame } = get();
-          const next = checkpointResolver.getNext(currentFrame);
-          if (next) {
-            get().setFrame(next.frame);
-            callbacks?.onCheckpoint?.(next);
-          }
-        }
-      : undefined,
-
-    goToPreviousCheckpoint: checkpointResolver
-      ? () => {
-          const { currentFrame } = get();
-          const prev = checkpointResolver.getPrevious(currentFrame);
-          if (prev) {
-            get().setFrame(prev.frame);
-            callbacks?.onCheckpoint?.(prev);
-          }
-        }
-      : undefined,
-
-    getCurrentCheckpoint: checkpointResolver
-      ? () => {
-          return checkpointResolver.getAt(get().currentFrame);
-        }
-      : undefined,
+      : {}),
   }));
 }
