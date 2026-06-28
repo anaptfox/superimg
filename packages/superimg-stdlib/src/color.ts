@@ -183,3 +183,14 @@ export function desaturate(color: string, amount: number): string {
 export function isLight(color: string): boolean {
   return colord(color).isLight();
 }
+
+export {
+  linearGradient,
+  radialGradient,
+  animateGradientStops,
+} from "./color/gradient.js";
+export type {
+  GradientStop,
+  LinearGradientOpts,
+  RadialGradientOpts,
+} from "./color/gradient.js";

@@ -194,6 +194,7 @@ export const platforms: Record<string, PlatformPresets> = {
  */
 export function getPreset(path: string): Preset | undefined {
   const [platform, category, name] = path.split(".");
+  if (!platform || !category || !name) return undefined;
   const p = platforms[platform];
   if (!p) return undefined;
 
@@ -248,8 +249,8 @@ export function listVideoPresets(): Array<{ path: string; preset: Preset }> {
  */
 export function formatPresetLabel(path: string): string {
   const [platform, , name] = path.split(".");
-  const platformName = platform.replace("_", "/");
-  const displayName = name.replace(/_/g, " ");
+  const platformName = (platform ?? "").replace("_", "/");
+  const displayName = (name ?? "").replace(/_/g, " ");
   return `${capitalize(platformName)} ${capitalize(displayName)}`;
 }
 

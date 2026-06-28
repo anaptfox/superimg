@@ -41,7 +41,7 @@ const EASING_MAP: Record<EasingName, EasingFn> = {
   easeInBounce: easing.easeInBounce,
   easeOutBounce: easing.easeOutBounce,
   easeInOutBounce: easing.easeInOutBounce,
-};
+} satisfies Record<EasingName, EasingFn>;
 
 export interface TweenOptions {
   /** Easing name or function. Default: linear */
@@ -74,7 +74,7 @@ function resolveEasing(easingOpt: EasingName | EasingFn | undefined): EasingFn {
  * @returns Interpolated value
  *
  * Internal-only. Not exposed on `ctx.std`; template authors should use
- * `std.score()` for phased choreography or `std.interpolate()` for custom progress.
+ * `ctx.director()` for phased choreography or `std.interpolate()` for custom progress.
  * @example
  * ```ts
  * // Simple: linear interpolation
@@ -84,7 +84,7 @@ function resolveEasing(easingOpt: EasingName | EasingFn | undefined): EasingFn {
  * tween(0, 100, 0.5, 'easeOutCubic')  // ~87.5
  *
  * // With time window (animate only between 20% and 60% of scene)
- * tween(0, 100, sceneProgress, { easing: 'easeOutCubic', start: 0.2, end: 0.6 })
+ * tween(0, 100, timeline, { easing: 'easeOutCubic', start: 0.2, end: 0.6 })
  * ```
  */
 export function tween(

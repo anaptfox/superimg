@@ -18,7 +18,7 @@ describe("springCurve", () => {
   it("settles without overshoot with high damping (overdamped)", () => {
     const values = [0.2, 0.4, 0.6, 0.8].map((p) => springCurve(p, { stiffness: 100, damping: 30 }));
     for (let i = 1; i < values.length; i++) {
-      expect(values[i]).toBeGreaterThanOrEqual(values[i - 1]);
+      expect(values[i]!).toBeGreaterThanOrEqual(values[i - 1]!);
     }
   });
 

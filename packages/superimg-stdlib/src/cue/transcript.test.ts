@@ -90,8 +90,8 @@ describe('transcript', () => {
       const t = transcript(words, 0);
       const all = t.all();
       expect(all).toHaveLength(2);
-      expect(all[0].text).toBe('Hello');
-      expect(all[1].text).toBe('world');
+      expect(all[0]!.text).toBe('Hello');
+      expect(all[1]!.text).toBe('world');
     });
 
     it('returns words sorted by start time', () => {
@@ -101,8 +101,8 @@ describe('transcript', () => {
       ];
       const t = transcript(unsorted, 0);
       const all = t.all();
-      expect(all[0].text).toBe('a');
-      expect(all[1].text).toBe('b');
+      expect(all[0]!.text).toBe('a');
+      expect(all[1]!.text).toBe('b');
     });
 
     it('returns empty array for empty transcript', () => {
@@ -116,15 +116,15 @@ describe('transcript', () => {
       const t = transcript(words, 0);
       const inRange = t.range(0.3, 0.7);
       expect(inRange).toHaveLength(2);
-      expect(inRange[0].text).toBe('Hello');
-      expect(inRange[1].text).toBe('world');
+      expect(inRange[0]!.text).toBe('Hello');
+      expect(inRange[1]!.text).toBe('world');
     });
 
     it('returns only words that overlap', () => {
       const t = transcript(words, 0);
       const inRange = t.range(0.6, 0.9);
       expect(inRange).toHaveLength(1);
-      expect(inRange[0].text).toBe('world');
+      expect(inRange[0]!.text).toBe('world');
     });
 
     it('returns empty for range with no words', () => {
@@ -138,7 +138,7 @@ describe('transcript', () => {
       // Word ends at 0.5, so range starting at 0.5 should not include it
       const inRange = t.range(0.5, 1.0);
       expect(inRange).toHaveLength(1);
-      expect(inRange[0].text).toBe('world');
+      expect(inRange[0]!.text).toBe('world');
     });
   });
 
@@ -406,7 +406,7 @@ describe('adapters', () => {
       ];
       const result = fromElevenLabs(input);
       expect(result).toHaveLength(1);
-      expect(result[0].text).toBe('Hello');
+      expect(result[0]!.text).toBe('Hello');
     });
 
     it('includes words with no type field', () => {
@@ -439,8 +439,8 @@ describe('adapters', () => {
     it('maps word to text', () => {
       const input = [{ word: 'test', start: 0, end: 1 }];
       const result = fromWhisper(input);
-      expect(result[0].text).toBe('test');
-      expect('word' in result[0]).toBe(false);
+      expect(result[0]!.text).toBe('test');
+      expect('word' in result[0]!).toBe(false);
     });
 
     it('handles empty input', () => {

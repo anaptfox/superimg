@@ -87,7 +87,7 @@ export function montage(options: MontageOptions): MontageResult {
       index: i,
       opacity,
       kenBurnsProgress,
-      imageUrl: images[i],
+      imageUrl: images[i]!,
     });
   }
 
@@ -102,7 +102,7 @@ export function montage(options: MontageOptions): MontageResult {
           progress: layer.kenBurnsProgress,
           zoomFrom,
           zoomTo,
-          overlay,
+          ...(overlay !== undefined ? { overlay } : {}),
         })
       : {
           html: `<img src="${layer.imageUrl}" style="width:100%;height:100%;object-fit:cover;" />`,

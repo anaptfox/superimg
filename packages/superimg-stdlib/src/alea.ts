@@ -64,15 +64,17 @@ function Alea(...args: (string | number)[]): AleaPRNG {
   s2 = mash(' ');
 
   for (let i = 0; i < args.length; i++) {
-    s0 -= mash(args[i]);
+    const arg = args[i];
+    if (arg === undefined) continue;
+    s0 -= mash(arg);
     if (s0 < 0) {
       s0 += 1;
     }
-    s1 -= mash(args[i]);
+    s1 -= mash(arg);
     if (s1 < 0) {
       s1 += 1;
     }
-    s2 -= mash(args[i]);
+    s2 -= mash(arg);
     if (s2 < 0) {
       s2 += 1;
     }

@@ -14,39 +14,39 @@ describe("partitionY", () => {
   it("inherits area.x/width on each row", () => {
     const offset: Box = { x: 50, y: 10, width: 800, height: 600 };
     const [a] = partitionY(offset, [{ height: 100 }]);
-    expect(a.x).toBe(50);
-    expect(a.width).toBe(800);
-    expect(a.y).toBe(10);
+    expect(a!.x).toBe(50);
+    expect(a!.width).toBe(800);
+    expect(a!.y).toBe(10);
   });
 
   it("fill row consumes remaining height", () => {
     const [a, b, c] = partitionY(area, [{ height: 162 }, { fill: true }, { height: 58 }]);
-    expect(a.height).toBe(162);
-    expect(b.y).toBe(162);
-    expect(b.height).toBe(1080 - 162 - 58);
-    expect(c.y).toBe(1080 - 58);
-    expect(c.height).toBe(58);
+    expect(a!.height).toBe(162);
+    expect(b!.y).toBe(162);
+    expect(b!.height).toBe(1080 - 162 - 58);
+    expect(c!.y).toBe(1080 - 58);
+    expect(c!.height).toBe(58);
   });
 
   it("applies gap between rows, not before first or after last", () => {
     const [a, b, c] = partitionY(area, [{ height: 100 }, { height: 100 }, { height: 100 }], {
       gap: 20,
     });
-    expect(a.y).toBe(0);
-    expect(b.y).toBe(120);
-    expect(c.y).toBe(240);
+    expect(a!.y).toBe(0);
+    expect(b!.y).toBe(120);
+    expect(c!.y).toBe(240);
   });
 
   it("gap is included when computing fill height", () => {
     const [, b] = partitionY(area, [{ height: 100 }, { fill: true }, { height: 100 }], { gap: 50 });
-    expect(b.height).toBe(1080 - 100 - 100 - 50 - 50);
+    expect(b!.height).toBe(1080 - 100 - 100 - 50 - 50);
   });
 
   it("allows fixed rows to under-fill the area (unused space below)", () => {
     const [a, b] = partitionY(area, [{ height: 100 }, { height: 100 }]);
-    expect(a.height).toBe(100);
-    expect(b.height).toBe(100);
-    expect(b.y + b.height).toBe(200);
+    expect(a!.height).toBe(100);
+    expect(b!.height).toBe(100);
+    expect(b!.y + b!.height).toBe(200);
   });
 
   it("throws when fixed rows + gaps exceed area height", () => {
@@ -71,9 +71,9 @@ describe("partitionY", () => {
 
   it("treats missing height as 0", () => {
     const [a, b] = partitionY(area, [{}, { height: 50 }]);
-    expect(a.height).toBe(0);
-    expect(b.y).toBe(0);
-    expect(b.height).toBe(50);
+    expect(a!.height).toBe(0);
+    expect(b!.y).toBe(0);
+    expect(b!.height).toBe(50);
   });
 });
 

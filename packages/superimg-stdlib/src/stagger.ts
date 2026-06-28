@@ -7,11 +7,11 @@
  * @example
  * ```ts
  * // Count-based: get per-item progress values
- * const progresses = std.stagger(5, sceneProgress, { duration: 0.3 });
- * // [0.8, 0.6, 0.4, 0.2, 0] at sceneProgress=0.5
+ * const progresses = std.stagger(5, timeline, { duration: 0.3 });
+ * // [0.8, 0.6, 0.4, 0.2, 0] at timeline.progress=0.5
  *
  * // Items-based: get enriched objects
- * const items = std.stagger(["A", "B", "C"], sceneProgress, { duration: 0.4 });
+ * const items = std.stagger(["A", "B", "C"], timeline, { duration: 0.4 });
  * items.map(({ item, progress }) => `<div style="opacity: ${progress}">${item}</div>`)
  * ```
  */
@@ -47,12 +47,12 @@ export interface StaggerItem<T> {
  *
  * @example Count-based
  * ```ts
- * const progresses = std.stagger(3, sceneProgress, { duration: 0.4 });
+ * const progresses = std.stagger(3, timeline, { duration: 0.4 });
  * ```
  *
  * @example Items-based
  * ```ts
- * const staggered = std.stagger(["A", "B", "C"], sceneProgress, { from: "center" });
+ * const staggered = std.stagger(["A", "B", "C"], timeline, { from: "center" });
  * ```
  */
 function staggerImpl<T>(
@@ -67,7 +67,7 @@ function staggerImpl<T>(
   if (count === 1) {
     const p = applyEasing(clamp01(progress), options?.easing);
     if (isArray) {
-      return [{ item: countOrItems[0], progress: p, index: 0, active: p > 0 && p < 1, done: p >= 1 }];
+      return [{ item: countOrItems[0]!, progress: p, index: 0, active: p > 0 && p < 1, done: p >= 1 }];
     }
     return [p];
   }
@@ -92,7 +92,7 @@ function staggerImpl<T>(
   // Calculate per-item progress
   const results: number[] = [];
   for (let i = 0; i < count; i++) {
-    const start = delays[i] * each * (count - 1);
+    const start = (delays[i] ?? 0) * each * (count - 1);
     const end = start + dur;
     let itemProgress: number;
     if (start === end) {
@@ -105,7 +105,7 @@ function staggerImpl<T>(
 
   if (isArray) {
     return results.map((p, i) => ({
-      item: (countOrItems as T[])[i],
+      item: (countOrItems as T[])[i]!,
       progress: p,
       index: i,
       active: p > 0 && p < 1,

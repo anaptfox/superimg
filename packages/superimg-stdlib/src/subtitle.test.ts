@@ -89,10 +89,10 @@ This is a subtitle.`;
 
     const cues = parseSRT(srt);
     expect(cues).toHaveLength(2);
-    expect(cues[0].index).toBe(1);
-    expect(cues[0].text).toBe("Hello, world!");
-    expect(cues[1].index).toBe(2);
-    expect(cues[1].text).toBe("This is a subtitle.");
+    expect(cues[0]!.index).toBe(1);
+    expect(cues[0]!.text).toBe("Hello, world!");
+    expect(cues[1]!.index).toBe(2);
+    expect(cues[1]!.text).toBe("This is a subtitle.");
   });
 
   it("parses multiline text", () => {
@@ -103,14 +103,14 @@ Line two
 Line three`;
 
     const cues = parseSRT(srt);
-    expect(cues[0].text).toBe("Line one\nLine two\nLine three");
+    expect(cues[0]!.text).toBe("Line one\nLine two\nLine three");
   });
 
   it("handles CRLF line endings", () => {
     const srt = "1\r\n00:00:01,000 --> 00:00:04,000\r\nHello!";
     const cues = parseSRT(srt);
     expect(cues).toHaveLength(1);
-    expect(cues[0].text).toBe("Hello!");
+    expect(cues[0]!.text).toBe("Hello!");
   });
 
   it("handles extra blank lines between cues", () => {
@@ -139,7 +139,7 @@ Valid`;
 
     const cues = parseSRT(srt);
     expect(cues).toHaveLength(1);
-    expect(cues[0].text).toBe("Valid");
+    expect(cues[0]!.text).toBe("Valid");
   });
 
   it("throws on malformed cues in strict mode", () => {
@@ -165,9 +165,9 @@ This is a subtitle.`;
 
     const cues = parseVTT(vtt);
     expect(cues).toHaveLength(2);
-    expect(cues[0].start).toBe(1000);
-    expect(cues[0].end).toBe(4000);
-    expect(cues[0].text).toBe("Hello, world!");
+    expect(cues[0]!.start).toBe(1000);
+    expect(cues[0]!.end).toBe(4000);
+    expect(cues[0]!.text).toBe("Hello, world!");
   });
 
   it("parses VTT with cue settings", () => {
@@ -177,7 +177,7 @@ This is a subtitle.`;
 Hello, world!`;
 
     const cues = parseVTT(vtt);
-    expect(cues[0].settings).toBe("align:center position:50%");
+    expect(cues[0]!.settings).toBe("align:center position:50%");
   });
 
   it("parses VTT with cue identifiers", () => {
@@ -189,7 +189,7 @@ Hello, world!`;
 
     const cues = parseVTT(vtt);
     expect(cues).toHaveLength(1);
-    expect(cues[0].text).toBe("Hello, world!");
+    expect(cues[0]!.text).toBe("Hello, world!");
   });
 
   it("skips NOTE blocks", () => {
@@ -202,7 +202,7 @@ Hello!`;
 
     const cues = parseVTT(vtt);
     expect(cues).toHaveLength(1);
-    expect(cues[0].text).toBe("Hello!");
+    expect(cues[0]!.text).toBe("Hello!");
   });
 
   it("parses VTT with header metadata", () => {
@@ -268,10 +268,10 @@ describe("generateSRT", () => {
     const parsed = parseSRT(srt);
 
     expect(parsed).toHaveLength(2);
-    expect(parsed[0].start).toBe(original[0].start);
-    expect(parsed[0].end).toBe(original[0].end);
-    expect(parsed[0].text).toBe(original[0].text);
-    expect(parsed[1].text).toBe(original[1].text);
+    expect(parsed[0]!.start).toBe(original[0]!.start);
+    expect(parsed[0]!.end).toBe(original[0]!.end);
+    expect(parsed[0]!.text).toBe(original[0]!.text);
+    expect(parsed[1]!.text).toBe(original[1]!.text);
   });
 });
 
@@ -313,9 +313,9 @@ describe("generateVTT", () => {
     const parsed = parseVTT(vtt);
 
     expect(parsed).toHaveLength(2);
-    expect(parsed[0].start).toBe(original[0].start);
-    expect(parsed[0].text).toBe(original[0].text);
-    expect(parsed[1].text).toBe(original[1].text);
+    expect(parsed[0]!.start).toBe(original[0]!.start);
+    expect(parsed[0]!.text).toBe(original[0]!.text);
+    expect(parsed[1]!.text).toBe(original[1]!.text);
   });
 });
 
@@ -388,7 +388,7 @@ describe("getCuesAtTime", () => {
 
     const active = getCuesAtTime(cues, 2000);
     expect(active).toHaveLength(1);
-    expect(active[0].text).toBe("First");
+    expect(active[0]!.text).toBe("First");
   });
 
   it("returns empty array when no active cues", () => {

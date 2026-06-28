@@ -50,14 +50,14 @@ export function parseTime(timeStr: string): number {
   let seconds = 0;
 
   if (parts.length === 3) {
-    hours = parseInt(parts[0], 10);
-    minutes = parseInt(parts[1], 10);
-    seconds = parseFloat(parts[2]);
+    hours = parseInt(parts[0] ?? "0", 10);
+    minutes = parseInt(parts[1] ?? "0", 10);
+    seconds = parseFloat(parts[2] ?? "0");
   } else if (parts.length === 2) {
-    minutes = parseInt(parts[0], 10);
-    seconds = parseFloat(parts[1]);
+    minutes = parseInt(parts[0] ?? "0", 10);
+    seconds = parseFloat(parts[1] ?? "0");
   } else if (parts.length === 1) {
-    seconds = parseFloat(parts[0]);
+    seconds = parseFloat(parts[0] ?? "0");
   }
 
   return Math.round((hours * 3600 + minutes * 60 + seconds) * 1000);
@@ -119,7 +119,7 @@ export function parseSRT(content: string, options?: ParseOptions): Cue[] {
     if (lines.length < 2) continue;
 
     // First line should be index
-    const indexLine = lines[0].trim();
+    const indexLine = lines[0]?.trim() ?? "";
     const index = parseInt(indexLine, 10);
 
     // Find the timestamp line (usually second line, but be flexible)
@@ -130,6 +130,7 @@ export function parseSRT(content: string, options?: ParseOptions): Cue[] {
     }
 
     const timestampLine = lines[timestampLineIndex];
+    if (!timestampLine) continue;
     const timestampMatch = timestampLine.match(
       /(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})/
     );
@@ -141,12 +142,12 @@ export function parseSRT(content: string, options?: ParseOptions): Cue[] {
       continue;
     }
 
-    const start = parseTime(timestampMatch[1]);
-    const end = parseTime(timestampMatch[2]);
+    const start = parseTime(timestampMatch[1] ?? "0");
+    const end = parseTime(timestampMatch[2] ?? "0");
     const text = lines.slice(timestampLineIndex + 1).join("\n").trim();
 
     cues.push({
-      index: isNaN(index) ? undefined : index,
+      ...(isNaN(index) ? {} : { index }),
       start,
       end,
       text,
@@ -193,7 +194,7 @@ export function parseVTT(content: string, options?: ParseOptions): Cue[] {
     if (lines.length === 0) continue;
 
     // Skip WEBVTT header block and NOTE blocks
-    if (lines[0].startsWith("WEBVTT") || lines[0].startsWith("NOTE")) {
+    if (lines[0]?.startsWith("WEBVTT") || lines[0]?.startsWith("NOTE")) {
       continue;
     }
 
@@ -202,8 +203,8 @@ export function parseVTT(content: string, options?: ParseOptions): Cue[] {
     let cueId: string | undefined;
 
     // Check if first line is a cue identifier (doesn't contain -->)
-    if (lines.length > 1 && !lines[0].includes("-->")) {
-      cueId = lines[0].trim();
+    if (lines.length > 1 && !lines[0]?.includes("-->")) {
+      cueId = lines[0]?.trim();
       timestampLineIndex = 1;
     }
 
@@ -222,8 +223,8 @@ export function parseVTT(content: string, options?: ParseOptions): Cue[] {
       continue;
     }
 
-    const start = parseTime(timestampMatch[1]);
-    const end = parseTime(timestampMatch[2]);
+    const start = parseTime(timestampMatch[1] ?? "0");
+    const end = parseTime(timestampMatch[2] ?? "0");
     const settings = timestampMatch[3]?.trim();
     const text = lines.slice(timestampLineIndex + 1).join("\n").trim();
 
@@ -232,7 +233,7 @@ export function parseVTT(content: string, options?: ParseOptions): Cue[] {
       start,
       end,
       text,
-      settings,
+      ...(settings !== undefined ? { settings } : {}),
     });
     cueIndex++;
   }

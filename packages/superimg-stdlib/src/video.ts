@@ -1,15 +1,15 @@
 /**
  * Frame-accurate embedded video for headless render.
- * Emits marked <video> elements; Playwright seeks before screenshot.
+ * Emits marked <img> placeholders; Playwright injects ffmpeg-extracted frames.
  */
 
 import { css } from "./css.js";
 
-export const VIDEO_SYNC_ATTR = "data-superimg-video";
+export const CLIP_SYNC_ATTR = "data-superimg-clip";
 
-export interface VideoSyncOptions {
+export interface ClipSyncOptions {
   src: string;
-  /** Output timeline position in seconds (default: caller passes sceneTimeSeconds) */
+  /** Output timeline position in seconds (default: caller passes timeline.seconds) */
   at?: number;
   /** Offset into source media in seconds */
   start?: number;
@@ -17,12 +17,13 @@ export interface VideoSyncOptions {
   width?: number | string;
   height?: number | string;
   objectFit?: "cover" | "contain" | "fill";
-  muted?: boolean;
 }
 
-export interface VideoSyncResult {
+export interface ClipSyncResult {
   /** Resolved source media time in seconds (frame-quantized) */
   time: number;
+  /** Frame index at output fps (cache key) */
+  frameIndex: number;
   html: string;
   style: string;
 }
@@ -33,7 +34,7 @@ export function quantizeVideoTime(time: number, fps: number): number {
   return Math.round(time / step) * step;
 }
 
-export function sync(options: VideoSyncOptions, fps: number): VideoSyncResult {
+export function sync(options: ClipSyncOptions, fps: number): ClipSyncResult {
   const {
     src,
     at = 0,
@@ -42,10 +43,10 @@ export function sync(options: VideoSyncOptions, fps: number): VideoSyncResult {
     width = "100%",
     height = "100%",
     objectFit = "cover",
-    muted = true,
   } = options;
 
   const time = quantizeVideoTime(start + at * playbackRate, fps);
+  const frameIndex = Math.round(time * fps);
   const style = css({
     width,
     height,
@@ -53,9 +54,9 @@ export function sync(options: VideoSyncOptions, fps: number): VideoSyncResult {
     display: "block",
   });
 
-  const html = `<video ${VIDEO_SYNC_ATTR} data-src="${escapeAttr(src)}" data-at="${time}" src="${escapeAttr(src)}" style="${style}" crossorigin="anonymous"${muted ? " muted" : ""} playsinline preload="auto"></video>`;
+  const html = `<img ${CLIP_SYNC_ATTR} data-src="${escapeAttr(src)}" data-t="${time}" data-frame="${frameIndex}" style="${style}" alt="">`;
 
-  return { time, html, style };
+  return { time, frameIndex, html, style };
 }
 
 function escapeAttr(value: string): string {

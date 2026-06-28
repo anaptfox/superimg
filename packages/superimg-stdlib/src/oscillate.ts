@@ -1,7 +1,7 @@
 /**
  * Continuous motion primitives — pure functions of time, render-safe.
  *
- * All functions accept time in seconds (from `ctx.sceneTimeSeconds`).
+ * All functions accept time in seconds (from `ctx.timeline.seconds`).
  * `period` can be a string ("1s", "500ms") or a number (seconds).
  */
 

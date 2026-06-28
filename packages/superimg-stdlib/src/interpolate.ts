@@ -7,10 +7,10 @@
  * @example
  * ```ts
  * // Fade in, hold, fade out
- * const opacity = std.interpolate(sceneProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
+ * const opacity = std.interpolate(timeline.progress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
  *
  * // Color transition through multiple stops
- * const bg = std.interpolateColor(sceneProgress, [0, 0.5, 1], ["#f00", "#0f0", "#00f"]);
+ * const bg = std.interpolateColor(timeline, [0, 0.5, 1], ["#f00", "#0f0", "#00f"]);
  * ```
  */
 
@@ -54,15 +54,23 @@ export function interpolate(
   }
 
   const last = inputRange.length - 1;
-  if (progress <= inputRange[0]) return outputRange[0];
-  if (progress >= inputRange[last]) return outputRange[last];
+  const firstInput = inputRange[0]!;
+  const lastInput = inputRange[last]!;
+  const firstOutput = outputRange[0]!;
+  const lastOutput = outputRange[last]!;
+  if (progress <= firstInput) return firstOutput;
+  if (progress >= lastInput) return lastOutput;
 
   let i = 1;
-  while (i < last && progress > inputRange[i]) i++;
+  while (i < last && progress > (inputRange[i] ?? lastInput)) i++;
 
-  const segT = clamp01(inverseLerp(inputRange[i - 1], inputRange[i], progress));
-  if (!easing) return lerp(outputRange[i - 1], outputRange[i], segT);
-  return tween(outputRange[i - 1], outputRange[i], segT, easing);
+  const inLo = inputRange[i - 1] ?? firstInput;
+  const inHi = inputRange[i] ?? lastInput;
+  const outLo = outputRange[i - 1] ?? firstOutput;
+  const outHi = outputRange[i] ?? lastOutput;
+  const segT = clamp01(inverseLerp(inLo, inHi, progress));
+  if (!easing) return lerp(outLo, outHi, segT);
+  return tween(outLo, outHi, segT, easing);
 }
 
 /**
@@ -93,14 +101,22 @@ export function interpolateColor(
   }
 
   const last = inputRange.length - 1;
-  if (progress <= inputRange[0]) return colors[0];
-  if (progress >= inputRange[last]) return colors[last];
+  const firstInput = inputRange[0]!;
+  const lastInput = inputRange[last]!;
+  const firstColor = colors[0]!;
+  const lastColor = colors[last]!;
+  if (progress <= firstInput) return firstColor;
+  if (progress >= lastInput) return lastColor;
 
   let i = 1;
-  while (i < last && progress > inputRange[i]) i++;
+  while (i < last && progress > (inputRange[i] ?? lastInput)) i++;
 
-  let segT = clamp01(inverseLerp(inputRange[i - 1], inputRange[i], progress));
+  const inLo = inputRange[i - 1] ?? firstInput;
+  const inHi = inputRange[i] ?? lastInput;
+  const colorLo = colors[i - 1] ?? firstColor;
+  const colorHi = colors[i] ?? lastColor;
+  let segT = clamp01(inverseLerp(inLo, inHi, progress));
   if (easing) segT = tween(0, 1, segT, easing);
 
-  return colord(colors[i - 1]).mix(colors[i], segT).toHex();
+  return colord(colorLo).mix(colorHi, segT).toHex();
 }

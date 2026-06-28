@@ -35,6 +35,7 @@ export function script(events: ScriptEvent[], time: number): ScriptSync {
 
   for (let i = 0; i < sorted.length; i++) {
     const event = sorted[i];
+    if (!event) continue;
     const nextEvent = sorted[i + 1];
 
     // Duration: explicit, or until next event (capped), or default

@@ -35,7 +35,9 @@ function isUnitlessProperty(key: string): boolean {
   const camel = key.includes("-") ? kebabToCamel(key) : key;
   if (UNITLESS_KEYS.has(camel)) return true;
   const unprefixed = camel.replace(/^(Webkit|Moz|ms|O)/, "");
-  const normalized = unprefixed ? unprefixed[0].toLowerCase() + unprefixed.slice(1) : "";
+  const normalized = unprefixed
+    ? unprefixed.charAt(0).toLowerCase() + unprefixed.slice(1)
+    : "";
   return normalized ? UNITLESS_KEYS.has(normalized) : false;
 }
 

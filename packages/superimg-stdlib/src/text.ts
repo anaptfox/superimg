@@ -88,7 +88,7 @@ export function escapeHtml(str: string): string {
     '"': "&quot;",
     "'": "&#039;",
   };
-  return str.replace(/[&<>"']/g, (m) => map[m]);
+  return str.replace(/[&<>"']/g, (m) => map[m] ?? m);
 }
 
 /**
@@ -221,7 +221,7 @@ export interface TypeResult {
  *
  * Takes a string and a progress value (0–1) and returns the visible portion.
  * Compose with `std.code.highlight()` for syntax-highlighted code typing,
- * or with `std.score()` / `std.cue.*` to score and sync typing events.
+ * or with `ctx.director()` / `track().*` to score and sync typing events.
  *
  * @param text - Full text to reveal
  * @param progress - Progress value, typically 0–1 (clamped internally)
@@ -261,7 +261,7 @@ export function type(
       // Count only actual words (non-whitespace tokens)
       const wordTokens: number[] = [];
       for (let i = 0; i < words.length; i++) {
-        if (words[i].trim().length > 0) {
+        if ((words[i] ?? "").trim().length > 0) {
           wordTokens.push(i);
         }
       }
@@ -273,7 +273,7 @@ export function type(
         visible = "";
       } else {
         // Include everything up to and including the last visible word
-        const lastWordIdx = wordTokens[index - 1];
+        const lastWordIdx = wordTokens[index - 1] ?? 0;
         visible = words.slice(0, lastWordIdx + 1).join("");
       }
       break;
@@ -333,12 +333,12 @@ function weightedCharIndex(text: string, progress: number, variance: number): nu
   const cumulative = new Float64Array(len + 1);
   for (let i = 0; i < len; i++) {
     let w = 1;
-    const ch = text[i];
+    const ch = text[i] ?? "";
     if (ch === "\n") {
       w += 3 * variance; // pause at newlines
     } else if ("{()}[];:<>=".includes(ch)) {
       w += 1.5 * variance; // slow at punctuation/brackets
-    } else if (i > 0 && text[i - 1] === " ") {
+    } else if (i > 0 && (text[i - 1] ?? "") === " ") {
       w += 0.5 * variance; // slight pause at word start
     }
     totalWeight += w;
@@ -352,7 +352,7 @@ function weightedCharIndex(text: string, progress: number, variance: number): nu
   let hi = len;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if (cumulative[mid + 1] <= target) lo = mid + 1;
+    if ((cumulative[mid + 1] ?? 0) <= target) lo = mid + 1;
     else hi = mid;
   }
   return lo;
@@ -418,7 +418,7 @@ export function typeDuration(
  * Returns true when cursor should be visible, false when hidden.
  * Toggles at the given rate (blinks per second).
  *
- * @param time - Current time in seconds (e.g., ctx.sceneTimeSeconds)
+ * @param time - Current time in seconds (e.g., ctx.timeline.seconds)
  * @param rate - Blinks per second (default: 3)
  * @returns Whether the cursor should be visible
  *

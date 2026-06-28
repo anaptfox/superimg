@@ -64,12 +64,12 @@ export function transcript(
           `Word index ${index} out of bounds (0-${sorted.length - 1})`
         );
       }
-      return buildEvent(sorted[index], index);
+      return buildEvent(sorted[index]!, index);
     },
 
     current(): WordEvent | null {
       for (let i = 0; i < sorted.length; i++) {
-        const event = buildEvent(sorted[i], i);
+        const event = buildEvent(sorted[i]!, i);
         if (event.active) return event;
       }
       return null;
@@ -88,7 +88,7 @@ export function transcript(
     find(text: string): WordEvent | null {
       const lower = text.toLowerCase();
       const index = sorted.findIndex((w) => w.text.toLowerCase() === lower);
-      return index >= 0 ? buildEvent(sorted[index], index) : null;
+      return index >= 0 ? buildEvent(sorted[index]!, index) : null;
     },
 
     map<T>(fn: (event: WordEvent, index: number) => T): T[] {
@@ -101,7 +101,7 @@ export function transcript(
 
     duration(): number {
       if (sorted.length === 0) return 0;
-      return sorted[sorted.length - 1].end - sorted[0].start;
+      return sorted[sorted.length - 1]!.end - sorted[0]!.start;
     },
 
     charProgress(): number {
@@ -118,8 +118,8 @@ export function transcript(
         throw new Error(`toIndex ${toIndex} out of bounds (0-${sorted.length - 1})`);
       }
 
-      const fromWord = sorted[fromIndex];
-      const toWord = sorted[toIndex];
+      const fromWord = sorted[fromIndex]!;
+      const toWord = sorted[toIndex]!;
       const start = fromWord.start;
       const end = toWord.end;
       const duration = end - start;

@@ -18,7 +18,7 @@ const BROADCAST = {
   landscape: { top: 0.1, right: 0.05, bottom: 0.1, left: 0.05 },
   portrait: { top: 0.12, right: 0.06, bottom: 0.14, left: 0.06 },
   square: { top: 0.1, right: 0.08, bottom: 0.1, left: 0.08 },
-} as const;
+} as const satisfies Record<AspectKind, { top: number; right: number; bottom: number; left: number }>;
 
 export function getAspectKind(width: number, height: number): AspectKind {
   const ratio = width / height;

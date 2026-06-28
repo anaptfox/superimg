@@ -78,8 +78,11 @@ export function markers(
     current(): CueEvent | null {
       // Find which segment we're in
       for (let i = 0; i < sorted.length - 1; i++) {
-        const [name, markerTime] = sorted[i];
-        const [nextName, nextTime] = sorted[i + 1];
+        const current = sorted[i];
+        const next = sorted[i + 1];
+        if (!current || !next) continue;
+        const [name, markerTime] = current;
+        const [nextName, nextTime] = next;
 
         if (time >= markerTime && time < nextTime) {
           // Return as CueEvent (same as segment())
@@ -88,9 +91,12 @@ export function markers(
       }
 
       // After last marker - return last segment with progress=1
-      if (sorted.length > 1 && time >= sorted[sorted.length - 1][1]) {
-        const [prevName] = sorted[sorted.length - 2];
-        const [lastName] = sorted[sorted.length - 1];
+      const lastEntry = sorted[sorted.length - 1];
+      if (sorted.length > 1 && lastEntry && time >= lastEntry[1]) {
+        const prevEntry = sorted[sorted.length - 2];
+        if (!prevEntry) return null;
+        const [prevName] = prevEntry;
+        const [lastName] = lastEntry;
         return this.segment(prevName, lastName);
       }
 

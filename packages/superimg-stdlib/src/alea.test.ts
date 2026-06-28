@@ -67,7 +67,7 @@ describe("Alea PRNG", () => {
     const rng = Alea("seed");
     for (let i = 0; i < 5; i++) rng();
     const state = rng.exportState();
-    const rng2 = (Alea as any).importState(state);
+    const rng2 = Alea.importState(state);
     for (let i = 0; i < 20; i++) {
       expect(rng()).toBe(rng2());
     }

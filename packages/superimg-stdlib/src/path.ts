@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * const pt = std.path("M0,0 C100,0 100,100 200,100", sceneProgress);
+ * const pt = std.path("M0,0 C100,0 100,100 200,100", timeline.progress);
  * return `<div style="position:absolute; ${pt.transform}">🚀</div>`;
  * ```
  */
@@ -75,7 +75,7 @@ function buildPoint(np: NormalizedPath, progress: number, opts?: PathOptions): P
  *
  * @example
  * ```ts
- * const pos = std.path("M0,540 C480,100 1440,100 1920,540", sceneProgress);
+ * const pos = std.path("M0,540 C480,100 1440,100 1920,540", timeline.progress);
  * return `<div style="position:absolute; transform: ${pos.transform}">✈️</div>`;
  * ```
  */
@@ -91,7 +91,7 @@ export function path(d: string, progress: number, opts?: PathOptions): PathPoint
  * ```ts
  * const flight = std.path.parse("M0,540 C480,100 1440,100 1920,540");
  * console.log(flight.length); // total arc length
- * const pos = flight.at(sceneProgress);
+ * const pos = flight.at(timeline.progress);
  * ```
  */
 export function createMotionPath(d: string): ParsedPath {

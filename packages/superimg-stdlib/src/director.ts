@@ -1,11 +1,11 @@
 /**
- * score() — unified scene-local timing primitive.
+ * director() — unified scene-local timing primitive.
  *
  * Given a phase layout in seconds/percentages, returns an object for declaring
  * motions, tweens, and values scoped to those phases.
  *
  * ```ts
- * const t = std.score({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
+ * const t = ctx.director({ enter: "0.6s", hold: "2.2s", exit: "1.2s" });
  * const card = t.motion();                            // auto enter + exit
  * const val  = t.motion({ y: 15, at: "0.1s" });       // stagger 0.1s into enter
  * const cnt  = t.tween(0, target, { during: "enter" });
@@ -13,6 +13,7 @@
  * ```
  */
 
+import type { Timeline } from "@superimg/types";
 import { clamp01, type EasingFn, type EasingName } from "./easing.js";
 import { interpolate } from "./interpolate.js";
 import * as easing from "./easing.js";
@@ -46,8 +47,8 @@ export interface MotionOpts<P extends string = string> {
   fromOpacity?: number;
 
   during?: P;
-  at?: number | string;  // fraction of phase OR absolute time e.g. "0.28s"
-  for?: number | string; // fraction of phase OR absolute time e.g. "0.5s"
+  at?: string;  // e.g. "0.28s" or "20%"
+  for?: string; // e.g. "0.5s" or "30%"
   window?: [start: number, end: number]; // absolute scene [0,1] fractions
 
   easing?: MotionEasing;
@@ -80,8 +81,8 @@ export type MotionValue = Partial<Pick<MotionResult, "x" | "y" | "scale" | "rota
 
 export interface TweenOpts<P extends string = string> {
   during?: P;
-  at?: number | string;
-  for?: number | string;
+  at?: string;
+  for?: string;
   easing?: MotionEasing;
   pattern?: "linear" | "sine" | "pulse" | "bounce";
 }
@@ -96,18 +97,21 @@ export interface ValueResult<T> {
   opacity: number;
 }
 
-export interface WithinOpts {
-  /** Phase-local start offset (0–1 fraction, or "0.5s") */
-  at?: number | string;
-  /** Window length (0–1 fraction of phase, or "1s"). Default: remainder of phase */
-  duration?: number | string;
+export interface InOpts {
+  /** Phase-local start offset ("0.5s", "500ms", or "25%") */
+  at?: string;
+  /** Window length ("1s", "500ms", or "50%"). Default: remainder of phase */
+  duration?: string;
 }
 
-export interface Score<P extends string = string> {
+export interface Director<P extends string = string> {
   readonly progress: number;
   readonly seconds: number;
   readonly active: P | "idle";
-  within(phase: P, opts?: WithinOpts): number;
+  /** Phase-local progress 0–1. */
+  in(phase: P, opts?: InOpts): number;
+  /** Map phase progress → data timeline seconds (for keyframe charts, force, etc.). */
+  at(phase: P, dataSeconds: number): number;
   /** Scene-absolute progress from `from` to `to` (e.g. span("0s", "1s")) */
   span(from: string, to: string): number;
   /** Eased scene-absolute transition progress (alias for interpolate(span(...), [0,1], [0,1], easing)) */
@@ -118,41 +122,39 @@ export interface Score<P extends string = string> {
   motion(opts?: MotionOpts<P>): MotionResult;
   tween(from: number, to: number, opts?: TweenOpts<P>): number;
   value<T extends number | string>(v: T, opts?: ValueOpts<P>): ValueResult<T>;
-  /** Nested timing window with local score() — Remotion-style sequence clips */
-  clip(opts: ClipOpts): ScoreClip;
+  /** Nested timing window with local director() — Remotion-style sequence clips */
+  clip(opts: ClipOpts): DirectorClip;
 }
 
-export type ScoreOf<P extends PhaseConfig | undefined> =
+export type DirectorOf<P extends PhaseConfig | undefined> =
   P extends PhaseConfig
-    ? Score<Extract<keyof P, string>>
-    : Score<"enter" | "hold" | "exit">;
+    ? Director<Extract<keyof P, string>>
+    : Director<"enter" | "hold" | "exit">;
 
-/** Minimal surface score() needs from the per-frame render context. */
-export interface ScoreContext {
-  sceneProgress: number;
-  sceneTimeSeconds: number;
-  sceneDurationSeconds: number;
+/** Minimal surface createDirector() needs from the per-frame render context. */
+export interface DirectorContext {
+  timeline: Timeline;
   fps?: number;
 }
 
 export interface ClipOpts {
-  /** Named phase from the parent score layout */
+  /** Named phase from the parent director layout */
   during?: string;
-  /** Start offset relative to parent window (0–1 fraction, or "0.5s" / "500ms") */
-  from?: number | string;
+  /** Start offset relative to parent window ("0.5s", "500ms", or "25%") */
+  from?: string;
   /** Clip length relative to parent window (required unless `during` is set) */
-  duration?: number | string;
+  duration?: string;
 }
 
-export interface ScoreClip {
+export interface DirectorClip {
   readonly active: boolean;
   readonly progress: number;
   readonly frame: number;
   readonly seconds: number;
   readonly durationSeconds: number;
   readonly totalFrames: number;
-  score<P extends PhaseConfig | undefined = undefined>(phases?: P): ScoreOf<P>;
-  clip(opts: ClipOpts): ScoreClip;
+  director<P extends PhaseConfig | undefined = undefined>(phases?: P): DirectorOf<P>;
+  clip(opts: ClipOpts): DirectorClip;
 }
 
 
@@ -227,31 +229,31 @@ function parsePhaseDuration(value: string, totalSeconds: number): number {
   if (s.endsWith("%")) {
     const pct = parseFloat(s);
     if (!Number.isFinite(pct) || pct <= 0)
-      throw new Error(`score(): invalid phase "%": "${value}"`);
+      throw new Error(`director(): invalid phase "%": "${value}"`);
     return pct / 100;
   }
   if (s.endsWith("ms")) {
     const ms = parseFloat(s);
     if (!Number.isFinite(ms) || ms <= 0)
-      throw new Error(`score(): invalid phase duration: "${value}"`);
+      throw new Error(`director(): invalid phase duration: "${value}"`);
     return ms / 1000 / totalSeconds;
   }
   if (s.endsWith("s")) {
     const sec = parseFloat(s);
     if (!Number.isFinite(sec) || sec <= 0)
-      throw new Error(`score(): invalid phase duration: "${value}"`);
+      throw new Error(`director(): invalid phase duration: "${value}"`);
     return sec / totalSeconds;
   }
-  throw new Error(`score(): phase "${value}" must end with "s", "ms", or "%" (e.g. "0.6s", "15%")`);
+  throw new Error(`director(): phase "${value}" must end with "s", "ms", or "%" (e.g. "0.6s", "15%")`);
 }
 
 function normalizePhases(cfg: PhaseConfig, totalSeconds: number): NormalizedPhase[] {
   const entries = Object.entries(cfg);
-  if (entries.length === 0) throw new Error("score(): phase layout must have at least one phase");
+  if (entries.length === 0) throw new Error("director(): phase layout must have at least one phase");
   const fractions = entries.map(([name, v]) => ({ name, fraction: parsePhaseDuration(v, totalSeconds) }));
   const total = fractions.reduce((s, f) => s + f.fraction, 0);
   if (total > 1.0000001)
-    throw new Error(`score(): phases sum to ${(total * 100).toFixed(1)}% which exceeds 100%`);
+    throw new Error(`director(): phases sum to ${(total * 100).toFixed(1)}% which exceeds 100%`);
   let acc = 0;
   return fractions.map(({ name, fraction }) => {
     const start = acc;
@@ -262,12 +264,17 @@ function normalizePhases(cfg: PhaseConfig, totalSeconds: number): NormalizedPhas
 }
 
 /** Convert an at/for value to a scene-fraction offset within the phase. */
-function parseMotionTime(value: number | string, phaseSpan: number, totalSeconds: number): number {
-  if (typeof value === "number") return value * phaseSpan;
+function parseMotionTime(value: string, phaseSpan: number, totalSeconds: number): number {
+  if (typeof value !== "string") {
+    throw new Error(
+      `director(): time values must be strings with units ("0.5s", "500ms", or "25%") — got ${typeof value}`,
+    );
+  }
   const s = value.trim();
+  if (s.endsWith("%")) return (parseFloat(s) / 100) * phaseSpan;
   if (s.endsWith("ms")) return parseFloat(s) / 1000 / totalSeconds;
   if (s.endsWith("s")) return parseFloat(s) / totalSeconds;
-  throw new Error(`score(): time "${value}" must be "Xs" or "Xms"`);
+  throw new Error(`director(): time "${value}" must end with "s", "ms", or "%"`);
 }
 
 interface ClipWindow {
@@ -283,89 +290,88 @@ function resolveClipWindow(
 ): ClipWindow {
   if (opts.during) {
     if (!phaseMap) {
-      throw new Error('score.clip({ during }) requires a score with named phases');
+      throw new Error('director.clip({ during }) requires a director with named phases');
     }
     const p = phaseMap.get(opts.during);
     if (!p) {
       throw new Error(
-        `score.clip: unknown phase "${opts.during}". Known: ${[...phaseMap.keys()].join(", ")}`,
+        `director.clip: unknown phase "${opts.during}". Known: ${[...phaseMap.keys()].join(", ")}`,
       );
     }
     return { start: p.start, end: p.end };
   }
 
   if (opts.duration === undefined) {
-    throw new Error("score.clip() requires `duration` or `during`");
+    throw new Error("director.clip() requires `duration` or `during`");
   }
 
   const parentSpan = parentWindow.end - parentWindow.start;
   const fromOffset =
     opts.from === undefined
       ? 0
-      : typeof opts.from === "number"
-        ? opts.from * parentSpan
-        : parseMotionTime(opts.from, parentSpan, parentDurationSeconds);
+      : parseMotionTime(opts.from, parentSpan, parentDurationSeconds);
 
-  const durationSpan =
-    typeof opts.duration === "number"
-      ? opts.duration * parentSpan
-      : parseMotionTime(opts.duration, parentSpan, parentDurationSeconds);
+  const durationSpan = parseMotionTime(opts.duration!, parentSpan, parentDurationSeconds);
 
   const start = parentWindow.start + fromOffset;
   return { start, end: start + durationSpan };
 }
 
-function createScoreClip(
-  sceneCtx: ScoreContext,
+function createDirectorClip(
+  sceneCtx: DirectorContext,
   window: ClipWindow,
   phaseMap?: Map<string, NormalizedPhase>,
-): ScoreClip {
-  const { sceneProgress, sceneDurationSeconds } = sceneCtx;
+): DirectorClip {
+  const { timeline } = sceneCtx;
   const fps = sceneCtx.fps ?? 30;
 
-  const clipFn = (opts: ClipOpts): ScoreClip => {
-    const child = resolveClipWindow(opts, window, sceneDurationSeconds, phaseMap);
-    return createScoreClip(sceneCtx, child, phaseMap);
+  const clipFn = (opts: ClipOpts): DirectorClip => {
+    const child = resolveClipWindow(opts, window, timeline.durationSeconds, phaseMap);
+    return createDirectorClip(sceneCtx, child, phaseMap);
+  };
+
+  const clipProgress = () => {
+    const s = window.end - window.start;
+    return s <= 0 ? 0 : clamp01((timeline.progress - window.start) / s);
   };
 
   return {
     get active() {
-      return sceneProgress >= window.start && sceneProgress < window.end;
+      return timeline.progress >= window.start && timeline.progress < window.end;
     },
     get progress() {
-      const s = window.end - window.start;
-      return s <= 0 ? 0 : clamp01((sceneProgress - window.start) / s);
+      return clipProgress();
     },
     get frame() {
+      const p = clipProgress();
       const s = window.end - window.start;
-      const p = s <= 0 ? 0 : clamp01((sceneProgress - window.start) / s);
-      const sec = p * (s * sceneDurationSeconds);
-      const tf = Math.max(1, Math.ceil(s * sceneDurationSeconds * fps));
+      const sec = p * s * timeline.durationSeconds;
+      const tf = Math.max(1, Math.ceil(s * timeline.durationSeconds * fps));
       return Math.min(tf - 1, Math.floor(sec * fps));
     },
     get seconds() {
+      const p = clipProgress();
       const s = window.end - window.start;
-      const p = s <= 0 ? 0 : clamp01((sceneProgress - window.start) / s);
-      return p * s * sceneDurationSeconds;
+      return p * s * timeline.durationSeconds;
     },
     get durationSeconds() {
-      return (window.end - window.start) * sceneDurationSeconds;
+      return (window.end - window.start) * timeline.durationSeconds;
     },
     get totalFrames() {
-      return Math.max(1, Math.ceil((window.end - window.start) * sceneDurationSeconds * fps));
+      return Math.max(1, Math.ceil((window.end - window.start) * timeline.durationSeconds * fps));
     },
-    score<P extends PhaseConfig | undefined = undefined>(phases?: P) {
+    director<P extends PhaseConfig | undefined = undefined>(phases?: P) {
+      const p = clipProgress();
       const s = window.end - window.start;
-      const p = s <= 0 ? 0 : clamp01((sceneProgress - window.start) / s);
-      return createScore(
-        {
-          sceneProgress: p,
-          sceneTimeSeconds: p * s * sceneDurationSeconds,
-          sceneDurationSeconds: s * sceneDurationSeconds,
-          fps,
-        },
-        phases,
-      );
+      const childTimeline: Timeline = {
+        frame: timeline.frame,
+        fps,
+        progress: p,
+        seconds: p * s * timeline.durationSeconds,
+        durationSeconds: s * timeline.durationSeconds,
+        totalFrames: Math.max(1, Math.ceil(s * timeline.durationSeconds * fps)),
+      };
+      return createDirector({ timeline: childTimeline, fps }, phases);
     },
     clip: clipFn,
   };
@@ -418,16 +424,16 @@ function makeResult(
 // Factory
 // -----------------------------------------------------------------------------
 
-export function createScore<P extends PhaseConfig | undefined = undefined>(
-  ctx: ScoreContext,
+export function createDirector<P extends PhaseConfig | undefined = undefined>(
+  ctx: DirectorContext,
   phases?: P,
-): ScoreOf<P> {
+): DirectorOf<P> {
   const cfg = (phases ?? DEFAULT_PHASES) as PhaseConfig;
-  const totalSeconds = ctx.sceneDurationSeconds > 0 ? ctx.sceneDurationSeconds : 1;
+  const totalSeconds = ctx.timeline.durationSeconds > 0 ? ctx.timeline.durationSeconds : 1;
   const ordered = normalizePhases(cfg, totalSeconds);
   const phaseMap = new Map<string, NormalizedPhase>(ordered.map((p) => [p.name, p]));
-  const sp = ctx.sceneProgress;
-  const secs = ctx.sceneTimeSeconds;
+  const sp = ctx.timeline.progress;
+  const secs = ctx.timeline.seconds;
 
   const firstPhase = ordered[0]!;
   const lastPhase = ordered[ordered.length - 1]!;
@@ -441,7 +447,7 @@ export function createScore<P extends PhaseConfig | undefined = undefined>(
   function phaseOf(name: string): NormalizedPhase {
     const p = phaseMap.get(name);
     if (!p) throw new Error(
-      `score: unknown phase "${name}". Known: ${ordered.map((o) => o.name).join(", ")}`
+      `director: unknown phase "${name}". Known: ${ordered.map((o) => o.name).join(", ")}`
     );
     return p;
   }
@@ -452,22 +458,27 @@ export function createScore<P extends PhaseConfig | undefined = undefined>(
     return clamp01((sp - p.start) / (p.end - p.start));
   }
 
-  function within(name: string, opts?: WithinOpts): number {
+  function phaseIn(name: string, opts?: InOpts): number {
     const local = phaseLocal(name);
     if (!opts) return local;
 
     const phase = phaseOf(name);
     const span = phase.end - phase.start;
     const atLocal = opts.at !== undefined
-      ? (typeof opts.at === "number" ? opts.at : parseMotionTime(opts.at, span, totalSeconds) / span)
+      ? parseMotionTime(opts.at, span, totalSeconds) / span
       : 0;
     const durLocal = opts.duration !== undefined
-      ? (typeof opts.duration === "number" ? opts.duration : parseMotionTime(opts.duration, span, totalSeconds) / span)
+      ? parseMotionTime(opts.duration, span, totalSeconds) / span
       : 1 - atLocal;
 
     if (local <= atLocal) return 0;
     if (local >= atLocal + durLocal) return 1;
     return clamp01((local - atLocal) / durLocal);
+  }
+
+  function phaseAt(name: string, dataSeconds: number): number {
+    const local = phaseLocal(name);
+    return interpolate(local, [0, 1], [0, dataSeconds]);
   }
 
   function span(from: string, to: string): number {
@@ -498,8 +509,8 @@ export function createScore<P extends PhaseConfig | undefined = undefined>(
       blur: startBlur = 0,
       fromOpacity = 0,
       during,
-      at = 0,
-      for: forOpt = 1,
+      at = "0s",
+      for: forOpt = "100%",
       window,
       easing: easingSpec,
       exitEasing: exitEasingSpec,
@@ -560,7 +571,7 @@ export function createScore<P extends PhaseConfig | undefined = undefined>(
   }
 
   function tween(from: number, to: number, opts: TweenOpts = {}): number {
-    const { during, at = 0, for: forOpt = 1, easing: easingSpec, pattern } = opts;
+    const { during, at = "0s", for: forOpt = "100%", easing: easingSpec, pattern } = opts;
     const phase = during ? phaseOf(during) : firstPhase;
     const span = phase.end - phase.start;
     const atFrac = parseMotionTime(at, span, totalSeconds);
@@ -602,38 +613,21 @@ export function createScore<P extends PhaseConfig | undefined = undefined>(
 
   const parentWindow: ClipWindow = { start: 0, end: 1 };
 
-  const result: Score = {
+  const result: Director = {
     progress: sp,
     seconds: secs,
     active: activeName,
-    within,
+    in: phaseIn,
+    at: phaseAt,
     span,
     transition,
     inSpan,
     motion,
     tween,
     value,
-    clip: (opts: ClipOpts) => createScoreClip(ctx, resolveClipWindow(opts, parentWindow, totalSeconds, phaseMap), phaseMap),
+    clip: (opts: ClipOpts) => createDirectorClip(ctx, resolveClipWindow(opts, parentWindow, totalSeconds, phaseMap), phaseMap),
   };
-  return result as unknown as ScoreOf<P>;
-}
-
-/**
- * The public `score()` runtime stub. `std.score()` on `ctx.std` is a
- * bound variant created per-render by the stdlib assembler. Importing and
- * calling `createScore(ctx, phases)` directly also works.
- */
-export function score<P extends PhaseConfig | undefined = undefined>(
-  this: ScoreContext | void,
-  phases?: P,
-): ScoreOf<P> {
-  if (this && typeof this.sceneProgress === "number") {
-    return createScore(this, phases);
-  }
-  throw new Error(
-    "score(): must be invoked through ctx.std.score() — the stdlib binds it to the render context. " +
-      "For direct use, call createScore(ctx, phases).",
-  );
+  return result as unknown as DirectorOf<P>;
 }
 
 /**

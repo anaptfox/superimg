@@ -9,7 +9,7 @@
  *
  * @example
  * ```ts
- * const x = std.spring(0, 500, sceneProgress, { stiffness: 200, damping: 8 });
+ * const x = std.spring(0, 500, timeline, { stiffness: 200, damping: 8 });
  * ```
  */
 
@@ -59,7 +59,7 @@ export function springCurve(progress: number, config?: SpringConfig): number {
  *
  * @example
  * ```ts
- * const scale = std.spring(0.8, 1, sceneProgress, { stiffness: 200, damping: 8 });
+ * const scale = std.spring(0.8, 1, timeline, { stiffness: 200, damping: 8 });
  * ```
  */
 export function spring(

@@ -7,8 +7,18 @@
 import { css, fill } from "./css.js";
 import type { KenBurnsResult } from "./backgrounds.js";
 import type { MontageResult } from "./montage.js";
-import type { MotionResult } from "./score.js";
+import type { MotionResult } from "./director.js";
 import type { InsetPadding } from "./layout.js";
+
+/** CSS inset values — pixels or percentage strings. */
+export interface LayerInsetPadding {
+  x?: number | string;
+  y?: number | string;
+  top?: number | string;
+  bottom?: number | string;
+  left?: number | string;
+  right?: number | string;
+}
 import { getSafeArea, type SafeAreaPreset } from "./safe-area.js";
 import type { RevealResult } from "./reveal.js";
 
@@ -51,7 +61,7 @@ export interface LayerOptions {
   motion?: MotionResult;
   opacity?: number;
   visible?: boolean | (() => boolean);
-  inset?: InsetPadding;
+  inset?: LayerInsetPadding;
   safe?: boolean | SafeAreaPreset;
   z?: number;
   /** Split mode: 0 = first pane, 1 = second pane */
@@ -112,7 +122,7 @@ function resolveSafeInset(
   return { top: insets.top, right: insets.right, bottom: insets.bottom, left: insets.left };
 }
 
-function insetToCss(pad: InsetPadding): Record<string, string | number> {
+function insetToCss(pad: LayerInsetPadding): Record<string, string | number> {
   const style: Record<string, string | number> = { position: "absolute" };
   if (pad.top !== undefined) style.top = pad.top;
   if (pad.right !== undefined) style.right = pad.right;
@@ -228,11 +238,19 @@ function buildLayerWrapperStyle(
 
     const customInset = options?.inset;
     if (customInset || safeInset) {
-      const merged: InsetPadding = {
-        top: customInset?.top ?? customInset?.y ?? safeInset?.top,
-        right: customInset?.right ?? customInset?.x ?? safeInset?.right,
-        bottom: customInset?.bottom ?? customInset?.y ?? safeInset?.bottom,
-        left: customInset?.left ?? customInset?.x ?? safeInset?.left,
+      const merged: LayerInsetPadding = {
+        ...(customInset?.top !== undefined ? { top: customInset.top }
+          : customInset?.y !== undefined ? { top: customInset.y }
+          : safeInset?.top !== undefined ? { top: safeInset.top } : {}),
+        ...(customInset?.right !== undefined ? { right: customInset.right }
+          : customInset?.x !== undefined ? { right: customInset.x }
+          : safeInset?.right !== undefined ? { right: safeInset.right } : {}),
+        ...(customInset?.bottom !== undefined ? { bottom: customInset.bottom }
+          : customInset?.y !== undefined ? { bottom: customInset.y }
+          : safeInset?.bottom !== undefined ? { bottom: safeInset.bottom } : {}),
+        ...(customInset?.left !== undefined ? { left: customInset.left }
+          : customInset?.x !== undefined ? { left: customInset.x }
+          : safeInset?.left !== undefined ? { left: safeInset.left } : {}),
       };
       return css({ ...parts, ...insetToCss(merged), overflow: "hidden" });
     }
@@ -320,9 +338,9 @@ export function layers(options: LayerStackOptions): LayerStack {
   ): LayerDescriptor => ({
     kind,
     html,
-    options: opts,
-    name: extra?.name,
-    tintColor: extra?.tintColor,
+    ...(opts !== undefined ? { options: opts } : {}),
+    ...(extra?.name !== undefined ? { name: extra.name } : {}),
+    ...(extra?.tintColor !== undefined ? { tintColor: extra.tintColor } : {}),
   });
 
   return {

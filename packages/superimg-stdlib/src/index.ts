@@ -19,10 +19,12 @@ export * from "./responsive";
 export * from "./subtitle";
 export * from "./presets";
 export * from "./code";
-export * as cue from "./cue/index.js";
-export { score, createScore, mergeMotion, type PhaseConfig, type MotionEasing, type MotionOpts,
+export { createDirector, mergeMotion, type PhaseConfig, type MotionEasing, type MotionOpts,
   type MotionResult, type MotionValue, type TweenOpts, type ValueOpts, type ValueResult,
-  type Score, type ScoreOf, type ScoreContext, type ClipOpts, type ScoreClip } from "./score";
+  type Director, type DirectorOf, type DirectorContext, type ClipOpts, type DirectorClip } from "./director.js";
+export { carousel, type Carousel, type CarouselOpts, type CarouselItemState } from "./carousel.js";
+export { stack, type Stack, type StackOpts, type StackItemState } from "./stack.js";
+export { createTrack, type Track, type TrackSource } from "./track.js";
 export * from "./backgrounds";
 export * from "./montage";
 export * from "./spring";
@@ -33,7 +35,7 @@ export * from "./svg";
 export * as layout from "./layout";
 export * from "./layers";
 export * from "./safe-area";
-export { sync as videoSync, quantizeVideoTime, VIDEO_SYNC_ATTR, type VideoSyncOptions, type VideoSyncResult } from "./video";
+export { sync as videoSync, quantizeVideoTime, CLIP_SYNC_ATTR, type ClipSyncOptions, type ClipSyncResult } from "./video";
 export { revealFx as reveal } from "./reveal";
 export { oscillate, loop, pingpong, wiggle,
   type OscillateOpts, type LoopOpts, type WiggleOpts } from "./oscillate";

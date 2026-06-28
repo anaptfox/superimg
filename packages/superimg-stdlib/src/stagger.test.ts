@@ -14,13 +14,13 @@ describe("stagger — count mode", () => {
   it("distributes with duration option", () => {
     const atHalf = stagger(3, 0.5, { duration: 0.4 });
     expect(atHalf).toHaveLength(3);
-    expect(atHalf[0]).toBeGreaterThan(atHalf[1]);
-    expect(atHalf[1]).toBeGreaterThan(atHalf[2]);
+    expect(atHalf[0]!).toBeGreaterThan(atHalf[1]!);
+    expect(atHalf[1]!).toBeGreaterThan(atHalf[2]!);
   });
 
   it("orders from end first", () => {
     const p = stagger(3, 0.6, { duration: 0.5, from: "end" });
-    expect(p[2]).toBeGreaterThan(p[0]);
+    expect(p[2]!).toBeGreaterThan(p[0]!);
   });
 });
 
@@ -39,7 +39,7 @@ describe("stagger — items mode", () => {
 
   it("supports from center", () => {
     const items = stagger(["A", "B", "C"], 0.5, { duration: 0.4, from: "center" });
-    expect(items[1].progress).toBeGreaterThanOrEqual(items[0].progress);
+    expect(items[1]!.progress).toBeGreaterThanOrEqual(items[0]!.progress);
   });
 });
 

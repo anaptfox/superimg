@@ -1,15 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { createScore, mergeMotion } from "./score.js";
+import type { Timeline } from "@superimg/types";
+import { createDirector, mergeMotion } from "./director.js";
 
-/** Helper: create a timeline at scene progress sp, with 10s total duration. */
-function s(sp: number, phases?: Record<string, string>) {
-  return createScore(
-    { sceneProgress: sp, sceneTimeSeconds: sp * 10, sceneDurationSeconds: 10 },
-    phases,
-  );
+function makeTimeline(progress: number, durationSeconds = 10, fps = 30): Timeline {
+  const totalFrames = Math.round(durationSeconds * fps);
+  const frame = Math.round(progress * Math.max(totalFrames - 1, 0));
+  return {
+    frame,
+    fps,
+    progress,
+    seconds: progress * durationSeconds,
+    durationSeconds,
+    totalFrames,
+  };
 }
 
-describe("score — phase normalization", () => {
+/** Helper: director at timeline progress sp (10s scene). */
+function s(sp: number, phases?: Record<string, string>) {
+  return createDirector({ timeline: makeTimeline(sp), fps: 30 }, phases);
+}
+
+describe("director — phase normalization", () => {
   it("rejects phases that sum past 100%", () => {
     expect(() => s(0, { a: "60%", b: "60%" })).toThrow(/exceeds 100%/);
   });
@@ -30,20 +41,20 @@ describe("score — phase normalization", () => {
   it("accepts custom phase names", () => {
     const t = s(0.5, { intro: "20%", reveal: "50%", outro: "30%" });
     expect(t.active).toBe("reveal");
-    expect(t.within("reveal")).toBeCloseTo(0.6, 5);
+    expect(t.in("reveal")).toBeCloseTo(0.6, 5);
   });
 
   it("`within(phase, { duration })` maps a sub-window to 0-1", () => {
     const t = s(0.05, { intro: "2s", hold: "6s", exit: "2s" });
-    const p = t.within("intro", { duration: 0.5 });
+    const p = t.in("intro", { duration: "50%" });
     expect(p).toBeCloseTo(0.5, 5);
   });
 
   it("`within(phase, { at, duration })` delays the sub-window", () => {
     const t = s(0.1, { intro: "2s", hold: "6s", exit: "2s" });
-    expect(t.within("intro", { at: 0.5, duration: 0.5 })).toBe(0);
+    expect(t.in("intro", { at: "50%", duration: "50%" })).toBe(0);
     const t2 = s(0.15, { intro: "2s", hold: "6s", exit: "2s" });
-    expect(t2.within("intro", { at: 0.5, duration: 0.5 })).toBeCloseTo(0.5, 5);
+    expect(t2.in("intro", { at: "50%", duration: "50%" })).toBeCloseTo(0.5, 5);
   });
 
   it("`span(from, to)` maps scene-absolute seconds to 0-1", () => {
@@ -78,7 +89,7 @@ describe("score — phase normalization", () => {
   });
 });
 
-describe("score — probes", () => {
+describe("director — probes", () => {
   it("exposes progress and seconds", () => {
     const t = s(0.3);
     expect(t.progress).toBe(0.3);
@@ -103,18 +114,18 @@ describe("score — probes", () => {
 
   it("within() maps 0..1 inside a phase", () => {
     const t = s(0.075, { enter: "15%", hold: "70%", exit: "15%" });
-    expect(t.within("enter")).toBeCloseTo(0.5, 5);
-    expect(t.within("hold")).toBe(0);
-    expect(t.within("exit")).toBe(0);
+    expect(t.in("enter")).toBeCloseTo(0.5, 5);
+    expect(t.in("hold")).toBe(0);
+    expect(t.in("exit")).toBe(0);
   });
 
   it("within() throws on unknown phase", () => {
     const t = s(0.5);
-    expect(() => t.within("bogus" as never)).toThrow(/unknown phase/i);
+    expect(() => t.in("bogus" as never)).toThrow(/unknown phase/i);
   });
 });
 
-describe("score — motion enter/exit", () => {
+describe("director — motion enter/exit", () => {
   it("opacity 0 at sp=0 (fully entering)", () => {
     const t = s(0);
     const m = t.motion();
@@ -159,8 +170,8 @@ describe("score — motion enter/exit", () => {
 
   it("`at` as fraction staggers the enter window", () => {
     const phases = { enter: "20%", hold: "60%", exit: "20%" };
-    const early = s(0.1, phases).motion({ y: 20, at: 0 });
-    const late = s(0.1, phases).motion({ y: 20, at: 0.8 });
+    const early = s(0.1, phases).motion({ y: 20, at: "0%" });
+    const late = s(0.1, phases).motion({ y: 20, at: "80%" });
     expect(early.enter).toBeGreaterThan(late.enter);
   });
 
@@ -260,7 +271,7 @@ describe("score — motion enter/exit", () => {
   });
 });
 
-describe("score — tween", () => {
+describe("director — tween", () => {
   it("scopes scalar interpolation to a phase", () => {
     const phases = { enter: "20%", hold: "60%", exit: "20%" };
     expect(s(0, phases).tween(0, 100, { during: "enter" })).toBeCloseTo(0, 5);
@@ -270,10 +281,10 @@ describe("score — tween", () => {
 
   it("respects `at` fraction offset inside the phase", () => {
     const early = s(0.05, { enter: "20%", hold: "80%" }).tween(0, 1, {
-      during: "enter", at: 0,
+      during: "enter", at: "0%",
     });
     const late = s(0.05, { enter: "20%", hold: "80%" }).tween(0, 1, {
-      during: "enter", at: 0.8,
+      during: "enter", at: "80%",
     });
     expect(early).toBeGreaterThan(late);
   });
@@ -302,7 +313,7 @@ describe("score — tween", () => {
   });
 });
 
-describe("score — value", () => {
+describe("director — value", () => {
   it("passes through the value unchanged", () => {
     const t = s(0.5);
     const v = t.value(42, {});
@@ -335,7 +346,7 @@ describe("score — value", () => {
   });
 });
 
-describe("score — mergeMotion()", () => {
+describe("director — mergeMotion()", () => {
   it("merges two motion results, last-wins per property", () => {
     const a = s(0.5).motion({ y: 20 });
     const b = { y: 40 };
@@ -358,10 +369,10 @@ describe("score — mergeMotion()", () => {
   });
 });
 
-describe("score — real migration samples", () => {
+describe("director — real migration samples", () => {
   it("stats-card pattern: y motion with stagger in enter (fraction at)", () => {
     const t = s(0.03, { enter: "30%", hold: "45%", exit: "25%" });
-    const value = t.motion({ y: 15, at: 0.15 });
+    const value = t.motion({ y: 15, at: "15%" });
     // sp 0.03 < (0.3 × 0.15 = 0.045), still before the staggered start → near-zero enter
     expect(value.enter).toBeLessThan(0.05);
   });
@@ -383,7 +394,7 @@ describe("score — real migration samples", () => {
   it("list stagger: 5-item iteration via at = i/n", () => {
     const t = s(0.05, { enter: "20%", hold: "60%", exit: "20%" });
     const opacities = [0, 1, 2, 3, 4].map((i) =>
-      t.motion({ at: i / 5, easing: "easeOutElastic" }).opacity,
+      t.motion({ at: `${(i / 5) * 100}%`, easing: "easeOutElastic" }).opacity,
     );
     for (let i = 0; i < opacities.length - 1; i++) {
       expect(opacities[i]!).toBeGreaterThanOrEqual(opacities[i + 1]!);
@@ -391,7 +402,7 @@ describe("score — real migration samples", () => {
   });
 });
 
-describe("score.clip", () => {
+describe("director.clip", () => {
   it("clip({ during }) is active only inside the named phase", () => {
     const t = s(0.05, { hook: "2s", demo: "6s", outro: "2s" });
     const hook = t.clip({ during: "hook" });
@@ -403,6 +414,13 @@ describe("score.clip", () => {
     expect(tDemo.clip({ during: "demo" }).active).toBe(true);
   });
 
+  it("rejects unitless numeric clip offsets", () => {
+    const t = s(0, { hook: "2s", demo: "3s" });
+    expect(() => t.clip({ from: 0.2 as unknown as string, duration: "1s" })).toThrow(
+      /must be strings with units/,
+    );
+  });
+
   it("clip({ from, duration }) resolves relative to scene window", () => {
     const t = s(0.15, { all: "100%" });
     const clip = t.clip({ from: "1s", duration: "2s" });
@@ -411,10 +429,10 @@ describe("score.clip", () => {
     expect(clip.seconds).toBeCloseTo(0.5, 5);
   });
 
-  it("nested clip.score() uses local enter/hold/exit", () => {
+  it("nested clip.director() uses local enter/hold/exit", () => {
     const t = s(0.05, { hook: "2s", demo: "6s", outro: "2s" });
     const hook = t.clip({ during: "hook" });
-    const local = hook.score({ enter: "50%", hold: "50%" });
+    const local = hook.director({ enter: "50%", hold: "50%" });
     expect(local.active).toBe("enter");
     expect(local.motion().opacity).toBeGreaterThan(0);
     expect(local.motion().opacity).toBeLessThan(1);

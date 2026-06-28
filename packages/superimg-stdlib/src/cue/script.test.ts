@@ -119,8 +119,8 @@ describe('script', () => {
 
       const all = s.all();
       expect(all).toHaveLength(2);
-      expect(all[0].id).toBe('a');
-      expect(all[1].id).toBe('b');
+      expect(all[0]!.id).toBe('a');
+      expect(all[1]!.id).toBe('b');
     });
 
     it('returns events sorted by time', () => {
@@ -134,9 +134,9 @@ describe('script', () => {
       );
 
       const all = s.all();
-      expect(all[0].id).toBe('a');
-      expect(all[1].id).toBe('c');
-      expect(all[2].id).toBe('b');
+      expect(all[0]!.id).toBe('a');
+      expect(all[1]!.id).toBe('c');
+      expect(all[2]!.id).toBe('b');
     });
 
     it('returns empty array for empty script', () => {
