@@ -26,29 +26,33 @@ export async function listCommand(options: { json?: boolean } = {}) {
 
   if (videos.length === 0) {
     console.log("\n  No templates found.");
-    console.log("  Create a *.video.ts, *.image.ts, or *.gif.ts file, or run 'superimg init' to scaffold.\n");
+    console.log("  Create a *.media.ts file, or run 'superimg init' to scaffold.\n");
     return;
   }
 
   console.log("\n  Templates found:\n");
 
+  // Short human label from the two axes (medium × animated).
+  const typeLabel = (medium: string, animated: boolean): string =>
+    medium === "svg" ? (animated ? "svg·anim" : "svg") : animated ? "video" : "image";
+
   const rows = videos.map((v) => ({
     shortName: v.shortName,
-    kind: v.kind,
+    type: typeLabel(v.medium, v.animated),
     config: v.config ?? "—",
     path: v.relativePath,
   }));
 
   const maxName = Math.max(4, ...rows.map((r) => r.shortName.length));
-  const maxKind = Math.max(4, ...rows.map((r) => r.kind.length));
+  const maxType = Math.max(4, ...rows.map((r) => r.type.length));
   const maxConfig = Math.max(6, ...rows.map((r) => r.config.length));
   const pad = (s: string, n: number) => s.padEnd(n);
 
-  console.log(`  ${pad("Name", maxName)}  ${pad("Type", maxKind)}  ${pad("Config", maxConfig)}  Path`);
-  console.log(`  ${"-".repeat(maxName)}  ${"-".repeat(maxKind)}  ${"-".repeat(maxConfig)}  ${"-".repeat(40)}`);
+  console.log(`  ${pad("Name", maxName)}  ${pad("Type", maxType)}  ${pad("Config", maxConfig)}  Path`);
+  console.log(`  ${"-".repeat(maxName)}  ${"-".repeat(maxType)}  ${"-".repeat(maxConfig)}  ${"-".repeat(40)}`);
 
   for (const row of rows) {
-    console.log(`  ${pad(row.shortName, maxName)}  ${pad(row.kind, maxKind)}  ${pad(row.config, maxConfig)}  ${row.path}`);
+    console.log(`  ${pad(row.shortName, maxName)}  ${pad(row.type, maxType)}  ${pad(row.config, maxConfig)}  ${row.path}`);
   }
 
   console.log("\n");

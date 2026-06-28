@@ -1,6 +1,6 @@
 import { createRenderContext } from "@superimg/core";
 import { buildCompositeHtml } from "@superimg/core/html";
-import { CanvasRenderer, exportToVideo, downloadBlob } from "@superimg/runtime";
+import { CanvasRenderer, exportToVideo, downloadBlob, type ExportConfig } from "@superimg/runtime";
 import { Player } from "@superimg/player";
 import {
   exportPanel,
@@ -41,11 +41,28 @@ export function closeExportPanel() {
   exportAbortController = null;
 }
 
+interface LoadedDevTemplate {
+  render: (ctx: import("@superimg/types").RenderContext) => string;
+  data?: Record<string, import("@superimg/types").JsonValue>;
+  config?: {
+    fonts?: string[];
+    inlineCss?: string[];
+    stylesheets?: string[];
+    background?: import("@superimg/types").BackgroundValue;
+    width?: number;
+  };
+}
+
+interface DevExportConfig {
+  fps: number;
+  duration: number;
+}
+
 export function initExportHandlers(
-  playerInfo: () => Player | null, 
-  templateInfo: () => any, 
-  configInfo: () => any, 
-  updateUI: () => void
+  playerInfo: () => Player | null,
+  templateInfo: () => LoadedDevTemplate | null,
+  configInfo: () => DevExportConfig,
+  updateUI: () => void,
 ) {
   // Format pills
   document.querySelectorAll(".export-fmt-btn").forEach((btn) => {
@@ -100,7 +117,7 @@ export function initExportHandlers(
 
       const blob = await exportToVideo(
         exportCanvas,
-        { fps: devConfig.fps, width: w, height: h, duration: devConfig.duration } as any, // Cast to any to bypass the missing format type
+        { fps: devConfig.fps, width: w, height: h, duration: devConfig.duration } satisfies ExportConfig,
         renderAtExportSize,
         {
           onProgress: (f, t) => {

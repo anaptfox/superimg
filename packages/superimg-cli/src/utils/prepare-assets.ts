@@ -1,6 +1,6 @@
 import { isAbsolute, resolve } from "node:path";
-import { resolveAssetUrls } from "@superimg/core/engine";
-import type { AudioValue, ResolvedAssetDeclaration } from "@superimg/types";
+import { resolveAssetUrls, normalizeAudioInput } from "@superimg/core";
+import type { AudioClip, AudioValue, ResolvedAssetDeclaration } from "@superimg/types";
 
 interface PrepareAssetsOptions {
   autoDiscovered?: ResolvedAssetDeclaration[];
@@ -25,24 +25,51 @@ export function prepareAssets(options: PrepareAssetsOptions): ResolvedAssetDecla
     : resolved;
 }
 
+function resolveClipSrc(
+  src: string,
+  templateDir: string,
+  assetBaseUrl: string,
+): string {
+  if (src.startsWith("http") || src.startsWith("data:")) {
+    return src;
+  }
+  const absolutePath = isAbsolute(src) ? src : resolve(templateDir, src);
+  return `${assetBaseUrl}/assets?path=${encodeURIComponent(absolutePath)}`;
+}
+
+function resolveClipUrls(
+  clip: AudioClip,
+  templateDir: string,
+  assetBaseUrl: string,
+): AudioClip {
+  return {
+    ...clip,
+    src: resolveClipSrc(clip.src, templateDir, assetBaseUrl),
+  };
+}
+
 export function resolveAudioUrl(
   audio: AudioValue | undefined,
   templateDir: string,
-  assetBaseUrl?: string
+  assetBaseUrl?: string,
 ): AudioValue | undefined {
   if (!audio || !assetBaseUrl) return audio;
 
-  const config = typeof audio === "string" ? { src: audio } : audio;
-  if (config.src.startsWith("http") || config.src.startsWith("data:")) {
-    return audio;
+  if (Array.isArray(audio)) {
+    return audio.map((clip) => resolveClipUrls(clip, templateDir, assetBaseUrl));
   }
+  if ("clips" in audio) {
+    return {
+      ...audio,
+      clips: audio.clips.map((clip) => resolveClipUrls(clip, templateDir, assetBaseUrl)),
+    };
+  }
+  return resolveClipUrls(audio, templateDir, assetBaseUrl);
+}
 
-  const absolutePath = isAbsolute(config.src)
-    ? config.src
-    : resolve(templateDir, config.src);
-
-  return {
-    ...config,
-    src: `${assetBaseUrl}/assets?path=${encodeURIComponent(absolutePath)}`,
-  };
+/** Collect unique audio src paths from config for asset validation */
+export function listAudioSrcPaths(audio: AudioValue | undefined): string[] {
+  if (!audio) return [];
+  const timeline = normalizeAudioInput(audio);
+  return timeline.clips.map((c) => c.src);
 }

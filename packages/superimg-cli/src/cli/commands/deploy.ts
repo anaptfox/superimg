@@ -36,7 +36,7 @@ export async function deployCommand(templateArg: string | undefined, options: De
   log("Discovering templates...");
   const discovered = discoverVideos(cwd);
   if (discovered.length === 0) {
-    fatal("No .video.ts files found in the current directory.");
+    fatal("No *.media.ts files found in the current directory.");
   }
 
   log(`Bundling ${discovered.length} template(s)...`);

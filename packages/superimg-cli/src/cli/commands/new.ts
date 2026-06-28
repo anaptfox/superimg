@@ -9,9 +9,9 @@ import { findProjectRoot } from "../utils/find-project-root.js";
 
 function singleSceneTS(name: string, tailwind: boolean): string {
   if (tailwind) {
-    return `import { defineScene } from "superimg";
+    return `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   sample: {
     title: "${titleCase(name)}",
     subtitle: "Built with SuperImg",
@@ -25,9 +25,9 @@ export default defineScene({
   render(ctx) {
     const { std, data } = ctx;
 
-    const t = std.score();
+    const t = ctx.director();
     const titleAnim = t.motion({ scale: 0.9, exit: false });
-    const subtitleAnim = t.motion({ at: 0.3, exit: false });
+    const subtitleAnim = t.motion({ at: "30%", exit: false });
 
     return \`
       <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -44,9 +44,9 @@ export default defineScene({
 `;
   }
 
-  return `import { defineScene } from "superimg";
+  return `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   sample: {
     title: "${titleCase(name)}",
     subtitle: "Built with SuperImg",
@@ -66,9 +66,9 @@ export default defineScene({
   render(ctx) {
     const { std, width, height, data } = ctx;
 
-    const t = std.score();
+    const t = ctx.director();
     const titleAnim = t.motion({ y: 30 });
-    const subtitleAnim = t.motion({ at: 0.2, y: 20 });
+    const subtitleAnim = t.motion({ at: "20%", y: 20 });
 
     return \`
       <div style="\${std.css({ width, height }, std.css.center())}; flex-direction: column;">
@@ -94,9 +94,9 @@ function singleSceneJS(name: string, tailwind: boolean): string {
 
 function composeEntryTS(name: string, ext: string): string {
   return `import { compose } from "superimg";
-import intro from "./intro.video.${ext}";
-import content from "./content.video.${ext}";
-import outro from "./outro.video.${ext}";
+import intro from "./intro.media.${ext}";
+import content from "./content.media.${ext}";
+import outro from "./outro.media.${ext}";
 
 export default compose([intro, content, outro]);
 `;
@@ -104,13 +104,13 @@ export default compose([intro, content, outro]);
 
 function composeIntroTS(tailwind: boolean): string {
   if (tailwind) {
-    return `import { defineScene } from "superimg";
+    return `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: { duration: "5s", tailwind: true },
   sample: { title: "Welcome" },
   render(ctx) {
-    const t = ctx.std.score();
+    const t = ctx.director();
     const anim = t.motion({ scale: 0.8 });
     return \`
       <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
@@ -125,9 +125,9 @@ export default defineScene({
 `;
   }
 
-  return `import { defineScene } from "superimg";
+  return `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: {
     duration: "2s",
     fonts: ["Inter:wght@400;700"],
@@ -139,7 +139,7 @@ export default defineScene({
   },
   sample: { title: "Welcome" },
   render(ctx) {
-    const t = ctx.std.score();
+    const t = ctx.director();
     const anim = t.motion({ scale: 0.8 });
     return \`
       <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
@@ -156,16 +156,16 @@ export default defineScene({
 
 function composeContentTS(tailwind: boolean): string {
   if (tailwind) {
-    return `import { defineScene } from "superimg";
+    return `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: { duration: "3s", tailwind: true },
   sample: {
     heading: "Main Content",
     body: "Add your content here.",
   },
   render(ctx) {
-    const t = ctx.std.score();
+    const t = ctx.director();
     const anim = t.motion();
     return \`
       <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -182,9 +182,9 @@ export default defineScene({
 `;
   }
 
-  return `import { defineScene } from "superimg";
+  return `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: {
     duration: "3s",
     fonts: ["Inter:wght@400;700"],
@@ -200,7 +200,7 @@ export default defineScene({
     body: "Add your content here.",
   },
   render(ctx) {
-    const t = ctx.std.score();
+    const t = ctx.director();
     const anim = t.motion();
     return \`
       <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())}; flex-direction: column;
@@ -216,13 +216,13 @@ export default defineScene({
 
 function composeOutroTS(tailwind: boolean): string {
   if (tailwind) {
-    return `import { defineScene } from "superimg";
+    return `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: { duration: "2s", tailwind: true },
   sample: { cta: "Call to Action" },
   render(ctx) {
-    const t = ctx.std.score();
+    const t = ctx.director();
     const anim = t.motion();
     return \`
       <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-cyan-600">
@@ -236,9 +236,9 @@ export default defineScene({
 `;
   }
 
-  return `import { defineScene } from "superimg";
+  return `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   config: {
     duration: "2s",
     fonts: ["Inter:wght@400;700"],
@@ -250,7 +250,7 @@ export default defineScene({
   },
   sample: { cta: "Call to Action" },
   render(ctx) {
-    const t = ctx.std.score();
+    const t = ctx.director();
     const anim = t.motion();
     return \`
       <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
@@ -360,7 +360,7 @@ export async function newCommand(
       const typeResult = await p.select({
         message: "What kind of video?",
         options: [
-          { value: "single", label: "Single scene", hint: "one defineScene file" },
+          { value: "single", label: "Single scene", hint: "one define file" },
           { value: "compose", label: "Composition", hint: "intro + content + outro with compose()" },
         ],
         initialValue: "single",
@@ -413,9 +413,9 @@ export async function newCommand(
 
   // Check for existing video
   if (existsSync(videoDir)) {
-    const mainFile = join(videoDir, `${videoName}.video.${ext}`);
+    const mainFile = join(videoDir, `${videoName}.media.${ext}`);
     if (existsSync(mainFile)) {
-      console.error(`\n  Error: videos/${videoName}/${videoName}.video.${ext} already exists.`);
+      console.error(`\n  Error: videos/${videoName}/${videoName}.media.${ext} already exists.`);
       console.error("  Delete it first, or choose a different name.\n");
       process.exit(1);
     }
@@ -429,23 +429,23 @@ export async function newCommand(
 
   if (isCompose) {
     // Compose entry
-    writeFileSync(join(videoDir, `${videoName}.video.${ext}`), composeEntryTS(videoName, ext));
-    createdFiles.push(`videos/${videoName}/${videoName}.video.${ext}`);
+    writeFileSync(join(videoDir, `${videoName}.media.${ext}`), composeEntryTS(videoName, ext));
+    createdFiles.push(`videos/${videoName}/${videoName}.media.${ext}`);
 
     // Scene files
-    writeFileSync(join(videoDir, `intro.video.${ext}`), composeIntroTS(useTailwind));
-    createdFiles.push(`videos/${videoName}/intro.video.${ext}`);
+    writeFileSync(join(videoDir, `intro.media.${ext}`), composeIntroTS(useTailwind));
+    createdFiles.push(`videos/${videoName}/intro.media.${ext}`);
 
-    writeFileSync(join(videoDir, `content.video.${ext}`), composeContentTS(useTailwind));
-    createdFiles.push(`videos/${videoName}/content.video.${ext}`);
+    writeFileSync(join(videoDir, `content.media.${ext}`), composeContentTS(useTailwind));
+    createdFiles.push(`videos/${videoName}/content.media.${ext}`);
 
-    writeFileSync(join(videoDir, `outro.video.${ext}`), composeOutroTS(useTailwind));
-    createdFiles.push(`videos/${videoName}/outro.video.${ext}`);
+    writeFileSync(join(videoDir, `outro.media.${ext}`), composeOutroTS(useTailwind));
+    createdFiles.push(`videos/${videoName}/outro.media.${ext}`);
   } else {
     // Single scene
     const template = useJs ? singleSceneJS(videoName, useTailwind) : singleSceneTS(videoName, useTailwind);
-    writeFileSync(join(videoDir, `${videoName}.video.${ext}`), template);
-    createdFiles.push(`videos/${videoName}/${videoName}.video.${ext}`);
+    writeFileSync(join(videoDir, `${videoName}.media.${ext}`), template);
+    createdFiles.push(`videos/${videoName}/${videoName}.media.${ext}`);
   }
 
   // Config file (always TS — defineConfig needs types)

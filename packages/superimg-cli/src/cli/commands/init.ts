@@ -41,9 +41,9 @@ export default defineConfig({
 });
 `;
 
-const TEMPLATE_TS = `import { defineScene } from "superimg";
+const TEMPLATE_TS = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   sample: {
     message: "Hello, SuperImg!",
   },
@@ -59,7 +59,7 @@ export default defineScene({
 
   render(ctx) {
     const { std, width, height, data } = ctx;
-    const t = std.score();
+    const t = ctx.director();
     const anim = t.motion({ y: 30 });
 
     return \`
@@ -73,9 +73,9 @@ export default defineScene({
 });
 `;
 
-const TEMPLATE_JS = `import { defineScene } from "superimg";
+const TEMPLATE_JS = `import { define } from "superimg";
 
-export default defineScene({
+export default define({
   sample: {
     message: "Hello, SuperImg!",
   },
@@ -91,7 +91,7 @@ export default defineScene({
 
   render(ctx) {
     const { std, width, height, data } = ctx;
-    const t = std.score();
+    const t = ctx.director();
     const anim = t.motion({ y: 30 });
 
     return \`
@@ -139,11 +139,11 @@ export async function initCommand(
   }
 
   const videosDir = join(targetDir, "videos");
-  const templateTsPath = join(videosDir, "intro.video.ts");
-  const templateJsPath = join(videosDir, "intro.video.js");
+  const templateTsPath = join(videosDir, "intro.media.ts");
+  const templateJsPath = join(videosDir, "intro.media.js");
 
   if (existsSync(templateTsPath) || existsSync(templateJsPath)) {
-    const existing = existsSync(templateTsPath) ? "intro.video.ts" : "intro.video.js";
+    const existing = existsSync(templateTsPath) ? "intro.media.ts" : "intro.media.js";
     console.error(`\nvideos/${existing} already exists.`);
     console.error("Delete it first, or run superimg init in a different directory.\n");
     process.exit(1);
@@ -244,7 +244,7 @@ export async function initCommand(
     skipBrowser = !browserResult;
   }
 
-  const templateFileName = useJs ? "intro.video.js" : "intro.video.ts";
+  const templateFileName = useJs ? "intro.media.js" : "intro.media.ts";
   const configFile = "_config.ts";
   const finalTemplatePath = join(targetDir, "videos", templateFileName);
   const configPath = join(targetDir, "videos", configFile);
@@ -287,6 +287,7 @@ export async function initCommand(
       s.start("Installing dependencies");
       try {
         const [cmd, ...args] = addCommand.split(/\s+/);
+        if (!cmd) throw new Error("Invalid install command");
         await runInDir(targetDir, cmd, args);
         s.stop("Dependencies installed");
       } catch (err) {
@@ -357,6 +358,7 @@ export async function initCommand(
       s.start("Installing dependencies");
       try {
         const [cmd, ...args] = install.split(/\s+/);
+        if (!cmd) throw new Error("Invalid install command");
         await runInDir(targetDir, cmd, args);
         s.stop("Dependencies installed");
       } catch (err) {

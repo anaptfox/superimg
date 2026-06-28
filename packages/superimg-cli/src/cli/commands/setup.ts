@@ -35,6 +35,7 @@ export async function setupCommand() {
     try {
       const addCommand = getAddPackagesCommand(pm, ["playwright"]);
       const [cmd, ...args] = addCommand.split(/\s+/);
+      if (!cmd) throw new Error("Invalid install command");
       await runInDir(projectRoot, cmd, args);
       console.log("✓ Playwright installed\n");
     } catch (err) {

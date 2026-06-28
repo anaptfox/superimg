@@ -6,7 +6,8 @@ import {
   Player,
   createTimelineController,
 } from "@superimg/player";
-import type { BackgroundValue, AudioOptions } from "@superimg/types";
+import { normalizeAudioInput } from "@superimg/core";
+import type { AudioValue, BackgroundValue } from "@superimg/types";
 import { escapeHtml } from "@superimg/stdlib";
 
 interface DevConfig {
@@ -15,7 +16,7 @@ interface DevConfig {
   fps: number;
   duration: number;
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
-  audio?: string | AudioOptions;
+  audio?: AudioValue;
   templateDir?: string;
 }
 
@@ -257,7 +258,7 @@ async function initHome() {
     }
     const videos: VideoItem[] = await res.json();
     if (videos.length === 0) {
-      homeView.innerHTML = `<div class="p-8 text-center text-[#999]">No templates found. Create a *.video.ts, *.gif.ts, *.image.ts, or *.svg.ts file — or run superimg init.</div>`;
+      homeView.innerHTML = `<div class="p-8 text-center text-[#999]">No templates found. Create a *.media.ts file — or run superimg init.</div>`;
       homeView.classList.add("visible");
       return;
     }
@@ -460,16 +461,12 @@ async function initPlayer() {
 
     // Initialize audio playback if configured
     if (devConfig.audio) {
-      const audioConfig = typeof devConfig.audio === "string"
-        ? { src: devConfig.audio }
-        : devConfig.audio;
-
+      const previewClip = normalizeAudioInput(devConfig.audio).clips[0];
+      if (previewClip) {
       audioElement = new Audio();
-      // Resolve audio path relative to template directory
-      // Encode the path to preserve .. segments
-      audioElement.src = `/api/assets?path=${encodeURIComponent(audioConfig.src)}`;
-      audioElement.volume = audioConfig.volume ?? 1;
-      audioElement.loop = audioConfig.loop ?? false;
+      audioElement.src = `/api/assets?path=${encodeURIComponent(previewClip.src)}`;
+      audioElement.volume = previewClip.volume ?? 1;
+      audioElement.loop = previewClip.loop ?? false;
       audioElement.preload = "auto";
 
       // Sync audio with player state
@@ -506,7 +503,7 @@ async function initPlayer() {
         prevFrame = state.currentFrame;
       });
 
-      console.log(`Audio loaded: ${audioConfig.src} (volume: ${audioConfig.volume ?? 1}, loop: ${audioConfig.loop ?? false})`);
+      console.log(`Audio preview: ${previewClip.src} (volume: ${previewClip.volume ?? 1}, loop: ${previewClip.loop ?? false})`);
 
       // Show volume control and wire it up
       volumeControl.classList.remove("hidden");
@@ -549,6 +546,7 @@ async function initPlayer() {
       });
 
       updateVolumeIcon();
+      }
     }
 
     const timelineController = createTimelineController(

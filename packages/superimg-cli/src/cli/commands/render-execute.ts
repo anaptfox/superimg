@@ -9,9 +9,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { bundleTemplateCodeWithMap } from "@superimg/core/bundler";
 import { createRenderPlan, executeRenderPlan, executeRenderPlanParallel } from "@superimg/core/engine";
-import { compileTemplate } from "@superimg/core";
+import {
+  compileTemplate,
+  ensureInit,
+  rasterizeSvgSync,
+  resolveFontBuffers,
+  ResvgRasterizer,
+} from "@superimg/core";
 import { renderTemplateFrame } from "@superimg/core/engine";
-import { PlaywrightEngine } from "@superimg/playwright";
+import { FfmpegGifEncoder, NodeVideoEncoder, PlaywrightEngine } from "@superimg/playwright";
+import type { VideoEncoder } from "@superimg/types";
 import type { RenderProgress, TemplateBundle } from "@superimg/types";
 import { discoverTemplateAssets } from "../utils/asset-discovery.js";
 import { mergeEncoding } from "../utils/merge-encoding.js";
@@ -55,6 +62,64 @@ export function writeDebugHtmlFrame(target: RenderTarget, frame: number, composi
   writeFileSync(join(target.debugHtmlDir, `frame_${frameStr}.html`), compositeHtml);
 }
 
+/** Still raster formats the resvg lane can produce for an SVG-medium template. */
+const RESVG_STILL_FORMATS = new Set(["png", "webp", "jpeg"]);
+
+/** Animated video formats rendered browser-free via resvg-wasm + Node encoder. */
+const RESVG_VIDEO_FORMATS = new Set(["mp4", "webm", "gif"]);
+
+/**
+ * Render an SVG-medium template to a raster still via resvg-wasm — no browser.
+ * Renders the SVG markup (frame 0), rasterizes to PNG with resvg, and (for
+ * webp/jpeg) transcodes via sharp. Byte-identical to the edge resvg path.
+ */
+async function renderSvgRasterTarget(
+  target: RenderTarget,
+  template: Parameters<typeof renderTemplateFrame>[0]["template"],
+  assetResolver: (filename: string) => string,
+  fontBuffers: Uint8Array[],
+  onTargetComplete?: (target: RenderTarget, result: Uint8Array) => void,
+): Promise<void> {
+  const { html } = renderTemplateFrame({
+    template,
+    frame: target.frame ?? 0,
+    fps: target.fps,
+    width: target.width,
+    height: target.height,
+    assetResolver,
+    outputName: target.name,
+    composite: false,
+    ...(target.duration !== undefined ? { durationSeconds: target.duration } : {}),
+    ...(target.data !== undefined ? { data: target.data } : {}),
+  });
+  const warn = validateSvgMarkup(html, target.name);
+  if (warn) console.warn(warn);
+
+  await ensureInit();
+  const png = rasterizeSvgSync(html, {
+    width: target.width,
+    height: target.height,
+    fontBuffers,
+  });
+
+  let bytes: Uint8Array = png;
+  if (target.format === "webp" || target.format === "jpeg") {
+    const sharpMod = await import("sharp");
+    const sharp = (sharpMod.default ?? sharpMod) as unknown as (
+      input: Buffer
+    ) => import("sharp").Sharp;
+    const img = sharp(Buffer.from(png));
+    bytes =
+      target.format === "webp"
+        ? await img.webp().toBuffer()
+        : await img.jpeg({ quality: 95 }).toBuffer();
+  }
+
+  mkdirSync(dirname(target.outputPath), { recursive: true });
+  writeFileSync(target.outputPath, bytes);
+  onTargetComplete?.(target, bytes);
+}
+
 /**
  * Render a single SVG/HTML bypass target: call render(), validate, write to disk,
  * then notify the caller. Shared between the all-bypass and mixed-target paths.
@@ -68,17 +133,29 @@ function renderBypassTarget(
 ): void {
   const { html, compositeHtml } = renderTemplateFrame({
     template,
-    frame: target.frame,
     fps: target.fps,
-    durationSeconds: target.duration,
     width: target.width,
     height: target.height,
-    data: target.data,
-    background: templateConfig?.background as Parameters<typeof renderTemplateFrame>[0]["background"],
-    watermark: templateConfig?.watermark as Parameters<typeof renderTemplateFrame>[0]["watermark"],
     assetResolver,
     outputName: target.name,
     composite: target.format === "html",
+    ...(templateConfig?.background !== undefined
+      ? {
+          background: templateConfig.background as NonNullable<
+            Parameters<typeof renderTemplateFrame>[0]["background"]
+          >,
+        }
+      : {}),
+    ...(templateConfig?.watermark !== undefined
+      ? {
+          watermark: templateConfig.watermark as NonNullable<
+            Parameters<typeof renderTemplateFrame>[0]["watermark"]
+          >,
+        }
+      : {}),
+    ...(target.frame !== undefined ? { frame: target.frame } : {}),
+    ...(target.duration !== undefined ? { durationSeconds: target.duration } : {}),
+    ...(target.data !== undefined ? { data: target.data } : {}),
   });
   const output = target.format === "html" ? compositeHtml : html;
   if (target.format === "svg") {
@@ -119,30 +196,119 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
   // Simple file-path asset resolver for bypass (no browser server).
   const bypassAssetResolver = (filename: string) => join(templateDir, "assets", filename);
 
-  // Check if all targets are SVG/HTML (bypass Playwright entirely).
-  const allBypass = targets.every((t) => t.format === "svg" || t.format === "html");
+  // Classify each target into a render lane:
+  //  - "verbatim":    svg/html sink — write the markup string as-is.
+  //  - "resvg":       svg-medium template → raster still (png/webp/jpeg) via resvg-wasm.
+  //  - "resvg-video": animated svg-medium → MP4/WebM/GIF via resvg-wasm (no Playwright).
+  //  - "playwright":  everything else (Chromium screenshot → encoder).
+  const isSvgTemplate = resolved.medium === "svg";
+  const isAnimatedSvg = isSvgTemplate && resolved.animated;
+  const laneOf = (t: RenderTarget): "verbatim" | "resvg" | "resvg-video" | "playwright" => {
+    if (t.format === "svg" || t.format === "html") return "verbatim";
+    if (isSvgTemplate && RESVG_STILL_FORMATS.has(t.format ?? "")) return "resvg";
+    if (isAnimatedSvg && RESVG_VIDEO_FORMATS.has(t.format ?? "mp4")) return "resvg-video";
+    return "playwright";
+  };
 
-  if (allBypass) {
+  const needsPlaywright = targets.some((t) => laneOf(t) === "playwright");
+  const hasBrowserFree = targets.some((t) => laneOf(t) !== "playwright");
+
+  // Compile once if any browser-free (verbatim or resvg) target exists.
+  let browserFreeTemplate: ReturnType<typeof compileTemplate>["template"] | null = null;
+  if (hasBrowserFree) {
     const compiled = compileTemplate(templateBundle.code);
     if (compiled.error || !compiled.template) throw compiled.error ?? new Error("Template compilation failed");
-    const template = compiled.template;
+    browserFreeTemplate = compiled.template;
+  }
 
+  // Resolve font buffers once if any resvg target needs them (resvg can't load
+  // Google Fonts via <link> the way Chromium does).
+  let fontBuffers: Uint8Array[] = [];
+  const needsResvgFonts = targets.some((t) => {
+    const lane = laneOf(t);
+    return lane === "resvg" || lane === "resvg-video";
+  });
+  if (needsResvgFonts) {
+    const specs = templateData.templateConfig?.fonts ?? [];
+    fontBuffers = specs.length ? await resolveFontBuffers(specs) : [];
+  }
+
+  const renderResvgVideoTarget = async (target: RenderTarget): Promise<void> => {
+    const targetFormatEncoding = target.format ? { format: target.format as string } : {};
+    const templateEncoding = templateData.templateConfig?.encoding ?? {};
+    const encoding = mergeEncoding(
+      { ...templateEncoding, ...targetFormatEncoding } as typeof templateEncoding,
+      buildEncodingOptions(options),
+    );
+
+    const { job, resolvedAssets } = buildRenderJob({
+      parsed: templateData,
+      templateBundle: templateBundle!,
+      templateDir,
+      assetBaseUrl: "",
+      autoDiscovered,
+      overrides: {
+        width: target.width,
+        height: target.height,
+        fps: target.fps,
+        outputName: target.outputName,
+        ...(target.duration !== undefined ? { duration: target.duration } : {}),
+        ...(encoding !== undefined ? { encoding } : {}),
+        ...(target.data !== undefined ? { data: target.data as Record<string, unknown> } : {}),
+      },
+    });
+
+    const plan = await createRenderPlan(job, {
+      resolvedAssets,
+      templateDir,
+    });
+
+    const rasterizer = new ResvgRasterizer();
+    let encoder: VideoEncoder<Uint8Array>;
+    if (encoding?.format === "gif") {
+      encoder = new FfmpegGifEncoder() as VideoEncoder<Uint8Array>;
+    } else {
+      encoder = new NodeVideoEncoder() as VideoEncoder<Uint8Array>;
+    }
+
+    const result = await executeRenderPlan(plan, rasterizer, encoder, {
+      onProgress: (p) => {
+        if (isCancelled?.()) return;
+        onProgress?.(target, p);
+      },
+      onFrameRendered: (frame, _html, compositeHtml) => {
+        if (options.debugHtml) writeDebugHtmlFrame(target, frame, compositeHtml);
+      },
+    });
+
+    mkdirSync(dirname(target.outputPath), { recursive: true });
+    writeFileSync(target.outputPath, result);
+    onTargetComplete?.(target, result);
+  };
+
+  const runBrowserFreeTarget = async (target: RenderTarget): Promise<void> => {
+    if (laneOf(target) === "resvg-video") {
+      await renderResvgVideoTarget(target);
+      return;
+    }
+    if (!browserFreeTemplate) throw new Error("browser-free template not compiled");
+    if (laneOf(target) === "resvg") {
+      await renderSvgRasterTarget(target, browserFreeTemplate, bypassAssetResolver, fontBuffers, onTargetComplete);
+    } else {
+      renderBypassTarget(target, browserFreeTemplate, bypassAssetResolver, templateData.templateConfig, onTargetComplete);
+    }
+  };
+
+  // No Playwright targets — render everything browser-free and return.
+  if (!needsPlaywright) {
     for (let i = 0; i < targets.length; i++) {
       if (isCancelled?.()) return;
       const target = targets[i];
+      if (!target) continue;
       onTargetStart?.(target, i, targets.length);
-      renderBypassTarget(target, template, bypassAssetResolver, templateData.templateConfig, onTargetComplete);
+      await runBrowserFreeTarget(target);
     }
     return;
-  }
-
-  // Hoist compile for mixed paths that include svg/html targets (B5).
-  let bypassTemplate: ReturnType<typeof compileTemplate>["template"] | null = null;
-  const hasBypassTargets = targets.some((t) => t.format === "svg" || t.format === "html");
-  if (hasBypassTargets) {
-    const compiled = compileTemplate(templateBundle.code);
-    if (compiled.error || !compiled.template) throw compiled.error ?? new Error("Template compilation failed");
-    bypassTemplate = compiled.template;
   }
 
   const engine = new PlaywrightEngine();
@@ -153,12 +319,13 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
     for (let i = 0; i < targets.length; i++) {
       if (isCancelled?.()) return;
       const target = targets[i];
+      if (!target) continue;
 
-      // SVG/HTML targets mixed in with Playwright targets — handle inline.
-      if (target.format === "svg" || target.format === "html") {
-        if (!bypassTemplate) throw new Error("bypass template not compiled");
+      // Browser-free targets (verbatim svg/html, resvg stills/video) mixed in
+      // with Playwright targets — handle inline without the browser.
+      if (laneOf(target) !== "playwright") {
         onTargetStart?.(target, i, targets.length);
-        renderBypassTarget(target, bypassTemplate, bypassAssetResolver, templateData.templateConfig, onTargetComplete);
+        await runBrowserFreeTarget(target);
         continue;
       }
 
@@ -187,15 +354,15 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
           width: target.width,
           height: target.height,
           fps: target.fps,
-          duration: target.duration,
-          encoding,
-          data: targetData as Record<string, unknown> | undefined,
           outputName: target.outputName,
+          ...(target.duration !== undefined ? { duration: target.duration } : {}),
+          ...(encoding !== undefined ? { encoding } : {}),
+          ...(targetData !== undefined ? { data: targetData as Record<string, unknown> } : {}),
         },
       });
       // GIF doesn't support audio — strip even if the template declared it.
       if (encoding?.format === "gif") {
-        job.audio = undefined;
+        delete job.audio;
       }
 
       // Distributed path: delegate chunk rendering to remote container endpoints.
@@ -206,10 +373,10 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         await renderDistributed({
           endpoints,
           templateName,
-          data: targetData as Record<string, unknown> | undefined,
-          encoding,
-          audio: job.audio,
           outputPath: target.outputPath,
+          ...(targetData !== undefined ? { data: targetData as Record<string, unknown> } : {}),
+          ...(encoding !== undefined ? { encoding } : {}),
+          ...(job.audio !== undefined ? { audio: job.audio } : {}),
           onProgress: (chunksComplete, totalChunks) => {
             onProgress?.(target, { frame: chunksComplete, totalFrames: totalChunks, fps: 0 });
           },
@@ -222,22 +389,25 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       const planBase = { assetBaseUrl, resolvedAssets, templateDir };
       const plan =
         target.frame !== undefined
-          ? (() => {
-              const probe = createRenderPlan(job, planBase);
+          ? await (async () => {
+              const probe = await createRenderPlan(job, planBase);
               const start = Math.max(0, Math.min(target.frame!, probe.totalFrames - 1));
-              return createRenderPlan(job, {
+              return await createRenderPlan(job, {
                 ...planBase,
                 startFrame: start,
                 endFrame: start + 1,
               });
             })()
-          : createRenderPlan(job, planBase);
+          : await createRenderPlan(job, planBase);
 
       const parallelN = Math.max(1, parseInt(process.env.SUPERIMG_PARALLEL ?? "1", 10) || 1);
       let result: Uint8Array;
 
       if (parallelN > 1) {
-        const { encoder } = engine.createAdapters({ encoding: job.encoding, audio: job.audio });
+        const { encoder } = engine.createAdapters({
+          ...(job.encoding !== undefined ? { encoding: job.encoding } : {}),
+          ...(job.audio !== undefined ? { audio: job.audio } : {}),
+        });
         const renderers = await engine.createParallelRenderers(parallelN);
         result = await executeRenderPlanParallel(plan, renderers, encoder, {
           onProgress: (p) => {
@@ -249,7 +419,10 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
           },
         });
       } else {
-        const { renderer, encoder } = engine.createAdapters({ encoding: job.encoding, audio: job.audio });
+        const { renderer, encoder } = engine.createAdapters({
+          ...(job.encoding !== undefined ? { encoding: job.encoding } : {}),
+          ...(job.audio !== undefined ? { audio: job.audio } : {}),
+        });
         result = await executeRenderPlan(plan, renderer, encoder, {
           onProgress: (p) => {
             if (isCancelled?.()) return;

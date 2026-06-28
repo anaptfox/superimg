@@ -48,28 +48,28 @@ export async function renderFromBundle(
       assetBaseUrl,
       autoDiscovered: [],
       overrides: {
-        data: options.data,
-        encoding: options.encoding,
+        ...(options.data !== undefined ? { data: options.data } : {}),
+        ...(options.encoding !== undefined ? { encoding: options.encoding } : {}),
       },
     });
 
     const { renderer, encoder } = engine.createAdapters({
-      encoding: job.encoding,
-      audio: job.audio,
+      ...(job.encoding !== undefined ? { encoding: job.encoding } : {}),
+      ...(job.audio !== undefined ? { audio: job.audio } : {}),
     });
 
-    const plan = createRenderPlan(job, {
+    const plan = await createRenderPlan(job, {
       assetBaseUrl,
       resolvedAssets,
       templateDir: "",
-      startFrame: options.startFrame,
-      endFrame: options.endFrame,
+      ...(options.startFrame !== undefined ? { startFrame: options.startFrame } : {}),
+      ...(options.endFrame !== undefined ? { endFrame: options.endFrame } : {}),
     });
 
     return await executeRenderPlan(plan, renderer, encoder, {
-      onProgress: options.onProgress
-        ? (p) => options.onProgress!(p.frame, p.totalFrames)
-        : undefined,
+      ...(options.onProgress
+        ? { onProgress: (p) => options.onProgress!(p.frame, p.totalFrames) }
+        : {}),
     });
   } finally {
     if (ownsEngine) await engine.dispose();

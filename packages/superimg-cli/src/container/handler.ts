@@ -76,7 +76,7 @@ async function main() {
 
   // GET /info/:template — returns template metadata without rendering.
   // Used by renderDistributed to calculate chunk boundaries.
-  app.get("/info/:template", (c) => {
+  app.get("/info/:template", async (c) => {
     const templateName = c.req.param("template");
     const entry = manifest[templateName];
     if (!entry) {
@@ -94,7 +94,7 @@ async function main() {
         autoDiscovered: [],
         overrides: {},
       });
-      const plan = createRenderPlan(job);
+      const plan = await createRenderPlan(job);
       return c.json({
         totalFrames: plan.totalFrames,
         fps: plan.fps,
@@ -150,14 +150,17 @@ async function main() {
 
     try {
       // For chunk renders, strip audio — orchestrator muxes audio post-stitch.
-      const chunkEncoding = isChunk ? { ...encoding, audio: undefined } : encoding;
+      const chunkEncoding =
+        isChunk && encoding
+          ? (({ audio: _audio, ...rest }) => rest)(encoding)
+          : encoding;
       const bytes = await Promise.race([
         renderFromBundle(entry, {
           engine,
-          data,
-          encoding: chunkEncoding,
-          startFrame,
-          endFrame,
+          ...(data !== undefined ? { data } : {}),
+          ...(chunkEncoding !== undefined ? { encoding: chunkEncoding } : {}),
+          ...(startFrame !== undefined ? { startFrame } : {}),
+          ...(endFrame !== undefined ? { endFrame } : {}),
         }),
         new Promise<never>((_, reject) =>
           controller.signal.addEventListener("abort", () => reject(new Error("render_timeout")))

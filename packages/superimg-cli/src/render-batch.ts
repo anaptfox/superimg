@@ -86,14 +86,14 @@ export async function renderBatch<TData>(
   // Build internal RenderOptions. The dataset round-trips through JSON so
   // resolveRenderTargets can reuse its existing --data parsing path.
   const internalOptions: RenderOptions = {
-    output: options.output,
-    width: options.width != null ? String(options.width) : undefined,
-    height: options.height != null ? String(options.height) : undefined,
-    fps: options.fps != null ? String(options.fps) : undefined,
-    preset: options.preset,
-    presets: options.presets,
-    debugHtml: options.debugHtml,
     batchEntries: options.dataset as import("@superimg/types").BatchEntry[],
+    ...(options.output !== undefined ? { output: options.output } : {}),
+    ...(options.width != null ? { width: String(options.width) } : {}),
+    ...(options.height != null ? { height: String(options.height) } : {}),
+    ...(options.fps != null ? { fps: String(options.fps) } : {}),
+    ...(options.preset !== undefined ? { preset: options.preset } : {}),
+    ...(options.presets !== undefined ? { presets: options.presets } : {}),
+    ...(options.debugHtml !== undefined ? { debugHtml: options.debugHtml } : {}),
   };
 
   const outputFormat = options.encoding?.format;
@@ -113,21 +113,25 @@ export async function renderBatch<TData>(
   await executeRenderTargets({
     resolved,
     options: internalOptions,
-    onProgress: options.onProgress
-      ? (target, progress) => {
-          const idx = resolved.targets.indexOf(target);
-          options.onProgress!({
-            entryIndex: Math.floor(idx / presetCount),
-            entryTotal: options.dataset.length,
-            target,
-            progress,
-          });
+    ...(options.onProgress
+      ? {
+          onProgress: (target, progress) => {
+            const idx = resolved.targets.indexOf(target);
+            options.onProgress!({
+              entryIndex: Math.floor(idx / presetCount),
+              entryTotal: options.dataset.length,
+              target,
+              progress,
+            });
+          },
         }
-      : undefined,
+      : {}),
     onTargetComplete: (target, result) => {
       const idx = resolved.targets.indexOf(target);
       const entryIndex = Math.floor(idx / presetCount);
-      results[entryIndex].outputs.push({
+      const entry = results[entryIndex];
+      if (!entry) return;
+      entry.outputs.push({
         name: target.name,
         outputPath: target.outputPath,
         result,

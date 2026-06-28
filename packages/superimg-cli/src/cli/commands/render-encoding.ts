@@ -3,7 +3,9 @@ import type { RenderOptions } from "./render-targets.js";
 
 export type OutputFormat = "mp4" | "webm" | "gif" | "png" | "webp" | "jpeg" | "svg" | "html" | undefined;
 
-const VALID_FORMATS = ["mp4", "webm", "gif", "png", "webp", "jpeg", "svg", "html"] as const;
+const VALID_FORMATS = [
+  "mp4", "webm", "gif", "png", "webp", "jpeg", "svg", "html",
+] as const satisfies readonly Exclude<NonNullable<OutputFormat>, undefined>[];
 
 export function resolveFormat(opts: RenderOptions): OutputFormat {
   if (opts.format) {

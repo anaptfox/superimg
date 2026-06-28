@@ -177,14 +177,14 @@ function buildOverlayHtml(err: SuperImgErrorJSON): string {
   const det = (err.details ?? {}) as {
     frame?: number;
     timeContext?: {
-      sceneTimeSeconds: number;
-      sceneProgress: number;
+      timelineSeconds: number;
+      timelineProgress: number;
     };
     dataSnapshot?: unknown;
   };
   if (det.frame !== undefined && det.timeContext) {
     parts.push(
-      `<div class="superimg-overlay-meta">Frame ${det.frame} at ${det.timeContext.sceneTimeSeconds.toFixed(3)}s (${(det.timeContext.sceneProgress * 100).toFixed(1)}% scene progress)</div>`,
+      `<div class="superimg-overlay-meta">Frame ${det.frame} at ${det.timeContext.timelineSeconds.toFixed(3)}s (${(det.timeContext.timelineProgress * 100).toFixed(1)}% scene progress)</div>`,
     );
   }
 

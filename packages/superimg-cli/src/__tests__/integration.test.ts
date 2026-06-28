@@ -1,5 +1,5 @@
 /**
- * Tests for the superimg/integration subpath:
+ * Tests for the integration module (build-tool cache/manifest):
  *   - RenderCache / fingerprint (cache.ts)
  *   - buildManifest with a co-located `batch` export (manifest.ts)
  *   - defineBatch type-safety smoke test (batch-types.ts re-exported via @superimg/types)
@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 
 import { fingerprint, RenderCache } from "../integration/cache.js";
 import { buildManifest } from "../integration/manifest.js";
+import { inferMediaKind, defaultOutputFormat } from "../integration/kind.js";
 import { defineBatch } from "@superimg/types";
 
 // ---------------------------------------------------------------------------
@@ -23,6 +24,37 @@ function makeTmpDir(label: string): string {
   mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+// ---------------------------------------------------------------------------
+// kind inference
+// ---------------------------------------------------------------------------
+
+describe("inferMediaKind", () => {
+  it("maps svg medium to svg", () => {
+    expect(inferMediaKind("svg", false)).toBe("svg");
+  });
+
+  it("maps still html to image", () => {
+    expect(inferMediaKind("html", false)).toBe("image");
+  });
+
+  it("maps animated html to video by default", () => {
+    expect(inferMediaKind("html", true)).toBe("video");
+  });
+
+  it("maps animated html with gif encoding to gif", () => {
+    expect(
+      inferMediaKind("html", true, { encoding: { format: "gif" } }),
+    ).toBe("gif");
+  });
+
+  it("defaultOutputFormat matches kind", () => {
+    expect(defaultOutputFormat("video")).toBe("mp4");
+    expect(defaultOutputFormat("image")).toBe("png");
+    expect(defaultOutputFormat("gif")).toBe("gif");
+    expect(defaultOutputFormat("svg")).toBe("svg");
+  });
+});
 
 // ---------------------------------------------------------------------------
 // fingerprint
@@ -207,12 +239,17 @@ describe("RenderCache", () => {
 
 describe("defineBatch", () => {
   // A minimal template stand-in (inference-only at runtime).
-  const template = { kind: "image", config: { width: 1, height: 1 }, render: () => "<div/>" } as any;
+  const template = {
+    medium: "html",
+    animated: false,
+    config: { width: 1, height: 1 },
+    render: () => "<div/>",
+  } satisfies import("@superimg/types").TemplateModule;
 
   it("returns the provider function unchanged", () => {
     const provider = defineBatch(template, () => [
-      { slug: "a", sample: { title: "x" } },
-      { slug: "b", sample: { title: "y" } },
+      { slug: "a", data: { title: "x" } },
+      { slug: "b", data: { title: "y" } },
     ]);
 
     expect(typeof provider).toBe("function");
@@ -221,14 +258,14 @@ describe("defineBatch", () => {
 
   it("async provider resolves to the expected entries", async () => {
     const provider = defineBatch(template, async () => [
-      { slug: "async-a", sample: { count: 1 } },
-      { slug: "async-b", sample: { count: 2 } },
+      { slug: "async-a", data: { count: 1 } },
+      { slug: "async-b", data: { count: 2 } },
     ]);
 
     const entries = await provider();
 
     expect(entries).toHaveLength(2);
-    expect(entries[1]).toMatchObject({ slug: "async-b", sample: { count: 2 } });
+    expect(entries[1]).toMatchObject({ slug: "async-b", data: { count: 2 } });
   });
 });
 
@@ -261,8 +298,8 @@ describe("buildManifest", () => {
     // A template that exports both the default module and a `batch` provider.
     // No `superimg` import needed — the discovery stub only fires on `superimg`.
     writeFileSync(
-      join(fixtureDir, "hero.image.ts"),
-      `export default { kind: "image", config: { width: 1200, height: 630 }, render: () => "<div/>" };
+      join(fixtureDir, "hero.media.ts"),
+      `export default { medium: "html", animated: false, config: { width: 1200, height: 630 }, render: () => "<div/>" };
 export const batch = () => [
   { slug: "post-1", sample: { title: "Post One" } },
   { slug: "post-2", sample: { title: "Post Two" } },
@@ -288,8 +325,8 @@ export const batch = () => [
 
     // `og` stem → listVideos marks isOg=true; batch items inherit it.
     writeFileSync(
-      join(fixtureDir, "og.image.ts"),
-      `export default { kind: "image", config: { width: 1200, height: 630 }, render: () => "<div/>" };
+      join(fixtureDir, "og.media.ts"),
+      `export default { medium: "html", animated: false, config: { width: 1200, height: 630 }, render: () => "<div/>" };
 export const batch = () => [{ slug: "s1", sample: {} }];`
     );
 
@@ -305,8 +342,8 @@ export const batch = () => [{ slug: "s1", sample: {} }];`
     fixtureDir = makeTmpDir("manifest-single");
 
     writeFileSync(
-      join(fixtureDir, "simple.image.ts"),
-      `export default { kind: "image", config: { width: 800, height: 600 }, render: () => "<div/>" };`
+      join(fixtureDir, "simple.media.ts"),
+      `export default { medium: "html", animated: false, config: { width: 800, height: 600 }, render: () => "<div/>" };`
     );
 
     const manifest = await buildManifest(fixtureDir);
@@ -321,8 +358,8 @@ export const batch = () => [{ slug: "s1", sample: {} }];`
   it("fails when a batch export cannot be bundled", async () => {
     fixtureDir = makeTmpDir("manifest-batch-error");
     writeFileSync(
-      join(fixtureDir, "broken.image.ts"),
-      `export default { kind: "image", config: { width: 1200, height: 630 }, render: () => "<div/>" };
+      join(fixtureDir, "broken.media.ts"),
+      `export default { medium: "html", animated: false, config: { width: 1200, height: 630 }, render: () => "<div/>" };
 export const batch = async () => {
   const { missing } = await import("./does-not-exist.js");
   return missing.map((p: { slug: string }) => ({ slug: p.slug, sample: {} }));
@@ -345,8 +382,8 @@ export const batch = async () => {
 ];`,
     );
     writeFileSync(
-      join(src, "og.image.ts"),
-      `export default { kind: "image", config: { width: 1200, height: 630 }, render: () => "<div/>" };
+      join(src, "og.media.ts"),
+      `export default { medium: "html", animated: false, config: { width: 1200, height: 630 }, render: () => "<div/>" };
 export const batch = async () => {
   const { posts } = await import("./content.js");
   return posts.map((p) => ({ slug: p.slug, sample: { title: p.title } }));
@@ -365,8 +402,8 @@ export const batch = async () => {
     fixtureDir = makeTmpDir("manifest-batch-data");
 
     writeFileSync(
-      join(fixtureDir, "hero.image.ts"),
-      `export default { kind: "image", config: { width: 1200, height: 630 }, render: () => "<div/>" };
+      join(fixtureDir, "hero.media.ts"),
+      `export default { medium: "html", animated: false, config: { width: 1200, height: 630 }, render: () => "<div/>" };
 export const batch = () => [
   { slug: "a", data: { title: "Alpha" } },
   { slug: "b", data: { title: "Beta", accent: "#f00" } },

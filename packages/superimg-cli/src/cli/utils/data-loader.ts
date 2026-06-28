@@ -3,7 +3,7 @@
 //! Accepts:
 //!   - inline JSON string (starts with `{` or `[`)
 //!   - path to a `.json` file (read + parsed)
-//!   - path to a `.ts` / `.js` file (bundled with esbuild, default-exported)
+//!   - path to a `.ts` / `.js` file (bundled with rolldown, default-exported)
 //!
 //! Returns whatever the input describes — caller decides whether to treat it
 //! as a single entry (object) or a batch (array).
@@ -62,7 +62,7 @@ export async function loadDataScript(filePath: string): Promise<unknown> {
  *
  * - If the trimmed value starts with `{` or `[`, it is parsed as JSON.
  * - Otherwise it is resolved against `baseDir` (template directory by default)
- *   and loaded by extension: `.json` → JSON.parse, `.ts`/`.js` → esbuild + import.
+ *   and loaded by extension: `.json` → JSON.parse, `.ts`/`.js` → rolldown + import.
  *
  * If a function is exported from a `.ts`/`.js` file, it is invoked (with no
  * args) and the awaited result returned.

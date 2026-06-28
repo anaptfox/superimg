@@ -11,7 +11,7 @@ export async function selectVideoInteractive(): Promise<{ template: string; pres
   const videos = discoverVideos(projectRoot);
 
   if (videos.length === 0) {
-    p.log.error("No *.video.ts files found in project.");
+    p.log.error("No *.media.ts files found in project.");
     return null;
   }
 
@@ -46,11 +46,14 @@ export async function selectVideoInteractive(): Promise<{ template: string; pres
       initialValue: "landscape", // Pre-select common default if available
       options: [
         { value: "__default__", label: "Default", hint: `${baseWidth}×${baseHeight}` },
-        ...outputKeys.map(k => ({
-          value: k,
-          label: k.charAt(0).toUpperCase() + k.slice(1),
-          hint: `${outputs[k].width || baseWidth}×${outputs[k].height || baseHeight}`
-        }))
+        ...outputKeys.map(k => {
+          const preset = outputs[k];
+          return {
+            value: k,
+            label: k.charAt(0).toUpperCase() + k.slice(1),
+            hint: `${preset?.width || baseWidth}×${preset?.height || baseHeight}`,
+          };
+        })
       ]
     });
 
@@ -60,5 +63,8 @@ export async function selectVideoInteractive(): Promise<{ template: string; pres
     }
   }
 
-  return { template: selectedVideo as string, preset: selectedPreset };
+  return {
+    template: selectedVideo as string,
+    ...(selectedPreset !== undefined ? { preset: selectedPreset } : {}),
+  };
 }

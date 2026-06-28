@@ -41,7 +41,7 @@ export type { DevServerOptions, DevServer } from "./dev-server.js";
 export { listVideos } from "./list-videos.js";
 export type { VideoSummary } from "./list-videos.js";
 export { discoverVideos, extractShortName, checkDuplicateVideoNames } from "./cli/utils/discover-videos.js";
-export type { DiscoveredVideo, TemplateKind } from "./cli/utils/discover-videos.js";
+export type { DiscoveredVideo } from "./cli/utils/discover-videos.js";
 export { RENDER_EVENT_VERSION } from "@superimg/types";
 export type { RenderEvent } from "@superimg/types";
 export { renderTemplates } from "./render-templates.js";

@@ -7,11 +7,8 @@
 //! - Single-template non-TTY runs and the entire --all flow use plain
 //!   console output via `executeRenderTargets` directly.
 
-import { render, Box, Text } from "ink";
-import { useState, useEffect } from "react";
 import { existsSync, statSync } from "node:fs";
 import { dirname } from "node:path";
-import type { RenderProgress } from "@superimg/types";
 import { PlaywrightEngine } from "@superimg/playwright";
 import { formatError } from "@superimg/core/errors";
 import { findProjectRoot } from "../utils/find-project-root.js";
@@ -84,10 +81,10 @@ export async function renderCommand(template: string, options: RenderOptions) {
     const videos = discoverVideos(projectRoot);
     if (videos.length === 0) {
       if (options.json) {
-        console.log(JSON.stringify({ error: { message: "No *.video.ts files found in project.", code: "NO_VIDEOS_FOUND" } }));
+        console.log(JSON.stringify({ error: { message: "No *.media.ts files found in project.", code: "NO_TEMPLATES_FOUND" } }));
         process.exit(1);
       }
-      console.error("Error: No *.video.ts files found in project.");
+      console.error("Error: No *.media.ts files found in project.");
       process.exit(1);
     }
     if (options.dryRun) {
@@ -130,7 +127,8 @@ export async function renderCommand(template: string, options: RenderOptions) {
   }
 
   if (process.stdout.isTTY && !options.json) {
-    render(<RenderUI resolved={resolved} options={options} />);
+    const { renderWithInkUI } = await import("./render-ui.js");
+    renderWithInkUI(resolved, options);
     return;
   }
 
@@ -210,6 +208,7 @@ async function runRenderAll(
 
   for (let i = 0; i < videos.length; i++) {
     const video = videos[i];
+    if (!video) continue;
     if (!options.json) {
       console.log(`\n[${i + 1}/${videos.length}] ${video.name}`);
     }
@@ -218,9 +217,9 @@ async function runRenderAll(
       ? (isDirectory(options.output) ? options.output : dirname(options.output) + "/")
       : undefined;
     const videoOutput = resolveOutputPath({
-      outputArg: cliOutput,
+      ...(cliOutput !== undefined ? { outputArg: cliOutput } : {}),
       templatePath: video.entrypoint,
-      format: outputFormat,
+      ...(outputFormat !== undefined ? { format: outputFormat } : {}),
     });
 
     let hasOutputs = false;
@@ -289,98 +288,4 @@ async function runRenderAll(
     console.log(`  - ${f.name} (${f.relativePath})`);
   }
   process.exit(1);
-}
-
-/** Ink UI for single-template TTY runs. */
-function RenderUI({ resolved, options }: { resolved: ResolvedTargets; options: RenderOptions }) {
-  const { targets, resolvedConfig } = resolved;
-  const [progress, setProgress] = useState<RenderProgress>({
-    frame: 0,
-    totalFrames: 1,
-    fps: resolvedConfig.fps,
-  });
-  const [currentTarget, setCurrentTarget] = useState(0);
-  const [status, setStatus] = useState("Initializing Playwright...");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        setStatus(targets.length > 1 ? "Rendering..." : "Bundling template...");
-        await executeRenderTargets({
-          resolved,
-          options,
-          isCancelled: () => !mounted,
-          onTargetStart: (_target, index, total) => {
-            if (!mounted) return;
-            setCurrentTarget(index);
-            setStatus(total > 1
-              ? `Rendering "${_target.name}" (${index + 1}/${total})...`
-              : "Rendering...");
-          },
-          onProgress: (_target, p) => {
-            if (mounted) setProgress(p);
-          },
-        });
-
-        if (!mounted) return;
-        if (targets.length > 1) {
-          const paths = targets.map((t) => t.outputPath).join("\n  ");
-          setStatus(`Complete! Saved:\n  ${paths}`);
-        } else {
-          setStatus(`Complete! Saved to ${targets[0].outputPath}`);
-        }
-        setTimeout(() => process.exit(0), 1000);
-      } catch (err) {
-        if (!mounted) return;
-        // Render only inside Ink's <Text>; writing the same block to stderr
-        // would duplicate output for piped consumers and risks corrupting
-        // Ink's terminal control sequences.
-        setError(formatError(err).plain);
-        setStatus("Error");
-        setTimeout(() => process.exit(1), 2000);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const pct = Math.round((progress.frame / progress.totalFrames) * 100);
-  const target = targets[currentTarget];
-
-  return (
-    <Box flexDirection="column" padding={1}>
-      <Text bold color="cyan">
-        SuperImg Render
-      </Text>
-      <Box marginTop={1}>
-        <Text>{status}</Text>
-      </Box>
-      {error ? (
-        <Box marginTop={1} flexDirection="column">
-          <Text color="red">{error}</Text>
-        </Box>
-      ) : (
-        <Box marginTop={1}>
-          <Text>
-            Frame: <Text color="cyan">{progress.frame}/{progress.totalFrames}</Text>
-            {" "}(<Text color="yellow">{pct}%</Text>)
-            {" "}<Text dimColor>{target.width}x{target.height}</Text>
-          </Text>
-        </Box>
-      )}
-      <Box marginTop={1}>
-        <Text dimColor>Output: {target.outputPath}</Text>
-      </Box>
-      {options.debugHtml ? (
-        <Box marginTop={1}>
-          <Text dimColor>Debug HTML: {target.debugHtmlDir}</Text>
-        </Box>
-      ) : null}
-    </Box>
-  );
 }

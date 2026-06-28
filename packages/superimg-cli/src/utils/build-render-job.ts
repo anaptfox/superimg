@@ -50,12 +50,14 @@ export function buildRenderJob(input: BuildRenderJobInput) {
 
   const resolvedConfig = resolveRenderConfig({
     cli: {
-      width: overrides.width != null ? String(overrides.width) : undefined,
-      height: overrides.height != null ? String(overrides.height) : undefined,
-      fps: overrides.fps != null ? String(overrides.fps) : undefined,
-      duration: overrides.duration != null ? String(overrides.duration) : undefined,
+      ...(overrides.width != null ? { width: String(overrides.width) } : {}),
+      ...(overrides.height != null ? { height: String(overrides.height) } : {}),
+      ...(overrides.fps != null ? { fps: String(overrides.fps) } : {}),
+      ...(overrides.duration != null ? { duration: String(overrides.duration) } : {}),
     },
-    templateConfig: input.parsed.templateConfig,
+    ...(input.parsed.templateConfig !== undefined
+      ? { templateConfig: input.parsed.templateConfig }
+      : {}),
   });
 
   const resolvedAssets = prepareAssets({
@@ -87,16 +89,28 @@ export function buildRenderJob(input: BuildRenderJobInput) {
     width: widthOverride ?? resolvedConfig.width,
     height: heightOverride ?? resolvedConfig.height,
     fps: fpsOverride ?? resolvedConfig.fps,
-    fonts: input.parsed.templateConfig?.fonts,
-    inlineCss: input.parsed.templateConfig?.inlineCss,
-    stylesheets: input.parsed.templateConfig?.stylesheets,
     outputName: overrides.outputName ?? "default",
-    encoding: overrides.encoding,
-    data: overrides.data,
-    tailwind: input.parsed.templateConfig?.tailwind,
-    watermark: input.parsed.templateConfig?.watermark,
-    background: input.parsed.templateConfig?.background,
-    audio: resolvedAudio,
+    ...(input.parsed.templateConfig?.fonts !== undefined
+      ? { fonts: input.parsed.templateConfig.fonts }
+      : {}),
+    ...(input.parsed.templateConfig?.inlineCss !== undefined
+      ? { inlineCss: input.parsed.templateConfig.inlineCss }
+      : {}),
+    ...(input.parsed.templateConfig?.stylesheets !== undefined
+      ? { stylesheets: input.parsed.templateConfig.stylesheets }
+      : {}),
+    ...(overrides.encoding !== undefined ? { encoding: overrides.encoding } : {}),
+    ...(overrides.data !== undefined ? { data: overrides.data } : {}),
+    ...(input.parsed.templateConfig?.tailwind !== undefined
+      ? { tailwind: input.parsed.templateConfig.tailwind }
+      : {}),
+    ...(input.parsed.templateConfig?.watermark !== undefined
+      ? { watermark: input.parsed.templateConfig.watermark }
+      : {}),
+    ...(input.parsed.templateConfig?.background !== undefined
+      ? { background: input.parsed.templateConfig.background }
+      : {}),
+    ...(resolvedAudio !== undefined ? { audio: resolvedAudio } : {}),
   };
 
   return { job, resolvedAssets };

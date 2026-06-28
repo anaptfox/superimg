@@ -13,6 +13,6 @@ export function loadTemplate(filename: string): string {
 export function renderTemplate(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{([A-Z0-9_]+)\}\}/g, (match, key: string) => {
     if (!(key in vars)) throw new Error(`Unresolved template placeholder: {{${key}}}`);
-    return vars[key];
+    return vars[key] ?? match;
   });
 }

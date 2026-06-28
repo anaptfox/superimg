@@ -40,7 +40,7 @@ async function checkFfmpeg(): Promise<Check> {
   try {
     const { stdout } = await execa("ffmpeg", ["-version"]);
     const first = stdout.split("\n")[0];
-    return { status: "ok", label: "ffmpeg", detail: first };
+    return { status: "ok", label: "ffmpeg", ...(first !== undefined ? { detail: first } : {}) };
   } catch {
     return {
       status: "warn",
@@ -78,7 +78,12 @@ function checkChromium(): Check {
       hint: "Run: superimg setup",
     };
   }
-  return { status: "ok", label: "Playwright Chromium", detail: entries.sort().reverse()[0] };
+  const detail = entries.sort().reverse()[0];
+  return {
+    status: "ok",
+    label: "Playwright Chromium",
+    ...(detail !== undefined ? { detail } : {}),
+  };
 }
 
 function checkSuperimgDrift(projectRoot: string): Check {

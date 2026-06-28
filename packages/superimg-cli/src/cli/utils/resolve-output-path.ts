@@ -12,14 +12,10 @@ export function isDirectory(path: string): boolean {
   }
 }
 
-/** Extract template name from template path (e.g., "intro.video.ts" -> "intro") */
+/** Extract template name from template path (e.g., "intro.media.ts" -> "intro") */
 export function deriveVideoName(templatePath: string): string {
   const base = basename(templatePath);
-  return base
-    .replace(/\.video\.(ts|js|jsx|tsx)$/, "")
-    .replace(/\.image\.ts$/, "")
-    .replace(/\.gif\.ts$/, "")
-    .replace(/\.svg\.ts$/, "");
+  return base.replace(/\.media\.(ts|js)$/, "");
 }
 
 interface ResolveOutputOptions {
@@ -46,7 +42,7 @@ interface ResolveOutputOptions {
  * Resolve the final output path for a rendered template.
  *
  * Outputs land *next to the template* by default — easier to find, easier to
- * clean. For `examples/developer/http-trace/http-trace.video.ts`, the rendered
+ * clean. For `examples/developer/http-trace/http-trace.media.ts`, the rendered
  * MP4 goes to `examples/developer/http-trace/output/http-trace.mp4`.
  *
  * Precedence (highest first):

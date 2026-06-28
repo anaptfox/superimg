@@ -49,7 +49,9 @@ export async function infoCommand(template: string, options: { json?: boolean } 
   }
 
   const resolvedConfig = resolveRenderConfig({
-    templateConfig: templateData.templateConfig,
+    ...(templateData.templateConfig !== undefined
+      ? { templateConfig: templateData.templateConfig }
+      : {}),
     cascadingConfig,
   });
   const { fps } = resolvedConfig;

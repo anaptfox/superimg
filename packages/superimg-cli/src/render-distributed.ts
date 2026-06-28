@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { execa } from "execa";
 import type { EncodingOptions, AudioValue } from "@superimg/types";
+import { listAudioSrcPaths } from "./utils/prepare-assets.js";
 
 export interface DistributedRenderOptions {
   /** Container endpoint URLs. Chunks are distributed round-robin. */
@@ -78,14 +79,6 @@ async function renderChunk(
   return new Uint8Array(buffer);
 }
 
-function resolveAudioPath(audio: AudioValue): string | null {
-  if (typeof audio === "string") return audio;
-  if (typeof audio === "object" && audio !== null && "src" in audio) {
-    return (audio as { src: string }).src;
-  }
-  return null;
-}
-
 /**
  * Render a video in parallel chunks across N container endpoints, then stitch
  * with ffmpeg. The final MP4 is written to `opts.outputPath`.
@@ -107,9 +100,11 @@ export async function renderDistributed(opts: DistributedRenderOptions): Promise
   } = opts;
 
   if (endpoints.length === 0) throw new Error("renderDistributed: at least one endpoint is required");
+  const firstEndpoint = endpoints[0];
+  if (!firstEndpoint) throw new Error("renderDistributed: at least one endpoint is required");
 
   // 1. Query template metadata from the first endpoint.
-  const info = await fetchTemplateInfo(endpoints[0], templateName);
+  const info = await fetchTemplateInfo(firstEndpoint, templateName);
   const { totalFrames, fps } = info;
 
   // 2. Split into chunks.
@@ -117,10 +112,12 @@ export async function renderDistributed(opts: DistributedRenderOptions): Promise
   const chunks: Array<{ startFrame: number; endFrame: number; endpoint: string }> = [];
   for (let start = 0; start < totalFrames; start += chunkFrames) {
     const end = Math.min(start + chunkFrames, totalFrames);
+    const endpoint = endpoints[chunks.length % endpoints.length];
+    if (!endpoint) throw new Error("renderDistributed: endpoint list became empty");
     chunks.push({
       startFrame: start,
       endFrame: end,
-      endpoint: endpoints[chunks.length % endpoints.length],
+      endpoint,
     });
   }
 
@@ -141,10 +138,10 @@ export async function renderDistributed(opts: DistributedRenderOptions): Promise
       chunks.map(async (chunk, i) => {
         const bytes = await renderChunk(chunk.endpoint, {
           templateName,
-          data,
-          encoding,
           startFrame: chunk.startFrame,
           endFrame: chunk.endFrame,
+          ...(data !== undefined ? { data } : {}),
+          ...(encoding !== undefined ? { encoding } : {}),
         });
         const chunkPath = join(tempDir, `chunk_${String(i).padStart(5, "0")}.mp4`);
         writeFileSync(chunkPath, bytes);
@@ -173,8 +170,14 @@ export async function renderDistributed(opts: DistributedRenderOptions): Promise
 
     // 6. Mux audio if provided.
     if (audio) {
-      const audioPath = resolveAudioPath(audio);
-      if (!audioPath) throw new Error("renderDistributed: audio.src must be a local file path");
+      const paths = listAudioSrcPaths(audio);
+      if (paths.length !== 1) {
+        throw new Error(
+          "renderDistributed supports single-clip audio mux only; use standard render for multi-track timelines",
+        );
+      }
+      const audioPath = paths[0];
+      if (!audioPath) throw new Error("renderDistributed: audio clip must have a local file path");
       await execa("ffmpeg", [
         "-y",
         "-i", videoOnlyPath,

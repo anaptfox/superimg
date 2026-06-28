@@ -17,15 +17,24 @@ export function mergeBaseConfig<T extends BaseConfig>(base: BaseConfig, layer: T
 
   // If layer explicitly has `undefined` (vs missing), the spread overwrote the
   // base value. Restore the base value for those cases.
-  if (layer.width === undefined) merged.width = base.width;
-  if (layer.height === undefined) merged.height = base.height;
-  if (layer.fps === undefined) merged.fps = base.fps;
-  if (layer.duration === undefined) merged.duration = base.duration;
-  if (layer.outputs === undefined) merged.outputs = base.outputs;
-  if (layer.tailwind === undefined) merged.tailwind = base.tailwind;
-  if (layer.watermark === undefined) merged.watermark = base.watermark;
-  if (layer.background === undefined) merged.background = base.background;
-  if (layer.audio === undefined) merged.audio = base.audio;
+  const restore = <K extends keyof BaseConfig>(key: K) => {
+    if (layer[key] === undefined) {
+      if (base[key] !== undefined) {
+        merged[key] = base[key] as T[K];
+      } else {
+        delete merged[key];
+      }
+    }
+  };
+  restore("width");
+  restore("height");
+  restore("fps");
+  restore("duration");
+  restore("outputs");
+  restore("tailwind");
+  restore("watermark");
+  restore("background");
+  restore("audio");
 
   if (base.fonts?.length || layer.fonts?.length) {
     merged.fonts = [...(base.fonts ?? []), ...(layer.fonts ?? [])];

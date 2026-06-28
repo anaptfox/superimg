@@ -9,12 +9,11 @@
 
 import { existsSync, statSync } from "node:fs";
 import { dirname } from "node:path";
-import type { EncodingOptions } from "@superimg/types";
+import type { EncodingOptions, Medium } from "@superimg/types";
 import { ValidationError } from "@superimg/types";
 import { resolveTemplatePath } from "../utils/resolve-template.js";
 import { findProjectRoot } from "../utils/find-project-root.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";
-import type { TemplateKind } from "../utils/discover-videos.js";
 import {
   parseTemplate,
   resolveRenderConfig,
@@ -99,7 +98,10 @@ export interface ResolvedTargets {
   resolvedConfig: ReturnType<typeof resolveRenderConfig>;
   cascadingConfig: Awaited<ReturnType<typeof loadCascadingConfig>>;
   targets: RenderTarget[];
-  kind: TemplateKind;
+  /** Rasterizer family (html → Chromium, svg → resvg). */
+  medium: Medium;
+  /** True when the template renders N frames. */
+  animated: boolean;
 }
 
 
@@ -121,29 +123,18 @@ export function buildRenderTarget(args: {
     width: args.width,
     height: args.height,
     fps: args.fps,
-    duration: args.duration,
     outputPath: args.outputPath,
     outputName: args.name,
-    frame: args.frame,
     debugHtmlDir: resolveDebugHtmlDir({
       outputPath: args.outputPath,
       outputName: args.name,
     }),
-    format: args.format,
-    data: args.data,
-    entryLabel: args.entryLabel,
+    ...(args.duration !== undefined ? { duration: args.duration } : {}),
+    ...(args.frame !== undefined ? { frame: args.frame } : {}),
+    ...(args.format !== undefined ? { format: args.format } : {}),
+    ...(args.data !== undefined ? { data: args.data } : {}),
+    ...(args.entryLabel !== undefined ? { entryLabel: args.entryLabel } : {}),
   };
-}
-
-/**
- * Resolve a template + CLI options into the concrete render targets.
- * Throws on parse / validation failure. Callers handle exit codes.
- */
-function inferKindFromPath(p: string): TemplateKind {
-  if (p.endsWith(".image.ts")) return "image";
-  if (p.endsWith(".gif.ts")) return "gif";
-  if (p.endsWith(".svg.ts")) return "svg";
-  return "video";
 }
 
 export async function resolveRenderTargets(
@@ -152,10 +143,12 @@ export async function resolveRenderTargets(
   outputFormat: OutputFormat,
 ): Promise<ResolvedTargets> {
   const resolvedTemplate = resolveTemplatePath(template);
-  const kind = inferKindFromPath(resolvedTemplate);
   const projectRoot = findProjectRoot(dirname(resolvedTemplate));
   const cascadingConfig = await loadCascadingConfig(resolvedTemplate, projectRoot);
   const templateData = await parseTemplate(resolvedTemplate, { cascadingConfig });
+  // medium + animated come from the parsed config, not the filename.
+  const medium = templateData.medium;
+  const animated = templateData.animated;
 
   if (options.preset && options.presets) {
     throw new ValidationError({
@@ -166,18 +159,20 @@ export async function resolveRenderTargets(
     });
   }
 
-  const stillDefaults = (kind === "image" || kind === "svg") ? { fps: 1, duration: 1 } : undefined;
+  const stillDefaults = !animated ? { fps: 1, duration: 1 } : undefined;
   const resolvedConfig = resolveRenderConfig({
     cli: {
-      width: options.width,
-      height: options.height,
-      fps: options.fps,
+      ...(options.width !== undefined ? { width: options.width } : {}),
+      ...(options.height !== undefined ? { height: options.height } : {}),
+      ...(options.fps !== undefined ? { fps: options.fps } : {}),
     },
-    templateConfig: templateData.templateConfig,
+    ...(templateData.templateConfig !== undefined
+      ? { templateConfig: templateData.templateConfig }
+      : {}),
     cascadingConfig,
-    defaults: stillDefaults
-      ? { ...{ width: 1920, height: 1080, fps: 1, duration: 1 }, ...stillDefaults }
-      : undefined,
+    ...(stillDefaults
+      ? { defaults: { ...{ width: 1920, height: 1080, fps: 1, duration: 1 }, ...stillDefaults } }
+      : {}),
   });
 
   // Build the list of preset specs (one per target dimension/preset).
@@ -212,9 +207,9 @@ export async function resolveRenderTargets(
       height: p.height,
       fps: p.fps,
       format: p.format as OutputFormat,
-      outFile: p.outFile,
-      outDir: p.outDir,
       isDefault: false,
+      ...(p.outFile !== undefined ? { outFile: p.outFile } : {}),
+      ...(p.outDir !== undefined ? { outDir: p.outDir } : {}),
     }));
   } else if (options.preset) {
     if (!outputs || Object.keys(outputs).length === 0) {
@@ -232,12 +227,17 @@ export async function resolveRenderTargets(
       height: preset.height,
       fps: preset.fps,
       format: preset.format as OutputFormat,
-      outFile: preset.outFile,
-      outDir: preset.outDir,
       isDefault: false,
+      ...(preset.outFile !== undefined ? { outFile: preset.outFile } : {}),
+      ...(preset.outDir !== undefined ? { outDir: preset.outDir } : {}),
     }];
   } else {
-    const defaultFormat: OutputFormat = kind === "image" ? "png" : kind === "gif" ? "gif" : kind === "svg" ? "svg" : undefined;
+    // Default sink: animated → mp4; static svg → svg markup; static html → png.
+    const defaultFormat: OutputFormat = animated
+      ? undefined
+      : medium === "svg"
+        ? "svg"
+        : "png";
     presetSpecs = [{
       name: "default",
       width: resolvedConfig.width,
@@ -318,26 +318,26 @@ export async function resolveRenderTargets(
     for (const preset of presetSpecs) {
       const effectiveFormat = preset.format ?? outputFormat;
       const outputPath = resolveOutputPath({
-        outputArg: coercedOutput,
+        ...(coercedOutput !== undefined ? { outputArg: coercedOutput } : {}),
         templatePath: resolvedTemplate,
         cascadingConfig,
-        presetSuffix: preset.isDefault ? undefined : preset.name,
-        presetOutFile: preset.outFile,
-        presetOutDir: preset.outDir,
-        entrySuffix: entry.slug || undefined,
-        format: effectiveFormat,
+        ...(preset.isDefault ? {} : { presetSuffix: preset.name }),
+        ...(preset.outFile !== undefined ? { presetOutFile: preset.outFile } : {}),
+        ...(preset.outDir !== undefined ? { presetOutDir: preset.outDir } : {}),
+        ...(entry.slug ? { entrySuffix: entry.slug } : {}),
+        ...(effectiveFormat !== undefined ? { format: effectiveFormat } : {}),
       });
       targets.push(buildRenderTarget({
         name: preset.name,
         width: preset.width,
         height: preset.height,
         fps: preset.fps,
-        duration: (kind === "image" || kind === "svg") ? 1 : undefined,
+        ...(!animated ? { duration: 1 } : {}),
         outputPath,
         format: effectiveFormat,
-        data: entry.data,
-        entryLabel: entry.slug || undefined,
-        frame: frameOverride,
+        ...(entry.data !== undefined ? { data: entry.data } : {}),
+        ...(entry.slug ? { entryLabel: entry.slug } : {}),
+        ...(frameOverride !== undefined ? { frame: frameOverride } : {}),
       }));
     }
   }
@@ -348,6 +348,7 @@ export async function resolveRenderTargets(
     resolvedConfig,
     cascadingConfig,
     targets,
-    kind,
+    medium,
+    animated,
   };
 }

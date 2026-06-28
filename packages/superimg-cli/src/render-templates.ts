@@ -13,6 +13,7 @@ import type { RenderEvent } from "@superimg/types";
 import { RENDER_EVENT_VERSION } from "@superimg/types";
 import type { OutputFormat } from "@superimg/types";
 import { renderVideo } from "./render-video.js";
+import { parseTemplate } from "./cli/utils/template-config.js";
 
 export interface RenderTemplatesOptions {
   /** Max templates rendered in parallel (default: 2). */
@@ -51,9 +52,19 @@ export async function* renderTemplates(
   let rendered = 0;
   let failed = 0;
 
-  // Split into bypass (svg/html) and browser-rendered lists.
-  const bypass = videos.filter((v) => v.kind === "svg");
-  const browser = videos.filter((v) => v.kind !== "svg");
+  // Split into browser-free (svg medium → resvg) and Playwright lists. Medium
+  // comes from each template's parsed config, not the filename.
+  const media = await Promise.all(
+    videos.map(async (v) => {
+      try {
+        return { v, medium: (await parseTemplate(v.entrypoint)).medium };
+      } catch {
+        return { v, medium: "html" as const };
+      }
+    }),
+  );
+  const bypass = media.filter((m) => m.medium === "svg").map((m) => m.v);
+  const browser = media.filter((m) => m.medium !== "svg").map((m) => m.v);
 
   // Yield events from an async iterable over a concurrency pool.
   // We use a simple slot-based approach: start up to N jobs, replace each
@@ -95,13 +106,14 @@ export async function* renderTemplates(
       push({ v: RENDER_EVENT_VERSION, event: "done", name: video.shortName, outputPath, format, durationMs: Date.now() - startMs });
     } catch (err) {
       failed++;
+      const code = (err as { code?: string }).code;
       push({
         v: RENDER_EVENT_VERSION,
         event: "error",
         name: video.shortName,
         format,
         message: err instanceof Error ? err.message : String(err),
-        code: (err as { code?: string }).code,
+        ...(code !== undefined ? { code } : {}),
       });
       if (options.failOnError) {
         signal?.dispatchEvent ? undefined : undefined; // AbortController is caller-owned
@@ -151,6 +163,7 @@ export async function* renderTemplates(
     for (let i = 0; i < poolSize && queue.length > 0; i++) {
       const video = queue.shift()!;
       const engine = engines[i];
+      if (!engine) continue;
       const p = runOne(video, engine).then(() => {
         active.delete(p);
         // Refill from queue.

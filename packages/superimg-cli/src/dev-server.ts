@@ -54,7 +54,7 @@ async function startHomeMode(port: number, devRoot: string): Promise<DevServer> 
   const url = `http://localhost:${port}`;
 
   const server = createHttpServer(async (req, res) => {
-    const pathname = (req.url || "/").split("?")[0];
+    const pathname = (req.url || "/").split("?")[0] ?? "/";
 
     if (pathname === "/api/videos") {
       res.setHeader("Content-Type", "application/json");
@@ -74,7 +74,7 @@ async function startHomeMode(port: number, devRoot: string): Promise<DevServer> 
 
     const videosMatch = pathname.match(/^\/api\/videos\/(.+)\/(template-bundle|template|config)$/);
     if (videosMatch) {
-      const name = decodeURIComponent(videosMatch[1]);
+      const name = decodeURIComponent(videosMatch[1] ?? "");
       const type = videosMatch[2];
       const video = videos.find((v) => v.name === name);
       if (!video) {
@@ -202,7 +202,7 @@ async function startSingleVideoMode(template: string, port: number, devRoot: str
 
   const server = createHttpServer(async (req, res) => {
     const reqUrl = req.url || "/";
-    const pathname = reqUrl.split("?")[0];
+    const pathname = reqUrl.split("?")[0] ?? "/";
 
     if (pathname === "/api/config") {
       try {

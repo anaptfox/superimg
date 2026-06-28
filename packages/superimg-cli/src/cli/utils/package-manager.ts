@@ -14,7 +14,7 @@ const PM_COMMANDS: Record<PackageManager, PackageManagerCommands> = {
   yarn: { install: "yarn",         add: "yarn add superimg",     exec: "yarn",      run: "yarn" },
   pnpm: { install: "pnpm install", add: "pnpm add superimg",    exec: "pnpm exec", run: "pnpm run" },
   bun:  { install: "bun install",  add: "bun add superimg",     exec: "bunx",      run: "bun run" },
-};
+} satisfies Record<PackageManager, PackageManagerCommands>;
 
 const PM_ADD_PATTERNS: Record<PackageManager, (pkgs: string[]) => string> = {
   npm:  (pkgs) => `npm install ${pkgs.join(" ")}`,

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Generates a manifest.json for smoke-testing the container handler locally.
 // Usage: node scripts/gen-test-manifest.mjs <template-path> [output-path]
-// Example: node scripts/gen-test-manifest.mjs ../../examples/basics/compose-demo/intro.video.ts
+// Example: node scripts/gen-test-manifest.mjs ../../examples/basics/compose-demo/intro.media.ts
 
 import { writeFileSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -21,7 +21,7 @@ const outputPath = resolve(process.argv[3] ?? "manifest.json");
 
 // Import directly from @superimg/core dist — avoids pulling in the full server
 // bundle (which has mediabunny etc. as externals). Core's bundler.js only needs
-// esbuild, which IS in superimg-cli/node_modules.
+// rolldown, which IS in superimg-cli/node_modules.
 const coreDist = `${pkgRoot}/node_modules/@superimg/core/dist`;
 const { bundleTemplate, extractInlineSourceMap } = await import(`${coreDist}/bundler.js`);
 const { extractTemplateMetadata } = await import(`${coreDist}/template-metadata.js`);
@@ -53,7 +53,7 @@ const parsed = {
 const templateName = templatePath
   .replace(/\\/g, "/")
   .replace(/^.*examples\//, "")
-  .replace(/\.video\.(ts|js)$/, "");
+  .replace(/\.media\.(ts|js)$/, "");
 
 const manifest = { [templateName]: { bundle, parsed } };
 writeFileSync(outputPath, JSON.stringify(manifest, null, 2));

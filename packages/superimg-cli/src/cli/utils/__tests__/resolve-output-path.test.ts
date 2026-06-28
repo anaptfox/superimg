@@ -3,7 +3,7 @@ import { resolveDebugHtmlDir, resolveOutputPath } from "../resolve-output-path.j
 import { join } from "node:path";
 
 describe("resolveOutputPath", () => {
-  const templatePath = "/Users/test/project/src/videos/promo/promo.video.ts";
+  const templatePath = "/Users/test/project/src/videos/promo/promo.media.ts";
   const templateDir = "/Users/test/project/src/videos/promo";
 
   it("places the output in an output/ folder next to the template by default", () => {

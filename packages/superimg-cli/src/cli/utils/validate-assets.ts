@@ -3,6 +3,7 @@
 import { resolve } from "node:path";
 import { existsSync } from "node:fs";
 import type { BackgroundValue, AudioValue } from "@superimg/types";
+import { listAudioSrcPaths } from "../../utils/prepare-assets.js";
 
 function isColorOrUrl(src: string): boolean {
   const s = src.trim();
@@ -15,7 +16,7 @@ function isColorOrUrl(src: string): boolean {
   return false;
 }
 
-function getAssetSrc(value: BackgroundValue | AudioValue | undefined): string | undefined {
+function getBackgroundSrc(value: BackgroundValue | undefined): string | undefined {
   if (!value) return undefined;
   if (typeof value === "string") return value;
   return value.src;
@@ -30,7 +31,7 @@ export function validateAssets(
   audio: AudioValue | undefined,
   baseDir: string
 ): void {
-  const bgSrc = getAssetSrc(background);
+  const bgSrc = getBackgroundSrc(background);
   if (bgSrc && !isColorOrUrl(bgSrc)) {
     const abs = resolve(baseDir, bgSrc);
     if (!existsSync(abs)) {
@@ -40,8 +41,8 @@ export function validateAssets(
     }
   }
 
-  const audioSrc = getAssetSrc(audio);
-  if (audioSrc && !isColorOrUrl(audioSrc)) {
+  for (const audioSrc of listAudioSrcPaths(audio)) {
+    if (!audioSrc || isColorOrUrl(audioSrc)) continue;
     const abs = resolve(baseDir, audioSrc);
     if (!existsSync(abs)) {
       throw new Error(

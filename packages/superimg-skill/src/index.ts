@@ -1,7 +1,7 @@
 //! Public API for the canonical SuperImg skill.
 //!
 //! All content is embedded at build time from <repo>/skills/superimg/.
-//! Consumers (the superimg CLI and @superimg/mcp) import from here instead of
+//! Consumers (the superimg CLI) import from here instead of
 //! reading the filesystem at runtime.
 
 import {
