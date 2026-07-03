@@ -1,13 +1,42 @@
-//! Browser-side template bundling with @rolldown/browser
+//! Browser-side template bundling with @rolldown/browser (optional peer)
 
-import { rolldown } from "@rolldown/browser";
 import { createSuperimgPlugin } from "./plugin.browser.js";
+import { templateBundlerInputOptions } from "./rolldown-log.js";
 import { toTemplateSourceMap } from "./source-map.js";
 import type { TemplateBundle as BundledTemplate } from "@superimg/types";
 
-const templateImportAliases = {
-  "superimg/stdlib": "@superimg/stdlib",
-};
+// Pinned to the exact version superimg is built against: @rolldown/browser is a
+// pre-stable WASM bundler whose output must match the native `rolldown` we bundle,
+// so the peer range in package.json is exact (1.1.3), not a caret range.
+const ROLLDOWN_PEER_MSG =
+  "In-browser compilation requires @rolldown/browser; run pnpm add @rolldown/browser@1.1.3 and enable cross-origin isolation";
+
+export class RolldownPeerMissingError extends Error {
+  constructor() {
+    super(ROLLDOWN_PEER_MSG);
+    this.name = "RolldownPeerMissingError";
+  }
+}
+
+type RolldownBrowserModule = typeof import("@rolldown/browser");
+
+async function loadRolldownBrowser(): Promise<RolldownBrowserModule> {
+  try {
+    return await import("@rolldown/browser");
+  } catch {
+    throw new RolldownPeerMissingError();
+  }
+}
+
+function templateRolldownInput() {
+  return templateBundlerInputOptions({
+    alias: {
+      "superimg/stdlib": "@superimg/stdlib",
+      // Resolved by the browser plugin virtual module (no node:path).
+      "gumbo/media/define": "superimg/define",
+    },
+  });
+}
 
 export class BrowserNotSupportedError extends Error {
   constructor() {
@@ -23,20 +52,31 @@ export function initBundler(): Promise<void> {
   if (globalThis.crossOriginIsolated === false) {
     return Promise.reject(new BrowserNotSupportedError());
   }
-  
+
   if (!initPromise) {
-    // Perform a no-op warmup build to download and instantiate the WASM
-    initPromise = rolldown({
-      input: "\0warmup",
-      plugins: [{
-        name: "warmup",
-        resolveId(id) { return id === "\0warmup" ? id : null; },
-        load(id) { return id === "\0warmup" ? "export {}" : null; }
-      }]
-    }).then(bundle => bundle.close()).catch(err => {
-      initPromise = null;
-      throw err;
-    });
+    initPromise = loadRolldownBrowser()
+      .then(({ rolldown }) =>
+        rolldown({
+          input: "\0warmup",
+          tsconfig: false,
+          ...templateRolldownInput(),
+          plugins: [
+            {
+              name: "warmup",
+              resolveId(id) {
+                return id === "\0warmup" ? id : null;
+              },
+              load(id) {
+                return id === "\0warmup" ? "export {}" : null;
+              },
+            },
+          ],
+        }).then((bundle) => bundle.close()),
+      )
+      .catch((err) => {
+        initPromise = null;
+        throw err;
+      });
   }
   return initPromise;
 }
@@ -45,9 +85,14 @@ export function initBundler(): Promise<void> {
 export async function bundleTemplateBrowser(
   code: string,
 ): Promise<BundledTemplate> {
-  if (typeof globalThis.crossOriginIsolated !== "undefined" && !globalThis.crossOriginIsolated) {
+  if (
+    typeof globalThis.crossOriginIsolated !== "undefined" &&
+    !globalThis.crossOriginIsolated
+  ) {
     throw new BrowserNotSupportedError();
   }
+
+  const { rolldown } = await loadRolldownBrowser();
 
   // Non-`\0` id: Rolldown omits `\0`-prefixed modules from the sourcemap, which
   // would leave the map empty and break blob-URL error mapping in the dev UI.
@@ -57,7 +102,7 @@ export async function bundleTemplateBrowser(
 
   const bundle = await rolldown({
     input: virtualId,
-    resolve: { alias: templateImportAliases },
+    ...templateRolldownInput(),
     plugins: [
       {
         name: "stdin",
@@ -68,7 +113,7 @@ export async function bundleTemplateBrowser(
         load(id) {
           if (id === virtualId) return code;
           return null;
-        }
+        },
       },
       createSuperimgPlugin(),
     ],
@@ -80,10 +125,11 @@ export async function bundleTemplateBrowser(
       name: "__template",
       exports: "named",
       sourcemap: true,
+      codeSplitting: false,
     });
-    
+
     const map = output[0]!.map || { version: 3, sources: [], mappings: "" };
-    
+
     return {
       code: output[0]!.code,
       sourceMap: toTemplateSourceMap(map),

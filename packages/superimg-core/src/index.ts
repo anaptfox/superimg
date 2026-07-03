@@ -36,7 +36,7 @@ export * from "./shared/constants.js";
 export * from "./rendering/create-render-context.js";
 export * from "./rendering/runtime-info.js";
 export * from "./rendering/compiler.js";
-export * from "./rendering/resvg-rasterizer.js";
+export * from "./rendering/resvg-rasterizer.node.js";
 export * from "./rendering/fonts.js";
 export * from "./rendering/rasterizer-registry.js";
 export * from "./shared/assets.js";

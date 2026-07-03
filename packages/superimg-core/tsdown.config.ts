@@ -17,6 +17,8 @@ export default defineConfig({
     errors: "src/errors/index.ts",
     "errors-node": "src/errors-node.ts",
     testing: "src/testing/index.ts",
+    "rendering/resvg-rasterizer.edge": "src/rendering/resvg-rasterizer.edge.ts",
+    "rendering/resvg-rasterizer.node": "src/rendering/resvg-rasterizer.node.ts",
   },
   clean: true,
   outDir: "dist",

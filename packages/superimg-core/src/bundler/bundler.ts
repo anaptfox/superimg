@@ -1,9 +1,18 @@
 //! Server-side template bundling with Rolldown (Node/Bun/Deno)
 
 import { rolldown } from "rolldown";
+import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createSuperimgPlugin } from "./plugin.js";
+import {
+  logBundlerDebug,
+  logBundlerEntry,
+  TEMPLATE_IIFE_OUTPUT,
+  type BundlerDebugContext,
+} from "./bundler-debug.js";
+import { templateBundlerInputOptions } from "./rolldown-log.js";
 import { toTemplateSourceMap } from "./source-map.js";
 import type {
   TemplateBundle as BundledTemplate,
@@ -15,12 +24,84 @@ export type { BundledTemplate, RawSourceMap };
 // Find the stdlib package location for resolution
 // This file is at packages/superimg-core/dist/bundler.js
 // The stdlib is at packages/superimg-stdlib (symlinked in node_modules)
+const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // Go from dist/ to packages/superimg-core/node_modules
 const stdlibNodePath = resolve(__dirname, "../node_modules");
-const templateImportAliases = {
-  "superimg/stdlib": "@superimg/stdlib",
-};
+
+/** Absolute path for `gumbo/media/define` alias (scene authoring only). */
+function resolveGumboMediaDefinePath(): string {
+  const sibling = resolve(__dirname, "../../superimg/dist/define.js");
+  if (existsSync(sibling)) return sibling;
+  try {
+    return require.resolve("superimg/define");
+  } catch {
+    throw new Error(
+      `Cannot resolve gumbo/media/define → superimg/define (checked ${sibling}). ` +
+        "Build packages/superimg or install the superimg package.",
+    );
+  }
+}
+
+function templateRolldownInput() {
+  return templateBundlerInputOptions({
+    alias: {
+      "superimg/stdlib": "@superimg/stdlib",
+      "gumbo/media/define": resolveGumboMediaDefinePath(),
+    },
+  });
+}
+
+async function generateTemplateIife(
+  bundle: Awaited<ReturnType<typeof rolldown>>,
+  ctx: BundlerDebugContext,
+  sourcemap: true | "inline",
+) {
+  const outputOptions = { ...TEMPLATE_IIFE_OUTPUT, sourcemap };
+  const bundleMeta: Record<string, unknown> = {
+    aliases: templateRolldownInput().resolve.alias,
+    outputOptions,
+    bundleKeys:
+      bundle && typeof bundle === "object"
+        ? Object.getOwnPropertyNames(Object.getPrototypeOf(bundle)).concat(
+            Object.keys(bundle as object),
+          )
+        : undefined,
+  };
+  if (typeof (bundle as { getModules?: () => unknown }).getModules === "function") {
+    try {
+      const modules = (bundle as { getModules: () => Map<string, unknown> }).getModules();
+      bundleMeta.moduleCount = modules.size;
+      bundleMeta.moduleIds = [...modules.keys()].slice(0, 20);
+    } catch {
+      bundleMeta.moduleCount = "getModules-threw";
+    }
+  }
+  logBundlerDebug("rolldown:built", ctx, bundleMeta);
+  try {
+    const result = await bundle.generate(outputOptions);
+    logBundlerDebug("generate:ok", ctx, {
+      chunkCount: result.output.length,
+      chunks: result.output.map((chunk) => ({
+        fileName: chunk.fileName,
+        type: chunk.type,
+        bytes: "code" in chunk ? chunk.code.length : undefined,
+        moduleIds:
+          "moduleIds" in chunk && Array.isArray(chunk.moduleIds)
+            ? chunk.moduleIds.slice(0, 12)
+            : undefined,
+      })),
+    });
+    return result;
+  } catch (err) {
+    logBundlerDebug("generate:fail", ctx, {
+      outputOptions,
+      error: err instanceof Error ? err.message : String(err),
+      hint: "Re-run with SUPERIMG_BUNDLER_DEBUG=1 for entry + chunk detail",
+    });
+    throw err;
+  }
+}
 
 /**
  * Extract a parsed sourcemap from the trailing `//# sourceMappingURL=data:...` comment.
@@ -49,18 +130,18 @@ export function extractInlineSourceMap(code: string): RawSourceMap | null {
  * `{ code, sourceMap, sourceFile }`.
  */
 export async function bundleTemplate(entryPoint: string): Promise<string> {
+  const ctx: BundlerDebugContext = {
+    kind: "bundleTemplate",
+    entry: entryPoint,
+  };
+  logBundlerEntry(ctx);
   const bundle = await rolldown({
     input: entryPoint,
-    resolve: { alias: templateImportAliases },
     plugins: [createSuperimgPlugin()],
+    ...templateRolldownInput(),
   });
   try {
-    const { output } = await bundle.generate({
-      format: "iife",
-      name: "__template",
-      exports: "named",
-      sourcemap: "inline",
-    });
+    const { output } = await generateTemplateIife(bundle, ctx, "inline");
     return output[0]!.code;
   } finally {
     await bundle.close();
@@ -74,18 +155,18 @@ export async function bundleTemplate(entryPoint: string): Promise<string> {
 export async function bundleTemplateWithMap(
   entryPoint: string,
 ): Promise<BundledTemplate> {
+  const ctx: BundlerDebugContext = {
+    kind: "bundleTemplateWithMap",
+    entry: entryPoint,
+  };
+  logBundlerEntry(ctx);
   const bundle = await rolldown({
     input: entryPoint,
-    resolve: { alias: templateImportAliases },
     plugins: [createSuperimgPlugin()],
+    ...templateRolldownInput(),
   });
   try {
-    const { output } = await bundle.generate({
-      format: "iife",
-      name: "__template",
-      exports: "named",
-      sourcemap: true,
-    });
+    const { output } = await generateTemplateIife(bundle, ctx, true);
     const map = output[0]!.map || { version: 3, sources: [], mappings: "" };
     return { code: output[0]!.code, sourceMap: toTemplateSourceMap(map), sourceFile: resolve(entryPoint) };
   } finally {
@@ -97,8 +178,8 @@ export async function bundleTemplateWithMap(
 export async function bundleTemplateESM(entryPoint: string): Promise<string> {
   const bundle = await rolldown({
     input: entryPoint,
-    resolve: { alias: templateImportAliases },
     plugins: [createSuperimgPlugin()],
+    ...templateRolldownInput(),
   });
   try {
     const { output } = await bundle.generate({
@@ -117,8 +198,8 @@ export async function bundleTemplateESMWithMap(
 ): Promise<BundledTemplate> {
   const bundle = await rolldown({
     input: entryPoint,
-    resolve: { alias: templateImportAliases },
     plugins: [createSuperimgPlugin()],
+    ...templateRolldownInput(),
   });
   try {
     const { output } = await bundle.generate({
@@ -191,19 +272,21 @@ export async function bundleTemplateCode(
       : (resolveDirOrOptions ?? {});
 
   const { id, plugin } = createStdinEntry(code, opts);
+  const ctx: BundlerDebugContext = {
+    kind: "bundleTemplateCode",
+    entry: id,
+    resolveDir: opts.resolveDir,
+    sourcefile: opts.sourcefile,
+  };
+  logBundlerEntry(ctx);
 
   const bundle = await rolldown({
     input: id,
-    resolve: { alias: templateImportAliases },
     plugins: [plugin, createSuperimgPlugin()],
+    ...templateRolldownInput(),
   });
   try {
-    const { output } = await bundle.generate({
-      format: "iife",
-      name: "__template",
-      exports: "named",
-      sourcemap: "inline",
-    });
+    const { output } = await generateTemplateIife(bundle, ctx, "inline");
     return output[0]!.code;
   } finally {
     await bundle.close();
@@ -216,19 +299,21 @@ export async function bundleTemplateCodeWithMap(
   options: BundleTemplateCodeOptions = {},
 ): Promise<BundledTemplate> {
   const { id, plugin } = createStdinEntry(code, options);
+  const ctx: BundlerDebugContext = {
+    kind: "bundleTemplateCodeWithMap",
+    entry: id,
+    resolveDir: options.resolveDir,
+    sourcefile: options.sourcefile,
+  };
+  logBundlerEntry(ctx);
 
   const bundle = await rolldown({
     input: id,
-    resolve: { alias: templateImportAliases },
     plugins: [plugin, createSuperimgPlugin()],
+    ...templateRolldownInput(),
   });
   try {
-    const { output } = await bundle.generate({
-      format: "iife",
-      name: "__template",
-      exports: "named",
-      sourcemap: true,
-    });
+    const { output } = await generateTemplateIife(bundle, ctx, true);
     const map = output[0]!.map || { version: 3, sources: [], mappings: "" };
     return {
       code: output[0]!.code,

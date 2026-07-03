@@ -50,6 +50,14 @@
     "./testing": {
       "import": "./dist/testing.js",
       "types": "./dist/testing.d.ts"
+    },
+    "./rendering/resvg-rasterizer.edge": {
+      "import": "./dist/rendering/resvg-rasterizer.edge.js",
+      "types": "./dist/rendering/resvg-rasterizer.edge.d.ts"
+    },
+    "./rendering/resvg-rasterizer.node": {
+      "import": "./dist/rendering/resvg-rasterizer.node.js",
+      "types": "./dist/rendering/resvg-rasterizer.node.d.ts"
     }
   },
   "scripts": {

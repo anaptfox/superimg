@@ -1,12 +1,9 @@
 //! Browser-free SVG rasterizer backed by @resvg/resvg-wasm.
 //!
-//! The same renderer runs at build time (Node) and at the edge (Cloudflare
-//! Worker / V8 isolate), producing byte-identical PNGs. The hot path uses no
-//! node builtins; the optional default WASM loader lazily imports `node:fs`
-//! and is never reached in a Worker — there the caller passes its own bound
-//! `.wasm` module via `ensureInit()` / the `wasm` constructor option.
+//! Platform-specific `ensureInit` is bound at module load via
+//! `resvg-rasterizer.edge.ts` or `resvg-rasterizer.node.ts`.
 
-import { initWasm, Resvg } from "@resvg/resvg-wasm";
+import { Resvg } from "@resvg/resvg-wasm";
 import type {
   Medium,
   Rasterizer,
@@ -22,7 +19,23 @@ export type WasmSource =
   | URL
   | WebAssembly.Module;
 
-let initPromise: Promise<void> | null = null;
+type EnsureInitFn = (source?: WasmSource | Promise<WasmSource>) => Promise<void>;
+
+let boundEnsureInit: EnsureInitFn | null = null;
+
+/** Called once by platform entry modules (edge vs node). */
+export function bindEnsureInit(fn: EnsureInitFn): void {
+  boundEnsureInit = fn;
+}
+
+function getEnsureInit(): EnsureInitFn {
+  if (!boundEnsureInit) {
+    throw new Error(
+      "resvg ensureInit is not bound — import from resvg-rasterizer.edge or resvg-rasterizer.node",
+    );
+  }
+  return boundEnsureInit;
+}
 
 /**
  * Initialise the resvg WASM module exactly once (idempotent, concurrency-safe).
@@ -32,30 +45,7 @@ let initPromise: Promise<void> | null = null;
  * pass an explicit `source` — typically the bound `.wasm` asset/module.
  */
 export function ensureInit(source?: WasmSource | Promise<WasmSource>): Promise<void> {
-  if (initPromise) return initPromise;
-  initPromise = (async () => {
-    const input = (await source) ?? (await loadDefaultWasm());
-    await initWasm(input as never);
-  })();
-  // Allow a retry if init fails (e.g. a transient bound-asset fetch).
-  initPromise.catch(() => {
-    initPromise = null;
-  });
-  return initPromise;
-}
-
-/** Node-only fallback: resolve and read the packaged `index_bg.wasm`. */
-async function loadDefaultWasm(): Promise<Uint8Array> {
-  const specifier = "@resvg/resvg-wasm/index_bg.wasm";
-  const resolved =
-    typeof import.meta.resolve === "function"
-      ? import.meta.resolve(specifier)
-      : new URL(`../../node_modules/${specifier}`, import.meta.url).href;
-  const [{ readFile }, { fileURLToPath }] = await Promise.all([
-    import("node:fs/promises"),
-    import("node:url"),
-  ]);
-  return new Uint8Array(await readFile(fileURLToPath(resolved)));
+  return getEnsureInit()(source);
 }
 
 export interface RasterizeSvgOptions {

@@ -4,7 +4,7 @@ import {
   rasterizeSvgSync,
   ensureInit,
   ResvgRasterizer,
-} from "../rendering/resvg-rasterizer.js";
+} from "../rendering/resvg-rasterizer.node.js";
 
 /** PNG magic number: 89 50 4E 47 0D 0A 1A 0A */
 function isPng(bytes: Uint8Array): boolean {

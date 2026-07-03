@@ -1,5 +1,6 @@
 //! Shared superimg bundler plugin factory (browser + server).
 
+import { DEFINE_CODE } from "../generated/define-code.js";
 import { RUNTIME_CODE } from "../generated/runtime-code.js";
 
 /** Subpaths of @superimg/stdlib that must be bundled (not stripped). */
@@ -42,6 +43,9 @@ export function buildSuperimgPlugin(
       if (source === "superimg") {
         return "\0superimg-virtual";
       }
+      if (source === "superimg/define" || source === "gumbo/media/define") {
+        return "\0superimg-define";
+      }
 
       const sub = parseStdlibSubpath(source);
       if (sub) {
@@ -54,6 +58,9 @@ export function buildSuperimgPlugin(
     load(id: string) {
       if (id === "\0superimg-virtual") {
         return RUNTIME_CODE;
+      }
+      if (id === "\0superimg-define") {
+        return DEFINE_CODE;
       }
       if (id === "\0stdlib-noop") {
         return "export {}";
