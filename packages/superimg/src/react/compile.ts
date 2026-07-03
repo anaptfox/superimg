@@ -3,17 +3,18 @@
 //! without pulling the full Player + mediabunny barrel from "superimg/react".
 "use client";
 
+export { useCompiler, type UseCompilerReturn } from "./hooks/useCompiler.js";
 export {
-  useCompiler,
   useCompiledTemplate,
   clearTemplateCache,
   getTemplateCacheSize,
-  checkBrowserCompileSupport,
-  type UseCompilerReturn,
   type UseCompiledTemplateOptions,
   type UseCompiledTemplateReturn,
+} from "./hooks/useCompiledTemplate.js";
+export {
+  checkBrowserCompileSupport,
   type BrowserCompileSupport,
-} from "./hooks/index.js";
+} from "./hooks/checkBrowserCompileSupport.js";
 
 export type {
   RenderContext,
@@ -23,6 +24,6 @@ export type {
   CompileResult,
   ComposedTemplate,
   ResolvedScene,
-} from "../index.browser.js";
+} from "@superimg/types";
 
-export { isComposedTemplate } from "../index.browser.js";
+export { isComposedTemplate } from "@superimg/types";

@@ -74,8 +74,9 @@ export function Timeline({
   markerClassName,
   showMarkerTooltip = true,
 }: TimelineProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const timeline = useTimeline(containerRef, store);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const timeline = useTimeline(container, store);
   const [hoveredMarker, setHoveredMarker] = useState<string | null>(null);
 
   // Subscribe to store state for rendering
@@ -101,7 +102,10 @@ export function Timeline({
 
   return (
     <div
-      ref={containerRef}
+      ref={(node) => {
+        containerRef.current = node;
+        setContainer((prev) => (prev === node ? prev : node));
+      }}
       className={className}
       style={{
         position: "relative",

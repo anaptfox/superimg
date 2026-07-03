@@ -40,12 +40,11 @@ export default defineConfig({
   clean: true,
   deps: {
     alwaysBundle: [
-      "date-fns",
-      "colord",
+      /^date-fns($|\/)/,
+      /^colord($|\/)/,
       "simplex-noise",
-      "shiki",
-      "@shikijs/themes",
-      "@shikijs/langs",
+      /^shiki($|\/)/,
+      /^@shikijs\//,
       "path-data-parser",
       "katex",
       "d3-array",

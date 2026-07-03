@@ -7,7 +7,7 @@ import {
   type TemplateModule,
   type CompileError,
 } from "../../index.browser.js";
-import { loadBundler } from "./bundler-loader.js";
+
 
 // =============================================================================
 // GLOBAL LRU CACHE
@@ -214,14 +214,11 @@ export function useCompiledTemplate(
     setError(null);
 
     try {
-      const { initBundler, bundleTemplateBrowser } = await loadBundler();
-      await initBundler();
-
       // Check if this compilation was superseded
       if (compilationId !== compilationIdRef.current) return;
 
-      // Bundle the code
-      const bundled = await bundleTemplateBrowser(compileCode);
+      const { bundleTemplateQueued } = await import("./bundler-worker-client.js");
+      const bundled = await bundleTemplateQueued(compileCode);
 
       // Check if this compilation was superseded
       if (compilationId !== compilationIdRef.current) return;
@@ -262,42 +259,46 @@ export function useCompiledTemplate(
   useEffect(() => {
     if (!enabled) return;
 
-    let cancelled = false;
     const needsCode = !inlineCode && !!codeUrl;
     const needsBundled = !wasmCompile && !inlineBundled && !!bundledUrl;
 
     if (!needsCode && !needsBundled) return;
 
+    if (needsCode) setFetchedCode(null);
+    if (needsBundled) setFetchedBundled(null);
+
     setCompiling(true);
     setError(null);
+
+    const controller = new AbortController();
+    const { signal } = controller;
 
     (async () => {
       try {
         if (needsCode && codeUrl) {
-          const res = await fetch(codeUrl);
+          const res = await fetch(codeUrl, { signal });
           if (!res.ok) throw new Error(`Failed to fetch ${codeUrl}: ${res.status}`);
           const text = await res.text();
-          if (!cancelled) setFetchedCode(text);
+          setFetchedCode(text);
         }
         if (needsBundled && bundledUrl) {
-          const res = await fetch(bundledUrl);
+          const res = await fetch(bundledUrl, { signal });
           if (!res.ok) throw new Error(`Failed to fetch ${bundledUrl}: ${res.status}`);
           const text = await res.text();
-          if (!cancelled) setFetchedBundled(text);
+          setFetchedBundled(text);
         }
       } catch (e) {
-        if (!cancelled) {
-          setError({
-            message: e instanceof Error ? e.message : String(e),
-          });
-          setTemplate(null);
-          setCompiling(false);
-        }
+        if (signal.aborted) return;
+        setError({
+          message: e instanceof Error ? e.message : String(e),
+        });
+        setTemplate(null);
+        setCompiling(false);
       }
     })();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [enabled, inlineCode, codeUrl, inlineBundled, bundledUrl, wasmCompile]);
 

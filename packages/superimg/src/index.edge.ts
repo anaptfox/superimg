@@ -26,13 +26,15 @@ export {
   rasterizeSvgSync,
   ensureInit,
   ResvgRasterizer,
+  type RasterizeSvgOptions,
+  type WasmSource,
+} from "@superimg/core/rendering/resvg-rasterizer.edge";
+export {
   fonts,
   resolveFontBuffers,
   selectRasterizer,
-  type RasterizeSvgOptions,
   type ResolvedFont,
   type FontRegistry,
-  type WasmSource,
   type RasterizerRegistryOptions,
 } from "@superimg/core";
 

@@ -1,18 +1,20 @@
 import { defineConfig } from "tsdown";
 import { libraryDefaults } from "../build-policy/tsdown.base.ts";
-import { platformAlias, platformDeps, sharedDefine } from "./tsdown.shared.ts";
+import { sharedDefine } from "./tsdown.shared.ts";
 
 export default defineConfig({
-  name: "edge",
+  name: "define",
   ...libraryDefaults,
   platform: "neutral",
   clean: false,
   entry: {
-    "index.edge": "src/index.edge.ts",
+    define: "src/index.define.ts",
   },
   define: sharedDefine,
-  deps: platformDeps,
-  alias: platformAlias,
+  deps: {
+    alwaysBundle: ["@superimg/types"],
+    neverBundle: [],
+  },
   // Namespace shared chunks so this secondary build can't overwrite node entries.
   outputOptions: {
     chunkFileNames: "chunks/[name].js",

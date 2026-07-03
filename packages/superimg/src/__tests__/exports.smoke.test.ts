@@ -14,8 +14,10 @@ const distEntrypoints = [
   ["index", "index.js"],
   ["index.react-server", "index.react-server.js"],
   ["index.browser", "index.browser.js"],
+  ["index.export", "index.export.js"],
   ["index.server", "index.server.js"],
   ["index.edge", "index.edge.js"],
+  ["define", "define.js"],
   ["player", "player.js"],
   ["bundler-browser", "bundler-browser.js"],
   ["runtime-web", "runtime-web.js"],
@@ -23,6 +25,7 @@ const distEntrypoints = [
   ["react/react-server", "react/react-server.js"],
   ["react/player", "react/player.js"],
   ["react/compile", "react/compile.js"],
+  ["react/export", "react/export.js"],
   ["stdlib/code", "stdlib/code.js"],
   ["stdlib/easing", "stdlib/easing.js"],
   ["stdlib/math", "stdlib/math.js"],
@@ -46,11 +49,14 @@ describe("package.json exports map", () => {
     expect(keys).toContain("./browser");
     expect(keys).toContain("./server");
     expect(keys).toContain("./edge");
+    expect(keys).toContain("./define");
     expect(keys).toContain("./player");
     expect(keys).toContain("./bundler");
     expect(keys).toContain("./runtime-web");
     expect(keys).toContain("./react");
     expect(keys).toContain("./react/player");
     expect(keys).toContain("./react/compile");
+    expect(keys).toContain("./export");
+    expect(keys).toContain("./react/export");
   });
 });

@@ -23,14 +23,18 @@ import {
 import {
   isComposedTemplate,
   type AssetMeta,
-  type RuntimeStore,
   type CompileError,
   type EncodingOptions,
   type TemplateModule,
-} from "../../index.browser.js";
+} from "@superimg/types";
+import type { RuntimeStore } from "@superimg/runtime-web";
 import { VideoControls } from "./VideoControls.js";
-import { useCompiledTemplate } from "../hooks/useCompiledTemplate.js";
-import { usePlaygroundExport } from "../hooks/usePlaygroundExport.js";
+import { noopExportLayer, type ExportLayerState } from "./export-layer-state.js";
+import {
+  DynamicCompileLayer,
+  DynamicExportLayer,
+} from "./PlayerDynamicLayers.js";
+import type { CompileLayerState } from "./PlayerCompileLayer.js";
 import type { ExportOptions } from "./ExportDialog.js";
 
 let shimmerInjected = false;
@@ -200,42 +204,23 @@ export function Player({
     ensureShimmerStyle();
   }, []);
 
-  const {
-    template: compiledTemplate,
-    compiling,
-    error: compileError,
-  } = useCompiledTemplate({
-    code: code ?? "",
-    ...(bundled !== undefined ? { bundled } : {}),
-    wasmCompile,
-    debounceMs: compileDebounceMs,
-    enabled: !!code || (!!bundled && !wasmCompile),
+  const needsCompile = !!(code || bundled);
+  const needsBuiltInExport = controls === "full" && !onExportProp;
+
+  const [compileState, setCompileState] = useState<CompileLayerState>({
+    template: null,
+    compiling: false,
+    error: null,
   });
+  const [builtInExport, setBuiltInExport] =
+    useState<ExportLayerState>(noopExportLayer);
 
-  useEffect(() => {
-    onCompiling?.(compiling);
-  }, [compiling, onCompiling]);
-
-  useEffect(() => {
-    if (compileError) {
-      onCompileError?.(compileError);
-    }
-  }, [compileError, onCompileError]);
-
-  const template = templateProp ?? compiledTemplate;
+  const template = templateProp ?? compileState.template;
   const exportTemplate =
-    template && !isComposedTemplate(template)
-      ? (template as TemplateModule)
-      : null;
+    template && !isComposedTemplate(template) ? template : null;
 
-  const builtInExport = usePlaygroundExport({
-    template: controls === "full" && !onExportProp ? exportTemplate : null,
-    data: data ?? {},
-    ...(fps !== undefined ? { fps } : {}),
-    ...(encoding !== undefined ? { encoding } : {}),
-  });
-
-  const isLoading = compiling || (!!template && !isReady);
+  const isLoading =
+    compileState.compiling || (!!template && !isReady);
 
   const notifyStore = useCallback((next: RuntimeStore | null) => {
     setStore(next);
@@ -277,6 +262,8 @@ export function Player({
       onFrameRef.current?.(frame);
     });
 
+    let cancelled = false;
+
     const loadPlayer = async () => {
       const snap = loadSnapshotRef.current;
       const loadOpts = {
@@ -284,25 +271,49 @@ export function Player({
         ...(snap.assets !== undefined ? { assets: snap.assets } : {}),
         ...(snap.assetResolver !== undefined ? { assetResolver: snap.assetResolver } : {}),
       };
-      const result = await player.load(template, loadOpts);
-      const loaded = result.status === "success";
-      setIsReady(loaded);
-      if (loaded) {
-        const runtimeStore = player.getRuntimeStore();
-        notifyStore(runtimeStore);
-        if (duration !== undefined || fps !== undefined) {
-          player.update({
-            ...(duration !== undefined ? { duration } : {}),
-            ...(fps !== undefined ? { fps } : {}),
-          });
+      try {
+        const result = await player.load(template, loadOpts);
+        if (cancelled || playerRef.current !== player) return;
+
+        const loaded = result.status === "success";
+        setIsReady(loaded);
+        if (loaded) {
+          const runtimeStore = player.getRuntimeStore();
+          notifyStore(runtimeStore);
+          if (duration !== undefined || fps !== undefined) {
+            player.update({
+              ...(duration !== undefined ? { duration } : {}),
+              ...(fps !== undefined ? { fps } : {}),
+            });
+          }
+          if (autoPlay) {
+            player.play();
+          }
+        } else {
+          notifyStore(null);
         }
-        if (autoPlay) {
-          player.play();
-        }
-      } else {
+        onLoadRef.current?.(result);
+      } catch (err) {
+        if (cancelled || playerRef.current !== player) return;
+        setIsReady(false);
         notifyStore(null);
+        onLoadRef.current?.({
+          status: "error",
+          errorType: "validation",
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
-      onLoadRef.current?.(result);
+    };
+
+    const disposePlayer = () => {
+      cancelled = true;
+      player.dispose();
+      if (playerRef.current === player) {
+        playerRef.current = null;
+      }
+      notifyStore(null);
+      setIsReady(false);
+      setIsPlaying(false);
     };
 
     if (loadMode === "lazy") {
@@ -318,22 +329,14 @@ export function Player({
       observer.observe(containerRef.current);
       return () => {
         observer.disconnect();
-        player.dispose();
-        playerRef.current = null;
-        notifyStore(null);
-        setIsReady(false);
-        setIsPlaying(false);
+        disposePlayer();
       };
     }
 
-    loadPlayer();
+    void loadPlayer();
 
     return () => {
-      player.dispose();
-      playerRef.current = null;
-      notifyStore(null);
-      setIsReady(false);
-      setIsPlaying(false);
+      disposePlayer();
     };
   }, [
     template,
@@ -443,6 +446,28 @@ export function Player({
       className={className}
       style={{ display: "flex", flexDirection: "column", ...style }}
     >
+      {needsCompile && (
+        <DynamicCompileLayer
+          code={code}
+          bundled={bundled}
+          wasmCompile={wasmCompile}
+          debounceMs={compileDebounceMs}
+          onChange={setCompileState}
+          onCompiling={onCompiling}
+          onCompileError={onCompileError}
+        />
+      )}
+
+      {needsBuiltInExport && (
+        <DynamicExportLayer
+          template={exportTemplate}
+          data={data ?? {}}
+          {...(fps !== undefined ? { fps } : {})}
+          {...(encoding !== undefined ? { encoding } : {})}
+          onChange={setBuiltInExport}
+        />
+      )}
+
       <div
         ref={containerRef}
         style={{

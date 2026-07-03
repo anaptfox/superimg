@@ -1,5 +1,4 @@
-//! SuperImg React - Hooks and components for React applications
-//! Player component, timeline, and session hooks
+//! SuperImg React - preview hooks and components (no compile/export graph).
 "use client";
 
 // =============================================================================
@@ -9,27 +8,16 @@
 export { Player, type PlayerProps, type PlayerRef } from "./components/Player.js";
 
 // =============================================================================
-// HOOKS
+// PREVIEW HOOKS
 // =============================================================================
 
 export {
   useMediaQuery,
   useIsMobile,
-  useCompiler,
-  useCompiledTemplate,
-  clearTemplateCache,
-  getTemplateCacheSize,
   usePlaygroundCatalog,
-  usePlaygroundExport,
-  usePlayerSession,
   usePlayerShortcuts,
-  checkBrowserCompileSupport,
-  useExport,
   useTimeline,
   useCheckpoints,
-  type UseCompilerReturn,
-  type UseCompiledTemplateOptions,
-  type UseCompiledTemplateReturn,
   type PlaygroundCatalogEntry,
   type PlaygroundCategory,
   type PlaygroundCategoryId,
@@ -37,16 +25,11 @@ export {
   type PlaygroundMeta,
   type UsePlaygroundCatalogOptions,
   type UsePlaygroundCatalogReturn,
-  type UsePlaygroundExportOptions,
-  type UsePlayerSessionOptions,
-  type UsePlayerSessionReturn,
   type UsePlayerShortcutsOptions,
-  type BrowserCompileSupport,
-  type UseExportReturn,
   type UseTimelineReturn,
   type UseCheckpointsReturn,
   type FormatOption,
-} from "./hooks/index.js";
+} from "./hooks/preview.js";
 
 // =============================================================================
 // OTHER COMPONENTS
@@ -81,45 +64,30 @@ export {
 // =============================================================================
 
 export type {
-  // Context types
   RenderContext,
   TemplateModule,
   TemplateConfig,
-
-  // Player types
-  PlayerOptions,
-  PlayerInput,
-  LoadResult,
-  RuntimeState,
-  RuntimeStore,
-
-  // Mode types
   PlaybackMode,
   LoadMode,
   HoverBehavior,
-
-  // Checkpoint types
   Checkpoint,
   Marker,
   MarkerPosition,
-
-  // Compiler types
-  CompileError,
-  CompileResult,
-
-  // Composition types
   ComposedTemplate,
   ResolvedScene,
-
-  // Asset types
   AssetMeta,
   ImageAssetMeta,
   VideoAssetMeta,
   AudioAssetMeta,
-
-  // Stdlib
   Stdlib,
-} from "../index.browser.js";
+} from "@superimg/types";
 
-// Type guards
-export { isComposedTemplate } from "../index.browser.js";
+export type {
+  PlayerOptions,
+  PlayerInput,
+  LoadResult,
+} from "../index.player.js";
+
+export type { RuntimeState, RuntimeStore } from "@superimg/runtime-web";
+
+export { isComposedTemplate } from "@superimg/types";

@@ -14,9 +14,11 @@ import { useExport } from "./useExport.js";
 import type { ExportOptions } from "../components/ExportDialog.js";
 
 export interface UsePlaygroundExportOptions {
-  template: TemplateModule | ComposedTemplate | null;
+  template: TemplateModule<any> | ComposedTemplate | null;
   data?: Record<string, unknown>;
   fps?: number;
+  /** Override template config duration (e.g. data-derived runtime) */
+  duration?: number;
   encoding?: EncodingOptions;
 }
 
@@ -24,6 +26,7 @@ export function usePlaygroundExport({
   template,
   data = {},
   fps = 30,
+  duration,
   encoding,
 }: UsePlaygroundExportOptions) {
   const exportHook = useExport();
@@ -46,17 +49,16 @@ export function usePlaygroundExport({
       exportCanvas.width = exportWidth;
       exportCanvas.height = exportHeight;
 
-      const { CanvasRenderer } = await import("../../index.browser.js");
+      const { CanvasRenderer } = await import("../../index.export.js");
       const exportRenderer = new CanvasRenderer(exportCanvas);
       await exportRenderer.warmup();
 
+      const exportDuration =
+        duration ??
+        (typeof template.config?.duration === "number" ? template.config.duration : 5);
       const totalFrames = isComposedTemplate(template)
         ? template.totalFrames
-        : Math.ceil(
-            (typeof template.config?.duration === "number"
-              ? template.config.duration
-              : 5) * (template.config?.fps ?? fps),
-          );
+        : Math.ceil(exportDuration * (template.config?.fps ?? fps));
       const ctxFps = isComposedTemplate(template) ? template.fps : (template.config?.fps ?? fps);
 
       const renderAtExportSize = async (frame: number) => {
@@ -95,7 +97,7 @@ export function usePlaygroundExport({
         await exportRenderer.dispose();
       }
     },
-    [template, data, fps, encoding, exportHook],
+    [template, data, fps, duration, encoding, exportHook],
   );
 
   return {

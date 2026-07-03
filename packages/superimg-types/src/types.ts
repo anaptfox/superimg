@@ -422,7 +422,7 @@ export interface ComposedTemplate extends ComposedTemplateBase {
 // =============================================================================
 
 /** Playback behavior when video ends */
-export type PlaybackMode = "once" | "loop" | "ping-pong";
+export type PlaybackMode = "once" | "loop";
 
 /** When to load/compile the template */
 export type LoadMode = "eager" | "lazy";

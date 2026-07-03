@@ -4,8 +4,8 @@ import { renderHook, act } from "@testing-library/react";
 const mockExportToVideo = vi.hoisted(() => vi.fn());
 const mockDownloadBlob = vi.hoisted(() => vi.fn());
 
-vi.mock("../../index.browser.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../index.browser.js")>();
+vi.mock("../../index.export.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../index.export.js")>();
   return {
     ...actual,
     exportToVideo: mockExportToVideo,

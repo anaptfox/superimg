@@ -24,7 +24,7 @@ import {
 } from "../utils/subscribeToPlayerRef.js";
 
 export interface UsePlayerSessionOptions {
-  template: TemplateModule | ComposedTemplate | null;
+  template: TemplateModule<any> | ComposedTemplate | null;
   data?: Record<string, unknown>;
   format?: FormatOption;
   duration?: number;

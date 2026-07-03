@@ -1,13 +1,6 @@
 //! React hook for timeline scrubbing
 
-import {
-  useEffect,
-  useCallback,
-  useRef,
-  useLayoutEffect,
-  useState,
-  type RefObject,
-} from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { formatTime, type RuntimeStore } from "../../index.browser.js";
 
 export interface UseTimelineReturn {
@@ -35,17 +28,11 @@ function positionFromPointerEvent(
  * Uses pointer events for mouse, touch, and pen input.
  */
 export function useTimeline(
-  containerRef: RefObject<HTMLElement | null>,
+  container: HTMLElement | null,
   store: RuntimeStore
 ): UseTimelineReturn {
   const isScrubbing = useRef(false);
   const activePointerId = useRef<number | null>(null);
-  const [container, setContainer] = useState<HTMLElement | null>(null);
-
-  // Sync ref to state (refs don't trigger re-renders when .current changes)
-  useLayoutEffect(() => {
-    setContainer(containerRef.current);
-  });
 
   const positionToFrame = useCallback((position: number): number => {
     const { totalFrames } = store.getState();

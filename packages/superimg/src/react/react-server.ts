@@ -11,9 +11,6 @@ export type { VideoControlsProps } from "./components/VideoControls.js";
 export type { DataFormProps, DataFormTheme } from "./components/DataForm.js";
 
 export type {
-  UseCompilerReturn,
-  UseCompiledTemplateOptions,
-  UseCompiledTemplateReturn,
   PlaygroundCatalogEntry,
   PlaygroundCategory,
   PlaygroundCategoryId,
@@ -21,12 +18,7 @@ export type {
   PlaygroundMeta,
   UsePlaygroundCatalogOptions,
   UsePlaygroundCatalogReturn,
-  UsePlaygroundExportOptions,
-  UsePlayerSessionOptions,
-  UsePlayerSessionReturn,
   UsePlayerShortcutsOptions,
-  BrowserCompileSupport,
-  UseExportReturn,
   UseTimelineReturn,
   UseCheckpointsReturn,
   FormatOption,
@@ -38,19 +30,12 @@ export type {
   RenderContext,
   TemplateModule,
   TemplateConfig,
-  PlayerOptions,
-  PlayerInput,
-  LoadResult,
-  RuntimeState,
-  RuntimeStore,
   PlaybackMode,
   LoadMode,
   HoverBehavior,
   Checkpoint,
   Marker,
   MarkerPosition,
-  CompileError,
-  CompileResult,
   ComposedTemplate,
   ResolvedScene,
   AssetMeta,
@@ -58,13 +43,27 @@ export type {
   VideoAssetMeta,
   AudioAssetMeta,
   Stdlib,
-} from "../index.browser.js";
+} from "@superimg/types";
+
+export type {
+  PlayerOptions,
+  PlayerInput,
+  LoadResult,
+} from "../index.player.js";
+
+export type { RuntimeState, RuntimeStore } from "@superimg/runtime-web";
 
 const MSG =
-  "superimg/react is client-only. Use superimg/react/player in Server Components, or mark the file with \"use client\".";
+  'superimg/react is client-only. Use superimg/react/player in Server Components, or mark the file with "use client".';
 
-function clientOnly(name: string): never {
-  throw new Error(`${name}: ${MSG}`);
+const COMPILE_MSG =
+  'Import compile hooks from "superimg/react/compile" in a Client Component.';
+
+const EXPORT_MSG =
+  'Import export hooks from "superimg/react/export" in a Client Component.';
+
+function clientOnly(name: string, hint = MSG): never {
+  throw new Error(`${name}: ${hint}`);
 }
 
 export const Player = () => clientOnly("Player");
@@ -78,16 +77,8 @@ export const VideoControls = () => clientOnly("VideoControls");
 export const DataForm = () => clientOnly("DataForm");
 export const useMediaQuery = () => clientOnly("useMediaQuery");
 export const useIsMobile = () => clientOnly("useIsMobile");
-export const useCompiler = () => clientOnly("useCompiler");
-export const useCompiledTemplate = () => clientOnly("useCompiledTemplate");
-export const clearTemplateCache = () => clientOnly("clearTemplateCache");
-export const getTemplateCacheSize = () => clientOnly("getTemplateCacheSize");
 export const usePlaygroundCatalog = () => clientOnly("usePlaygroundCatalog");
-export const usePlaygroundExport = () => clientOnly("usePlaygroundExport");
-export const usePlayerSession = () => clientOnly("usePlayerSession");
 export const usePlayerShortcuts = () => clientOnly("usePlayerShortcuts");
-export const checkBrowserCompileSupport = () => clientOnly("checkBrowserCompileSupport");
-export const useExport = () => clientOnly("useExport");
 export const useTimeline = () => clientOnly("useTimeline");
 export const useCheckpoints = () => clientOnly("useCheckpoints");
 export const inferSchema = () => clientOnly("inferSchema");

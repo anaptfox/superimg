@@ -1,7 +1,7 @@
 //! React hook for video export
 
 import { useState, useCallback } from "react";
-import { exportToVideo, downloadBlob, type ExportConfig } from "../../index.browser.js";
+import { exportToVideo, downloadBlob, type ExportConfig } from "../../index.export.js";
 
 export interface UseExportReturn {
   /** Whether export is in progress */

@@ -16,19 +16,6 @@ export { Player, resolveFormat } from "@superimg/player";
 export { createRuntime, mount } from "@superimg/runtime-web";
 
 // =============================================================================
-// EXPORT/CAPTURE RUNTIME (advanced usage)
-// =============================================================================
-
-export {
-  CanvasRenderer,
-  exportToVideo,
-  downloadBlob,
-  get2DContext,
-  BrowserRenderer,
-  BrowserEncoder,
-} from "@superimg/runtime";
-
-// =============================================================================
 // PLAYER UTILITIES
 // =============================================================================
 
@@ -48,12 +35,6 @@ export type {
   RuntimePlaybackMode,
   WebRuntime,
 } from "@superimg/runtime-web";
-
-// Export/capture runtime types
-export type {
-  ExportConfig,
-  ExportOptions,
-} from "@superimg/runtime";
 
 // Player types
 export type {
