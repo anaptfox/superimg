@@ -29,6 +29,21 @@ describe("Player vNext runtime-web integration", () => {
     expect(container.children.length).toBe(0);
   });
 
+  it("exposes a Zustand store for UI controls", async () => {
+    const container = document.createElement("div");
+    const template = define({
+      config: { width: 320, height: 180, fps: 10, duration: 1 },
+      render: (ctx) => `<div>${ctx.globalFrame}</div>`,
+    });
+    const player = new Player({ container });
+    await player.load(template as unknown as PlayerInput);
+
+    expect(player.store).toBeDefined();
+    expect(player.store.getState().totalFrames).toBe(10);
+    player.store.getState().setFrame(5);
+    expect(player.currentFrame).toBe(5);
+  });
+
   it("does not expose removed legacy aliases", () => {
     const player = new Player({ container: document.createElement("div") });
     const exposed = player as unknown as Record<string, unknown>;

@@ -17,10 +17,16 @@ import type {
 } from "@superimg/types";
 import { isComposedTemplate } from "@superimg/types";
 import { IframePresenter, type DomPresenter } from "./presenter.js";
-import { superimgDebug } from "./debug.js";
+import { superimgDebug, superimgDebugEnabled } from "./debug.js";
 
-export type RuntimeInput = AnyTemplateModule | ComposedTemplate;
-export type RuntimePlaybackMode = "once" | "loop" | "ping-pong";
+function logRenderError(context: string, error: unknown): void {
+  if (!superimgDebugEnabled()) return;
+  superimgDebug(`render failed: ${context}`, error);
+}
+
+/** Accept any define()-authored template without casts (contravariant render ctx). */
+export type RuntimeInput = AnyTemplateModule<any> | ComposedTemplate;
+export type RuntimePlaybackMode = "once" | "loop";
 
 export interface RuntimeOptions {
   data?: Record<string, unknown>;
@@ -133,7 +139,7 @@ export class WebRuntime {
   attach(container: HTMLElement): this {
     this.presenter.attach(container);
     this.configurePresenter();
-    void this.render(0).catch(() => {});
+    void this.render(0).catch((err) => logRenderError("attach", err));
     if (!this.state.isReady) {
       this.state = this.createState(true, false, this.state.currentFrame);
       this.emitState();
@@ -197,7 +203,7 @@ export class WebRuntime {
 
   seekFrame(frame: number): void {
     const next = this.clampFrame(frame);
-    void this.render(next).catch(() => {});
+    void this.render(next).catch((err) => logRenderError("seekFrame", err));
   }
 
   seekProgress(progress: number): void {
@@ -268,7 +274,7 @@ export class WebRuntime {
       if (this.options.loop || this.options.playbackMode === "loop") {
         this.startedAtMs = performance.now();
         this.startFrame = 0;
-        void this.render(0).catch(() => {});
+        void this.render(0).catch((err) => logRenderError("attach", err));
         this.rafId = requestAnimationFrame(this.tick);
         return;
       }
@@ -278,7 +284,7 @@ export class WebRuntime {
       this.rafId = null;
       return;
     }
-    void this.render(frame).catch(() => {});
+    void this.render(frame).catch((err) => logRenderError("tick", err));
     this.rafId = requestAnimationFrame(this.tick);
   };
 

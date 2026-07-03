@@ -11,6 +11,9 @@ import {
 } from "@superimg/runtime-web";
 import { getPreset } from "@superimg/stdlib";
 import { HoverController } from "./player-hover.js";
+import { createPlaybackController, type PlaybackController } from "./playback.js";
+import { createPlayerStore, type PlayerStore } from "./state.js";
+import { createRuntimeStoreAdapter } from "./runtime-store-adapter.js";
 import {
   isComposedTemplate,
   SuperImgError,
@@ -136,12 +139,14 @@ class PlayerNotReadyError extends SuperImgError {
 export class Player {
   private container: HTMLElement;
   private runtime: WebRuntime | null = null;
+  private playerStore: PlayerStore | null = null;
   private runtimeStore: RuntimeStore | null = null;
+  private playbackController: PlaybackController | null = null;
   private template: PlayerInput | null = null;
   private checkpointResolverInstance: CheckpointResolver | null = null;
   private markerList: Marker[] = [];
   private format: FormatOption | undefined;
-  private readonly options: {
+  private options: {
     playbackMode: PlaybackMode;
     loadMode: LoadMode;
     hoverBehavior: HoverBehavior;
@@ -171,14 +176,14 @@ export class Player {
     this.hoverController = new HoverController(
       this.container,
       { behavior: this.options.hoverBehavior, delayMs: this.options.hoverDelayMs },
-      () => this.runtime
+      () => (this.runtime && this.playerStore ? this : null)
     );
     this.hoverController.install();
   }
 
   async load(input: PlayerInput, options: LoadOptions = {}): Promise<LoadResult> {
     try {
-      this.runtime?.dispose();
+      this.teardownPlayback();
       this.template = input;
       this.markerList = options.markers ?? [];
       this.lastCheckpointId = null;
@@ -190,21 +195,51 @@ export class Player {
         ...(options.assets !== undefined ? { assets: options.assets } : {}),
         ...(options.assetResolver !== undefined ? { assetResolver: options.assetResolver } : {}),
         playbackMode: this.options.playbackMode,
+        autoplay: false,
       });
-      this.runtimeStore = this.runtime.asStore();
-      this.checkpointResolverInstance = null;
       this.wireRuntimeEvents(this.runtime);
       this.runtime.attach(this.container);
+
+      const runtimeState = this.runtime.getState();
       this.rebuildCheckpointResolver();
 
-      const state = this.runtime.getState();
+      this.playerStore = createPlayerStore(
+        { fps: runtimeState.fps, duration: runtimeState.duration },
+        {
+          onPlay: () => {
+            this.playbackController?.play();
+            this.emit("play");
+          },
+          onPause: () => {
+            this.playbackController?.pause();
+            this.emit("pause");
+          },
+          onFrameChange: (frame) => {
+            void this.runtime?.render(frame).then(() => {
+              const total = this.playerStore?.getState().totalFrames ?? 0;
+              this.emit("frame", frame, total);
+              this.emitCheckpoint(frame);
+            });
+          },
+        },
+        this.checkpointResolverInstance ?? undefined
+      );
+
+      this.playbackController = createPlaybackController(this.playerStore, {
+        onFrame: (frame) => this.playerStore!.getState().setFrame(frame),
+        onEnd: () => this.handlePlaybackEnd(),
+      });
+
+      this.runtimeStore = createRuntimeStoreAdapter(this.playerStore, () => this.runtime);
+      this.playerStore.getState().setReady(true);
+
       return {
         status: "success",
-        totalFrames: state.totalFrames,
-        duration: state.duration,
-        width: state.width,
-        height: state.height,
-        fps: state.fps,
+        totalFrames: runtimeState.totalFrames,
+        duration: runtimeState.duration,
+        width: runtimeState.width,
+        height: runtimeState.height,
+        fps: runtimeState.fps,
       };
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -231,43 +266,65 @@ export class Player {
     }
     runtime.update(next);
     this.rebuildCheckpointResolver();
+
+    if (this.playerStore) {
+      const state = runtime.getState();
+      this.playerStore.getState().updateConfig({ fps: state.fps, duration: state.duration });
+    }
   }
 
   render(frame?: number): Promise<void> {
-    return this.requireRuntime("render").render(frame);
+    const target = frame ?? this.currentFrame;
+    return this.requireRuntime("render").render(target);
   }
 
   play(): void {
-    this.requireRuntime("play").play();
+    this.requireStore("play").getState().play();
   }
 
   pause(): void {
-    this.requireRuntime("pause").pause();
+    this.requireStore("pause").getState().pause();
   }
 
   seekFrame(frame: number): void {
-    this.requireRuntime("seekFrame").seekFrame(frame);
+    this.requireStore("seekFrame").getState().setFrame(frame);
   }
 
   seekProgress(progress: number): void {
-    this.requireRuntime("seekProgress").seekProgress(progress);
+    const store = this.requireStore("seekProgress");
+    const s = store.getState();
+    const frame = Math.floor(progress * Math.max(0, s.totalFrames - 1));
+    s.setFrame(frame);
   }
 
   seekTimeSeconds(seconds: number): void {
-    this.requireRuntime("seekTimeSeconds").seekTimeSeconds(seconds);
+    this.seekFrame(Math.floor(seconds * this.fps));
   }
 
   getState(): RuntimeState {
-    return this.requireRuntime("getState").getState();
+    return this.getRuntimeStore().getState();
   }
 
   subscribe(listener: () => void): () => void {
-    return this.requireRuntime("subscribe").subscribe(listener);
+    return this.requireStore("subscribe").subscribe(listener);
   }
 
   getRuntimeStore(): RuntimeStore {
     if (!this.runtimeStore) throw new PlayerNotReadyError("getRuntimeStore");
     return this.runtimeStore;
+  }
+
+  /** Zustand store for vanilla UI controls (timeline, shortcuts, dev-ui). */
+  get store(): PlayerStore {
+    return this.requireStore("store");
+  }
+
+  get playbackMode(): PlaybackMode {
+    return this.options.playbackMode;
+  }
+
+  set playbackMode(mode: PlaybackMode) {
+    this.options.playbackMode = mode;
   }
 
   on<K extends keyof PlayerEvents>(event: K, callback: PlayerEvents[K]): () => void {
@@ -359,37 +416,38 @@ export class Player {
   }
 
   dispose(): void {
+    this.teardownPlayback();
     this.hoverController.dispose();
     this.runtime?.dispose();
     this.runtime = null;
-    this.runtimeStore = null;
     this.template = null;
     this.checkpointResolverInstance = null;
     this.events = {};
   }
 
   get isReady(): boolean {
-    return this.runtime?.getState().isReady ?? false;
+    return this.playerStore?.getState().isReady ?? false;
   }
 
   get isPlaying(): boolean {
-    return this.runtime?.getState().isPlaying ?? false;
+    return this.playerStore?.getState().isPlaying ?? false;
   }
 
   get currentFrame(): number {
-    return this.runtime?.getState().currentFrame ?? 0;
+    return this.playerStore?.getState().currentFrame ?? 0;
   }
 
   get totalFrames(): number {
-    return this.runtime?.getState().totalFrames ?? 0;
+    return this.playerStore?.getState().totalFrames ?? 0;
   }
 
   get fps(): number {
-    return this.runtime?.getState().fps ?? 30;
+    return this.playerStore?.getState().fps ?? 30;
   }
 
   get currentProgress(): number {
-    return this.runtime?.getState().progress ?? 0;
+    const total = this.totalFrames;
+    return total > 1 ? this.currentFrame / (total - 1) : 0;
   }
 
   get currentTimeSeconds(): number {
@@ -397,7 +455,7 @@ export class Player {
   }
 
   get totalDurationSeconds(): number {
-    return this.runtime?.getState().duration ?? 0;
+    return this.playerStore?.getState().duration ?? 0;
   }
 
   get renderWidth(): number {
@@ -421,18 +479,33 @@ export class Player {
     return this.checkpointResolverInstance;
   }
 
+  private handlePlaybackEnd(): void {
+    if (this.options.playbackMode === "loop") {
+      this.playerStore!.getState().setFrame(0);
+      this.playbackController!.play(0);
+      return;
+    }
+    this.playerStore!.getState().pause();
+    this.emit("ended");
+  }
+
+  private teardownPlayback(): void {
+    this.playbackController?.destroy();
+    this.playbackController = null;
+    this.playerStore = null;
+    this.runtimeStore = null;
+    this.runtime?.dispose();
+    this.runtime = null;
+  }
+
   private wireRuntimeEvents(runtime: WebRuntime): void {
-    runtime.on("ready", () => this.emit("ready"));
+    runtime.on("ready", () => {
+      this.playerStore?.getState().setReady(true);
+      this.emit("ready");
+    });
     runtime.on("rendered", (payload) => this.emit("rendered", payload));
-    runtime.on("play", () => this.emit("play"));
-    runtime.on("pause", () => this.emit("pause"));
-    runtime.on("ended", () => this.emit("ended"));
     runtime.on("error", (error) => this.emit("error", error));
     runtime.on("scenechange", (scene) => this.emit("scenechange", scene));
-    runtime.on("frame", (frame, totalFrames) => {
-      this.emit("frame", frame, totalFrames);
-      this.emitCheckpoint(frame);
-    });
   }
 
   private rebuildCheckpointResolver(): void {
@@ -455,11 +528,14 @@ export class Player {
     this.emit("checkpoint", checkpoint);
   }
 
-
-
   private requireRuntime(operation: string): WebRuntime {
     if (!this.runtime) throw new PlayerNotReadyError(operation);
     return this.runtime;
+  }
+
+  private requireStore(operation: string): PlayerStore {
+    if (!this.playerStore) throw new PlayerNotReadyError(operation);
+    return this.playerStore;
   }
 
   private requireCheckpointResolver(operation: string): CheckpointResolver {

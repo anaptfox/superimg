@@ -21,3 +21,12 @@ export type { Checkpoint, CheckpointSource, Marker, MarkerPosition } from "@supe
 
 export { formatTime, renderCheckpointMarkers, createTimelineController } from "./timeline.js";
 export type { CheckpointMarkerOptions } from "./timeline.js";
+
+export { createPlayerStore } from "./state.js";
+export type { PlayerStore, PlayerState, PlayerConfig } from "./state.js";
+
+export { createPlaybackController } from "./playback.js";
+export type { PlaybackController, PlaybackCallbacks } from "./playback.js";
+
+export { createCheckpointControls } from "./controls.js";
+export type { CheckpointControls, CheckpointControlsOptions } from "./controls.js";

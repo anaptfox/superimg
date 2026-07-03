@@ -65,8 +65,6 @@ export function createPlayerStore(
   callbacks?: PlayerStoreCallbacks,
   checkpointResolver?: CheckpointResolver
 ) {
-  const maxCacheSize = callbacks?.maxCacheSize ?? 30;
-
   return createStore<PlayerState>((set, get) => ({
     // Initial state
     isPlaying: false,

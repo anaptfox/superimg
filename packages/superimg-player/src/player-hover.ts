@@ -1,5 +1,11 @@
 import type { HoverBehavior } from "@superimg/types";
-import type { WebRuntime } from "@superimg/runtime-web";
+
+export interface HoverPlaybackTarget {
+  play(): void;
+  pause(): void;
+  seekProgress(progress: number): void;
+  seekFrame(frame: number): void;
+}
 
 export interface HoverConfig {
   behavior: HoverBehavior;
@@ -13,7 +19,7 @@ export class HoverController {
   constructor(
     private readonly container: HTMLElement,
     private readonly config: HoverConfig,
-    private readonly getRuntime: () => WebRuntime | null
+    private readonly getTarget: () => HoverPlaybackTarget | null
   ) {}
 
   install(): void {
@@ -21,16 +27,16 @@ export class HoverController {
 
     const onMouseEnter = () => {
       if (this.config.behavior !== "play") return;
-      this.timeoutId = window.setTimeout(() => this.getRuntime()?.play(), this.config.delayMs);
+      this.timeoutId = window.setTimeout(() => this.getTarget()?.play(), this.config.delayMs);
     };
 
     const onMouseMove = (event: MouseEvent) => {
       if (this.config.behavior !== "preview-scrub") return;
-      const runtime = this.getRuntime();
-      if (!runtime) return;
+      const target = this.getTarget();
+      if (!target) return;
       const rect = this.container.getBoundingClientRect();
       const progress = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
-      runtime.seekProgress(progress);
+      target.seekProgress(progress);
     };
 
     const onMouseLeave = () => {
@@ -38,10 +44,10 @@ export class HoverController {
         window.clearTimeout(this.timeoutId);
         this.timeoutId = undefined;
       }
-      const runtime = this.getRuntime();
-      if (!runtime) return;
-      runtime.pause();
-      if (this.config.behavior !== "none") runtime.seekFrame(0);
+      const target = this.getTarget();
+      if (!target) return;
+      target.pause();
+      if (this.config.behavior !== "none") target.seekFrame(0);
     };
 
     this.container.addEventListener("mouseenter", onMouseEnter);
