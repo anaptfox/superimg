@@ -11,6 +11,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { profiles } from "./bundle-deps.mjs";
+import { collectLineImports, isCommentLine } from "./scan-imports.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -49,12 +50,6 @@ const SKIP_FILES = [
   /^plugin\.js$/,
   /^bundler-browser\.js$/,
 ];
-
-const LINE_IMPORT_RE =
-  /^import\s+(?:type\s+)?(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+|)['"]([^'"]+)['"]/;
-const LINE_EXPORT_RE =
-  /^export\s+(?:type\s+)?(?:\{[^}]*\}|\*)\s+from\s+['"]([^'"]+)['"]/;
-const LINE_DYNAMIC_RE = /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 
 function walkJs(dir, out = []) {
   for (const entry of readdirSync(dir)) {
@@ -98,22 +93,10 @@ function collectDistExternals() {
     const src = readFileSync(file, "utf8");
     for (const line of src.split("\n")) {
       const trimmed = line.trimStart();
-      if (trimmed.startsWith("*") || trimmed.startsWith("//")) continue;
-
-      const staticImport = trimmed.match(LINE_IMPORT_RE);
-      if (staticImport) addExternal(specs, staticImport[1]);
-
-      const sideEffect = trimmed.match(/^import\s+['"]([^'"]+)['"]/);
-      if (sideEffect) addExternal(specs, sideEffect[1]);
-
-      const reExport = trimmed.match(LINE_EXPORT_RE);
-      if (reExport) addExternal(specs, reExport[1]);
-
-      LINE_DYNAMIC_RE.lastIndex = 0;
-      let dynamic;
-      while ((dynamic = LINE_DYNAMIC_RE.exec(trimmed))) {
-        addExternal(specs, dynamic[1]);
-      }
+      if (isCommentLine(trimmed)) continue;
+      const found = new Set();
+      collectLineImports(trimmed, found);
+      for (const spec of found) addExternal(specs, spec);
     }
   }
   return specs;
@@ -186,44 +169,71 @@ if (warnings.length) {
   for (const w of warnings) console.warn(`    ${w}`);
 }
 
-// Browser client graph must not import node: builtins (Turbopack / client bundles)
+// Browser client graph must not import node: builtins (Turbopack / client bundles).
+// Walk the relative import closure from each browser client ENTRY (stable names);
+// this automatically covers shared chunks (dist/chunks/*) without hardcoding them.
 if (profileName === "superimg") {
   const NODE_IMPORT_RE = /(?:^|\n)\s*import\s+[^'"]*['"]node:/;
-  const BROWSER_CLIENT_GRAPH = new Set([
-    "rolldown-runtime.browser.js",
-    "dist.js",
+  const REL_IMPORT_RE =
+    /^(?:import|export)\s+(?:type\s+)?(?:(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?|\w+)\s+from\s+|)['"](\.[^'"]+)['"]/;
+  const BROWSER_CLIENT_ENTRIES = [
     "index.browser.js",
-    "index2.browser.js",
-    "player2.js",
-    "Player3.js",
-    "useCompiledTemplate.js",
     "bundler-browser.js",
+    "index.export.js",
+    "player.js",
+    "runtime-web.js",
     "react/index.js",
     "react/player.js",
-  ]);
+    "react/compile.js",
+    "react/export.js",
+  ];
 
-  for (const entry of readdirSync(DIST)) {
-    if (!BROWSER_CLIENT_GRAPH.has(entry) && !/^plugin\.shared-.*\.js$/.test(entry)) {
-      continue;
-    }
-    const filePath = join(DIST, entry);
-    if (!statSync(filePath).isFile()) continue;
-    const src = readFileSync(filePath, "utf8");
+  const DEFAULT_PREVIEW_ENTRIES = [
+    "index.browser.js",
+    "player.js",
+    "react/index.js",
+    "react/player.js",
+  ];
+
+  const FORBIDDEN_IN_PREVIEW = [
+    /@rolldown\/browser/,
+    /\bbundler-browser(?:\.js)?\b/,
+    /\bbundler\.worker(?:\.js)?\b/,
+    /\bindex\.export(?:\.js)?\b/,
+    /\bmediabunny\b/,
+    /@zumer\/snapdom/,
+  ];
+
+  function walkClientGraph(rel, seen) {
+    if (seen.has(rel)) return;
+    const abs = join(DIST, rel);
+    if (!statSync(abs, { throwIfNoEntry: false })?.isFile()) return;
+    seen.add(rel);
+    const src = readFileSync(abs, "utf8");
     if (NODE_IMPORT_RE.test(src)) {
-      errors.push(`${entry} must not import node: builtins (browser client graph)`);
+      errors.push(`${rel} must not import node: builtins (browser client graph)`);
+    }
+    for (const line of src.split("\n")) {
+      const m = line.trimStart().match(REL_IMPORT_RE);
+      if (!m) continue;
+      const next = resolve(dirname(abs), m[1]);
+      if (!next.startsWith(DIST) || !next.endsWith(".js")) continue;
+      walkClientGraph(next.slice(DIST.length + 1), seen);
     }
   }
 
-  for (const sub of ["react"]) {
-    const subDir = join(DIST, sub);
-    if (!statSync(subDir, { throwIfNoEntry: false })?.isDirectory()) continue;
-    for (const entry of readdirSync(subDir)) {
-      if (!entry.endsWith(".js")) continue;
-      const rel = `${sub}/${entry}`;
-      if (!BROWSER_CLIENT_GRAPH.has(rel)) continue;
-      const src = readFileSync(join(subDir, entry), "utf8");
-      if (NODE_IMPORT_RE.test(src)) {
-        errors.push(`${rel} must not import node: builtins (browser client graph)`);
+  const seen = new Set();
+  for (const entry of BROWSER_CLIENT_ENTRIES) walkClientGraph(entry, seen);
+
+  const previewSeen = new Set();
+  for (const entry of DEFAULT_PREVIEW_ENTRIES) walkClientGraph(entry, previewSeen);
+  for (const rel of previewSeen) {
+    const src = readFileSync(join(DIST, rel), "utf8");
+    for (const pattern of FORBIDDEN_IN_PREVIEW) {
+      if (pattern.test(src)) {
+        errors.push(
+          `${rel} must not reference ${pattern} (default preview graph — use superimg/export or superimg/bundler opt-in entries)`,
+        );
       }
     }
   }

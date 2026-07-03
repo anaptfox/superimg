@@ -97,9 +97,41 @@ export const superimgNeverBundle = [
 /** @superimg/core policy */
 export const coreNeverBundle = ["rolldown", "@rolldown/browser", ...wasmExternals];
 
+/**
+ * Platform builds (edge/browser/player/react-compile) must be dependency-self-contained
+ * so a downstream consumer can copy the dist files verbatim. The runtime closure may
+ * reference only the host-provided externals below; everything else is inlined.
+ *
+ * Reduced neverBundle (just the allowed externals) paired with an expanded alwaysBundle.
+ * tsdown's alwaysBundle re-applies the global `external` via this.resolve, so a package
+ * must be ABSENT from neverBundle AND PRESENT in alwaysBundle to inline. String patterns
+ * are exact (picomatch) — use regex for any package with subpath imports.
+ */
+export const platformNeverBundle = [
+  "react",
+  "react-dom",
+  /^react\//,
+  /^react-dom\//,
+  "@rolldown/browser",
+  ...wasmExternals,
+];
+
+export const platformAlwaysBundle = [
+  ...workspaceBundle,
+  /^colord($|\/)/,
+  /^date-fns($|\/)/,
+  "simplex-noise",
+  "morphdom",
+  /^zustand($|\/)/,
+  "mediabunny",
+  /^path-data-parser($|\/)/,
+  /^source-map-js($|\/)/,
+];
+
 /** Profiles for check-externals.mjs */
 export const profiles = {
   superimg: { alwaysBundle: superimgAlwaysBundle, neverBundle: superimgNeverBundle },
   cli: { alwaysBundle: cliAlwaysBundle, neverBundle: cliNeverBundle },
   core: { alwaysBundle: [], neverBundle: coreNeverBundle },
+  platform: { alwaysBundle: platformAlwaysBundle, neverBundle: platformNeverBundle },
 };
