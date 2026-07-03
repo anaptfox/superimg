@@ -20,13 +20,6 @@ interface DevConfig {
   templateDir?: string;
 }
 
-interface VideoItem {
-  name: string;
-  shortName: string;
-  relativePath: string;
-  hasLocalConfig: boolean;
-}
-
 type ToastType = "success" | "error" | "info";
 
 import {
@@ -331,7 +324,7 @@ async function initHome() {
       card.addEventListener("mouseleave", () => {
         clearTimeout(hoverTimeout);
         if (hoverPlayer) {
-          hoverPlayer.destroy();
+          hoverPlayer.dispose();
           hoverPlayer = null;
         }
         // Restore thumbnail
@@ -373,7 +366,7 @@ function formatCategory(relativePath: string): string {
   return parts.length > 1 ? parts.slice(0, -1).join("/") : "";
 }
 
-import { generateThumbnail } from "./thumbnails";
+import { generateThumbnail, type VideoItem } from "./thumbnails";
 
 function getTemplateDisplayName(path: string): string {
   if (path.startsWith("/api/videos/") && path.endsWith("/template")) {
@@ -425,9 +418,9 @@ async function initPlayer() {
     player.on("play", updateUI);
     player.on("pause", updateUI);
     player.on("frame", (f) => setStatus(`Playing frame ${f}/${player!.totalFrames}`));
-    player.on("frameRendered", (f, html, compositeHtml) => {
+    player.on("rendered", (payload) => {
       if (inspectorPanel.classList.contains("open")) {
-        inspectorCode.textContent = compositeHtml;
+        inspectorCode.textContent = payload.compositeHtml;
       }
     });
     // Surface runtime render errors via the rich overlay. The player has
@@ -577,7 +570,7 @@ async function initPlayer() {
 
       // Update code right away if opening
       if (!expanded && player && player.store) {
-        player.renderFrame(player.currentFrame);
+        void player.render(player.currentFrame);
       }
     });
     inspectorPanelClose?.addEventListener("click", () => {
@@ -621,7 +614,7 @@ async function initPlayer() {
         w = devConfig.outputs[sel].width ?? w;
         h = devConfig.outputs[sel].height ?? h;
       }
-      player!.setFormat({ width: w, height: h });
+      player!.update({ width: w, height: h });
       setStatus(`Output: ${sel || "Default"} (${w}x${h})`);
     });
 

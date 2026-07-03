@@ -35,8 +35,10 @@ This document describes internal workspace architecture. User-facing code should
 │                                                                 │
 │              PRIVATE WORKSPACE IMPLEMENTATION                   │
 │                                                                 │
-│  @superimg/runtime    BrowserRenderer, BrowserEncoder           │
-│  @superimg/core       Compiler, Context, HTML                   │
+│  @superimg/runtime-web  WebRuntime, IframePresenter (preview) │
+│  @superimg/runtime      BrowserRenderer, BrowserEncoder       │
+│  @superimg/player       Player (store + timeline controls)    │
+│  @superimg/core         Compiler, Context, HTML               │
 │  @superimg/stdlib     Easing, Math, Color, Text, etc.           │
 │  @superimg/types      TypeScript interfaces                     │
 │                                                                 │
@@ -45,11 +47,35 @@ This document describes internal workspace architecture. User-facing code should
 
 **Key Insight:** Playwright reuses `BrowserEncoder` (via the harness running inside headless Chromium) but captures frames differently—`PlaywrightFrameRenderer` uses `page.screenshot()` instead of Snapdom's `BrowserRenderer`.
 
+### Preview vs Capture (browser)
+
+| Path | Package | Output | Use case |
+|------|---------|--------|----------|
+| **Preview / playback** | `@superimg/runtime-web` | Live DOM (iframe + morphdom) | `Player`, docs editor, `superimg dev` |
+| **Browser export** | `@superimg/runtime` | MP4/WebM blob via Snapdom + WebCodecs | Playground export, dev-ui export |
+| **Server CLI** | Playwright + `runtime/encoder` | MP4 on disk | `superimg render` |
+
+`@superimg/player` sits above `runtime-web`: it owns UI state (`player.store`), playback timing, and checkpoint navigation. React controls use `getRuntimeStore()` — a thin adapter over the same store.
+
 ---
 
 ## Browser Rendering
 
-Direct client-side rendering using WebCodecs and Snapdom v2.
+Client-side rendering has two tiers: **display** (runtime-web) and **capture/encode** (runtime).
+
+### Display (runtime-web)
+
+```
+Template.render(ctx) → buildCompositeHtml → IframePresenter (morphdom)
+```
+
+- No per-frame rasterization during preview
+- `requestAnimationFrame` driven by `Player` store + playback controller
+- Sandboxed iframe; Tailwind CDN requires `allow-scripts`
+
+### Capture / Encode (runtime)
+
+Direct client-side pixel pipeline using WebCodecs and Snapdom v2.
 
 ### Architecture
 

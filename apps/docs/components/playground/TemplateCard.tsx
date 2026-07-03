@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import posthog from "posthog-js";
 import { Player, type PlayerRef } from "superimg/react";
 import type { EditorExample } from "@/lib/video/examples";
@@ -17,7 +17,34 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
   const hoverTimeoutRef = useRef<number | undefined>(undefined);
   const [isHovering, setIsHovering] = useState(false);
   const isMobile = useIsMobile();
-  const { template, assets, assetResolver, duration } = usePlaygroundExample(example);
+  const rootRef = useRef<HTMLButtonElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const {
+    template,
+    assets,
+    assetResolver,
+    duration,
+    compiling,
+    error,
+    missingBundle,
+  } = usePlaygroundExample(example, { preview: true, enabled: visible });
 
   const handleMouseEnter = () => {
     if (isMobile) return;
@@ -55,6 +82,7 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
 
   return (
     <button
+      ref={rootRef}
       type="button"
       className="group block w-full text-left"
       onMouseEnter={handleMouseEnter}
@@ -68,6 +96,12 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
         `}
       >
         <div className="relative aspect-video bg-neutral-950">
+          {(missingBundle || error) && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-950/90 p-3 text-center text-xs text-amber-200">
+              {error?.message ??
+                "Missing bundle — run `just generate-examples`"}
+            </div>
+          )}
           <Player
             ref={playerRef}
             template={template ?? undefined}
@@ -75,11 +109,17 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
             assetResolver={assetResolver}
             format="horizontal"
             playbackMode="loop"
-            loadMode="lazy"
+            loadMode="eager"
+            autoPlay
             hoverBehavior="none"
             className="h-full w-full"
             style={{ aspectRatio: "16/9" }}
           />
+          {compiling && !template && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-neutral-950/60 text-xs text-white/70">
+              Loading…
+            </div>
+          )}
 
           <div
             className={`

@@ -2,6 +2,16 @@
 
 ## 0.0.21 — Unreleased
 
+**Breaking:** Browser player preview uses iframe + morphdom (`runtime-web`) instead of canvas frame caching.
+
+- `Player.destroy()` → `Player.dispose()`
+- `seekToFrame()` → `seekFrame()`
+- `setData()` / `setFormat()` → `update({ data })` / `update({ format })`
+- Removed `maxCacheFrames` and `captureFrame()` from `Player`
+- `PlaybackMode` no longer includes `"ping-pong"` (use `std.math.pingPong()` in templates for motion)
+- Removed unused `BrowserScheduler` export from `@superimg/runtime`
+- `Player.store` — Zustand store for vanilla timeline/shortcut integrations; React controls use `getRuntimeStore()`
+
 **Breaking:** Audio config is clip-based only — `AudioOptions` and bare `audio: "path.mp3"` are removed.
 
 Migrate `audio: { src, volume, fadeIn: 0.5, fadeOut: 2, loop }` to an `AudioClip`:

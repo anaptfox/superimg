@@ -1,0 +1,90 @@
+// Hello World Example — Animated Title Card
+// Demonstrates: ctx.director(), gradients, and cinematic animation logic
+
+import { define } from "superimg";
+
+export default define({
+  sample: {
+    title: "Hello, SuperImg!",
+    subtitle: "STUNNING VIDEOS FROM CODE",
+    accentColor: "#667eea",
+  },
+
+  config: {
+    fps: 30,
+    duration: "4s",
+    fonts: ["Space+Grotesk:wght@400;700", "Inter:wght@400;500;700"],
+    inlineCss: [`
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        background: #0f0f23;
+        font-family: 'Space Grotesk', sans-serif;
+        overflow: hidden;
+      }
+      .container { text-align: center; position: relative; z-index: 1; }
+      .accent-line { height: 2px; margin: 0 auto; }
+      .title { 
+        font-weight: 700; 
+        margin: 20px 0 8px; 
+        letter-spacing: -0.03em;
+        text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      }
+      .subtitle {
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.6);
+        letter-spacing: 0.15em;
+        margin-bottom: 20px;
+      }
+    `],
+  },
+
+  render(ctx) {
+    const { std, width, height, data } = ctx;
+    const { title, subtitle, accentColor } = data;
+
+    // Director phases: 1.5s enter | 2s hold | 0.5s exit
+    const t = ctx.director({ enter: "1.5s", hold: "2.0s", exit: "0.5s" });
+
+    // Animations with more overlapping/organic timings
+    const lineAnim     = t.motion({ at: "5%", for: "70%", easing: "easeOutCubic" });
+    const titleAnim    = t.motion({ at: "10%",  for: "80%", y: 40, scale: 0.96, easing: "easeOutCubic" });
+    const subtitleAnim = t.motion({ at: "25%", for: "70%", y: 20, easing: "easeOutCubic" });
+
+    // Cinematic "Camera" Scale: slowly zooms in over the entire scene
+    const cameraScale = std.interpolate(t.progress, [0, 1], [1, 1.04]);
+
+    // Dynamic Background: Radial gradient that shifts slightly
+    const bgPos = 50 + (t.progress * 10);
+    const bgStyle = std.css({
+      width, height,
+      background: `radial-gradient(circle at 50% ${bgPos}%, #1a1a3a 0%, #0f0f23 100%)`,
+    }, std.css.center());
+
+    // Glowing Gradient Lines
+    const lineStyle = std.css({
+      width: lineAnim.enter * 100 + "%",
+      maxWidth: 500,
+      background: `linear-gradient(90deg, transparent 0%, ${accentColor} 50%, transparent 100%)`,
+      opacity: 0.8 * lineAnim.opacity
+    });
+
+    return `
+      <div style="${bgStyle}">
+        <div class="container" style="transform: scale(${cameraScale})">
+          <div class="accent-line" style="${lineStyle}"></div>
+          
+          <h1 class="title" style="${std.css({ fontSize: 88, color: "white" })}; ${titleAnim.style}">
+            ${title}
+          </h1>
+          
+          <p class="subtitle" style="${std.css({ fontSize: 18 })}; ${subtitleAnim.style}">
+            ${subtitle}
+          </p>
+          
+          <div class="accent-line" style="${lineStyle}"></div>
+        </div>
+      </div>
+    `;
+  },
+});

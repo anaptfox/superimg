@@ -28,13 +28,14 @@ function mentionsBatchExport(source: string): boolean {
   );
 }
 
-// Stub `superimg` so discovery only needs the `batch` provider — the template's
-// define() call becomes identity and the (unused) default export is harmless.
-// `defineBatch(template, fn)` returns `fn`, so `mod.batch` is directly callable.
+// Stub `superimg` / `gumbo/media/define` so discovery only needs the `batch` provider —
+// the template's define() call becomes identity and the (unused) default export
+// is harmless. `defineBatch(template, fn)` returns `fn`, so `mod.batch` is
+// directly callable.
 const superimgStub: Plugin = {
   name: "superimg-discover-stub",
   resolveId(id) {
-    if (id === "superimg") {
+    if (id === "superimg" || id === "gumbo/media/define" || id === "gumbo/media") {
       return "\0superimg-stub";
     }
     return null;
@@ -85,7 +86,14 @@ export async function discoverBatchSources(
     try {
       bundle = await rolldown({
         input: tpl.entrypoint,
-        external: (id) => !id.startsWith(".") && !isAbsolute(id) && id !== "\0superimg-stub" && id !== "superimg",
+        tsconfig: false,
+        external: (id) =>
+          !id.startsWith(".") &&
+          !isAbsolute(id) &&
+          id !== "\0superimg-stub" &&
+          id !== "superimg" &&
+          id !== "gumbo/media/define" &&
+          id !== "gumbo/media",
         plugins: [superimgStub, ...(options.plugins ?? [])],
       });
       // Single chunk so lazy `import("../content")` is inlined — otherwise rolldown

@@ -1,6 +1,6 @@
 # Player
 
-Embed SuperImg templates directly in web apps. The Player renders your templates in the browser at 60fps—no video file needed.
+Embed SuperImg templates directly in web apps. The Player renders templates in the browser using real HTML/CSS in a sandboxed iframe — no video file needed for preview.
 
 ## Installation
 
@@ -18,10 +18,7 @@ For React projects, the `<Player>` component is included in the same package —
 import { Player } from 'superimg/browser';
 import template from './my-video.media';
 
-// Create player
-const player = new Player({ container: '#video' });
-
-// Load and play
+const player = new Player({ container: '#video', format: 'horizontal' });
 await player.load(template);
 player.play();
 ```
@@ -38,6 +35,7 @@ function App() {
       template={template}
       format="horizontal"
       playbackMode="loop"
+      controls
       style={{ width: '100%', maxWidth: 640, aspectRatio: '16/9' }}
     />
   );
@@ -47,67 +45,37 @@ function App() {
 ## Playback Controls
 
 ```typescript
-// Basic controls
 player.play();
 player.pause();
-player.stop();
 
-// Check state
-player.isPlaying;      // true/false
-player.isReady;        // true after load completes
-player.currentFrame;   // Current frame number
-player.totalFrames;    // Total frames in video
-player.fps;            // Frames per second
+player.isPlaying;
+player.isReady;
+player.currentFrame;
+player.totalFrames;
+player.fps;
 ```
 
 ## Seeking
 
-Jump to any point in the video:
-
 ```typescript
-// By frame number
-player.seekToFrame(50);
-
-// By time in seconds
-player.seekToTimeSeconds(2.5);
-
-// By progress (0 to 1)
-player.seekToProgress(0.5);  // Jump to 50%
+player.seekFrame(50);
+player.seekTimeSeconds(2.5);
+player.seekProgress(0.5);
 ```
 
 ## Dynamic Data
 
-Update the video content at runtime:
-
 ```typescript
-// Initial load with data
-await player.load(template);
-player.setData({ title: "Hello" });
-
-// Update data later
-player.setData({ title: "Updated Title" });
-
-// Data is merged with template sample defaults
-// Changes trigger immediate re-render
+await player.load(template, { data: { title: 'Hello' } });
+player.update({ data: { title: 'Updated Title' } });
 ```
 
 ## Format Options
 
-Control the canvas dimensions:
-
 ```typescript
-// Simple presets
-player.setFormat('horizontal');  // 1920x1080
-player.setFormat('vertical');    // 1080x1920
-player.setFormat('square');      // 1080x1080
-
-// Platform-specific
-player.setFormat('youtube.video.short');
-player.setFormat('instagram.video.reel');
-player.setFormat('instagram.video.feed');
-
-// Custom dimensions
-player.setFormat({ width: 800, height: 600 });
+const player = new Player({ container: '#video', format: 'horizontal' });
+player.update({ format: 'vertical' });
+player.update({ width: 800, height: 600 });
 ```
 
 ## Playback Modes
@@ -115,65 +83,37 @@ player.setFormat({ width: 800, height: 600 });
 ```typescript
 const player = new Player({
   container: '#video',
-  playbackMode: 'loop',      // Repeat forever
-  // playbackMode: 'once',   // Play once and stop
-  // playbackMode: 'ping-pong', // Play forward, then reverse
+  playbackMode: 'loop',  // or 'once'
 });
 ```
+
+## Store (vanilla UI)
+
+```typescript
+const store = player.store;
+store.subscribe(() => {
+  const { isPlaying, currentFrame, isScrubbing } = store.getState();
+});
+store.getState().togglePlayPause();
+store.getState().setFrame(30);
+```
+
+Use `createTimelineController` from `superimg/browser` for scrubbing UI.
 
 ## Events
 
-Listen for playback events:
-
 ```typescript
-player.on('play', () => console.log('Playing'));
-player.on('pause', () => console.log('Paused'));
-player.on('ended', () => console.log('Finished'));
-player.on('ready', () => console.log('Loaded'));
-player.on('error', (err) => console.error(err));
-
-// Frame updates
-player.on('frame', (frameNum) => {
-  console.log(`Frame: ${frameNum}`);
-});
-
-// Scene changes (for composed templates)
-player.on('scenechange', (scene) => {
-  console.log(`Now playing: ${scene.label}`);
-});
-
-// Remove listener
-player.off('play');
-```
-
-## Frame Capture
-
-Export individual frames as images:
-
-```typescript
-// Capture current frame
-const { dataUrl, width, height } = await player.captureFrame();
-img.src = dataUrl;
-
-// Capture specific frame
-const { blob } = await player.captureFrame({
-  frame: 30,
-  format: 'blob',
-  mimeType: 'image/webp',
-  quality: 0.92,
-});
-
-// Download the image
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = 'frame.webp';
-a.click();
+player.on('play', () => {});
+player.on('pause', () => {});
+player.on('ended', () => {});
+player.on('ready', () => {});
+player.on('frame', (frame, totalFrames) => {});
+player.on('rendered', (payload) => {}); // payload.compositeHtml for inspector/debug
+player.on('scenechange', (scene) => {});
+player.on('error', (err) => {});
 ```
 
 ## Composed Templates
-
-For multi-scene videos, the Player provides scene navigation:
 
 ```typescript
 import { compose } from 'superimg';
@@ -181,53 +121,32 @@ import { compose } from 'superimg';
 const composed = compose([intro, content, outro]);
 await player.load(composed);
 
-// Scene navigation
-const scenes = player.getScenes();
-const current = player.getCurrentScene();
-
-player.seekToScene('intro');    // By ID
-player.seekToScene(0);          // By index
+player.seekScene('intro');
+player.seekScene(0);
 player.nextScene();
 player.previousScene();
 ```
 
 ## Checkpoints
 
-Checkpoints are named timestamps within a video — useful for chapter markers, replay buttons, or jumping to a specific moment. Composed templates expose scene boundaries as checkpoints automatically; you can also add your own.
-
 ```typescript
-// Jump to a named checkpoint
 player.goToCheckpoint('chorus');
-
-// Step through checkpoints in order
 player.nextCheckpoint();
 player.prevCheckpoint();
-
-// Inspect the current checkpoint (the most recent one <= current frame)
-const current = player.getCurrentCheckpoint(); // Checkpoint | undefined
-
-// Add a custom checkpoint. Frame defaults to the current frame if omitted.
 player.addCheckpoint('chorus', 120, { label: 'Chorus' });
-player.addCheckpoint('here'); // marks the current frame
-
-// Remove one
 player.removeCheckpoint('chorus');
 ```
 
 ## Player Options
 
-Full configuration with defaults:
-
 ```typescript
 const player = new Player({
-  container: '#video',           // CSS selector or HTMLElement (required)
-  format: 'horizontal',          // Dimensions preset (optional)
-  playbackMode: 'once',          // 'once' | 'loop' | 'ping-pong'   (default: 'once')
-  loadMode: 'eager',             // 'eager' | 'lazy'                 (default: 'eager')
-  hoverBehavior: 'none',         // 'none' | 'play' | 'preview-scrub' (default: 'none')
-  hoverDelayMs: 200,             // Delay before hover behavior fires (default: 200)
-  showControls: false,           // Show playback controls            (default: false)
-  maxCacheFrames: 30,            // Frame cache size                  (default: 30)
+  container: '#video',
+  format: 'horizontal',
+  playbackMode: 'once',
+  loadMode: 'eager',
+  hoverBehavior: 'none',
+  hoverDelayMs: 200,
 });
 ```
 
@@ -236,104 +155,24 @@ const player = new Player({
 ```tsx
 <Player
   template={template}
-  data={{ title: "Dynamic" }}
+  data={{ title: 'Dynamic' }}
   format="horizontal"
-  duration={5}                   // Override scene duration (seconds)
-  fps={30}
   playbackMode="loop"
-  autoPlay                       // Start playing on load
-  controls="full"                // false | "minimal" | true | "full"
-  onStore={(store) => {}}         // Runtime store for external VideoControls
+  autoPlay
+  controls="full"
+  onStore={(store) => {}}
   onPlay={() => {}}
   onPause={() => {}}
-  onEnded={() => {}}
   onFrame={(frame) => {}}
-  style={{ width: '100%' }}
 />
 ```
 
-### Built-in controls
+## Browser Export
 
-The `controls` prop selects how much UI the Player renders:
-
-| Value | UI |
-|-------|-----|
-| `false` | Canvas only |
-| `"minimal"` | Play / pause |
-| `true` | Play + timeline + time |
-| `"full"` | Play + timeline + time + format + export |
-
-Use `controls="full"` for landing-page demos. For editor layouts that need a custom toolbar (duration picker, loop toggle, data panel), use `usePlayerSession` with external `VideoControls` instead.
-
-### Live code editing
-
-Pass `code` for WASM compile-on-change, or `bundled` for a pre-built single-file module (multi-file examples in the docs playground):
-
-```tsx
-<Player
-  code={source}
-  bundled={prebuilt}
-  wasmCompile={false}
-  assetResolver={(file) => `/assets/${file}`}
-/>
-```
-
-`data`, `assets`, `format`, `duration`, and `fps` hot-update without remounting the player.
-
-### usePlayerSession
-
-Orchestration hook for editor-grade layouts — exposes playback state, format, and export without rendering built-in controls:
-
-```tsx
-import { Player, VideoControls, usePlayerSession, usePlayerShortcuts } from 'superimg/react';
-
-const session = usePlayerSession({ template, data: formData, format: 'horizontal' });
-
-usePlayerShortcuts(session.playerRef, { onToggleLoop: () => setLooping((v) => !v) });
-
-<Player
-  ref={session.playerRef}
-  template={template}
-  data={formData}
-  format={session.format}
-  onStore={session.onStore}
-  autoPlay
-/>
-
-{session.store && (
-  <VideoControls
-    store={session.store}
-    showTimeline
-    showTime
-    showFormat
-    showExport
-    onExport={session.exportMp4}
-    onDownload={session.download}
-    exporting={session.exporting}
-    exportProgress={session.exportProgress}
-    currentFormat={session.format}
-    onFormatChange={session.setFormat}
-  />
-)}
-```
-
-### Browser limitations
-
-- **Composed templates** (`compose([...])`) load and play in the vanilla `Player`, but the React Player does not export multi-scene compositions in the browser.
-- **Scene navigation** (`ChapterNav`, `seekToScene`) is available on the core player API; the React `<Player>` does not include chapter UI.
-
-## Cleanup
-
-When you're done with a player:
+Preview (`Player`) and export (`exportToVideo`) are separate paths:
 
 ```typescript
-player.destroy();
+import { CanvasRenderer, exportToVideo, downloadBlob } from 'superimg/browser';
 ```
 
-This removes event listeners and frees resources.
-
-## Next Steps
-
-- [How It Works](/docs/how-it-works) — Understand the rendering pipeline
-- [CLI Reference](/docs/cli) — Commands for rendering to MP4
-- [Animation Basics](/docs/animation) — Timing and easing patterns
+See the docs playground or `usePlaygroundExport` for a complete export example.

@@ -1,4 +1,6 @@
-import { Player } from "@superimg/player";
+import { createRenderContext } from "@superimg/core";
+import { buildCompositeHtml } from "@superimg/core/html";
+import { CanvasRenderer } from "@superimg/runtime";
 import { loadTemplate } from "./main";
 
 export interface VideoItem {
@@ -13,27 +15,40 @@ export async function generateThumbnail(
   thumbnailImg: HTMLImageElement,
   placeholder: HTMLDivElement
 ): Promise<void> {
-  // Create offscreen container for player
   const tempContainer = document.createElement("div");
   tempContainer.style.cssText = "position:absolute;left:-9999px;top:-9999px;width:400px;height:225px;";
   document.body.appendChild(tempContainer);
 
   try {
-    const player = new Player({
-      container: tempContainer,
-      format: "horizontal",  // Force 1920×1080 like hover preview
-    });
-
     const mod = await loadTemplate(`/api/videos/${encodeURIComponent(video.name)}/template`);
-    await player.load(mod.default ?? mod);
+    const template = mod.default ?? mod;
+    const config = template.config ?? {};
+    const width = config.width ?? 1920;
+    const height = config.height ?? 1080;
+    const fps = config.fps ?? 30;
+    const duration = typeof config.duration === "number" ? config.duration : 5;
+    const totalFrames = Math.max(1, Math.floor(fps * duration));
+    const frame = Math.floor(totalFrames / 2);
 
-    // Capture thumbnail using smart frame selection
-    const { dataUrl } = await player.captureFrame({ format: "dataUrl" });
+    const canvas = document.createElement("canvas");
+    canvas.width = 400;
+    canvas.height = 225;
+    const renderer = new CanvasRenderer(canvas);
+    renderer.setOptions({
+      fonts: config.fonts,
+      inlineCss: config.inlineCss,
+      stylesheets: config.stylesheets,
+    });
+    await renderer.warmup();
 
-    player.destroy();
+    const data = template.sample ?? template.data ?? {};
+    const ctx = createRenderContext(frame, fps, totalFrames, width, height, data, "default", {}, undefined, config.width);
+    const html = template.render(ctx);
+    const compositeHtml = buildCompositeHtml(html, config.background, config.watermark, width, height);
+    await renderer.renderFrame(() => compositeHtml, ctx);
+    await renderer.dispose();
 
-    // Set thumbnail
-    thumbnailImg.src = dataUrl!;
+    thumbnailImg.src = canvas.toDataURL("image/jpeg", 0.85);
     thumbnailImg.onload = () => {
       thumbnailImg.style.opacity = "1";
       placeholder.style.opacity = "0";

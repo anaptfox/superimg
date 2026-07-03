@@ -44,12 +44,19 @@ export function TemplatePreviewModal({
   const [codeOpen, setCodeOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const playground = usePlaygroundExample(template, { enabled: !!template });
+  const playground = usePlaygroundExample(template, {
+    enabled: !!template,
+    preview: true,
+  });
 
   const handleCopyCode = useCallback(async () => {
     if (!template) return;
+    const source =
+      template.code ??
+      (template.codeUrl ? await fetch(template.codeUrl).then((r) => r.text()) : "");
+    if (!source) return;
     try {
-      await navigator.clipboard.writeText(template.code);
+      await navigator.clipboard.writeText(source);
       setCopied(true);
       posthog.capture("template_code_copied", { template_id: template.id });
       setTimeout(() => setCopied(false), 2000);
@@ -131,7 +138,10 @@ export function TemplatePreviewModal({
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
           <CodeBlockContainer language="typescript" className="max-h-80 overflow-auto">
-            <CodeBlockContent code={template.code} language="typescript" />
+            <CodeBlockContent
+              code={template.code ?? "// Load code from editor"}
+              language="typescript"
+            />
           </CodeBlockContainer>
         </CollapsibleContent>
       </Collapsible>

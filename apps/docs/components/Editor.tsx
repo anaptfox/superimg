@@ -7,17 +7,17 @@ import {
   Player,
   DataForm,
   VideoControls,
-  useCompiledTemplate,
-  usePlayerSession,
   usePlayerShortcuts,
   isComposedTemplate,
   type ExportOptions,
 } from "superimg/react";
+import { useCompiledTemplate } from "superimg/react/compile";
+import { usePlayerSession } from "superimg/react/export";
 import {
   playgroundAssetResolver,
   resolvePlaygroundAssets,
 } from "@/lib/playground/host";
-import { shouldUseBundled } from "@/lib/playground/example";
+import { hasPrebuiltBundle, shouldUseBundled } from "@/lib/playground/example";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
@@ -233,19 +233,47 @@ export default function Editor({ templateId }: EditorProps) {
 
   const activeExample = activeExampleId ? getExampleById(activeExampleId) : undefined;
 
-  // Load example from templateId prop on mount
   useEffect(() => {
-    if (templateId) {
-      const example = getExampleById(templateId);
-      if (example) {
-        setCode(example.code ?? DEFAULT_TEMPLATE);
-        setActiveExampleId(example.id);
-        setWasmCompile(!shouldUseBundled(example));
-        setCodeEdited(false);
-        setFormData({});
-      }
-    }
+    if (templateId) setActiveExampleId(templateId);
   }, [templateId]);
+
+  // Load example source when the active template changes
+  useEffect(() => {
+    if (!activeExampleId) return;
+    const example = getExampleById(activeExampleId);
+    if (!example) return;
+
+    setWasmCompile(!shouldUseBundled(example));
+    setCodeEdited(false);
+    setFormData({});
+
+    if (example.code) {
+      setCode(example.code);
+      return;
+    }
+
+    if (!example.codeUrl) {
+      setCode(DEFAULT_TEMPLATE);
+      return;
+    }
+
+    let cancelled = false;
+    fetch(example.codeUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to fetch ${example.codeUrl}`);
+        return res.text();
+      })
+      .then((text) => {
+        if (!cancelled) setCode(text);
+      })
+      .catch(() => {
+        if (!cancelled) setCode(DEFAULT_TEMPLATE);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeExampleId]);
 
   const handleSelectExample = (example: EditorExample) => {
     posthog.capture("example_selected_in_editor", { example_id: example.id, example_title: example.title, category: example.category });
@@ -255,10 +283,15 @@ export default function Editor({ templateId }: EditorProps) {
 
   const { template, compiling, error: compileError } = useCompiledTemplate({
     code,
+    codeUrl: activeExample?.codeUrl,
     bundled: activeExample?.bundled,
+    bundledUrl: activeExample?.bundledUrl,
     wasmCompile,
     debounceMs: 300,
-    enabled: !!code || !!(activeExample?.bundled && !wasmCompile),
+    enabled:
+      !!code ||
+      !!activeExample?.codeUrl ||
+      !!(hasPrebuiltBundle(activeExample) && !wasmCompile),
   });
 
   const assets = useMemo(
@@ -463,7 +496,7 @@ export default function Editor({ templateId }: EditorProps) {
             </div>
           </div>
 
-          {activeExample?.bundled && !wasmCompile && (
+          {hasPrebuiltBundle(activeExample) && !wasmCompile && (
             <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-200">
               Multi-file template — showing pre-built bundle. Edit code to live-compile (imports may not resolve in browser).
             </div>

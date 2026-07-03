@@ -1,10 +1,6 @@
 import { useMemo } from "react";
-import {
-  useCompiledTemplate,
-  isComposedTemplate,
-  type TemplateModule,
-  type ComposedTemplate,
-} from "superimg/react";
+import { isComposedTemplate, type TemplateModule, type ComposedTemplate } from "superimg/react";
+import { useCompiledTemplate } from "superimg/react/compile";
 import type { EditorExample } from "@/lib/video/examples";
 import {
   hasConfigAssets,
@@ -13,9 +9,27 @@ import {
   resolvePlaygroundAssets,
 } from "./host";
 
-export function shouldUseBundled(example: EditorExample | undefined, codeEdited = false): boolean {
-  if (!example?.bundled || codeEdited) return false;
-  return example.playground?.liveEdit === false;
+export function hasPrebuiltBundle(example: EditorExample | undefined): boolean {
+  return !!(example?.bundledUrl || example?.bundled);
+}
+
+/** Editor: WASM when live-editing demos or no prebuilt bundle. */
+export function shouldUseBundled(
+  example: EditorExample | undefined,
+  codeEdited = false,
+): boolean {
+  if (codeEdited || !hasPrebuiltBundle(example)) return false;
+  return example!.playground?.liveEdit === false;
+}
+
+/**
+ * Grid / modal preview: always prefer prebuilt IIFE when available.
+ * `liveEdit` only affects the editor — not thumbnail playback.
+ */
+export function shouldUseBundledForPreview(
+  example: EditorExample | undefined,
+): boolean {
+  return hasPrebuiltBundle(example);
 }
 
 export function exampleNeedsPreBundle(code: string): boolean {
@@ -36,17 +50,35 @@ export function templateDuration(
 
 export function usePlaygroundExample(
   example: EditorExample | null | undefined,
-  options?: { code?: string; edited?: boolean; enabled?: boolean },
+  options?: {
+    code?: string;
+    edited?: boolean;
+    enabled?: boolean;
+    /** Grid/modal: never WASM when a prebuilt bundle exists */
+    preview?: boolean;
+  },
 ) {
-  const wasmCompile = options?.edited ?? !shouldUseBundled(example ?? undefined);
+  const preview = options?.preview ?? false;
+  const useBundledPath = preview
+    ? shouldUseBundledForPreview(example ?? undefined)
+    : shouldUseBundled(example ?? undefined, options?.edited);
+
+  const wasmCompile = options?.edited ?? !useBundledPath;
   const code = options?.code ?? example?.code ?? "";
+  const codeUrl = !code && example?.codeUrl ? example.codeUrl : undefined;
+  const usePrebuilt = useBundledPath;
   const enabled =
     options?.enabled ??
-    (!!example && (!!code || !!(example.bundled && !wasmCompile)));
+    (!!example &&
+      (!!code ||
+        !!codeUrl ||
+        (hasPrebuiltBundle(example) && !wasmCompile)));
 
   const { template, compiling, error } = useCompiledTemplate({
     code,
+    codeUrl,
     bundled: example?.bundled,
+    bundledUrl: example?.bundledUrl,
     wasmCompile,
     enabled,
   });
@@ -58,12 +90,19 @@ export function usePlaygroundExample(
 
   const duration = templateDuration(template, example?.playground?.duration ?? 5);
 
+  const missingBundle =
+    !!example &&
+    preview &&
+    !hasPrebuiltBundle(example);
+
   return {
     template,
     compiling,
     error,
     assets,
     wasmCompile,
+    usePrebuilt,
+    missingBundle,
     duration,
     assetResolver: playgroundAssetResolver,
   };

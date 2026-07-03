@@ -2,47 +2,15 @@
 
 import { useRef } from "react";
 import { Code, Sparkles, Eye, Video } from "lucide-react";
-import { Player, useCompiledTemplate, type PlayerRef } from "superimg/react";
+import { Player, type PlayerRef } from "superimg/react";
+import {
+  howItWorksBeforeTemplate,
+  howItWorksAfterTemplate,
+} from "@/content/templates/landing-demos";
+import type { TemplateModule } from "superimg/react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
-
-const BEFORE_TEMPLATE = `import { define } from "superimg";
-
-export default define({
-  render(ctx) {
-    const { timeline.frame, fps, width, height, std } = ctx;
-    const count = Math.max(1, 5 - Math.floor(timeline.frame / fps));
-    const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }, std.css.center());
-    return \`
-      <div style="\${bgStyle}">
-        <div style="\${std.css({ fontSize: 180, fontWeight: 800, color: 'white', textShadow: '0 4px 20px rgba(0,0,0,0.5)' })}">
-          \${count}
-        </div>
-      </div>
-    \`;
-  }
-});`;
-
-const AFTER_TEMPLATE = `import { define } from "superimg";
-
-export default define({
-  render(ctx) {
-    const { timeline.frame, fps, width, height, std } = ctx;
-    const count = Math.max(1, 5 - Math.floor(timeline.frame / fps));
-    const showGo = Math.floor(timeline.frame / fps) >= 5;
-    const fraction = (timeline.frame % fps) / fps;
-    const pulse = std.interpolate(fraction, [0, 1], [1.2, 1], "easeOutCubic");
-    const glow = std.interpolate(fraction, [0, 1], [0.8, 0.2], "easeOutCubic");
-    const bgStyle = std.css({ width, height, background: "linear-gradient(135deg, #1e1e2e, #2d2d44)", fontFamily: "system-ui, sans-serif" }, std.css.center());
-    const numStyle = std.css({ fontSize: 180, fontWeight: 800, color: "white", transform: "scale(" + pulse + ")", textShadow: "0 0 " + (40 * glow) + "px rgba(102,126,234," + glow + ")" });
-    return \`
-      <div style="\${bgStyle}">
-        <div style="\${numStyle}">\${showGo ? "GO!" : count}</div>
-      </div>
-    \`;
-  }
-});`;
 
 const BEFORE_CODE_DISPLAY = `render(ctx) {
   const { timeline.frame, fps } = ctx;
@@ -60,9 +28,8 @@ const AFTER_CODE_DISPLAY = `render(ctx) {
   return \`<div style="\${s}">\${count}</div>\`;
 }`;
 
-function MiniVideoPreview({ code }: { code: string }) {
+function MiniVideoPreview({ template }: { template: TemplateModule }) {
   const playerRef = useRef<PlayerRef>(null);
-  const { template } = useCompiledTemplate({ code });
 
   return (
     <div
@@ -73,7 +40,7 @@ function MiniVideoPreview({ code }: { code: string }) {
       <div className="flex items-center justify-center p-4">
         <Player
           ref={playerRef}
-          template={template ?? undefined}
+          template={template as Parameters<typeof Player>[0]["template"]}
           format="square"
           playbackMode="loop"
           loadMode="eager"
@@ -110,7 +77,7 @@ export function HowItWorks() {
           />
         </div>
       ),
-      video: <MiniVideoPreview code={BEFORE_TEMPLATE} />,
+      video: <MiniVideoPreview template={howItWorksBeforeTemplate} />,
     },
     {
       number: "2",
@@ -150,7 +117,7 @@ export function HowItWorks() {
           />
         </div>
       ),
-      video: <MiniVideoPreview code={AFTER_TEMPLATE} />,
+      video: <MiniVideoPreview template={howItWorksAfterTemplate} />,
     },
     {
       number: "4",

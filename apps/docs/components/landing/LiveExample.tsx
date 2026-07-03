@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Player, useCompiledTemplate } from "superimg/react";
+import { Player } from "superimg/react";
+import { landingCountdownTemplate } from "@/content/templates/landing-demos";
 import { useIsMobile } from "@/hooks/use-mobile";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
@@ -45,8 +46,8 @@ export default define({
   },
 
   render(ctx) {
-    const { timeline.frame, fps, width, height, std, data } = ctx;
-    const second = Math.floor(timeline.frame / fps);
+    const { timeline, width, height, std, data } = ctx;
+    const second = Math.floor(timeline.frame / timeline.fps);
     const count = Math.max(1, data.startFrom - second);
     const showGo = second >= data.startFrom;
 
@@ -76,8 +77,6 @@ export function LiveExample() {
   const [cfg, setCfg] = useState<FormState>(INITIAL_FORM);
   const [showCode, setShowCode] = useState(false);
   const isMobile = useIsMobile();
-
-  const { template } = useCompiledTemplate({ code: TEMPLATE_CODE });
 
   const formData = useMemo(
     () => ({
@@ -222,7 +221,7 @@ export function LiveExample() {
                 style={isMobile ? { maxHeight: "min(60vh, 400px)" } : undefined}
               >
                 <Player
-                  template={template ?? undefined}
+                  template={landingCountdownTemplate as Parameters<typeof Player>[0]["template"]}
                   data={formData}
                   format="horizontal"
                   playbackMode="loop"

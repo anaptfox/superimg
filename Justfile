@@ -168,11 +168,13 @@ publish:
 
     just versions
     echo ""
-    if gum confirm "Publish superimg to npm?"; then
+    if gum confirm "Publish superimg + @superimg/browser-bundler to npm?"; then
+        echo "Publishing @superimg/browser-bundler..."
+        cd "$ROOT/packages/superimg-browser-bundler" && pnpm publish
         echo "Publishing superimg..."
         cd "$ROOT/packages/superimg" && pnpm publish
         echo ""
-        gum style --foreground 212 --bold "✓ superimg published!"
+        gum style --foreground 212 --bold "✓ superimg + @superimg/browser-bundler published!"
     else
         gum style --foreground 196 "Cancelled"
         exit 1
@@ -187,6 +189,9 @@ publish-dry:
     just versions
     echo ""
     gum style --foreground 99 "Dry-run: showing what would be published"
+    echo ""
+    echo "=== @superimg/browser-bundler ==="
+    cd "$ROOT/packages/superimg-browser-bundler" && pnpm publish --dry-run
     echo ""
     echo "=== superimg ==="
     cd "$ROOT/packages/superimg" && pnpm publish --dry-run

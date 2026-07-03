@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Player, useCompiledTemplate } from "superimg/react";
+import { Player } from "superimg/react";
+import { useCompiledTemplate } from "superimg/react/compile";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
