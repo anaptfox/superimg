@@ -1,0 +1,28 @@
+{
+  "name": "superimg-example-waku-player",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SuperImg Player in a Waku RSC app",
+  "type": "module",
+  "scripts": {
+    "dev": "waku dev --port 3009",
+    "build": "waku build",
+    "start": "waku start --port 3009",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .cache"
+  },
+  "dependencies": {
+    "hono": "^4.12.27",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-server-dom-webpack": "^19.2.7",
+    "superimg": "workspace:*",
+    "waku": "1.0.0-beta.6"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.0.3",
+    "typescript": "^6.0.3"
+  }
+}

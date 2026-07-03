@@ -1,0 +1,40 @@
+---
+sidebar_position: 1
+---
+
+# SuperImg in Docusaurus
+
+This example embeds **SuperImg** `<Player>` previews **inside MDX documentation** — as inline explainers next to prose, not as a homepage hero video.
+
+## What you get
+
+- **Inline explainers** — `DocExplainer` pairs copy with a compact hover-to-play loop
+- **Zero-config preview** — `import { Player } from "superimg/react"` with no Vite/Webpack aliases
+- **SSR-safe** — `SuperImgPlayer` wraps `@docusaurus/BrowserOnly`
+- **Preview-only** — no export/compile graph in this docs site
+
+## Quick start
+
+```bash
+# From monorepo root
+just install
+cd examples/apps/docusaurus-player && pnpm install && pnpm dev
+```
+
+Open [http://localhost:3005/docs/explainer](http://localhost:3005/docs/explainer).
+
+## Project layout
+
+```
+src/
+  components/SuperImgPlayer.tsx   BrowserOnly wrapper
+  components/DocExplainer.tsx     Prose + player explainer block
+  components/PlayerGrid.tsx       Optional comparison row (in docs only)
+  lib/hello-template.ts           define() templates
+docs/
+  intro.mdx                       This page
+  explainer.mdx                   Inline explainer demos
+  player.mdx                      MDX integration reference
+```
+
+Start with [Inline explainers](./explainer), then [Player in MDX](./player) for wiring details.

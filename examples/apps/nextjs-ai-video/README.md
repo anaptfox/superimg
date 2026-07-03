@@ -1,12 +1,12 @@
 # SuperImg × Next.js AI SDK — Video Generation Example
 
-Type a topic. Get a video.
+Type a topic. Get a video timeline.
 
 This example demonstrates the **AI agent → video output** pattern:
 
-1. User enters a topic (e.g. "The rise of AI in 2025")
-2. The Next.js API route calls `generateObject` from the [Vercel AI SDK](https://sdk.vercel.ai/) to produce structured JSON: a headline, 3 stats, a summary, and an accent color
-3. The SuperImg `<Player>` renders every frame live in the browser at 60fps
+1. User enters a topic (e.g. "The history of JavaScript")
+2. The Next.js API route calls `generateText` + `Output.object()` from the [Vercel AI SDK](https://sdk.vercel.ai/) to produce structured JSON: a title, 5–8 chronological events, and an accent color
+3. The SuperImg `<Player>` renders every frame live in the browser at 30fps
 4. The user can export the result to MP4 with one click
 
 ## Why this matters
@@ -19,7 +19,7 @@ AI generates JSON → SuperImg renders video → User downloads MP4
 
 ## Setup
 
-This example runs fully locally — no API keys required.
+This example runs fully locally with [Ollama](https://ollama.com) — no API keys required.
 
 ```bash
 # 1. Pull the model (one-time setup)
@@ -37,7 +37,7 @@ pnpm install
 pnpm dev
 ```
 
-Ollama must be running locally (`ollama serve`) when you start the dev server. If Ollama is on a different host or port, set `OLLAMA_BASE_URL` in `.env.local`.
+Ollama must be running locally (`ollama serve`) when you start the dev server. To use a different host/port or model, set `OLLAMA_BASE_URL` or `OLLAMA_MODEL` in `.env.local`.
 
 Open [http://localhost:3000](http://localhost:3000).
 
@@ -47,43 +47,52 @@ Open [http://localhost:3000](http://localhost:3000).
 app/
   layout.tsx              Root layout
   page.tsx                Main UI: prompt input + Player + export
-  api/generate/route.ts   AI SDK generateObject endpoint
+  api/generate/route.ts   AI SDK generateText + Output.object endpoint
 lib/
-  template.ts             SuperImg define() template (the report card)
+  template.ts             SuperImg define() template + duration helper
 ```
 
 ## Key Code
 
-**`app/api/generate/route.ts`** — The AI endpoint uses `generateText` + `Output.object()` (AI SDK v6) with a Zod schema to return structured video data (not free-form text):
+**`app/api/generate/route.ts`** — The AI endpoint uses `generateText` + `Output.object()` (AI SDK v7) with a Zod schema so the model returns structured timeline data instead of free-form text:
 
 ```ts
+import { generateText, Output } from "ai";
+import { ollama } from "ai-sdk-ollama";
+
 const { output } = await generateText({
-  model: openai("gpt-4o-mini"),
-  output: Output.object({ schema: VideoDataSchema }),
-  prompt: `Generate video data for: "${topic}"`,
-})
+  model: ollama(process.env.OLLAMA_MODEL ?? "llama3.2"),
+  output: Output.object({ schema: TimelineSchema }),
+  prompt: `Create an accurate, chronological timeline about: "${topic}"`,
+});
 ```
 
-**`lib/template.ts`** — The template is fixed; only the data changes:
+**`lib/template.ts`** — The template is fixed; only the data changes. Runtime is derived from the event count via `calculateTimelineDuration()`, the single source of truth shared by both the `<Player>` and the MP4 exporter:
 
 ```ts
-export const reportCardTemplate = define<VideoData>({
+export const timelineTemplate = define<TimelineData>({
+  config: { fps: 30, width: 1920, height: 1080, /* ... */ },
   render({ timeline, data, std, width, height }) {
-    // Animate headline, stats, summary based on `timeline.seconds` and `data`
-    return `<div>...</div>`
+    // Animate title, events, and outro based on `timeline.seconds` and `data`
+    return `<div>...</div>`;
   },
-})
+});
 ```
 
-**`app/page.tsx`** — Pass AI-generated data straight to the player:
+**`app/page.tsx`** — Pass AI-generated data straight to the player, and export with the `usePlaygroundExport` hook:
 
 ```tsx
-<Player template={reportCardTemplate} data={aiGeneratedData} />
+import { Player } from "superimg/react";
+import { usePlaygroundExport } from "superimg/react/export";
+
+const { exportMp4, download } = usePlaygroundExport({ template: timelineTemplate, duration });
+
+<Player template={timelineTemplate} data={videoData} duration={duration} />
 ```
 
 ## Extending This
 
-- Swap `gpt-4o-mini` for any AI SDK provider (Anthropic, Google, etc.)
-- Change the template to match your brand
-- Add `--data products.json` to the CLI to batch-render 1,000 videos
-- Call `session.exportMp4()` programmatically from a server action
+- Swap `ollama("llama3.2")` for any AI SDK provider (`openai`, `anthropic`, `google`, …)
+- Change the template in `lib/template.ts` to match your brand
+- Adjust `TIMELINE_TIMING` to retune pacing — duration recomputes automatically
+- Render headlessly at scale with the SuperImg CLI (`superimg render --all`)

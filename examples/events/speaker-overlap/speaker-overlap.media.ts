@@ -66,7 +66,7 @@ export default define({
     }
 
     // === MAIN CONTENT ===
-    const bg = std.backgrounds.kenBurns({ src: backgroundImage, progress: time / mainDur, zoomTo: 1.1, overlay: "rgba(0, 0, 0, 0.65)" });
+    const bg = std.backgrounds.kenBurns({ src: backgroundImage, progress: timeline.seconds / mainDur, zoomTo: 1.1, overlay: "rgba(0, 0, 0, 0.65)" });
 
     // Triggers within "main" phase (9s duration)
     const hook1P = t.tween(0, 1, { during: "main", at: "0%", for: "0.8s" });

@@ -64,7 +64,7 @@ export default define<TerminalVideoData>({
     duration: "6s",
   },
   render(ctx: RenderContext<TerminalVideoData>) {
-    const { std, width, height, timeline.durationSeconds, data } = ctx;
+    const { std, width, height, timeline, data } = ctx;
     const { commands, title, theme, fontSize } = data;
 
     const t = (THEMES[theme] ?? THEMES.dark) as (typeof THEMES)["dark"];

@@ -1,0 +1,75 @@
+---
+sidebar_position: 3
+---
+
+import SuperImgPlayer from "@site/src/components/SuperImgPlayer";
+import { pulseTemplate } from "@site/src/lib/hello-template";
+
+# Player in MDX
+
+Docusaurus pre-renders docs on the server. SuperImg's browser runtime uses canvas, workers, and WASM — so **never import `<Player>` directly in SSR paths without a client gate**.
+
+For UX patterns (inline explainers vs. galleries), see [Inline explainers](./explainer).
+
+## Recommended wrapper
+
+`SuperImgPlayer` wraps `BrowserOnly` and shows a lightweight placeholder during SSR:
+
+```tsx title="src/components/SuperImgPlayer.tsx"
+import BrowserOnly from "@docusaurus/BrowserOnly";
+import { Player } from "superimg/react";
+
+export default function SuperImgPlayer(props) {
+  return (
+    <BrowserOnly fallback={<div>Loading preview…</div>}>
+      {() => <Player {...props} />}
+    </BrowserOnly>
+  );
+}
+```
+
+## Minimal inline embed
+
+Keep docs clips small and hover-gated — no full-width hero, no control chrome unless you're documenting controls themselves:
+
+```mdx
+import SuperImgPlayer from "@site/src/components/SuperImgPlayer";
+import { pulseTemplate } from "@site/src/lib/hello-template";
+
+<SuperImgPlayer
+  template={pulseTemplate}
+  format="horizontal"
+  playbackMode="loop"
+  loadMode="lazy"
+  hoverBehavior="play"
+/>
+```
+
+<SuperImgPlayer
+  template={pulseTemplate}
+  format="horizontal"
+  playbackMode="loop"
+  loadMode="lazy"
+  hoverBehavior="play"
+  label="inline"
+/>
+
+## Webpack note
+
+Docusaurus uses Webpack. Enable async WASM in `docusaurus.config.ts`:
+
+```ts title="docusaurus.config.ts"
+plugins: [
+  function superimgWebpackPlugin() {
+    return {
+      name: "superimg-webpack",
+      configureWebpack(_config, isServer) {
+        if (isServer) return {};
+        return { experiments: { asyncWebAssembly: true } };
+      },
+    };
+  },
+],
+```
+
+No `@rolldown/browser` peer dependency is required for preview-only docs sites.

@@ -1,0 +1,32 @@
+.explainer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 42%);
+  gap: 20px;
+  align-items: center;
+  margin: 28px 0;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-surface-color);
+}
+
+.copy h4 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.copy p {
+  margin: 0;
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.6;
+}
+
+.player {
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .explainer {
+    grid-template-columns: 1fr;
+  }
+}

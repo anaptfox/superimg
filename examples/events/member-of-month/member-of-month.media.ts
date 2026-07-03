@@ -71,7 +71,7 @@ export default define({
     const ctaAnim = t.motion({ during: "poster", at: "40%", duration: "40%", y: 20 });
 
     // Pulse effect for final badge
-    const badgePulse = t.active === "poster" ? 1 + Math.sin((time - 11) * 3) * 0.02 : 1;
+    const badgePulse = t.active === "poster" ? 1 + Math.sin((timeline.seconds - 11) * 3) * 0.02 : 1;
 
     // Responsive sizing
     const frameSize = isPortrait ? 300 : isSquare ? 240 : 260;

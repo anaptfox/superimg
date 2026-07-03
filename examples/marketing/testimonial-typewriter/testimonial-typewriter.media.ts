@@ -63,10 +63,10 @@ export default define({
     // Typewriter timing (manual progress over the hold phase)
     const typeStart = 4;
     const typeEnd = 20;
-    const typeProgress = std.clamp01((time - typeStart) / (typeEnd - typeStart));
+    const typeProgress = std.clamp01((timeline.seconds - typeStart) / (typeEnd - typeStart));
     const charsToShow = Math.floor(typeProgress * quote.length);
     const visibleText = `"${quote.substring(0, charsToShow)}`;
-    const showCursor = time >= typeStart && time < typeEnd && Math.floor(time * 2) % 2 === 0;
+    const showCursor = timeline.seconds >= typeStart && timeline.seconds < typeEnd && Math.floor(timeline.seconds * 2) % 2 === 0;
 
     // Responsive sizing
     const borderWidth = r({ portrait: 16, default: 12 });

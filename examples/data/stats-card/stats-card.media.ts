@@ -111,7 +111,7 @@ export default define({
 
     // === PRICE PULSE ANIMATION ===
     // Subtle pulse after hero appears (0.35s - 0.65s)
-    const pulseProgress = std.clamp01((time - 0.35) / 0.3);
+    const pulseProgress = std.clamp01((timeline.seconds - 0.35) / 0.3);
     const pulse = Math.sin(pulseProgress * Math.PI) * 0.02;
     const priceScale = heroAnim.scale + pulse;
 

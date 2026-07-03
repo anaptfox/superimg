@@ -1,0 +1,24 @@
+---
+import Layout from "../layouts/Layout.astro";
+import PlayerGrid from "../components/PlayerGrid";
+---
+
+<Layout title="SuperImg × Astro — Gallery">
+  <main>
+    <h1 style="margin:0 0 8px;font-size:32px;font-weight:800;letter-spacing:-1px;">
+      Astro React islands
+    </h1>
+    <p class="lead">
+      Astro renders static HTML; each <code>&lt;Player&gt;</code> mounts as a
+      <code>client:only="react"</code> island. Templates stay in the React layer
+      (they are not serializable across the island boundary).
+    </p>
+
+    <div class="callout">
+      Preview-only: <code>import &#123; Player &#125; from "superimg/react"</code>.
+      No export or in-browser compile graph in this example.
+    </div>
+
+    <PlayerGrid client:only="react" />
+  </main>
+</Layout>

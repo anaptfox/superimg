@@ -1,0 +1,147 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #09090b;
+  color: #fafafa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+a {
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+}
+
+a:hover {
+  color: #a5b4fc;
+}
+
+code {
+  color: #a5b4fc;
+  font-size: 0.92em;
+}
+
+.site-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.site-header strong {
+  font-size: 18px;
+}
+
+.site-header nav {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.lead {
+  margin: 0 0 32px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+}
+
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.player-card h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.player-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0a0a14;
+}
+
+.player-label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+}
+
+.doc-section {
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.doc-section h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.doc-section p {
+  margin: 0 0 20px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.65;
+}
+
+.doc-explainer {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (min-width: 720px) {
+  .doc-explainer {
+    grid-template-columns: 1fr min(320px, 42%);
+  }
+}
+
+.doc-explainer-copy {
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.doc-explainer-player .player-frame {
+  max-width: 100%;
+}
+
+.callout {
+  margin: 24px 0;
+  padding: 16px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(165, 180, 252, 0.25);
+  background: rgba(99, 102, 241, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  line-height: 1.55;
+}

@@ -5,16 +5,16 @@
   "description": "AI-generated video with Next.js AI SDK + SuperImg",
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "next build",
     "start": "next start",
     "clean": "rm -rf .next"
   },
   "dependencies": {
-    "ai": "^7.0.0",
+    "ai": "^7.0.8",
     "ai-sdk-ollama": "^4.0.0",
     "next": "^16.2.9",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "superimg": "workspace:*",
     "zod": "^4.4.3"
   },

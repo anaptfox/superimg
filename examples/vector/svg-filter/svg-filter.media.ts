@@ -21,7 +21,7 @@ export default define({
   },
 
   render(ctx) {
-    const { std, timeline, timeline, width, height } = ctx;
+    const { std, timeline, width, height } = ctx;
 
     // Three presets cycling through
     const presets = ["cinematic", "sepia", "noir"] as const;
@@ -44,7 +44,7 @@ export default define({
     const textScale = std.interpolate(Math.min(segProgress / 0.15, 1), [0, 1], [0.9, 1], "easeOutCubic");
 
     // Build filter
-    const frame = Math.floor(time * 24);
+    const frame = Math.floor(timeline.seconds * 24);
     const f = std.svg.filter([
       { type: "grain", frequency: 0.65, octaves: 3, seed: frame, opacity: 0.25 },
       { type: "colorMatrix", preset },

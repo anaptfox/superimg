@@ -1,0 +1,45 @@
+---
+import Layout from "../layouts/Layout.astro";
+import DocExplainer from "../components/DocExplainer";
+---
+
+<Layout title="SuperImg × Astro — Docs pattern">
+  <main>
+    <h1 style="margin:0 0 8px;font-size:32px;font-weight:800;letter-spacing:-1px;">
+      Inline docs explainers
+    </h1>
+    <p class="lead">
+      Keep prose in <code>.astro</code> files. Mount compact hover-to-play loops
+      beside the text with <code>client:only="react"</code> and a serializable
+      <code>variant</code> prop.
+    </p>
+
+    <section class="doc-section">
+      <h2>Pulse loop</h2>
+      <p>
+        Use lazy loading and hover playback so below-the-fold embeds do not all
+        start at once. Good for reference docs and API pages.
+      </p>
+      <DocExplainer client:only="react" variant="pulse" label="hover to play" />
+    </section>
+
+    <section class="doc-section">
+      <h2>Gradient sweep</h2>
+      <p>
+        Pass a string <code>variant</code> from Astro; the React island resolves
+        the <code>define()</code> template locally.
+      </p>
+      <DocExplainer client:only="react" variant="gradient" label="gradient" />
+    </section>
+
+    <section class="doc-section">
+      <h2>Integration checklist</h2>
+      <ol style="color:rgba(255,255,255,0.6);line-height:1.8;padding-left:1.2rem;">
+        <li>Add <code>@astrojs/react</code> and <code>superimg</code></li>
+        <li>Never SSR <code>&lt;Player&gt;</code> — use <code>client:only="react"</code></li>
+        <li>Import templates inside React components (or map by <code>variant</code> id)</li>
+        <li>Set <code>vite.worker.format: "es"</code> in <code>astro.config.mjs</code></li>
+      </ol>
+    </section>
+  </main>
+</Layout>

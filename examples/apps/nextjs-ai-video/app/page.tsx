@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useMemo } from "react";
+import { Player, type PlayerRef } from "superimg/react";
+import { usePlaygroundExport } from "superimg/react/export";
 import {
-  Player,
-  usePlaygroundExport,
-  type PlayerRef,
-  type TemplateModule,
-} from "superimg/react";
-import { timelineTemplate, type TimelineData } from "@/lib/template";
+  timelineTemplate,
+  calculateTimelineDuration,
+  type TimelineData,
+} from "@/lib/template";
 
 const SUGGESTIONS = [
   "History of JavaScript",
@@ -27,9 +27,18 @@ export default function Page() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
 
+  const duration = useMemo(
+    () =>
+      videoData
+        ? calculateTimelineDuration(videoData.events.length)
+        : undefined,
+    [videoData],
+  );
+
   const { exporting, exportProgress, exportMp4, download } = usePlaygroundExport({
-    template: timelineTemplate as unknown as TemplateModule,
+    template: timelineTemplate,
     data: videoData ?? undefined,
+    duration,
   });
 
   const generate = useCallback(async (inputTopic: string) => {
@@ -50,7 +59,10 @@ export default function Page() {
 
       const data: TimelineData = await res.json();
       setVideoData(data);
-      playerRef.current?.update({ data });
+      playerRef.current?.update({
+        data,
+        duration: calculateTimelineDuration(data.events.length),
+      });
       playerRef.current?.play();
       setIsPlaying(true);
       setStatus("ready");
@@ -286,8 +298,9 @@ export default function Page() {
 
             <Player
               ref={playerRef}
-              template={timelineTemplate as unknown as TemplateModule}
+              template={timelineTemplate}
               data={videoData ?? undefined}
+              duration={duration}
               format="horizontal"
               playbackMode="loop"
               loadMode="eager"
@@ -372,7 +385,7 @@ export default function Page() {
             {[
               ["1", "You type a topic"],
               ["2", "AI SDK generates structured JSON (title, events, accent color)"],
-              ["3", "SuperImg Player renders every frame in your browser — 60fps"],
+              ["3", "SuperImg Player renders every frame in your browser — 30fps"],
               ["4", "Click Download MP4 to export headlessly to a file"],
             ].map(([n, text]) => (
               <div key={n} style={{ display: "flex", gap: 12, padding: "6px 0", alignItems: "flex-start" }}>

@@ -5,11 +5,11 @@ export default define({
     width: 200,
     height: 200,
     fps: 24,
-    duration: "150%",
+    duration: "1.5s",
     gif: { loop: 0, maxColors: 64 },
   },
   render(ctx) {
-    const { std, width, height, timeline, timeline.durationSeconds } = ctx;
+    const { std, width, height, timeline } = ctx;
     const t = timeline.durationSeconds > 0 ? timeline.seconds / timeline.durationSeconds : 0;
     const angle = t * 360;
     const cx = width / 2;

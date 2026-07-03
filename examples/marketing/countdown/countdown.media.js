@@ -48,7 +48,7 @@ export default define({
   },
 
   render(ctx) {
-    const { std, timeline, timeline.durationSeconds, width, height } = ctx;
+    const { std, timeline, width, height } = ctx;
 
     const t = ctx.director({ enter: "15%", hold: "70%", exit: "15%" });
     const intro = t.motion({ during: "enter", scale: 0.85, easing: "easeOutBack" });

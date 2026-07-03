@@ -60,7 +60,7 @@ export default define({
     }
 
     // === MAIN CONTENT ===
-    const bg = std.backgrounds.kenBurns({ src: backgroundImage, progress: time / mainDur, zoomTo: 1.1, overlay: "rgba(0, 0, 0, 0.7)" });
+    const bg = std.backgrounds.kenBurns({ src: backgroundImage, progress: timeline.seconds / mainDur, zoomTo: 1.1, overlay: "rgba(0, 0, 0, 0.7)" });
 
     // Triggers within "main" phase (9s)
     const avatarAnim = t.motion({ during: "main", at: `${((0.5/9) * 100).toFixed(1)}%`, duration: `${((0.6/9) * 100).toFixed(1)}%`, scale: 0.5 });

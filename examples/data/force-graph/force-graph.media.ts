@@ -28,7 +28,7 @@ export default define({
     fonts: ["Inter:wght@400;600;700"],
   },
   render(ctx) {
-    const { std, width, height, timeline, timeline } = ctx;
+    const { std, width, height, timeline } = ctx;
     const viz = std.viz;
     const t = ctx.director({ intro: "15%", settle: "70%", hold: "15%" });
 

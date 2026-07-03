@@ -1,0 +1,55 @@
+---
+sidebar_position: 2
+---
+
+import DocExplainer from "@site/src/components/DocExplainer";
+import PlayerGrid from "@site/src/components/PlayerGrid";
+import {
+  gradientTemplate,
+  helloTemplate,
+  pulseTemplate,
+} from "@site/src/lib/hello-template";
+
+# Inline explainers
+
+Use SuperImg **inside documentation** to illustrate concepts — not as a homepage hero. Each block pairs short prose with a compact, hover-to-play loop that sits next to the text.
+
+This is the pattern most teams want: readers stay in the doc flow, and the preview clarifies the API or animation idea without taking over the page.
+
+## Director-driven intro
+
+<DocExplainer title="Phased entrance" template={helloTemplate} label="intro">
+  The hello template uses `ctx.director()` with enter / hold / exit phases. Title and
+  subtitle motion are scoped to the intro beat — readers see the timing without opening a
+  separate demo app.
+</DocExplainer>
+
+## Motion without narration
+
+<DocExplainer title="Continuous loop" template={pulseTemplate} label="pulse">
+  For ambient illustrations (status indicators, loading metaphors, background texture), use
+  `loadMode="lazy"` and `hoverBehavior="play"` so clips stay quiet until the reader hovers.
+  Good for long guides where autoplay everywhere would be noisy.
+</DocExplainer>
+
+## Data-driven progress
+
+<DocExplainer title="Progress as a variable" template={gradientTemplate} label="gradient">
+  Templates read `timeline.progress` each frame. A single number drives hue rotation here —
+  the same hook you'd use for scrubbers, counters, or chart reveals in product docs.
+</DocExplainer>
+
+## When to use this vs. a hero
+
+| Pattern | Use when |
+| --- | --- |
+| **Inline explainer** (this page) | Teaching APIs, animation phases, template structure |
+| **Gallery row** | Comparing variants (formats, themes, presets) |
+| **Hero player** | Marketing landing pages — usually *not* reference docs |
+
+## Gallery row (optional)
+
+For side-by-side comparisons at the bottom of a long doc, a simple three-up row works. Still
+keep players small and hover-gated — no full-width hero.
+
+<PlayerGrid />

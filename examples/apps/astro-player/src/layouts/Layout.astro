@@ -1,0 +1,28 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+}
+
+const { title = "SuperImg × Astro" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <strong>SuperImg <span style="font-weight:400;color:rgba(255,255,255,0.35)">× Astro</span></strong>
+      <nav>
+        <a href="/">Gallery</a>
+        <a href="/docs">Docs pattern</a>
+      </nav>
+    </header>
+    <slot />
+  </body>
+</html>

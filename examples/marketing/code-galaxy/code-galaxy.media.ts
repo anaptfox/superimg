@@ -15,7 +15,7 @@ export default define({
     background: "#020208",
   },
   render(ctx) {
-    const { std, width, height, timeline, timeline } = ctx;
+    const { std, width, height, timeline } = ctx;
     const three = std.viz.three;
     const t = timeline.progress;
 
