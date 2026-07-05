@@ -20,12 +20,16 @@
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
-import { bundleTemplate } from "../packages/superimg-core/dist/bundler.js";
+import {
+  bundleTemplate,
+  bundleTemplateCode,
+} from "../packages/superimg-core/dist/bundler.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SUPERIMG_ROOT = path.resolve(SCRIPT_DIR, "..");
 const EXAMPLES_DIR = path.join(SUPERIMG_ROOT, "examples");
 const METADATA_PATH = path.join(EXAMPLES_DIR, "_templates.json");
+const generatedFiles = new Set<string>();
 
 type TemplateCategory =
   | "basics"
@@ -54,6 +58,7 @@ interface PlaygroundMeta {
 interface CatalogEntry {
   id: string;
   title: string;
+  description?: string;
   category: string;
   codeUrl: string;
   bundledUrl?: string;
@@ -76,7 +81,6 @@ const EDITOR_WASM_DEMO_IDS = new Set([
   "math-tunnel",
   "spinner",
   "svg-filter",
-  "terminal",
 ]);
 
 /** Built-in string-literal examples (not sourced from examples/<category>/). */
@@ -131,6 +135,64 @@ function parseArgs(argv: string[]) {
   return { outDir: resolvedOut, gumboRoot, builtinsDir };
 }
 
+function markGenerated(filePath: string) {
+  generatedFiles.add(path.resolve(filePath));
+}
+
+function writeFileIfChanged(filePath: string, contents: string) {
+  markGenerated(filePath);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  if (fs.existsSync(filePath) && fs.readFileSync(filePath, "utf-8") === contents) {
+    return false;
+  }
+  fs.writeFileSync(filePath, contents);
+  return true;
+}
+
+function copyFileIfChanged(src: string, dest: string) {
+  markGenerated(dest);
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  if (fs.existsSync(dest)) {
+    const srcStat = fs.statSync(src);
+    const destStat = fs.statSync(dest);
+    if (srcStat.size === destStat.size && destStat.mtimeMs >= srcStat.mtimeMs) {
+      return false;
+    }
+  }
+  fs.copyFileSync(src, dest);
+  return true;
+}
+
+function pruneStaleFiles(root: string) {
+  if (!fs.existsSync(root)) return;
+
+  function walk(dir: string): boolean {
+    let hasEntries = false;
+    for (const name of fs.readdirSync(dir)) {
+      const filePath = path.join(dir, name);
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) {
+        const childHasEntries = walk(filePath);
+        if (!childHasEntries) {
+          fs.rmSync(filePath, { recursive: true, force: true });
+        } else {
+          hasEntries = true;
+        }
+        continue;
+      }
+
+      if (generatedFiles.has(path.resolve(filePath))) {
+        hasEntries = true;
+      } else {
+        fs.rmSync(filePath, { force: true });
+      }
+    }
+    return hasEntries;
+  }
+
+  walk(root);
+}
+
 function hasRelativeImports(code: string): boolean {
   return /from\s+["'][./]/.test(code) || /import\s+["'][./]/.test(code);
 }
@@ -173,9 +235,7 @@ function mirrorReferencedAssets(
   fs.mkdirSync(destDir, { recursive: true });
   // Marker so Gumbo dev static serving registers the example assets directory.
   const marker = path.join(destDir, "package.json");
-  if (!fs.existsSync(marker)) {
-    fs.writeFileSync(marker, JSON.stringify({ name: exampleId, private: true }, null, 2));
-  }
+  writeFileIfChanged(marker, JSON.stringify({ name: exampleId, private: true }, null, 2));
 
   for (const ref of collectAssetRefs(code)) {
     const src = path.resolve(templateDir, ref);
@@ -187,8 +247,7 @@ function mirrorReferencedAssets(
       continue;
     }
 
-    fs.mkdirSync(destDir, { recursive: true });
-    fs.copyFileSync(src, dest);
+    copyFileIfChanged(src, dest);
   }
 }
 
@@ -232,8 +291,7 @@ function copyCompanionAssets(srcDir: string, destRoot: string, exampleId: string
     if (!fs.statSync(src).isFile()) continue;
     if (file.endsWith(".media.ts") || file.endsWith(".media.js")) continue;
     if (file.endsWith(".test.ts") || file.endsWith(".test.js")) continue;
-    fs.mkdirSync(destDir, { recursive: true });
-    fs.copyFileSync(src, path.join(destDir, file));
+    copyFileIfChanged(src, path.join(destDir, file));
   }
 }
 
@@ -249,11 +307,12 @@ function writeExample(
   fs.mkdirSync(exampleDir, { recursive: true });
 
   const codePath = path.join(exampleDir, "code.ts");
-  fs.writeFileSync(codePath, entry.code);
+  writeFileIfChanged(codePath, entry.code);
 
   const catalog: CatalogEntry = {
     id: entry.id,
     title: entry.title,
+    ...(entry.description ? { description: entry.description } : {}),
     category: entry.category,
     codeUrl: `/playground/examples/${entry.id}/code.ts`,
     playground: entry.playground,
@@ -261,7 +320,7 @@ function writeExample(
 
   if (entry.bundled !== undefined) {
     const bundlePath = path.join(exampleDir, "bundle.iife.js");
-    fs.writeFileSync(bundlePath, entry.bundled);
+    writeFileIfChanged(bundlePath, entry.bundled);
     catalog.bundledUrl = `/playground/examples/${entry.id}/bundle.iife.js`;
   }
 
@@ -278,8 +337,7 @@ function writeExample(
 
 function ensureAssetDirMarker(outDir: string, exampleId: string) {
   const marker = path.join(outDir, "assets", exampleId, ".playground");
-  fs.mkdirSync(path.dirname(marker), { recursive: true });
-  fs.writeFileSync(marker, exampleId);
+  writeFileIfChanged(marker, exampleId);
 }
 
 async function loadBuiltinModules(builtinsDir: string) {
@@ -328,8 +386,12 @@ async function compileTemplates(outDir: string): Promise<CatalogEntry[]> {
     const needsAssets = hasConfigAssets(code);
     const duration = parseDuration(code);
 
+    // Bundle when the template has companions/imports, or when the editor should
+    // prefer a prebuilt IIFE over in-browser WASM (not in EDITOR_WASM_DEMO_IDS).
+    const shouldBundle = mustBundle || !EDITOR_WASM_DEMO_IDS.has(id);
+
     let bundled: string | undefined;
-    if (mustBundle) {
+    if (shouldBundle) {
       try {
         bundled = await bundleTemplate(filePath);
         console.log(`  ✓ ${meta.category}/${id} → ${meta.title} (bundled)`);
@@ -359,6 +421,7 @@ async function compileTemplates(outDir: string): Promise<CatalogEntry[]> {
       writeExample(outDir, {
         id,
         title: meta.title,
+        description: meta.description,
         category: meta.category,
         code,
         bundled,
@@ -390,8 +453,21 @@ async function compileBuiltins(
     }
 
     const duration = parseDuration(code);
+
+    let bundled: string | undefined;
+    try {
+      bundled = await bundleTemplateCode(code);
+      console.log(`  ✓ builtin/${spec.id} → ${spec.title} (bundled)`);
+    } catch (err) {
+      console.warn(
+        `Warning: Bundle failed for builtin ${spec.id}: ${err instanceof Error ? err.message : err}`,
+      );
+      console.log(`  ✓ builtin/${spec.id} → ${spec.title} (code only)`);
+    }
+
+    const hasBundle = bundled !== undefined;
     const playground: PlaygroundMeta = {
-      liveEdit: true,
+      liveEdit: resolveLiveEdit(spec.id, hasBundle),
       needsBundle: false,
       needsAssets: hasConfigAssets(code),
       ...(duration !== undefined ? { duration } : {}),
@@ -403,10 +479,10 @@ async function compileBuiltins(
         title: spec.title,
         category: spec.category,
         code,
+        bundled,
         playground,
       }),
     );
-    console.log(`  ✓ builtin/${spec.id} → ${spec.title}`);
   }
 
   return catalog;
@@ -423,36 +499,57 @@ async function main() {
     console.log(`  GUMBO_MODE=${process.env.GUMBO_MODE}`);
   }
 
-  fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
 
   const templateCatalog = await compileTemplates(outDir);
   const templateIds = new Set(templateCatalog.map((e) => e.id));
   const builtinCatalog = await compileBuiltins(outDir, resolvedBuiltins, templateIds);
 
-  const manifest = {
+  const categories = [
+    { id: "basics", title: "Basics" },
+    { id: "marketing", title: "Marketing" },
+    { id: "events", title: "Events" },
+    { id: "social", title: "Social" },
+    { id: "interfaces", title: "Interfaces" },
+    { id: "data", title: "Data" },
+    { id: "vector", title: "Vector" },
+    { id: "developer", title: "Developer" },
+    { id: "composed", title: "Composed" },
+  ];
+  const examples = [...templateCatalog, ...builtinCatalog].sort((a, b) =>
+    a.id.localeCompare(b.id),
+  );
+  const manifestPath = path.join(outDir, "manifest.json");
+  const manifestShape = {
     version: 1,
-    generatedAt: new Date().toISOString(),
-    categories: [
-      { id: "basics", title: "Basics" },
-      { id: "marketing", title: "Marketing" },
-      { id: "events", title: "Events" },
-      { id: "social", title: "Social" },
-      { id: "interfaces", title: "Interfaces" },
-      { id: "data", title: "Data" },
-      { id: "vector", title: "Vector" },
-      { id: "developer", title: "Developer" },
-      { id: "composed", title: "Composed" },
-    ],
-    examples: [...templateCatalog, ...builtinCatalog].sort((a, b) =>
-      a.id.localeCompare(b.id),
-    ),
+    categories,
+    examples,
+  };
+  let generatedAt = new Date().toISOString();
+  if (fs.existsSync(manifestPath)) {
+    try {
+      const previous = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as {
+        generatedAt?: string;
+      } & typeof manifestShape;
+      const previousShape = {
+        version: previous.version,
+        categories: previous.categories,
+        examples: previous.examples,
+      };
+      if (JSON.stringify(previousShape) === JSON.stringify(manifestShape)) {
+        generatedAt = previous.generatedAt ?? generatedAt;
+      }
+    } catch {
+      // A malformed manifest should be replaced below.
+    }
+  }
+  const manifest = {
+    ...manifestShape,
+    generatedAt,
   };
 
-  fs.writeFileSync(
-    path.join(outDir, "manifest.json"),
-    JSON.stringify(manifest, null, 2),
-  );
+  writeFileIfChanged(manifestPath, JSON.stringify(manifest, null, 2));
+  pruneStaleFiles(outDir);
 
   console.log(
     `\nWrote ${manifest.examples.length} examples to ${outDir}/manifest.json`,

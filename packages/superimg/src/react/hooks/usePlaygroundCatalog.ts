@@ -23,6 +23,7 @@ export interface PlaygroundMeta {
 export interface PlaygroundCatalogEntry {
   id: string;
   title: string;
+  description?: string;
   category: PlaygroundCategoryId | string;
   codeUrl: string;
   bundledUrl?: string;

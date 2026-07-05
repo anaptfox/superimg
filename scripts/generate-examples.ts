@@ -49,7 +49,6 @@ const EDITOR_WASM_DEMO_IDS = new Set([
   "math-tunnel",
   "spinner",
   "svg-filter",
-  "terminal",
 ]);
 
 type TemplateCategory =
