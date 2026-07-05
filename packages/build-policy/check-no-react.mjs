@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Assert @superimg/runtime* and @superimg/player stay React-free.
+ * Assert low-level runtime packages and @superimg/player stay React-free.
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -12,7 +12,7 @@ const ROOT = join(__dirname, "..");
 
 const TARGETS = [
   join(ROOT, "superimg-runtime"),
-  join(ROOT, "superimg-runtime-web"),
+  join(ROOT, "superimg-media"),
   join(ROOT, "superimg-player"),
 ];
 

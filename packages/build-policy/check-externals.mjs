@@ -179,13 +179,11 @@ if (profileName === "superimg") {
   const BROWSER_CLIENT_ENTRIES = [
     "index.browser.js",
     "bundler-browser.js",
-    "index.export.js",
     "player.js",
-    "runtime-web.js",
     "react/index.js",
     "react/player.js",
     "react/compile.js",
-    "react/export.js",
+    "react/session.js",
   ];
 
   const DEFAULT_PREVIEW_ENTRIES = [
@@ -199,7 +197,7 @@ if (profileName === "superimg") {
     /@rolldown\/browser/,
     /\bbundler-browser(?:\.js)?\b/,
     /\bbundler\.worker(?:\.js)?\b/,
-    /\bindex\.export(?:\.js)?\b/,
+    /@superimg\/browser-export/,
     /\bmediabunny\b/,
     /@zumer\/snapdom/,
   ];
@@ -232,7 +230,7 @@ if (profileName === "superimg") {
     for (const pattern of FORBIDDEN_IN_PREVIEW) {
       if (pattern.test(src)) {
         errors.push(
-          `${rel} must not reference ${pattern} (default preview graph — use superimg/export or superimg/bundler opt-in entries)`,
+          `${rel} must not reference ${pattern} (default preview graph — use @superimg/browser-export or superimg/bundler opt-in entries)`,
         );
       }
     }

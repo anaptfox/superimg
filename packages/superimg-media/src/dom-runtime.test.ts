@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { define } from "@superimg/types";
-import { createRuntime, mount, type RuntimeInput } from "./runtime.js";
-import type { DomPresenter } from "./presenter.js";
+import { createRuntime, mount, type RuntimeInput } from "./dom-runtime.js";
+import type { DomPresenter } from "./dom-presenter.js";
 
 class TestPresenter implements DomPresenter {
   element = document.createElement("div");
@@ -30,7 +30,19 @@ class TestPresenter implements DomPresenter {
   }
 }
 
-describe("runtime-web", () => {
+class AsyncPresenter extends TestPresenter {
+  async present(html: string, width: number, height: number): Promise<void> {
+    await Promise.resolve();
+    super.present(html, width, height);
+  }
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+describe("media DOM runtime", () => {
   it("mounts image templates and updates data without recreating the presenter", () => {
     const template = define({
       sample: { label: "initial" },
@@ -99,6 +111,53 @@ describe("runtime-web", () => {
 
     runtime.seekTimeSeconds(0.5);
     expect(runtime.getState().currentFrame).toBe(5);
+  });
+
+  it("awaits async presenters before emitting rendered", async () => {
+    const template = define({
+      config: { width: 100, height: 100, fps: 10, duration: 1 },
+      render: (ctx) => `<div>${ctx.globalFrame}</div>`,
+    });
+    const presenter = new AsyncPresenter();
+    const runtime = createRuntime(template as unknown as RuntimeInput, { presenter });
+    const recordCounts: number[] = [];
+    runtime.on("rendered", () => recordCounts.push(presenter.records.length));
+
+    await runtime.render(0);
+
+    expect(recordCounts).toEqual([1]);
+  });
+
+  it("renders the final frame before emitting ended", async () => {
+    let now = 0;
+    const callbacks: FrameRequestCallback[] = [];
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callbacks.push(callback);
+      return callbacks.length;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const template = define({
+      config: { width: 100, height: 100, fps: 10, duration: 0.5 },
+      render: (ctx) => `<div>${ctx.globalFrame}</div>`,
+    });
+    const presenter = new TestPresenter();
+    const runtime = createRuntime(template as unknown as RuntimeInput, { presenter });
+    const events: string[] = [];
+    runtime.on("rendered", (payload) => events.push(`rendered:${payload.frame}`));
+    runtime.on("ended", () => events.push("ended"));
+    runtime.attach(document.createElement("div"));
+    await runtime.render(0);
+
+    runtime.play();
+    now = 1000;
+    callbacks.shift()?.(now);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(events.at(-2)).toBe("rendered:4");
+    expect(events.at(-1)).toBe("ended");
+    expect(presenter.records.at(-1)?.html).toContain("<div>4</div>");
   });
 
   it("removes the presenter element on dispose", () => {

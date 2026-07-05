@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { define } from "@superimg/types";
-import { IframePresenter } from "./presenter.js";
-import { createRuntime } from "./runtime.js";
+import { IframePresenter } from "./dom-presenter.js";
+import { createRuntime } from "./dom-runtime.js";
 
 const sandboxOf = (el: HTMLElement) => el.getAttribute("sandbox");
 
@@ -45,7 +45,7 @@ describe("IframePresenter sandbox", () => {
   });
 });
 
-describe("WebRuntime → iframe sandbox", () => {
+describe("Media DOM runtime iframe sandbox", () => {
   const template = (config: Record<string, unknown>) =>
     define({
       sample: {},

@@ -5,6 +5,14 @@ packages:
   - examples/*/*
   - videos
 
+allowBuilds:
+  '@parcel/watcher': set this to true or false
+  '@rolldown/browser': set this to true or false
+  core-js: set this to true or false
+  esbuild: set this to true or false
+  node-av: set this to true or false
+  sharp: set this to true or false
+
 catalog:
   react: ^19.2.7
   react-dom: ^19.2.7

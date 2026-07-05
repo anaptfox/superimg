@@ -1,20 +1,20 @@
 {
-  "name": "@superimg/runtime-web",
+  "name": "@superimg/media",
   "version": "0.1.0",
   "private": true,
-  "description": "Browser DOM runtime for SuperImg templates",
+  "description": "Browser media session runtime for SuperImg templates",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "scripts": {
     "build": "tsdown",
-    "dev": "tsdown",
+    "dev": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
     "clean": "rm -rf dist"
   },
@@ -25,6 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "@superimg/core": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
     "morphdom": "^2.7.8"
   },

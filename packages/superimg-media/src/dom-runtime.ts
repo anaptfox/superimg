@@ -16,7 +16,7 @@ import type {
   Medium,
 } from "@superimg/types";
 import { isComposedTemplate } from "@superimg/types";
-import { IframePresenter, type DomPresenter } from "./presenter.js";
+import { IframePresenter, type DomPresenter } from "./dom-presenter.js";
 import { superimgDebug, superimgDebugEnabled } from "./debug.js";
 
 function logRenderError(context: string, error: unknown): void {
@@ -27,6 +27,16 @@ function logRenderError(context: string, error: unknown): void {
 /** Accept any define()-authored template without casts (contravariant render ctx). */
 export type RuntimeInput = AnyTemplateModule<any> | ComposedTemplate;
 export type RuntimePlaybackMode = "once" | "loop";
+
+/** Pre-resolved font CSS supplied by the host. When present, the runtime does
+ *  NOT resolve the template's `config.fonts` against Google Fonts — the host is
+ *  expected to provide equivalent `@font-face` rules (e.g. self-hosted files). */
+export interface PreResolvedFonts {
+  /** Inline `@font-face` CSS injected into the frame document. */
+  css?: string;
+  /** Stylesheet URLs injected in place of Google Fonts links. */
+  stylesheets?: string[];
+}
 
 export interface RuntimeOptions {
   data?: Record<string, unknown>;
@@ -44,6 +54,8 @@ export interface RuntimeOptions {
   /** Force the iframe sandbox to allow scripts (default: only when the template
    *  needs them, e.g. `config.tailwind`). Set for templates that run in-frame JS. */
   allowScripts?: boolean;
+  /** Host-resolved fonts; suppresses Google Fonts resolution of `config.fonts`. */
+  fonts?: PreResolvedFonts;
 }
 
 export interface RuntimeUpdate {
@@ -113,6 +125,7 @@ export class WebRuntime {
   private startedAtMs = 0;
   private startFrame = 0;
   private lastSceneIndex = -1;
+  private renderToken = 0;
 
   constructor(template: RuntimeInput, options: RuntimeOptions = {}) {
     this.template = template;
@@ -162,10 +175,24 @@ export class WebRuntime {
 
   async render(frame: number = this.state.currentFrame): Promise<void> {
     const targetFrame = this.clampFrame(frame);
+    const token = ++this.renderToken;
+    await this.presentFrame(targetFrame, token);
+  }
+
+  private async presentFrame(
+    targetFrame: number,
+    token: number,
+    options: { force?: boolean; isPlaying?: boolean } = {},
+  ): Promise<void> {
     try {
       const { html, compositeHtml } = this.renderHtml(targetFrame);
-      this.presenter.present(compositeHtml, this.info.width, this.info.height);
-      this.state = this.createState(this.state.isReady, this.state.isPlaying, targetFrame);
+      await this.presenter.present(compositeHtml, this.info.width, this.info.height);
+      if (!options.force && token !== this.renderToken) return;
+      this.state = this.createState(
+        this.state.isReady,
+        options.isPlaying ?? this.state.isPlaying,
+        targetFrame,
+      );
       this.emitState();
       this.emit("rendered", { frame: targetFrame, html, compositeHtml });
       this.emit("frame", targetFrame, this.info.totalFrames);
@@ -203,6 +230,8 @@ export class WebRuntime {
 
   seekFrame(frame: number): void {
     const next = this.clampFrame(frame);
+    this.state = this.createState(this.state.isReady, this.state.isPlaying, next);
+    this.emitState();
     void this.render(next).catch((err) => logRenderError("seekFrame", err));
   }
 
@@ -278,9 +307,17 @@ export class WebRuntime {
         this.rafId = requestAnimationFrame(this.tick);
         return;
       }
-      this.state = this.createState(this.state.isReady, false, this.info.totalFrames - 1);
+      const finalFrame = this.info.totalFrames - 1;
+      this.state = this.createState(this.state.isReady, false, finalFrame);
       this.emitState();
-      this.emit("ended");
+      const token = ++this.renderToken;
+      void this.presentFrame(finalFrame, token, { force: true, isPlaying: false }).then(
+        () => this.emit("ended"),
+        (err) => {
+          logRenderError("ended", err);
+          this.emit("ended");
+        },
+      );
       this.rafId = null;
       return;
     }
@@ -317,20 +354,27 @@ export class WebRuntime {
   }
 
   private configurePresenter(): void {
-    const fontUrls = (this.info.fonts ?? []).map((f) => {
-      const family = encodeURIComponent(f.trim());
-      return `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
-    });
+    const preResolved = this.options.fonts;
+    const fontUrls = preResolved
+      ? [...(preResolved.stylesheets ?? [])]
+      : (this.info.fonts ?? []).map((f) => {
+          const family = encodeURIComponent(f.trim());
+          return `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
+        });
     const stylesheets = [...fontUrls, ...(this.info.stylesheets ?? [])];
+    const inlineCss = preResolved?.css
+      ? [preResolved.css, ...(this.info.inlineCss ?? [])]
+      : this.info.inlineCss;
     superimgDebug("configurePresenter", {
       fonts: this.info.fonts,
+      preResolvedFonts: !!preResolved,
       fontUrls,
-      inlineCssCount: this.info.inlineCss?.length ?? 0,
+      inlineCssCount: inlineCss?.length ?? 0,
       stylesheets,
       tailwind: this.info.tailwind,
       presenter: this.presenter.constructor.name,
     });
-    this.presenter.injectStyles(this.info.inlineCss, stylesheets, this.info.tailwind);
+    this.presenter.injectStyles(inlineCss, stylesheets, this.info.tailwind);
   }
 
   private clampFrame(frame: number): number {

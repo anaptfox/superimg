@@ -87,19 +87,19 @@ export class IframePresenter implements DomPresenter {
       return;
     }
     doc.head
-      .querySelectorAll("[data-superimg-runtime-web-style]")
+      .querySelectorAll("[data-superimg-media-style]")
       .forEach((node) => node.remove());
 
     if (this.pendingTailwind) {
       const script = doc.createElement("script");
       script.src = "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4";
-      script.dataset.superimgRuntimeWebStyle = "tailwind";
+      script.dataset.superimgMediaStyle = "tailwind";
       doc.head.appendChild(script);
 
       if (typeof this.pendingTailwind === "object" && this.pendingTailwind.css) {
         const style = doc.createElement("style");
         style.setAttribute("type", "text/tailwindcss");
-        style.dataset.superimgRuntimeWebStyle = "tailwind-config";
+        style.dataset.superimgMediaStyle = "tailwind-config";
         style.textContent = this.pendingTailwind.css;
         doc.head.appendChild(style);
       }
@@ -109,13 +109,13 @@ export class IframePresenter implements DomPresenter {
       const link = doc.createElement("link");
       link.rel = "stylesheet";
       link.href = url;
-      link.dataset.superimgRuntimeWebStyle = "stylesheet";
+      link.dataset.superimgMediaStyle = "stylesheet";
       doc.head.appendChild(link);
     }
 
     if (this.pendingInlineCss.length > 0) {
       const style = doc.createElement("style");
-      style.dataset.superimgRuntimeWebStyle = "inline";
+      style.dataset.superimgMediaStyle = "inline";
       style.textContent = this.pendingInlineCss.join("\n");
       doc.head.appendChild(style);
     }

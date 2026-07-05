@@ -8,11 +8,9 @@ export const workspaceBundle = [
   "@superimg/types",
   "@superimg/stdlib",
   /^@superimg\/core/,
-  "@superimg/runtime",
-  "@superimg/runtime-web",
+  "@superimg/media",
   "@superimg/player",
   "@superimg/skill",
-  "@superimg/playwright",
   "zod",
 ];
 
@@ -77,17 +75,22 @@ export const cliNeverBundle = [
   "rolldown",
   "oxc-parser",
   /^@oxc-parser\//,
-  "playwright",
-  "mediabunny",
-  "@mediabunny/server",
-  "sharp",
 ];
 
 /** Published superimg policy */
 export const superimgAlwaysBundle = workspaceBundle;
 export const superimgNeverBundle = [
-  ...nodeExternals,
-  ...browserExternals,
+  "react",
+  "react-dom",
+  /^react\//,
+  /^react-dom\//,
+  "@rolldown/browser",
+  "acorn",
+  "date-fns",
+  "colord",
+  "simplex-noise",
+  "morphdom",
+  "zustand",
   ...wasmExternals,
   // Stdlib peers that may remain external on browser/edge platform builds
   "path-data-parser",
@@ -118,6 +121,8 @@ export const platformNeverBundle = [
 
 export const platformAlwaysBundle = [
   ...workspaceBundle,
+  "@superimg/browser-export",
+  /^@zumer\/snapdom($|\/)/,
   /^colord($|\/)/,
   /^date-fns($|\/)/,
   "simplex-noise",
