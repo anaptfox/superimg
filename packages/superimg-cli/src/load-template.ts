@@ -5,7 +5,7 @@ import { bundleTemplateWithMap } from "@superimg/core/bundler";
 import { compileTemplate } from "@superimg/core";
 import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 import { enrichError } from "@superimg/core/errors";
-import { PlaywrightEngine } from "@superimg/playwright";
+import { PlaywrightEngine } from "@superimg/node/internal";
 import { parseTemplate } from "./cli/utils/template-config.js";
 import type { Duration, EncodingOptions, TemplateModule } from "@superimg/types";
 import { discoverTemplateAssets } from "./cli/utils/asset-discovery.js";

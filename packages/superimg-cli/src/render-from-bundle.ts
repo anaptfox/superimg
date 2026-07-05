@@ -2,7 +2,7 @@
 //! Used by the container handler — templates are bundled at deploy time, rendered by name at runtime.
 
 import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
-import { PlaywrightEngine } from "@superimg/playwright";
+import { PlaywrightEngine } from "@superimg/node/internal";
 import type { EncodingOptions, RenderEngine, TemplateBundle } from "@superimg/types";
 import type { ParsedTemplate } from "./cli/utils/template-config.js";
 import { buildRenderJob } from "./utils/build-render-job.js";

@@ -1,6 +1,6 @@
 import { createRenderContext } from "@superimg/core";
 import { buildCompositeHtml } from "@superimg/core/html";
-import { CanvasRenderer } from "@superimg/runtime";
+import { CanvasRenderer } from "@superimg/browser-export";
 import { loadTemplate } from "./main";
 
 export interface VideoItem {

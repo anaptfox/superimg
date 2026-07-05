@@ -1,10 +1,10 @@
 //! Doctor command - check environment health and surface drift before render
 
 import { execa } from "execa";
-import { existsSync, readFileSync, readdirSync, writeFileSync, unlinkSync, mkdirSync } from "node:fs";
-import { homedir, platform } from "node:os";
+import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import pc from "picocolors";
+import { getRuntimeStatus } from "@superimg/node";
 import { findProjectRoot } from "../utils/find-project-root.js";
 import { discoverVideos } from "../utils/discover-videos.js";
 
@@ -46,43 +46,25 @@ async function checkFfmpeg(): Promise<Check> {
       status: "warn",
       label: "ffmpeg",
       detail: "not found on PATH",
-      hint: "Required only for GIF output. Install via Homebrew: brew install ffmpeg",
+      hint: "Required only for GIF, local/direct embedded clips, media probe workflows, or explicit ffmpeg encoders.",
     };
   }
 }
 
-function playwrightCacheDir(): string {
-  if (process.env.PLAYWRIGHT_BROWSERS_PATH) return process.env.PLAYWRIGHT_BROWSERS_PATH;
-  const p = platform();
-  if (p === "darwin") return join(homedir(), "Library", "Caches", "ms-playwright");
-  if (p === "win32") return join(homedir(), "AppData", "Local", "ms-playwright");
-  return join(homedir(), ".cache", "ms-playwright");
-}
-
-function checkChromium(): Check {
-  const dir = playwrightCacheDir();
-  if (!existsSync(dir)) {
+async function checkChromium(): Promise<Check> {
+  const status = await getRuntimeStatus();
+  if (!status.installed) {
     return {
       status: "fail",
-      label: "Playwright Chromium",
-      detail: `cache dir missing (${dir})`,
+      label: "SuperImg Chromium runtime",
+      detail: "launch probe failed",
       hint: "Run: superimg setup",
     };
   }
-  const entries = readdirSync(dir).filter((e) => e.startsWith("chromium"));
-  if (entries.length === 0) {
-    return {
-      status: "fail",
-      label: "Playwright Chromium",
-      detail: "no chromium build in cache",
-      hint: "Run: superimg setup",
-    };
-  }
-  const detail = entries.sort().reverse()[0];
   return {
     status: "ok",
-    label: "Playwright Chromium",
-    ...(detail !== undefined ? { detail } : {}),
+    label: "SuperImg Chromium runtime",
+    ...(status.executablePath !== null ? { detail: status.executablePath } : {}),
   };
 }
 
@@ -186,7 +168,7 @@ export async function doctorCommand(options: { json?: boolean } = {}) {
   const checks: Check[] = [
     await checkNode(),
     await checkFfmpeg(),
-    checkChromium(),
+    await checkChromium(),
     checkSuperimgDrift(projectRoot),
     checkVideos(projectRoot),
     checkOutputWritable(projectRoot),

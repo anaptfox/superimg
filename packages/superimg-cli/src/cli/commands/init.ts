@@ -267,7 +267,6 @@ export async function initCommand(
     pkg.scripts["superimg:setup"] = "superimg setup";
     pkg.dependencies = pkg.dependencies ?? {};
     if (!pkg.dependencies.superimg) pkg.dependencies.superimg = SUPERIMG_VERSION;
-    if (!pkg.dependencies.playwright) pkg.dependencies.playwright = "^1.57.0";
     writeFileSync(pkgJsonPath, JSON.stringify(pkg, null, 2) + "\n");
 
     if (!options.yes) {
@@ -282,7 +281,7 @@ export async function initCommand(
     }
 
     if (!skipInstall) {
-      const addCommand = getAddPackagesCommand(pm, ["superimg", "playwright"]);
+      const addCommand = getAddPackagesCommand(pm, ["superimg"]);
       const s = p.spinner();
       s.start("Installing dependencies");
       try {
@@ -298,15 +297,15 @@ export async function initCommand(
       }
 
       if (!skipBrowser) {
-        const execCmd = pm === "npm" ? "npx" : pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm" : "bunx";
-        const execArgs = pm === "yarn" ? ["exec", "playwright", "install", "chromium"] : ["playwright", "install", "chromium"];
+        const [execCmd, ...execArgs] = `${run} superimg:setup`.split(/\s+/);
+        if (!execCmd) throw new Error("Invalid setup command");
         const s2 = p.spinner();
-        s2.start("Downloading Chromium (this takes a minute)");
+        s2.start("Installing SuperImg Chromium runtime (this takes a minute)");
         try {
           await runInDir(targetDir, execCmd, execArgs);
-          s2.stop("Chromium ready");
+          s2.stop("SuperImg runtime ready");
         } catch (err) {
-          s2.stop("Chromium download failed");
+          s2.stop("SuperImg runtime install failed");
           console.error("\nRun this to try again:");
           console.error(`  ${run} superimg:setup\n`);
           process.exit(1);
@@ -342,7 +341,6 @@ export async function initCommand(
       },
       dependencies: {
         superimg: SUPERIMG_VERSION,
-        playwright: "^1.57.0",
       },
     };
 
@@ -370,15 +368,15 @@ export async function initCommand(
       }
 
       if (!skipBrowser) {
-        const execCmd = pm === "npm" ? "npx" : pm === "yarn" ? "yarn" : pm === "pnpm" ? "pnpm" : "bunx";
-        const execArgs = pm === "yarn" ? ["exec", "playwright", "install", "chromium"] : ["playwright", "install", "chromium"];
+        const [execCmd, ...execArgs] = `${run} setup`.split(/\s+/);
+        if (!execCmd) throw new Error("Invalid setup command");
         const s2 = p.spinner();
-        s2.start("Downloading Chromium (this takes a minute)");
+        s2.start("Installing SuperImg Chromium runtime (this takes a minute)");
         try {
           await runInDir(targetDir, execCmd, execArgs);
-          s2.stop("Chromium ready");
+          s2.stop("SuperImg runtime ready");
         } catch (err) {
-          s2.stop("Chromium download failed");
+          s2.stop("SuperImg runtime install failed");
           console.error("\nRun this to try again:");
           console.error(`  ${run} setup\n`);
           process.exit(1);

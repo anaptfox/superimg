@@ -7,7 +7,7 @@ import { serve } from "@hono/node-server";
 import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { promisify } from "node:util";
-import { PlaywrightEngine } from "@superimg/playwright";
+import { PlaywrightEngine } from "@superimg/node/internal";
 import { renderFromBundle } from "../render-from-bundle.js";
 import type { ManifestEntry } from "../render-from-bundle.js";
 import type { EncodingOptions } from "@superimg/types";

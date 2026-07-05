@@ -9,8 +9,16 @@ export type { Manifest } from "./container/handler.js";
 export { bundleTemplate, bundleTemplateCode } from "@superimg/core/bundler";
 export { extractTemplateMetadata } from "@superimg/core/template-metadata";
 export { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
-export { PlaywrightEngine } from "@superimg/playwright";
-export type { PlaywrightEngineOptions } from "@superimg/playwright";
+export { createRenderSession, RenderSession } from "@superimg/node";
+export { PlaywrightEngine } from "@superimg/node/internal";
+export type {
+  PlaywrightEngineOptions,
+} from "@superimg/node/internal";
+export type {
+  RenderSessionEngine,
+  RenderSessionOptions,
+  RenderSessionRenderOptions,
+} from "@superimg/node";
 
 export type {
   FrameRenderer,

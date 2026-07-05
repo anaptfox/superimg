@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import type { RenderEvent } from "@superimg/types";
 import { RENDER_EVENT_VERSION } from "@superimg/types";
 import type { OutputFormat } from "@superimg/types";
-import { PlaywrightEngine } from "@superimg/playwright";
+import { PlaywrightEngine } from "@superimg/node/internal";
 import { discoverVideos } from "../cli/utils/discover-videos.js";
 import { deriveVideoName } from "../cli/utils/resolve-output-path.js";
 import { loadCascadingConfig } from "../cli/utils/config-loader.js";

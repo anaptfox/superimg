@@ -10,7 +10,7 @@ const defaultMockEngine = vi.hoisted(() => ({
   dispose: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@superimg/playwright", () => ({
+vi.mock("@superimg/node/internal", () => ({
   PlaywrightEngine: vi.fn().mockImplementation(function () {
     return defaultMockEngine;
   }),

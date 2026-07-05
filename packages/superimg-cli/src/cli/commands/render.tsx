@@ -9,7 +9,7 @@
 
 import { existsSync, statSync } from "node:fs";
 import { dirname } from "node:path";
-import { PlaywrightEngine } from "@superimg/playwright";
+import { PlaywrightEngine } from "@superimg/node/internal";
 import { formatError } from "@superimg/core/errors";
 import { findProjectRoot } from "../utils/find-project-root.js";
 import { loadCascadingConfig } from "../utils/config-loader.js";

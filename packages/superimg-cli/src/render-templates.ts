@@ -7,7 +7,7 @@
 //! AbortSignal cancels in-flight renders without leaking browser contexts.
 
 import { resolve, join } from "node:path";
-import { PlaywrightEngine } from "@superimg/playwright";
+import { PlaywrightEngine } from "@superimg/node/internal";
 import type { DiscoveredVideo } from "./cli/utils/discover-videos.js";
 import type { RenderEvent } from "@superimg/types";
 import { RENDER_EVENT_VERSION } from "@superimg/types";

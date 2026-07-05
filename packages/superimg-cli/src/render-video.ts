@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { bundleTemplateWithMap } from "@superimg/core/bundler";
 import { createRenderPlan, executeRenderPlan, resolveFrameIndex, renderTemplateFrame } from "@superimg/core/engine";
 import { compileTemplate, ensureInit, rasterizeSvgSync, resolveFontBuffers } from "@superimg/core";
-import { PlaywrightEngine } from "@superimg/playwright";
+import { PlaywrightEngine } from "@superimg/node/internal";
 import { parseTemplate } from "./cli/utils/template-config.js";
 import type { EncodingOptions, RenderEngine } from "@superimg/types";
 import { mergeEncoding } from "./cli/utils/merge-encoding.js";

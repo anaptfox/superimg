@@ -1,6 +1,11 @@
 import { createRenderContext } from "@superimg/core";
 import { buildCompositeHtml } from "@superimg/core/html";
-import { CanvasRenderer, exportToVideo, downloadBlob, type ExportConfig } from "@superimg/runtime";
+import {
+  CanvasRenderer,
+  downloadBlob,
+  exportToVideo,
+  type ExportConfig,
+} from "@superimg/browser-export";
 import { Player } from "@superimg/player";
 import {
   exportPanel,

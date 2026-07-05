@@ -17,7 +17,7 @@ import {
   ResvgRasterizer,
 } from "@superimg/core";
 import { renderTemplateFrame } from "@superimg/core/engine";
-import { FfmpegGifEncoder, NodeVideoEncoder, PlaywrightEngine } from "@superimg/playwright";
+import { FfmpegGifEncoder, NodeVideoEncoder, PlaywrightEngine } from "@superimg/node/internal";
 import type { VideoEncoder } from "@superimg/types";
 import type { RenderProgress, TemplateBundle } from "@superimg/types";
 import { discoverTemplateAssets } from "../utils/asset-discovery.js";

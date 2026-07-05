@@ -186,6 +186,45 @@ program
     await doctorCommand(options);
   });
 
+const media = program
+  .command("media")
+  .description("Inspect and manage local/direct media assets");
+
+media
+  .command("probe")
+  .description("Probe a local media file")
+  .argument("<file>", "Local media file")
+  .option("--json", "Output machine-readable JSON instead of human text")
+  .action(async (file: string, options: { json?: boolean }) => {
+    const { mediaProbeCommand } = await import("./commands/media.js");
+    await mediaProbeCommand(file, options);
+  });
+
+media
+  .command("import")
+  .description("Import a local media file into the project media cache")
+  .argument("<file>", "Local media file")
+  .option("--name <name>", "Imported asset name")
+  .option("--start <time>", "Source start time metadata, e.g. 01:02 or 4.2s")
+  .option("--duration <duration>", "Clip duration metadata, e.g. 18s")
+  .option("--json", "Output machine-readable JSON instead of human text")
+  .action(async (file: string, options: { name?: string; start?: string; duration?: string; json?: boolean }) => {
+    const { mediaImportCommand } = await import("./commands/media.js");
+    await mediaImportCommand(file, options);
+  });
+
+const mediaCache = media
+  .command("cache")
+  .description("Manage the local media cache");
+
+mediaCache
+  .command("clean")
+  .description("Remove imported local media cache files")
+  .action(async () => {
+    const { mediaCacheCleanCommand } = await import("./commands/media.js");
+    await mediaCacheCleanCommand();
+  });
+
 const skill = program
   .command("skill")
   .description("Manage the SuperImg AI skill across coding agents (Claude, Codex, Cursor, Gemini, OpenCode, Pi, …)");
