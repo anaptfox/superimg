@@ -93,24 +93,7 @@ const manifest = {
     },
   },
   hashes: hashFiles(allFiles),
-  compilerStandalone: null,
 };
-
-const standaloneRoot = join(__dirname, "..", "superimg-browser-bundler");
-const standaloneDist = join(standaloneRoot, "dist", "browser-bundler.js");
-if (statSync(standaloneDist, { throwIfNoEntry: false })?.isFile()) {
-  const standalonePkg = JSON.parse(
-    readFileSync(join(standaloneRoot, "package.json"), "utf8"),
-  );
-  manifest.compilerStandalone = {
-    package: standalonePkg.name,
-    version: standalonePkg.version,
-    files: ["browser-bundler.js"],
-    hashes: {
-      "browser-bundler.js": sha256File(standaloneDist),
-    },
-  };
-}
 
 const outPath = join(DIST, "platform-manifest.json");
 writeFileSync(outPath, `${JSON.stringify(manifest, null, 2)}\n`);

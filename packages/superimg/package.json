@@ -114,16 +114,10 @@
       "import": "./dist/react/session.js",
       "default": "./dist/react/session.js"
     },
-    "./bundler.worker": {
-      "types": "./dist/bundler.worker.d.ts",
-      "browser": "./dist/bundler.worker.js",
-      "import": "./dist/bundler.worker.js",
-      "default": "./dist/bundler.worker.js"
-    },
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsdown --config tsdown.node.ts && tsdown --config tsdown.define.ts && tsdown --config tsdown.edge.ts && pnpm --filter @superimg/browser-bundler run build && node scripts/build-bundler-worker.mjs && tsdown --config tsdown.browser.ts && node ../build-policy/generate-platform-manifest.mjs && node ../build-policy/check-externals.mjs --profile superimg && node ../build-policy/check-workerd-compat.mjs && node ../build-policy/check-platform-self-contained.mjs && node ../build-policy/check-no-react.mjs",
+    "build": "tsdown --config tsdown.node.ts && tsdown --config tsdown.define.ts && tsdown --config tsdown.edge.ts && tsdown --config tsdown.browser.ts && node ../build-policy/generate-platform-manifest.mjs && node ../build-policy/check-externals.mjs --profile superimg && node ../build-policy/check-workerd-compat.mjs && node ../build-policy/check-platform-self-contained.mjs && node ../build-policy/check-no-react.mjs",
     "dev": "tsdown --watch",
     "test": "vitest --run",
     "clean": "rm -rf dist",
@@ -193,7 +187,6 @@
     "@superimg/skill": "workspace:*",
     "@superimg/stdlib": "workspace:*",
     "@rolldown/browser": "1.1.3",
-    "@superimg/browser-bundler": "workspace:*",
     "@superimg/types": "workspace:*",
     "@tailwindcss/vite": "^4.3.1",
     "@testing-library/react": "^16.3.2",

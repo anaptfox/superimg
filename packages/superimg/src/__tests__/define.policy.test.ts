@@ -95,10 +95,10 @@ describe("platform-manifest.json", () => {
     expect(manifest.reactHook.length).toBeGreaterThan(0);
     expect(manifest.compiler.files.length).toBeGreaterThan(0);
     expect(manifest.compiler.rolldownBrowserVersion).toBeTruthy();
+    expect(manifest.compilerStandalone).toBeUndefined();
     for (const file of manifest.edge) {
       expect(statSync(join(distRoot, file)).isFile()).toBe(true);
       expect(manifest.hashes[file]).toMatch(/^sha256-/);
     }
-    expect(manifest.compilerStandalone?.hashes["browser-bundler.js"]).toMatch(/^sha256-/);
   });
 });

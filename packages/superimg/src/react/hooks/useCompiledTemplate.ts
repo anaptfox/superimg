@@ -151,7 +151,7 @@ export function useCompiledTemplate(
   const effectiveCacheKey =
     cacheKey ??
     hashCode(
-      wasmCompile ? (codeUrl ?? code) : (bundledUrl ?? bundled ?? codeUrl ?? code),
+      wasmCompile ? (codeUrl ?? code) : (bundledUrl ?? bundled ?? ""),
     );
 
   const doCompileBundled = useCallback(
@@ -259,7 +259,7 @@ export function useCompiledTemplate(
   useEffect(() => {
     if (!enabled) return;
 
-    const needsCode = !inlineCode && !!codeUrl;
+    const needsCode = wasmCompile && !inlineCode && !!codeUrl;
     const needsBundled = !wasmCompile && !inlineBundled && !!bundledUrl;
 
     if (!needsCode && !needsBundled) return;
@@ -312,15 +312,20 @@ export function useCompiledTemplate(
     }
 
     // Wait for URL fetches before compiling
-    if (!inlineCode && codeUrl && fetchedCode === null) return;
+    if (wasmCompile && !inlineCode && codeUrl && fetchedCode === null) return;
     if (!wasmCompile && !inlineBundled && bundledUrl && fetchedBundled === null) {
       return;
     }
 
-    // Pre-bundled path (build-time rolldown)
-    if (!wasmCompile && bundled) {
+    if (!wasmCompile) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      doCompileBundled(bundled, effectiveCacheKey);
+      if (bundled) {
+        doCompileBundled(bundled, effectiveCacheKey);
+      } else {
+        setTemplate(null);
+        setError(null);
+        setCompiling(false);
+      }
       return;
     }
 
@@ -385,15 +390,20 @@ export function useCompiledTemplate(
 
   // Manual recompile function
   const recompile = useCallback(async () => {
-    if (!code.trim()) return;
-
     // Clear from cache to force recompile
     if (cache) {
       templateCache.delete(effectiveCacheKey);
     }
 
+    if (!wasmCompile) {
+      if (bundled) doCompileBundled(bundled, effectiveCacheKey);
+      return;
+    }
+
+    if (!code.trim()) return;
+
     await doCompile(code, effectiveCacheKey);
-  }, [code, effectiveCacheKey, cache, doCompile]);
+  }, [bundled, cache, code, doCompile, doCompileBundled, effectiveCacheKey, wasmCompile]);
 
   return {
     template,
