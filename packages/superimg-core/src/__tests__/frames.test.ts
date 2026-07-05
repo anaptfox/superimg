@@ -6,7 +6,7 @@ import {
 } from "../rendering/engine.js";
 import { createRenderContext } from "../rendering/create-render-context.js";
 import { bundleTemplateCodeWithMap } from "../bundler/bundler.js";
-import type { RenderJob } from "@superimg/types";
+import type { FrameRendererConfig, RenderJob } from "@superimg/types";
 
 async function jobFromCode(
   code: string,
@@ -29,8 +29,11 @@ async function jobFromCode(
 function mockRenderer() {
   let captureCount = 0;
   const clockSteps: number[] = [];
+  const initConfigs: FrameRendererConfig[] = [];
   const renderer = {
-    init: async () => {},
+    init: async (config: FrameRendererConfig) => {
+      initConfigs.push(config);
+    },
     captureFrame: async (html: string) => {
       captureCount++;
       return html;
@@ -44,6 +47,9 @@ function mockRenderer() {
     },
     get clockSteps() {
       return clockSteps;
+    },
+    get initConfigs() {
+      return initConfigs;
     },
   };
   return renderer;
@@ -227,6 +233,8 @@ describe("executeRenderPlanParallel", () => {
 
     await executeRenderPlanParallel(plan, [rendererA, rendererB], encoder);
 
+    expect(rendererA.initConfigs[0]?.fps).toBe(10);
+    expect(rendererB.initConfigs[0]?.fps).toBe(10);
     expect(rendererA.captureCount + rendererB.captureCount).toBe(4);
     expect(encoder.frames).toHaveLength(4);
     expect(encoder.frames.map((f) => f.ts)).toEqual([0, 0.1, 0.2, 0.3]);

@@ -42,7 +42,7 @@ const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
 ) as Omit<typeof math, "lerp">;
 
-export type StaticStdlib = Omit<Stdlib, "video" | "px" | "scale">;
+export type StaticStdlib = Omit<Stdlib, "video" | "media" | "px" | "scale">;
 
 export const stdlib: StaticStdlib = {
   math: mathWithoutLerp,

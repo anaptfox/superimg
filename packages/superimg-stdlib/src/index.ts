@@ -36,6 +36,18 @@ export * as layout from "./layout";
 export * from "./layers";
 export * from "./safe-area";
 export { sync as videoSync, quantizeVideoTime, CLIP_SYNC_ATTR, type ClipSyncOptions, type ClipSyncResult } from "./video";
+export {
+  video as mediaVideo,
+  youtube as mediaYoutube,
+  extractYoutubeId,
+  MEDIA_ATTR,
+  EXTERNAL_EMBED_ATTR,
+  type MediaFit,
+  type MediaVideoOptions,
+  type MediaYoutubeOptions,
+  type MediaVideoResult,
+  type MediaYoutubeResult,
+} from "./media";
 export { revealFx as reveal } from "./reveal";
 export { oscillate, loop, pingpong, wiggle,
   type OscillateOpts, type LoopOpts, type WiggleOpts } from "./oscillate";

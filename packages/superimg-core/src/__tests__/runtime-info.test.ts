@@ -65,6 +65,21 @@ describe("runtime template info", () => {
       totalFrames: 48,
     });
   });
+
+  it("parses static SVG duration strings for CSS animation metadata", () => {
+    const svg = define({ medium: "svg",
+      config: { width: 400, height: 300, duration: "2500ms" },
+      render: () => "<svg />",
+    });
+
+    expect(resolveRuntimeTemplateInfo(svg)).toMatchObject({
+      medium: "svg",
+      isAnimated: false,
+      fps: 1,
+      duration: 2.5,
+      totalFrames: 1,
+    });
+  });
 });
 
 describe("sample field in resolveRuntimeTemplateInfo", () => {

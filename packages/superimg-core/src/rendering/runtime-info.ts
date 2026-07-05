@@ -71,7 +71,9 @@ export function resolveRuntimeTemplateInfo(
     // HTML stills are fps 1 / duration 1.
     fps = 1;
     duration =
-      medium === "svg" && typeof config.duration === "number" ? config.duration : 1;
+      medium === "svg" && config.duration !== undefined
+        ? parseDuration(config.duration, "duration", fps)
+        : 1;
     totalFrames = 1;
   } else {
     const configuredDuration =

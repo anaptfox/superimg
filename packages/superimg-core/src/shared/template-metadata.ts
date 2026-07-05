@@ -104,6 +104,17 @@ function readAudioClipObject(node: AstNode): AudioMetadataConfig | undefined {
   return config.src ? config : undefined;
 }
 
+function readStringArrayLiteral(node: AstNode): string[] | undefined {
+  if (!node || node.type !== "ArrayExpression") return undefined;
+  const values: string[] = [];
+  for (const el of node.elements) {
+    if (el && el.type === "Literal" && typeof el.value === "string") {
+      values.push(el.value);
+    }
+  }
+  return values.length > 0 ? values : undefined;
+}
+
 function readAudioConfig(node: AstNode): AudioMetadataConfig | { clips: AudioMetadataConfig[] } | undefined {
   // audio: { id, src, role, volume, fadeIn: "0.5s", ... }
   const clip = readAudioClipObject(node);
@@ -287,6 +298,14 @@ function readConfigObject(expr: AstObjectExpression): TemplateMetadataConfig | u
       continue;
     }
 
+    if (key === "fonts") {
+      const fontsValue = readStringArrayLiteral(property.value);
+      if (fontsValue !== undefined) {
+        config.fonts = fontsValue;
+      }
+      continue;
+    }
+
     if (key === "responsive") {
       if (property.value.type === "Literal" && typeof property.value.value === "boolean") {
         config.responsive = property.value.value;
@@ -335,7 +354,8 @@ function readConfigObject(expr: AstObjectExpression): TemplateMetadataConfig | u
     config.type === undefined &&
     config.watermark === undefined &&
     config.background === undefined &&
-    config.audio === undefined
+    config.audio === undefined &&
+    config.fonts === undefined
   ) {
     return undefined;
   }

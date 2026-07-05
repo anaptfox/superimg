@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { resolve } from 'node:path';
 
 export default defineConfig({
   test: {
@@ -22,6 +23,9 @@ export default defineConfig({
     },
   },
   resolve: {
+    alias: {
+      '@superimg/stdlib/media': resolve(__dirname, '../superimg-stdlib/src/media.ts'),
+    },
     conditions: ['import', 'module', 'browser', 'default'],
   },
 });

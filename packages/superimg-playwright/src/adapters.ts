@@ -16,7 +16,9 @@ import { FrameExtractor } from "./frame-extractor.js";
 import { preloadThreeModule } from "./three-preload.js";
 
 const CLIP_SYNC_ATTR = "data-superimg-clip";
-const CLIP_IMG_RE = /<img\b(?=[^>]*\bdata-superimg-clip\b)[^>]*>/gi;
+const EXTERNAL_EMBED_ATTR = "data-superimg-external-embed";
+const CLIP_TAG_RE = /<([a-z0-9-]+)\b(?=[^>]*\bdata-superimg-clip\b)[^>]*>(?:<\/\1>)?/gi;
+const EXTERNAL_EMBED_TAG_RE = /<([a-z0-9-]+)\b(?=[^>]*\bdata-superimg-external-embed\b)[^>]*>(?:<\/\1>)?/gi;
 
 function getAttr(tag: string, name: string): string | undefined {
   const re = new RegExp(`\\b${name}="([^"]*)"`);
@@ -36,6 +38,20 @@ function buildInjectedImgTag(tag: string, dataUri: string): string {
   if (alt) parts.push(` alt="${alt}"`);
   parts.push(">");
   return parts.join("");
+}
+
+function buildExternalEmbedPlaceholder(tag: string): string {
+  const style = getAttr(tag, "style") ?? "width:100%;height:100%;display:block";
+  const provider = getAttr(tag, "data-provider") || "external";
+  const poster = getAttr(tag, "data-poster");
+  if (poster) {
+    return `<img src="${poster}" style="${style}" alt="${provider} embed placeholder">`;
+  }
+  return [
+    `<div style="${style};background:#111827;color:#f9fafb;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;font-size:18px;text-align:center;padding:24px;box-sizing:border-box">`,
+    `${provider} embed unavailable for deterministic export`,
+    `</div>`,
+  ].join("");
 }
 
 /**
@@ -71,7 +87,6 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
       ...(config.tailwind !== undefined ? { tailwind: config.tailwind } : {}),
     });
     await this.page.setContent(shell, { waitUntil: "load" });
-    await preloadThreeModule(this.page);
     await this.page.evaluate(() => document.fonts.ready);
   }
 
@@ -81,6 +96,10 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
 
   async captureFrame(html: string, options?: { alpha?: boolean }): Promise<Buffer> {
     const injected = await this.injectClipFrames(html);
+
+    if (injected.includes("__SUPERIMG_THREE__")) {
+      await preloadThreeModule(this.page);
+    }
 
     await this.page.evaluate(async (h: string) => {
       const el = document.getElementById("frame");
@@ -129,16 +148,19 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
       ...(useAlpha ? {} : { quality: 95 }),
       clip: { x: 0, y: 0, width: this.width, height: this.height },
       omitBackground: useAlpha,
+      scale: "css",
+      caret: "initial",
     });
 
     return Buffer.isBuffer(png) ? png : Buffer.from(png);
   }
 
   private async injectClipFrames(html: string): Promise<string> {
-    if (!html.includes(CLIP_SYNC_ATTR)) return html;
+    let nextHtml = this.injectExternalEmbedPlaceholders(html);
+    if (!nextHtml.includes(CLIP_SYNC_ATTR)) return nextHtml;
 
-    const matches = [...html.matchAll(CLIP_IMG_RE)];
-    if (matches.length === 0) return html;
+    const matches = [...nextHtml.matchAll(CLIP_TAG_RE)];
+    if (matches.length === 0) return nextHtml;
 
     const replacements = await Promise.all(
       matches.map(async (match) => {
@@ -170,11 +192,16 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
       }),
     );
 
-    let result = html;
+    let result = nextHtml;
     for (const { tag, replacement } of replacements) {
       result = result.replace(tag, replacement);
     }
     return result;
+  }
+
+  private injectExternalEmbedPlaceholders(html: string): string {
+    if (!html.includes(EXTERNAL_EMBED_ATTR)) return html;
+    return html.replace(EXTERNAL_EMBED_TAG_RE, (tag) => buildExternalEmbedPlaceholder(tag));
   }
 
   async dispose(): Promise<void> {

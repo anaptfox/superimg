@@ -537,6 +537,7 @@ export async function executeRenderPlanParallel<TFrame>(
       r.init({
         width,
         height,
+        fps,
         fonts,
         inlineCss,
         stylesheets,
@@ -562,61 +563,84 @@ export async function executeRenderPlanParallel<TFrame>(
     ...(plan.resolvedAudio !== undefined ? { resolvedAudio: plan.resolvedAudio } : {}),
   });
 
-  // Pre-allocate result buffer for the rendered frame range.
-  const capturedFrames = new Array<TFrame>(totalFrames);
-
   try {
+    const capturedFrames = new Map<number, TFrame>();
+    let captureError: unknown = null;
+    let activeRenderers = renderers.length;
+    let notifyReady: (() => void) | null = null;
+    const notify = () => {
+      const resolve = notifyReady;
+      notifyReady = null;
+      resolve?.();
+    };
+    const waitForReadyFrame = () =>
+      new Promise<void>((resolve) => {
+        notifyReady = resolve;
+      });
+
     // Each renderer captures its assigned frames (round-robin) in frame order.
-    await Promise.all(
+    const captureAll = Promise.all(
       renderers.map(async (renderer, rendererIdx) => {
         let prevHtmlHash: number | null = null;
         let prevCapturedFrame: TFrame | null = null;
 
-        for (let frame = pFrameStart + rendererIdx; frame < pFrameEnd; frame += N) {
-          const mergedData = { ...(template.sample ?? {}), ...(data ?? {}) };
-          const ctx = createRenderContext(
-            frame, fps, totalFrames, width, height, mergedData, outputName, assetsMap, assetResolver, template.config?.width
-          );
+        try {
+          for (let frame = pFrameStart + rendererIdx; frame < pFrameEnd; frame += N) {
+            const mergedData = { ...(template.sample ?? {}), ...(data ?? {}) };
+            const ctx = createRenderContext(
+              frame, fps, totalFrames, width, height, mergedData, outputName, assetsMap, assetResolver, template.config?.width
+            );
 
-          const t1 = profile ? performance.now() : 0;
-          const html = safeRender(template, ctx, outputName, plan.bundle);
-          let compositeHtml: string;
-          try {
-            compositeHtml = buildCompositeHtml(html, background, watermark, width, height);
-          } catch (e) {
-            throw new RenderError({ frame, htmlError: (e as Error).message });
-          }
-          if (profile) profile.renderMs += performance.now() - t1;
-
-          callbacks?.onFrameRendered?.(frame, html, compositeHtml);
-
-          if (mode === 'animation') {
-            await renderer.advanceClock?.(Math.round(1000 / fps));
-          }
-
-          const htmlHash = mode === 'frame' ? hashString(compositeHtml) : null;
-          const isDuplicate = mode === 'frame' && htmlHash === prevHtmlHash && prevCapturedFrame !== null;
-
-          if (isDuplicate) {
-            capturedFrames[frame] = prevCapturedFrame!;
-            if (profile) profile.skippedFrames++;
-          } else {
-            const t2 = profile ? performance.now() : 0;
+            const t1 = profile ? performance.now() : 0;
+            const html = safeRender(template, ctx, outputName, plan.bundle);
+            let compositeHtml: string;
             try {
-              const captureOpts = { alpha: encoding?.video?.alpha === "keep" };
-              capturedFrames[frame] = 'rasterize' in renderer
-                ? await (renderer as Rasterizer<TFrame>).rasterize(compositeHtml, captureOpts)
-                : await (renderer as FrameRenderer<TFrame>).captureFrame(compositeHtml, captureOpts);
+              compositeHtml = buildCompositeHtml(html, background, watermark, width, height);
             } catch (e) {
-              throw new RenderError({ frame, browserError: (e as Error).message });
+              throw new RenderError({ frame, htmlError: (e as Error).message });
             }
-            if (profile) profile.captureMs += performance.now() - t2;
-            prevHtmlHash = htmlHash;
-            prevCapturedFrame = capturedFrames[frame] ?? null;
+            if (profile) profile.renderMs += performance.now() - t1;
+
+            callbacks?.onFrameRendered?.(frame, html, compositeHtml);
+
+            if (mode === 'animation') {
+              await renderer.advanceClock?.(Math.round(1000 / fps));
+            }
+
+            const htmlHash = mode === 'frame' ? hashString(compositeHtml) : null;
+            const isDuplicate = mode === 'frame' && htmlHash === prevHtmlHash && prevCapturedFrame !== null;
+
+            if (isDuplicate) {
+              capturedFrames.set(frame, prevCapturedFrame!);
+              if (profile) profile.skippedFrames++;
+              notify();
+            } else {
+              const t2 = profile ? performance.now() : 0;
+              try {
+                const captureOpts = { alpha: encoding?.video?.alpha === "keep" };
+                const capturedFrame = 'rasterize' in renderer
+                  ? await (renderer as Rasterizer<TFrame>).rasterize(compositeHtml, captureOpts)
+                  : await (renderer as FrameRenderer<TFrame>).captureFrame(compositeHtml, captureOpts);
+                capturedFrames.set(frame, capturedFrame);
+                prevCapturedFrame = capturedFrame;
+                notify();
+              } catch (e) {
+                throw new RenderError({ frame, browserError: (e as Error).message });
+              }
+              if (profile) profile.captureMs += performance.now() - t2;
+              prevHtmlHash = htmlHash;
+            }
           }
+        } finally {
+          activeRenderers--;
+          notify();
         }
       })
     );
+    captureAll.catch((error) => {
+      captureError = error;
+      notify();
+    });
 
     // Encode in order with depth-1 pipeline (same as single-renderer path).
     let pendingEncode: { frameIdx: number; promise: Promise<void> } | null = null;
@@ -630,16 +654,26 @@ export async function executeRenderPlanParallel<TFrame>(
     };
 
     for (let frame = pFrameStart; frame < pFrameEnd; frame++) {
+      while (!capturedFrames.has(frame)) {
+        if (captureError) throw captureError;
+        if (activeRenderers === 0) {
+          throw new RenderError({ frame, browserError: "Parallel renderer did not produce frame" });
+        }
+        await waitForReadyFrame();
+      }
       await flushPending();
+      const capturedFrame = capturedFrames.get(frame)!;
+      capturedFrames.delete(frame);
       const timestamp = frame / fps;
       const t3 = profile ? performance.now() : 0;
-      const encodePromise = encoder.addFrame(capturedFrames[frame]!, timestamp).then(() => {
+      const encodePromise = encoder.addFrame(capturedFrame, timestamp).then(() => {
         if (profile) profile.encodeMs += performance.now() - t3;
       });
       pendingEncode = { frameIdx: frame, promise: encodePromise };
       callbacks?.onProgress?.({ frame, totalFrames, fps });
     }
     await flushPending();
+    await captureAll;
 
     const result = await encoder.finalize();
     if (profile) printProfile(profile, performance.now() - t0);

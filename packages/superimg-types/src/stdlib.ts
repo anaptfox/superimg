@@ -42,6 +42,12 @@ import type * as viz from "@superimg/stdlib/viz";
 import type { layers, LayerStack } from "@superimg/stdlib/layers";
 import type { revealFx } from "@superimg/stdlib/reveal";
 import type { sync as videoSync, ClipSyncOptions, ClipSyncResult } from "@superimg/stdlib/video";
+import type {
+  MediaVideoOptions,
+  MediaVideoResult,
+  MediaYoutubeOptions,
+  MediaYoutubeResult,
+} from "@superimg/stdlib/media";
 
 /**
  * Standard library available via `ctx.std` in render functions.
@@ -66,6 +72,10 @@ export interface Stdlib {
   stack: typeof stack;
   video: {
     sync: (opts: ClipSyncOptions) => ClipSyncResult;
+  };
+  media: {
+    video: (opts: MediaVideoOptions) => MediaVideoResult;
+    youtube: (opts: MediaYoutubeOptions) => MediaYoutubeResult;
   };
   mergeMotion: typeof mergeMotion;
   layers: typeof layers;
@@ -106,6 +116,7 @@ export type { Carousel, CarouselOpts, CarouselItemState, Stack, StackOpts, Stack
 export type ImageStdlib = Omit<
   Stdlib,
   "video" | "oscillate" | "loop" | "pingpong" | "wiggle" | "montage" | "backgrounds" | "mergeMotion" | "reveal" | "carousel" | "stack"
+  | "media"
 >;
 
 export type SvgStdlib = ImageStdlib;
@@ -113,5 +124,5 @@ export type SvgStdlib = ImageStdlib;
 export type SvgAnimatedStdlib = ImageStdlib &
   Pick<
     Stdlib,
-    "video" | "oscillate" | "loop" | "pingpong" | "wiggle" | "mergeMotion" | "carousel" | "stack"
+    "video" | "media" | "oscillate" | "loop" | "pingpong" | "wiggle" | "mergeMotion" | "carousel" | "stack"
   >;

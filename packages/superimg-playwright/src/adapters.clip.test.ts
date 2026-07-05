@@ -3,6 +3,7 @@ import type { Page } from "playwright";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sync } from "@superimg/stdlib/video";
+import { video as mediaVideo, youtube as mediaYoutube } from "@superimg/stdlib/media";
 import { PlaywrightFrameRenderer } from "./adapters.js";
 import type { FrameExtractorBackend } from "./frame-extractor.js";
 import { FrameExtractor } from "./frame-extractor.js";
@@ -58,5 +59,28 @@ describe("PlaywrightFrameRenderer clip injection", () => {
     expect(injected).not.toContain("data-src=");
     expect(injected).not.toContain("data-t=");
     expect(injected).not.toContain("data-frame=");
+  });
+
+  it("injects frames for native std.media.video markers", async () => {
+    const clip = mediaVideo(
+      { src: countdownMp4, at: 1, width: 640, height: 360, fit: "contain" },
+      30,
+    );
+    const injected = await injectClips(clip.html);
+
+    expect(injected).toContain("<img");
+    expect(injected).toContain('style="width:640px;height:360px;object-fit:contain;display:block"');
+    expect(injected).toMatch(/src="data:image\/png;base64,/);
+    expect(injected).not.toContain("<video");
+    expect(injected).not.toContain("data-superimg-clip");
+  });
+
+  it("replaces unresolved external embeds with deterministic placeholders", async () => {
+    const embed = mediaYoutube({ videoId: "dQw4w9WgXcQ", at: 0, width: 640, height: 360 }, 30);
+    const injected = await injectClips(embed.html);
+
+    expect(injected).toContain("youtube embed unavailable for deterministic export");
+    expect(injected).not.toContain("<iframe");
+    expect(injected).not.toContain("youtube.com/embed");
   });
 });

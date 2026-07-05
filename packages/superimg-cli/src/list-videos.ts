@@ -28,6 +28,8 @@ export interface VideoSummary {
   config?: string;
   isOg?: boolean;
   variants?: { suffix: string; width: number; height?: number }[];
+  /** Google Fonts specs declared in the template config (e.g. "Inter:wght@500;700"). */
+  fonts?: string[];
 }
 
 export async function listVideos(projectRoot?: string): Promise<VideoSummary[]> {
@@ -91,6 +93,7 @@ export async function listVideos(projectRoot?: string): Promise<VideoSummary[]> 
           ...(config !== undefined ? { config } : {}),
           ...(isOg ? { isOg } : {}),
           ...(variants !== undefined ? { variants } : {}),
+          ...(metadata.config?.fonts !== undefined ? { fonts: metadata.config.fonts } : {}),
         };
       } catch {
         config = "⚠ parse failed";
