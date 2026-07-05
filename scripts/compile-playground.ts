@@ -6,7 +6,10 @@
  *   manifest.json
  *   examples/{id}/code.ts
  *   examples/{id}/bundle.iife.js   (when needsBundle)
- *   assets/...                   (companion files from template dirs)
+ *   assets/{id}/...              (companion files from template dirs)
+ *
+ * Mirrors cross-template asset refs into {out}/assets/{exampleId}/ (flat filenames).
+ * Gumbo dev only serves playground/assets/<known-example-id>/*.
  *
  * Env (set by gumbo [[build.hook]]):
  *   GUMBO_ROOT   — project root
@@ -64,6 +67,17 @@ interface BuiltinSpec {
   module: string;
   export: string;
 }
+
+/** Editor keeps WASM live-compile for these demos even when a preview bundle exists. */
+const EDITOR_WASM_DEMO_IDS = new Set([
+  "code-galaxy",
+  "countdown",
+  "force-graph",
+  "math-tunnel",
+  "spinner",
+  "svg-filter",
+  "terminal",
+]);
 
 /** Built-in string-literal examples (not sourced from examples/<category>/). */
 const BUILTIN_SPECS: BuiltinSpec[] = [
@@ -123,6 +137,64 @@ function hasRelativeImports(code: string): boolean {
 
 function hasConfigAssets(code: string): boolean {
   return /\bassets\s*:\s*\{/.test(code);
+}
+
+function normalizeAssetPath(relativePath: string): string {
+  return relativePath.replace(/\\/g, "/").replace(/^(\.\.\/)+/, "");
+}
+
+function collectAssetRefs(code: string): string[] {
+  const match = code.match(/\bassets\s*:\s*\{([\s\S]*?)\n\s*\}/);
+  if (!match) return [];
+
+  const refs: string[] = [];
+  const stringRe = /["']([^"']+)["']/g;
+  let m: RegExpExecArray | null;
+  while ((m = stringRe.exec(match[1]))) {
+    const value = m[1];
+    if (value.includes("/") || value.includes(".")) {
+      refs.push(value);
+    }
+  }
+  return refs;
+}
+
+function flattenAssetPath(normalized: string): string {
+  return normalized.replace(/\//g, "--");
+}
+
+function mirrorReferencedAssets(
+  code: string,
+  templateDir: string,
+  outDir: string,
+  exampleId: string,
+): void {
+  const destDir = path.join(outDir, "assets", exampleId);
+  fs.mkdirSync(destDir, { recursive: true });
+  // Marker so Gumbo dev static serving registers the example assets directory.
+  const marker = path.join(destDir, "package.json");
+  if (!fs.existsSync(marker)) {
+    fs.writeFileSync(marker, JSON.stringify({ name: exampleId, private: true }, null, 2));
+  }
+
+  for (const ref of collectAssetRefs(code)) {
+    const src = path.resolve(templateDir, ref);
+    const normalized = normalizeAssetPath(ref);
+    const dest = path.join(destDir, flattenAssetPath(normalized));
+
+    if (!fs.existsSync(src) || !fs.statSync(src).isFile()) {
+      console.warn(`Warning: asset missing: ${ref} (resolved ${src})`);
+      continue;
+    }
+
+    fs.mkdirSync(destDir, { recursive: true });
+    fs.copyFileSync(src, dest);
+  }
+}
+
+function resolveLiveEdit(id: string, hasBundle: boolean): boolean {
+  if (EDITOR_WASM_DEMO_IDS.has(id)) return true;
+  return !hasBundle;
 }
 
 function parseDuration(code: string): number | undefined {
@@ -197,7 +269,17 @@ function writeExample(
     copyCompanionAssets(entry.assetDir, outDir, entry.id);
   }
 
+  if (entry.playground?.needsAssets) {
+    ensureAssetDirMarker(outDir, entry.id);
+  }
+
   return catalog;
+}
+
+function ensureAssetDirMarker(outDir: string, exampleId: string) {
+  const marker = path.join(outDir, "assets", exampleId, ".playground");
+  fs.mkdirSync(path.dirname(marker), { recursive: true });
+  fs.writeFileSync(marker, exampleId);
 }
 
 async function loadBuiltinModules(builtinsDir: string) {
@@ -261,8 +343,13 @@ async function compileTemplates(outDir: string): Promise<CatalogEntry[]> {
       console.log(`  ✓ ${meta.category}/${id} → ${meta.title}`);
     }
 
+    if (needsAssets) {
+      mirrorReferencedAssets(code, dirPath, outDir, id);
+    }
+
+    const hasBundle = bundled !== undefined;
     const playground: PlaygroundMeta = {
-      liveEdit: !bundled,
+      liveEdit: resolveLiveEdit(id, hasBundle),
       needsBundle: mustBundle,
       needsAssets,
       ...(duration !== undefined ? { duration } : {}),

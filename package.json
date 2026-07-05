@@ -30,18 +30,19 @@
     }
   },
   "devDependencies": {
-    "eslint": "^10.5.0",
-    "typescript-eslint": "^8.46.2",
     "@types/node": "^26.0.0",
     "@vitest/coverage-v8": "^4.1.9",
+    "eslint": "^10.5.0",
     "tsdown": "^0.22.3",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.46.2",
     "vite": "^8.1.0",
     "vitest": "^4.1.9"
   },
   "dependencies": {
     "@shikijs/langs": "^4.3.0",
-    "@shikijs/themes": "^4.3.0"
+    "@shikijs/themes": "^4.3.0",
+    "playwright": "^1.61.1"
   }
 }

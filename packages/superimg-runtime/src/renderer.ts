@@ -1,6 +1,6 @@
 //! Snapdom-based HTML renderer
 
-import { snapdom, preCache } from "@zumer/snapdom";
+import { snapdom, preCache, type SnapdomOptions } from "@zumer/snapdom";
 import type { RenderOptions, RenderContext } from "@superimg/types";
 import { buildHeadStyles, isSafeStylesheetUrl } from "@superimg/core";
 import { get2DContext } from "./utils.js";
@@ -74,6 +74,7 @@ function collectStylesheetUrls(options: RenderOptions): string[] {
  */
 export class BrowserRenderer {
   private preCached = false;
+  private warmupRequested = false;
 
   // Session state (persistent iframe)
   private iframe: HTMLIFrameElement | null = null;
@@ -84,11 +85,20 @@ export class BrowserRenderer {
   private sessionStylesheetUrls = new Set<string>();
 
   /**
-   * Pre-cache fonts/images for faster first render
+   * Request resource warmup for the capture surface.
+   *
+   * SnapDOM caches the subtree it is given. BrowserRenderer captures the iframe
+   * #frame root, so the actual warmup happens after that root has frame HTML.
    */
   async warmup(): Promise<void> {
-    if (this.preCached) return;
-    await preCache(document, { embedFonts: true });
+    this.warmupRequested = true;
+    await this.preCacheFrameRoot();
+  }
+
+  private async preCacheFrameRoot(): Promise<void> {
+    if (!this.warmupRequested || this.preCached || !this.frameRoot) return;
+    if (this.frameRoot.childElementCount === 0 && this.frameRoot.textContent === "") return;
+    await preCache(this.frameRoot, { embedFonts: true, cache: "full" });
     this.preCached = true;
   }
 
@@ -180,8 +190,9 @@ export class BrowserRenderer {
     }
 
     this.frameRoot.innerHTML = cleanedHtml;
+    await this.preCacheFrameRoot();
 
-    const result = await snapdom(this.frameRoot, {
+    const captureOptions: SnapdomOptions = {
       width: this.sessionOptions.width,
       height: this.sessionOptions.height,
       scale: 1,
@@ -189,7 +200,12 @@ export class BrowserRenderer {
       embedFonts: true,
       backgroundColor: this.sessionOptions.backgroundColor ?? "#000000",
       cache: "auto",
-    });
+      // SuperImg frame export is pixel-sensitive. SnapDOM 2.15 defaults to
+      // perceptual downsampling, so opt out unless we expose it deliberately.
+      compress: false,
+    };
+
+    const result = await snapdom(this.frameRoot, captureOptions);
 
     const canvas = await result.toCanvas();
     const ctx = get2DContext(canvas);
@@ -207,6 +223,7 @@ export class BrowserRenderer {
     this.sessionOptions = null;
     this.sessionStylesheetUrls.clear();
     this.initialized = false;
+    this.preCached = false;
   }
 
   /**
