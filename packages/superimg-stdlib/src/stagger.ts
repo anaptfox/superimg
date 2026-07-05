@@ -7,11 +7,11 @@
  * @example
  * ```ts
  * // Count-based: get per-item progress values
- * const progresses = std.stagger(5, timeline, { duration: 0.3 });
+ * const progresses = std.stagger(5, timeline.progress, { duration: 0.3 });
  * // [0.8, 0.6, 0.4, 0.2, 0] at timeline.progress=0.5
  *
  * // Items-based: get enriched objects
- * const items = std.stagger(["A", "B", "C"], timeline, { duration: 0.4 });
+ * const items = std.stagger(["A", "B", "C"], timeline.progress, { duration: 0.4 });
  * items.map(({ item, progress }) => `<div style="opacity: ${progress}">${item}</div>`)
  * ```
  */
@@ -47,12 +47,12 @@ export interface StaggerItem<T> {
  *
  * @example Count-based
  * ```ts
- * const progresses = std.stagger(3, timeline, { duration: 0.4 });
+ * const progresses = std.stagger(3, timeline.progress, { duration: 0.4 });
  * ```
  *
  * @example Items-based
  * ```ts
- * const staggered = std.stagger(["A", "B", "C"], timeline, { from: "center" });
+ * const staggered = std.stagger(["A", "B", "C"], timeline.progress, { from: "center" });
  * ```
  */
 function staggerImpl<T>(
