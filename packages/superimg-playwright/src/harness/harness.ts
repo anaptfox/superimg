@@ -1,6 +1,6 @@
 //! Render harness - runs in Playwright's browser context (encoder-only)
 
-import { BrowserEncoder } from "@superimg/runtime/encoder";
+import { BrowserEncoder } from "@superimg/browser-export/encoder";
 import type { EncodingOptions, ResolvedAudioTimeline } from "@superimg/types";
 
 declare global {

@@ -4,6 +4,12 @@
 // Engine (primary export)
 export { PlaywrightEngine } from "./playwright-engine.js";
 export type { PlaywrightEngineOptions } from "./playwright-engine.js";
+export { createRenderSession, RenderSession } from "./render-session.js";
+export type {
+  RenderSessionEngine,
+  RenderSessionOptions,
+  RenderSessionRenderOptions,
+} from "./render-session.js";
 
 // Adapters (advanced use)
 export { PlaywrightFrameRenderer, PlaywrightVideoEncoder } from "./adapters.js";

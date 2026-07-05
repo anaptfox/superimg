@@ -14,7 +14,7 @@ import {
   type EnsureBrowserOptions,
 } from "./browser-utils.js";
 import { PlaywrightFrameRenderer } from "./adapters.js";
-import { ensureFfmpegAvailable, FrameExtractor } from "./frame-extractor.js";
+import { FrameExtractor } from "./frame-extractor.js";
 import { FfmpegGifEncoder } from "./ffmpeg-gif-encoder.js";
 import { NodeVideoEncoder } from "./node-encoder.js";
 import { SharpStillEncoder, type StillFormat } from "./sharp-still-encoder.js";
@@ -47,14 +47,9 @@ function createBrowserNotFoundMessage(): string {
   const ciNote = isCI() ? "\n  For CI, add this to your setup step." : "";
 
   const lines = [
-    "Playwright browser not installed.",
+    "SuperImg Chromium runtime is not installed.",
     "",
-    "To install the browser, choose one of:",
-    "",
-    "  1. Auto-install in code:",
-    "     await PlaywrightEngine.ensureBrowser();",
-    "",
-    "  2. CLI command:",
+    "Install the runtime with:",
     `     ${installCommand}`,
     ciNote,
   ].filter(Boolean);
@@ -63,8 +58,6 @@ function createBrowserNotFoundMessage(): string {
 }
 
 export interface PlaywrightEngineOptions {
-  /** If true, automatically install browser if not found (default: false) */
-  autoInstall?: boolean;
   /**
    * If true, each createAdapters() call gets its own fresh browser context and page.
    * The renderer's dispose() then closes that context.
@@ -93,6 +86,7 @@ class PerRenderFrameRenderer implements FrameRenderer<Buffer> {
       colorScheme: "light",
       locale: "en-US",
       timezoneId: "UTC",
+      serviceWorkers: "block",
     });
     const page = await context.newPage();
     this.inner = new PlaywrightFrameRenderer(page, true, this.frameExtractor);
@@ -156,13 +150,6 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
   }
 
   async init(): Promise<void> {
-    const { autoInstall = false } = this.options;
-
-    if (autoInstall) {
-      await ensureBrowser({ autoInstall: true });
-    }
-
-    await ensureFfmpegAvailable();
     this.frameExtractor = new FrameExtractor();
 
     try {
@@ -185,6 +172,7 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
         colorScheme: "light",
         locale: "en-US",
         timezoneId: "UTC",
+        serviceWorkers: "block",
       });
       this.page = await context.newPage();
     }
@@ -269,6 +257,7 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
           colorScheme: "light",
           locale: "en-US",
           timezoneId: "UTC",
+          serviceWorkers: "block",
         });
         return ctx.newPage();
       })

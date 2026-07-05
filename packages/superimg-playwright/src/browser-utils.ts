@@ -1,9 +1,8 @@
-//! Browser detection and installation utilities for Playwright
+//! Browser detection and installation utilities for SuperImg's Playwright runtime
 
 import { fork } from "node:child_process";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { access } from "node:fs/promises";
 import { isModuleNotFoundError } from "@superimg/core/errors";
 
 const require = createRequire(import.meta.url);
@@ -14,18 +13,8 @@ async function getChromium(): Promise<typeof import("playwright").chromium> {
     const pw = await import("playwright");
     return pw.chromium;
   } catch (err: unknown) {
-    console.error("DEBUG: import('playwright') failed:", err);
     if (isModuleNotFoundError(err)) {
-      try {
-        const cwdRequire = createRequire(join(process.cwd(), "package.json"));
-        const pwPath = cwdRequire.resolve("playwright");
-        console.error("DEBUG: resolved playwright path from cwd:", pwPath);
-        const pw = await import(pwPath);
-        return pw.chromium;
-      } catch (err2: unknown) {
-        console.error("DEBUG: fallback import failed:", err2);
-        // Fall through to original throw
-      }
+      throw new Error("SuperImg's internal Playwright runtime is not installed.");
     }
     throw err;
   }
@@ -73,7 +62,7 @@ export class BrowserNotInstalledError extends Error {
   readonly browsersPath: string | null;
 
   constructor(details: { browsersPath?: string | null }) {
-    super("Playwright browser is not installed");
+    super("SuperImg Chromium runtime is not installed");
     this.name = "BrowserNotInstalledError";
     this.installCommand = getBrowserInstallCommand();
     this.browsersPath = details.browsersPath ?? null;
@@ -99,12 +88,12 @@ export class BrowserInstallError extends Error {
  * Useful for error messages and documentation.
  */
 export function getBrowserInstallCommand(): string {
-  return "npx playwright install chromium";
+  return "superimg setup";
 }
 
 /**
- * Check if the Playwright Chromium browser is installed.
- * This is a read-only check that does NOT launch a browser or install anything.
+ * Check if the SuperImg Chromium runtime can launch.
+ * This does not install anything.
  */
 export async function checkBrowserStatus(): Promise<BrowserStatus> {
   const platform = process.platform as "darwin" | "linux" | "win32";
@@ -116,11 +105,11 @@ export async function checkBrowserStatus(): Promise<BrowserStatus> {
 
   try {
     const chromium = await getChromium();
-    executablePath = chromium.executablePath();
-    await access(executablePath);
+    const browser = await chromium.launch({ headless: true });
+    executablePath = browser.process()?.spawnfile ?? chromium.executablePath();
+    await browser.close();
     installed = true;
-  } catch (err: unknown) {
-    console.error("DEBUG: checkBrowserStatus failed:", err);
+  } catch {
     executablePath = null;
     installed = false;
   }
@@ -169,25 +158,18 @@ export async function ensureBrowser(options: EnsureBrowserOptions = {}): Promise
 export async function installBrowser(options: InstallOptions = {}): Promise<void> {
   const { onProgress, timeout = 300000 } = options;
 
-  onProgress?.("Installing Playwright Chromium browser...");
+  onProgress?.("Installing SuperImg Chromium headless shell...");
 
   let cliPath: string;
   try {
     cliPath = join(require.resolve("playwright/package.json"), "..", "cli.js");
   } catch {
-    try {
-      const cwdRequire = createRequire(join(process.cwd(), "package.json"));
-      cliPath = join(cwdRequire.resolve("playwright/package.json"), "..", "cli.js");
-    } catch {
-      throw new Error(
-        "Playwright is not installed. Run 'superimg setup' or 'npm install playwright' first."
-      );
-    }
+    throw new Error("SuperImg's internal Playwright runtime is not installed.");
   }
 
   try {
     await new Promise<void>((resolve, reject) => {
-      const child = fork(cliPath, ["install", "chromium"], {
+      const child = fork(cliPath, ["install", "--only-shell", "chromium"], {
         stdio: onProgress ? "pipe" : "inherit",
         timeout,
       });
@@ -205,7 +187,7 @@ export async function installBrowser(options: InstallOptions = {}): Promise<void
 
       child.on("close", (code) => {
         if (code === 0) {
-          onProgress?.("Browser installation complete");
+          onProgress?.("SuperImg Chromium runtime installation complete");
           resolve();
         } else {
           reject(new BrowserInstallError(code ?? 1));
