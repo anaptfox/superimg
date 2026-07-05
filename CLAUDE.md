@@ -2,6 +2,8 @@
 
 Programmatic video generation framework. HTML/CSS templates → MP4.
 
+Animation design guidance (timing, easing, framing, SVG craft): `/animator` skill (`skills/animator/`). Heavy scene/visual design tasks: delegate to the `video-designer` agent.
+
 ## Commands
 
 This project uses [Just](https://github.com/casey/just) for task automation. **Always use `just <recipe>` instead of raw pnpm/npm commands.**
@@ -28,6 +30,10 @@ This project uses [Just](https://github.com/casey/just) for task automation. **A
 | Release workflow | `just release` |
 
 Run `just` or `just --list` to see all available recipes.
+
+## Git
+
+Never add a Claude/Anthropic co-author trailer to commit messages in this repo.
 
 ## Video Project Structure
 
