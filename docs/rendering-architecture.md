@@ -35,8 +35,9 @@ This document describes internal workspace architecture. User-facing code should
 │                                                                 │
 │              PRIVATE WORKSPACE IMPLEMENTATION                   │
 │                                                                 │
-│  @superimg/runtime-web  WebRuntime, IframePresenter (preview) │
-│  @superimg/runtime      BrowserRenderer, BrowserEncoder       │
+│  @superimg/media        MediaSession, DOM surface             │
+│  @superimg/browser-export SnapDOM capture, browser encoding   │
+│  @superimg/node         Server render runtime                 │
 │  @superimg/player       Player (store + timeline controls)    │
 │  @superimg/core         Compiler, Context, HTML               │
 │  @superimg/stdlib     Easing, Math, Color, Text, etc.           │
@@ -51,22 +52,22 @@ This document describes internal workspace architecture. User-facing code should
 
 | Path | Package | Output | Use case |
 |------|---------|--------|----------|
-| **Preview / playback** | `@superimg/runtime-web` | Live DOM (iframe + morphdom) | `Player`, docs editor, `superimg dev` |
-| **Browser export** | `@superimg/runtime` | MP4/WebM blob via Snapdom + WebCodecs | Playground export, dev-ui export |
-| **Server CLI** | Playwright + `runtime/encoder` | MP4 on disk | `superimg render` |
+| **Preview / playback** | `@superimg/media` | Live DOM (iframe + morphdom) | `Player`, docs editor, `superimg dev` |
+| **Browser export** | `@superimg/browser-export` | MP4/WebM blob via SnapDOM + WebCodecs | Playground export, dev-ui export |
+| **Server CLI** | `@superimg/node` | MP4 on disk | `superimg render` |
 
-`@superimg/player` sits above `runtime-web`: it owns UI state (`player.store`), playback timing, and checkpoint navigation. React controls use `getRuntimeStore()` — a thin adapter over the same store.
+`@superimg/player` sits above `MediaSession`: media owns playback/render state, while player owns UI state (`player.store`) and checkpoint navigation. React controls use `getRuntimeStore()` as a thin adapter over the same store.
 
 ---
 
 ## Browser Rendering
 
-Client-side rendering has two tiers: **display** (runtime-web) and **capture/encode** (runtime).
+Client-side rendering has two tiers: **media playback** (`@superimg/media`) and **capture/encode** (`@superimg/browser-export`).
 
-### Display (runtime-web)
+### Media Playback
 
 ```
-Template.render(ctx) → buildCompositeHtml → IframePresenter (morphdom)
+Template.render(ctx) → buildCompositeHtml → MediaSession DOM surface (morphdom)
 ```
 
 - No per-frame rasterization during preview

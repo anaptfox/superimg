@@ -2,7 +2,7 @@
 
 ## 0.0.21 — Unreleased
 
-**Breaking:** Browser player preview uses iframe + morphdom (`runtime-web`) instead of canvas frame caching.
+**Breaking:** Browser player preview uses `superimg/media` with iframe + morphdom instead of canvas frame caching.
 
 - `Player.destroy()` → `Player.dispose()`
 - `seekToFrame()` → `seekFrame()`

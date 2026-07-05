@@ -4,13 +4,13 @@ Guide to using the SuperImg browser player in vanilla JavaScript and React.
 
 ## Overview
 
-The player previews templates in the browser using **real HTML/CSS in a sandboxed iframe** (`runtime-web` + morphdom). It does not rasterize every frame to a canvas during playback.
+The player previews templates in the browser using **real HTML/CSS in a sandboxed iframe** (`superimg/media` + morphdom). It does not rasterize every frame to a canvas during playback.
 
 | Layer | Package | Role |
 |-------|---------|------|
 | **Player** | `@superimg/player` | High-level API, Zustand store, timeline helpers |
-| **Display** | `@superimg/runtime-web` | `WebRuntime` + `IframePresenter` |
-| **Export** | `@superimg/runtime` | `CanvasRenderer` + `exportToVideo` (separate path) |
+| **Media** | `@superimg/media` | `MediaSession` + DOM surface |
+| **Export** | `@superimg/browser-export` | Capture backend + browser encoder |
 
 Two integration styles:
 
@@ -128,10 +128,10 @@ player.on("error", (err) => {});
 
 ### Browser Export (MP4)
 
-Preview uses `runtime-web`. Export uses `runtime`:
+Preview uses `superimg/media`. Export uses `@superimg/browser-export`:
 
 ```typescript
-import { CanvasRenderer, exportToVideo, downloadBlob } from "superimg/browser";
+import { createBrowserExporter, downloadBlob } from "@superimg/browser-export";
 ```
 
 See the playground export hook or CLI dev-ui export panel for a full example.
@@ -171,6 +171,14 @@ playerRef.current?.update({ data: { title: "Updated" } });
 ```
 
 `PlayerRef.store` is a `RuntimeStore` adapter over the internal Zustand store.
+
+### Layered Architecture
+
+The React `<Player>` uses a layered architecture internally to separate concerns:
+1. **Compile Layer**: Uses an off-thread worker to bundle templates without blocking the main thread UI.
+2. **Dynamic Layers**: Handles rendering and playback preview via a `MediaSession` (`@superimg/media`).
+
+Exporting to MP4/WebM is not built into `<Player>` — consumers call `exportToVideo`/`downloadBlob` from `@superimg/browser-export` directly (see `useExport`/`usePlaygroundExport`) and pass the result through the `onExport`/`onDownload` props.
 
 ---
 
