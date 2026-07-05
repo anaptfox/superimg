@@ -48,13 +48,14 @@ export default define({
     const exitP = t.in("exit");
 
     const items = std.stagger(paths, enterP, {
-      duration: "50%",
+      duration: 0.5,
       from: "center",
       easing: "easeOutCubic",
     });
 
-    const fillOpacity = t.motion([0, 0, 0.15, 0.15], "easeOutCubic");
-    const exitOpacity = t.motion([1, 1, 1, 0], "easeInCubic");
+    // Fill washes in over the last stretch of the draw; everything fades on exit
+    const fillOpacity = std.interpolate(enterP, [0.6, 1], [0, 0.15], "easeOutCubic");
+    const exitOpacity = std.interpolate(exitP, [0, 1], [1, 0], "easeInCubic");
 
     const svgPaths = items.map(({ item: d, progress: p }) => {
       const draw = std.svg.draw(d, p);

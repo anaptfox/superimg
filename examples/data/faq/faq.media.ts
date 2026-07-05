@@ -44,7 +44,7 @@ export default define<FaqVideoData>({
 
     const d = ctx.director({ intro: "10%", items: "80%", outro: "10%" });
     const topicProgress = std.interpolate(d.in("intro"), [0, 1], [0, 1], "easeOutCubic");
-    const fadeOut = std.interpolate(d.in("outro"), [0, 1], [0, 1], "easeOutCubic");
+    const fadeOut = std.interpolate(d.in("outro"), [0, 1], [0, 1], "easeInCubic");
     const globalOpacity = 1 - fadeOut;
 
     const stk = std.stack(items, { during: d.in("items"), lead: 0.02, trail: 0.02 });

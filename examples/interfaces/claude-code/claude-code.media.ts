@@ -207,6 +207,12 @@ export default define<ClaudeCodeData>({
     const promptProgress = score.in("prompt");
     const workProgress = score.in("work");
     const finalProgress = score.in("final");
+    
+    const isTypingPrompt = score.active === "prompt" && promptProgress > 0 && promptProgress < 0.84;
+    const isTypingFinal = score.active === "final" && finalProgress > 0 && finalProgress < 0.74;
+    const cursorOpacity = (isTypingPrompt || isTypingFinal) ? 0.9 : ((timeline.seconds % 1.0) < 0.5 ? 0.9 : 0);
+    const cursorHtml = `<span class="cursor" style="opacity: ${cursorOpacity}">&nbsp;</span>`;
+
     const outroOpacity = score.active === "outro" ? 1 - score.in("outro") : 1;
     const isSubmitted = score.active === "work" || score.active === "final" || score.active === "outro";
 
@@ -229,7 +235,7 @@ export default define<ClaudeCodeData>({
     const feedTop = contentPadding;
     const promptDone = isSubmitted || promptProgress > 0.92;
     const displayPrompt = escapeHtml(prompt.slice(0, Math.floor((promptDone ? 1 : promptReveal) * prompt.length)));
-    const promptCursor = promptDone ? "" : '<span class="cursor">&nbsp;</span>';
+    const promptCursor = promptDone ? "" : cursorHtml;
 
     const workWindow = std.clamp01((workProgress - 0.08) / 0.84);
     const feedCursor = workWindow * feed.length;
@@ -237,7 +243,7 @@ export default define<ClaudeCodeData>({
       ? std.clamp01(finalProgress / 0.74)
       : 0;
     const finalText = escapeHtml(finalMessage.slice(0, Math.floor(finalReveal * finalMessage.length)));
-    const finalCursor = score.active === "final" && finalReveal < 1 ? '<span class="cursor">&nbsp;</span>' : "";
+    const finalCursor = score.active === "final" && finalReveal < 1 ? cursorHtml : "";
     const feedScroll = 0;
 
     const toneStyle = {
@@ -297,7 +303,6 @@ export default define<ClaudeCodeData>({
 
     return `
       <style>
-        @keyframes blink { 0%, 52% { opacity: 1; } 53%, 100% { opacity: 0; } }
         * { box-sizing: border-box; }
         .mono {
           font-family: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
@@ -311,8 +316,6 @@ export default define<ClaudeCodeData>({
           height:1.05em;
           margin-left:2px;
           background:${colors.text};
-          opacity:0.9;
-          animation:blink 1s steps(1, end) infinite;
           vertical-align:-0.13em;
         }
         .claude-mark {
@@ -561,7 +564,7 @@ export default define<ClaudeCodeData>({
               line-height:1.2;
             ">
               <span style="color:${colors.muted};">></span>
-              <span style="white-space:pre-wrap;">${isSubmitted ? '<span class="cursor">&nbsp;</span>' : `${displayPrompt}${promptCursor}`}</span>
+              <span style="white-space:pre-wrap;">${isSubmitted ? cursorHtml : `${displayPrompt}${promptCursor}`}</span>
             </div>
             <div style="
               display:grid;

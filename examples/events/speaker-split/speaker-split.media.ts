@@ -55,7 +55,8 @@ export default define({
 
     if (t.active === "outro") {
       const logoWidth = r({ portrait: 500, square: 400, default: 480 });
-      const logoAnim = t.motion({ during: "outro", scale: 0.9 });
+      // Enter over 1s; the default exit then fades the logo to black across the outro
+      const logoAnim = t.motion({ during: "outro", for: "1.0s", scale: 0.9 });
       return `
         <div style="${std.css({ width, height, background: "#000", display: "flex", alignItems: "center", justifyContent: "center" })}">
           <img src="${techlahomaSvg}" style="${std.css({ width: logoWidth })}; ${logoAnim.style}" />
@@ -66,20 +67,20 @@ export default define({
     // Background zoom (manual interpolation)
     const zoom = std.interpolate(t.in("content"), [0, 1], [1.0, 1.1]);
 
-    const photoAnim = t.motion({ at: "0%", duration: "10%", exit: false });
+    const photoAnim = t.motion({ at: "0%", for: "10%", exit: false });
     const contentAnim = t.motion({ 
       at: "5%", 
-      duration: "10%", 
+      for: "10%", 
       x: isHorizontalSplit ? 100 : 0, 
       y: isHorizontalSplit ? 0 : 100, 
       exit: false 
     });
 
-    const groupAnim = t.motion({ at: "10%", duration: "10%", exit: false });
-    const labelAnim = t.motion({ at: "15%", duration: "10%", exit: false });
-    const nameRoleAnim = t.motion({ at: "20%", duration: "10%", y: 20, exit: false });
-    const talkAnim = t.motion({ at: "25%", duration: "10%", y: 20, exit: false });
-    const logisticsAnim = t.motion({ at: "30%", duration: "10%", y: 20, exit: false });
+    const groupAnim = t.motion({ at: "10%", for: "10%", exit: false });
+    const labelAnim = t.motion({ at: "15%", for: "10%", exit: false });
+    const nameRoleAnim = t.motion({ at: "20%", for: "10%", y: 20, exit: false });
+    const talkAnim = t.motion({ at: "25%", for: "10%", y: 20, exit: false });
+    const logisticsAnim = t.motion({ at: "30%", for: "10%", y: 20, exit: false });
 
     // Fade out everything at the end of content phase (8.5s - 9s)
     const fadeOut = std.interpolate(t.in("content", { at: "94%", duration: "6%"}), [0, 1], [1, 0], "easeInCubic");

@@ -17,7 +17,9 @@ export default define({
   render(ctx) {
     const { std, width, height, timeline } = ctx;
     const three = std.viz.three;
-    const t = timeline.progress;
+    const tRaw = timeline.progress;
+    // Anticipation: pull back slightly before diving into the galaxy
+    const t = std.interpolate(tRaw, [0, 0.15, 1], [0, -0.08, 1], "easeInOutSine");
 
     const theta = (t * 4 * Math.PI).toFixed(3);
     const radius = (2.8 - t * 1.6).toFixed(3);

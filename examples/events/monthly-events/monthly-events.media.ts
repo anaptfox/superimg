@@ -75,18 +75,19 @@ export default define({
     // Ken Burns background (shared)
     const bg = std.backgrounds.kenBurns({
       src: backgroundImage,
-      progress: ctx.timeline,       zoomTo: 1.12,
+      progress: ctx.timeline.progress,
+      zoomTo: 1.12,
       overlay: "rgba(0, 0, 0, 0.6)",
     });
 
     // === RECAP PHASE ===
     if (t.active === "recap") {
       const recapP = t.in("recap");
-      const recapBg = std.backgrounds.kenBurns({ src: backgroundImage, progress: ctx.timeline, zoomTo: 1.12, overlay: "rgba(0, 0, 0, 0.7)" });
+      const recapBg = std.backgrounds.kenBurns({ src: backgroundImage, progress: ctx.timeline.progress, zoomTo: 1.12, overlay: "rgba(0, 0, 0, 0.7)" });
 
       // Stagger rows using score
       const recapRows = events.map((event: TechlahomEvent, i: number) => {
-        const anim = t.motion({ during: "recap", at: `${((0.1/2.5 + i * 0.08/2.5) * 100).toFixed(1)}%`, duration: `${((0.3/2.5) * 100).toFixed(1)}%`, y: 20 });
+        const anim = t.motion({ during: "recap", at: `${((0.1/2.5 + i * 0.08/2.5) * 100).toFixed(1)}%`, for: `${((0.3/2.5) * 100).toFixed(1)}%`, y: 20 });
         
         const rowHeight = r({ portrait: 72, square: 56, default: 64 });
         const dateBadgeWidth = r({ portrait: 60, square: 48, default: 56 });
@@ -134,9 +135,9 @@ export default define({
       const outroP = t.in("outro");
       const logoWidth = r({ portrait: 500, square: 400, default: 480 });
 
-      const ctaAnim = t.motion({ during: "outro", at: `${((0.2/1.5) * 100).toFixed(1)}%`, duration: `${((0.3/1.5) * 100).toFixed(1)}%`, y: 20 });
-      const logoAnim = t.motion({ during: "outro", at: "0%", duration: `${((0.16/1.5) * 100).toFixed(1)}%`, scale: 0.1 });
-      const fadeOut = t.tween(0, 1, { during: "outro", at: `${((0.6/1.5) * 100).toFixed(1)}%`, duration: `${((0.4/1.5) * 100).toFixed(1)}%`});
+      const ctaAnim = t.motion({ during: "outro", at: `${((0.2/1.5) * 100).toFixed(1)}%`, for: `${((0.3/1.5) * 100).toFixed(1)}%`, y: 20 });
+      const logoAnim = t.motion({ during: "outro", at: "0%", for: `${((0.16/1.5) * 100).toFixed(1)}%`, scale: 0.1 });
+      const fadeOut = t.tween(0, 1, { during: "outro", at: `${((0.6/1.5) * 100).toFixed(1)}%`, for: `${((0.4/1.5) * 100).toFixed(1)}%`, easing: "easeInCubic" });
 
       return `
         <div style="${std.css({ width, height, background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: r({ portrait: 48, default: 32 }), opacity: 1 - fadeOut })}">
@@ -149,9 +150,10 @@ export default define({
 
     // === HOOK PHASE ===
     if (t.active === "hook") {
-      const hook1P = t.tween(0, 1, { during: "hook", at: "0%", duration: `${((0.6/2) * 100).toFixed(1)}%`});
-      const hook2P = t.tween(0, 1, { during: "hook", at: `${((0.9/2) * 100).toFixed(1)}%`, duration: `${((0.5/2) * 100).toFixed(1)}%`});
-      const taglineP = t.tween(0, 1, { during: "hook", at: `${((1.8/2) * 100).toFixed(1)}%`, duration: `${((0.6/2) * 100).toFixed(1)}%`});
+      const hook1P = t.tween(0, 1, { during: "hook", at: "0%", for: `${((0.6/2) * 100).toFixed(1)}%`});
+      const hook2P = t.tween(0, 1, { during: "hook", at: `${((0.9/2) * 100).toFixed(1)}%`, for: `${((0.5/2) * 100).toFixed(1)}%`});
+      // Start early enough that the tagline finishes typing before the hook phase ends at 2s
+      const taglineP = t.tween(0, 1, { during: "hook", at: `${((1.4/2) * 100).toFixed(1)}%`, for: `${((0.5/2) * 100).toFixed(1)}%`});
       
       const hook1Visible = std.text.type(hookLine1, hook1P).visible;
       const hook2Visible = std.text.type(hookLine2, hook2P).visible;
@@ -172,13 +174,17 @@ export default define({
     // === EVENTS PHASE ===
     const eventCards = events.map((event: TechlahomEvent, i: number) => {
       // Stagger events across the 9s phase
+      // Each card enters over 0.7s, holds, then fades out 0.5s before the next
+      // card's beat. Exit windows are absolute scene fractions (15s scene,
+      // events phase starts at 2s).
+      const exitStart = (2 + (i + 1) * (1 / events.length) * 0.9 * 9) / 15;
       const cardAnim = t.motion({
         during: "events",
         at: `${((i * (1/events.length) * 0.8) * 100).toFixed(1)}%`,
-        duration: `${((1.5/9) * 100).toFixed(1)}%`,
+        for: `${((0.7/9) * 100).toFixed(1)}%`,
         scale: 0.05,
         y: 60,
-        exit: { at: `${(((i+1) * (1/events.length) * 0.9) * 100).toFixed(1)}%`, duration: `${((0.5/9) * 100).toFixed(1)}%`}
+        exit: { window: [exitStart, exitStart + 0.5 / 15], y: 0, scale: 1 }
       });
 
       if (!cardAnim.visible) return "";

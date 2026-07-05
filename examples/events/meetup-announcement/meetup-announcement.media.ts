@@ -68,17 +68,18 @@ export default define({
     const bg = std.backgrounds.kenBurns({ src: backgroundImage, progress: timeline.seconds / mainDur, zoomTo: 1.1, overlay: "rgba(0, 0, 0, 0.5)" });
 
     // Individual triggers within "main" phase
-    const hook1P = t.tween(0, 1, { during: "main", at: `${((0/9) * 100).toFixed(1)}%`, duration: `${((0.8/9) * 100).toFixed(1)}%`});
-    const hook2P = t.tween(0, 1, { during: "main", at: `${((1.4/9) * 100).toFixed(1)}%`, duration: `${((0.7/9) * 100).toFixed(1)}%`});
-    const subP = t.tween(0, 1, { during: "main", at: `${((2.7/9) * 100).toFixed(1)}%`, duration: `${((0.8/9) * 100).toFixed(1)}%`});
-    
-    const expandP = t.tween(0, 1, { during: "main", at: `${((4.0/9) * 100).toFixed(1)}%`, duration: `${((0.5/9) * 100).toFixed(1)}%`, easing: "easeInOutCubic" });
+    const hook1P = t.tween(0, 1, { during: "main", at: `${((0/9) * 100).toFixed(1)}%`, for: `${((0.8/9) * 100).toFixed(1)}%`});
+    const hook2P = t.tween(0, 1, { during: "main", at: `${((1.4/9) * 100).toFixed(1)}%`, for: `${((0.7/9) * 100).toFixed(1)}%`});
+    const subP = t.tween(0, 1, { during: "main", at: `${((2.7/9) * 100).toFixed(1)}%`, for: `${((0.8/9) * 100).toFixed(1)}%`});
+
+    const expandP = t.tween(0, 1, { during: "main", at: `${((4.0/9) * 100).toFixed(1)}%`, for: `${((0.5/9) * 100).toFixed(1)}%`, easing: "easeInOutCubic" });
     const groupAnim = t.motion({ during: "main", at: "4.2s", for: "0.4s", y: -20 });
     const titleAnim = t.motion({ during: "main", at: "4.4s", for: "0.4s", y: 20 });
     const logisticsAnim = t.motion({ during: "main", at: "4.7s", for: "0.4s", y: 20 });
     const ctaAnim = t.motion({ during: "main", at: "6.5s", for: "0.4s", y: 15 });
 
-    const cardAnim = t.motion({ during: "main", at: "0%", for: "0.5s", scale: 0.05, exit: { during: "main", at: "8.5s", for: "0.5s", y: 0 } });
+    // Exit windows are absolute scene fractions: fade the card out 8.5s–9s, before the outro
+    const cardAnim = t.motion({ during: "main", at: "0%", for: "0.5s", scale: 0.05, exit: { window: [8.5 / 12, 9 / 12], y: 0, scale: 1 } });
 
     // Animations logic
     const hook1Visible = std.text.type(hook, hook1P).visible;

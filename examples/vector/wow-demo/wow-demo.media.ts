@@ -20,7 +20,7 @@ const DIM = "#2a3550";
 // Number of harmonics in the square-wave Fourier sum.
 const HARMONICS = 6;
 // How many full rotations the system performs during the spin phase.
-const REVOLUTIONS = 1;
+const REVOLUTIONS = 2;
 
 // Square wave Fourier coefficients: only odd harmonics, amplitude 4/(nπ).
 function harmonics() {
@@ -49,7 +49,7 @@ export default define({
     const { std, width, height, timeline } = ctx;
     const viz = std.viz;
 
-    const t = viz.tracker(timeline, {
+    const t = viz.tracker(timeline.progress, {
       intro: [0.0, 0.18],
       grid: [0.08, 0.3],
       circles: [0.22, 0.42],
@@ -123,7 +123,8 @@ export default define({
     // --- The traced wave (gold) ---
     // x-position in math coords corresponds to elapsed angle.
     // We trace from x=0 up to the current angle so the pen "writes" the curve.
-    const tMax = t.spin * REVOLUTIONS * 4 * Math.PI; // matches xRange span over one rev
+    // The math x-value (angle) up to which the wave is drawn.
+    const tMax = theta;
     const waveColor = TRACE;
 
     let waveEl = "";

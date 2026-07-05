@@ -59,6 +59,8 @@ export default define<ChangelogVideoData>({
 
     const headerProgress = std.interpolate(timeline.progress, [TIMING.headerFadeIn.start, TIMING.headerFadeIn.end], [0, 1], "easeOutBack");
     const sectionsProgress = std.interpolate(timeline.progress, [TIMING.sectionsReveal.start, TIMING.sectionsReveal.end], [0, 1]);
+    const exitProgress = std.interpolate(timeline.progress, [TIMING.final.start, TIMING.final.end], [0, 1], "easeInCubic");
+    const globalOpacity = 1 - exitProgress;
 
     const totalItems = sections.reduce((acc: number, s: ChangelogSection) => acc + s.items.length + 1, 0);
     let itemIndex = 0;
@@ -74,7 +76,7 @@ export default define<ChangelogVideoData>({
       if (sectionHeaderProgress <= 0) continue;
 
       const headerOpacity = std.interpolate(sectionHeaderProgress, [0, 1], [0, 1], "easeOutCubic");
-      const headerTransform = (1 - sectionHeaderProgress) * 20;
+      const headerTransform = (1 - headerOpacity) * 20;
 
       sectionsHtml += `
       <div style="margin-bottom: 24px; opacity: ${headerOpacity}; transform: translateX(${headerTransform}px);">
@@ -97,7 +99,7 @@ export default define<ChangelogVideoData>({
         }
 
         const itemOpacity = std.interpolate(itemProgress, [0, 1], [0, 1], "easeOutCubic");
-        const itemTransform = (1 - itemProgress) * 15;
+        const itemTransform = (1 - itemOpacity) * 15;
 
         sectionsHtml += `
         <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; opacity: ${itemOpacity}; transform: translateX(${itemTransform}px);">
@@ -110,7 +112,7 @@ export default define<ChangelogVideoData>({
     }
 
     return `
-    <div style="width: ${width}px; height: ${height}px; background: linear-gradient(180deg, ${bgColor} 0%, ${gradientEnd} 100%); display: flex; flex-direction: column; padding: 80px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <div style="width: ${width}px; height: ${height}px; background: linear-gradient(180deg, ${bgColor} 0%, ${gradientEnd} 100%); display: flex; flex-direction: column; padding: 80px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; opacity: ${globalOpacity};">
       <div style="margin-bottom: 48px; opacity: ${headerProgress}; transform: scale(${0.8 + headerProgress * 0.2});">
         <div style="display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px;">
           <span style="font-size: 64px; font-weight: 800; color: ${accentColor};">v${version}</span>

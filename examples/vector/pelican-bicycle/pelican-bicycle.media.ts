@@ -44,7 +44,7 @@ export default define({
     } = data;
 
     const t = ctx.director({ intro: "1.2s", ride: "4.0s", outro: "0.8s" });
-    const titleMotion = t.motion({ opacity: [0, 1, 1, 0], y: [18, 0, 0, -12] });
+    const titleMotion = t.motion({ y: 18, exit: { y: -12 } });
 
     // Layout (proportional to frame size)
     const groundY = height * 0.78;

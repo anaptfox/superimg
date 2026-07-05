@@ -47,7 +47,7 @@ export default define({
 
     const ringR = 280;
     const items = std.stagger(ringShapes, t.in("enter"), {
-      duration: "40%",
+      duration: 0.4,
       from: "center",
     });
 
@@ -55,7 +55,7 @@ export default define({
       const angle = (i / ringShapes.length) * Math.PI * 2 - Math.PI / 2;
       const x = cx + Math.cos(angle + timeline.progress * 0.5) * ringR;
       const y = cy + Math.sin(angle + timeline.progress * 0.5) * ringR;
-      const scale = std.spring(0, 1, timeline.progress, { stiffness: 120, damping: 10 });
+      const scale = std.spring(0, 1, p, { stiffness: 120, damping: 10 });
       const itemRotation = timeline.progress * 180 * (i % 2 === 0 ? 1 : -1);
 
       return `<g transform="translate(${x}, ${y}) scale(${scale}) rotate(${itemRotation})">

@@ -18,8 +18,8 @@ export default define({
   render(ctx) {
     const { std, width, height, data } = ctx;
     const t = ctx.director({ enter: "40%", hold: "45%", exit: "15%" });
-    const line1 = t.motion({ y: 28, opacity: 0, easing: "easeOutCubic" });
-    const line2 = t.motion({ y: 36, opacity: 0, easing: "easeOutCubic", delay: 0.08 });
+    const line1 = t.motion({ at: "0.2s", for: "0.6s", y: 28, easing: "easeOutCubic" });
+    const line2 = t.motion({ at: "0.3s", for: "0.6s", y: 36, easing: "easeOutCubic" });
 
     return `
       <div style="${std.css({ width, height, background: "radial-gradient(ellipse 80% 60% at 50% 40%, #1e293b 0%, #020617 70%)" }, std.css.center())}">

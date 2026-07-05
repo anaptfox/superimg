@@ -91,7 +91,7 @@ export default define<TierListVideoData>({
     const titleProgress = std.interpolate(timeline.progress, [TIMING.titleSlam.start, TIMING.titleSlam.end], [0, 1], "easeOutElastic");
     const tiersProgress = std.interpolate(timeline.progress, [TIMING.tiersAppear.start, TIMING.tiersAppear.end], [0, 1], "easeOutCubic");
     const sGlowProgress = std.interpolate(timeline.progress, [TIMING.sTierGlow.start, TIMING.sTierGlow.end], [0, 1]);
-    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeOutCubic");
+    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeInCubic");
 
     const globalOpacity = 1 - fadeOutProgress;
     const baseFontSize = Math.min(width, height) * 0.035;

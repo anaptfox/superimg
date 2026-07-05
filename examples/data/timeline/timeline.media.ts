@@ -178,9 +178,10 @@ export default define<TimelineVideoData>({
       const IN_DUR = 0.15;
       const OUT_DUR = 0.15;
 
-      const t = ctx.director(lp, [0, IN_DUR, 1 - OUT_DUR, 1]);
-      const opacity = t.motion([0, 1, 1, 0], [themeEasing, "linear", "easeOutCubic"]);
-      const yOffset = t.motion([40, 0, 0, -40], [themeEasing, "linear", "easeOutCubic"]);
+      const enterP = std.interpolate(lp, [0, IN_DUR], [0, 1], themeEasing);
+      const exitP = std.interpolate(lp, [1 - OUT_DUR, 1], [0, 1], "easeInCubic");
+      const opacity = enterP * (1 - exitP);
+      const yOffset = (1 - enterP) * 40 - exitP * 40;
 
       const eventAccent = e.accentColor || accentColor;
 

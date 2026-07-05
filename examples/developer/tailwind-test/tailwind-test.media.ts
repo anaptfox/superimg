@@ -64,7 +64,7 @@ function renderFeatures(std: any, t: any, features: string[]) {
       const cardAnim = t.motion({
         during: "features",
         at: `${((i * 0.1) * 100).toFixed(1)}%`,
-        duration: "40%",
+        for: "40%",
         y: 40,
         easing: "easeOutCubic"
       });

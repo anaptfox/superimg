@@ -19,7 +19,9 @@ export default define({
     body: "Add your content here.",
   },
   render(ctx) {
-    const opacity = ctx.std.interpolate(ctx.timeline.progress * 2, [0, 1], [0, 1], "easeOutCubic");
+    const enter = ctx.std.interpolate(ctx.timeline.progress * 2, [0, 1], [0, 1], "easeOutCubic");
+    const exitFade = ctx.std.interpolate(ctx.timeline.progress, [0.85, 1], [1, 0], "easeInCubic");
+    const opacity = enter * exitFade;
     return `
       <div style="${ctx.std.css.fill()};${ctx.std.css.center()}; flex-direction: column;
         background: #0f0f23;">

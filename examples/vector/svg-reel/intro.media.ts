@@ -35,10 +35,10 @@ export default define({
     }
 
     const letters = data.title.split("");
+    const letterPs = std.stagger(letters.length, t.in("enter"), { duration: 0.55 });
     const letterEls = letters
       .map((ch, i) => {
-        const p = std.stagger(letters, t.in("enter"), { count: letters.length, stagger: 0.55 });
-        const item = p[i] ?? 0;
+        const item = letterPs[i] ?? 0;
         const y = std.interpolate(item, [0, 1], [48, 0], "easeOutBack");
         const op = std.interpolate(item, [0, 1], [0, 1], "easeOutCubic");
         const x = width / 2 - (letters.length * 52) / 2 + i * 52;

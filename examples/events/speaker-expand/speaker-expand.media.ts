@@ -54,7 +54,7 @@ export default define({
     // === OUTRO PHASE ===
     if (t.active === "outro") {
       const logoWidth = r({ portrait: 500, square: 400, default: 480 });
-      const logoAnim = t.motion({ during: "outro", scale: 0.1, duration: `${((1/3) * 100).toFixed(1)}%`, exit: false });
+      const logoAnim = t.motion({ during: "outro", scale: 0.1, for: `${((1/3) * 100).toFixed(1)}%`, exit: false });
 
       return `<div style="${std.css({ width, height, background: "#000", display: "flex", alignItems: "center", justifyContent: "center" })}"><img src="${techlahomaSvg}" style="${std.css({ width: logoWidth, opacity: logoAnim.opacity })};${logoAnim.style}" /></div>`;
     }
@@ -63,13 +63,13 @@ export default define({
     const bg = std.backgrounds.kenBurns({ src: backgroundImage, progress: timeline.seconds / mainDur, zoomTo: 1.1, overlay: "rgba(0, 0, 0, 0.7)" });
 
     // Triggers within "main" phase (9s)
-    const avatarAnim = t.motion({ during: "main", at: `${((0.5/9) * 100).toFixed(1)}%`, duration: `${((0.6/9) * 100).toFixed(1)}%`, scale: 0.5 });
-    const profileAnim = t.motion({ during: "main", at: `${((0.8/9) * 100).toFixed(1)}%`, duration: `${((0.5/9) * 100).toFixed(1)}%`, y: 20 });
-    const expandP = t.tween(0, 1, { during: "main", at: `${((3.0/9) * 100).toFixed(1)}%`, duration: `${((0.6/9) * 100).toFixed(1)}%`, easing: "easeInOutCubic" });
-    const cardContentAnim = t.motion({ during: "main", at: `${((3.3/9) * 100).toFixed(1)}%`, duration: `${((0.5/9) * 100).toFixed(1)}%`, y: 20 });
-    
+    const avatarAnim = t.motion({ during: "main", at: `${((0.5/9) * 100).toFixed(1)}%`, for: `${((0.6/9) * 100).toFixed(1)}%`, scale: 0.5 });
+    const profileAnim = t.motion({ during: "main", at: `${((0.8/9) * 100).toFixed(1)}%`, for: `${((0.5/9) * 100).toFixed(1)}%`, y: 20 });
+    const expandP = t.tween(0, 1, { during: "main", at: `${((3.0/9) * 100).toFixed(1)}%`, for: `${((0.6/9) * 100).toFixed(1)}%`, easing: "easeInOutCubic" });
+    const cardContentAnim = t.motion({ during: "main", at: `${((3.3/9) * 100).toFixed(1)}%`, for: `${((0.5/9) * 100).toFixed(1)}%`, y: 20 });
+
     // Global fade out at end of main
-    const fadeOutP = t.tween(0, 1, { during: "main", at: `${((8.5/9) * 100).toFixed(1)}%`, duration: `${((0.5/9) * 100).toFixed(1)}%`, easing: "easeInCubic" });
+    const fadeOutP = t.tween(0, 1, { during: "main", at: `${((8.5/9) * 100).toFixed(1)}%`, for: `${((0.5/9) * 100).toFixed(1)}%`, easing: "easeInCubic" });
     const fadeOut = 1 - fadeOutP;
 
     const shiftYAmount = r({ portrait: -350, square: -250, default: -200 });

@@ -133,7 +133,7 @@ export default define<BeforeAfterCodeData>({
 
     const titleProgress = std.interpolate(timeline.progress, [TIMING.titleFadeIn.start, TIMING.titleFadeIn.end], [0, 1], "easeOutCubic");
     const transitionProgress = std.interpolate(timeline.progress, [TIMING.transition.start, TIMING.transition.end], [0, 1], "easeInOutCubic");
-    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeOutCubic");
+    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeInCubic");
 
     const globalOpacity = 1 - fadeOutProgress;
 

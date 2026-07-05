@@ -25,7 +25,8 @@ export default define({
 
     const clip = std.video.sync({
       src: assets.clip?.url ?? "",
-      at: ctx.timeline,       width: 640,
+      at: ctx.timeline.seconds,
+      width: 640,
       height: 360,
       objectFit: "cover",
     });

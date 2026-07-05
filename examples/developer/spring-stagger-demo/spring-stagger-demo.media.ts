@@ -62,7 +62,8 @@ export default define({
     const exitP = t.in("exit");
 
     const bgColor = std.interpolateColor(
-      timeline,       [0, 0.3, 0.7, 1],
+      timeline.progress,
+      [0, 0.3, 0.7, 1],
       ["#0f172a", "#1e1b4b", "#1e1b4b", "#0f172a"],
     );
 
@@ -72,13 +73,13 @@ export default define({
 
     const bounce = (p: number) => std.spring(0, 1, p, { stiffness: 120, damping: 10 });
     const enterItems = std.stagger(items, enterP, {
-      duration: "40%",
+      duration: 0.4,
       from: "center",
       easing: bounce,
     });
 
     const exitProgresses = std.stagger(items.length, exitP, {
-      duration: "30%",
+      duration: 0.3,
       from: "edges",
       easing: "easeInCubic",
     });

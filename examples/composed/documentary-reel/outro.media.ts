@@ -18,7 +18,7 @@ export default define({
   render(ctx) {
     const { std, width, height, data } = ctx;
     const t = ctx.director({ enter: "50%", hold: "35%", exit: "15%" });
-    const card = t.motion({ scale: 0.92, opacity: 0, easing: "easeOutBack" });
+    const card = t.motion({ scale: 0.92, easing: "easeOutBack" });
 
     return `
       <div style="${std.css({ width, height, background: "#020617" }, std.css.center())}">

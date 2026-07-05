@@ -3,6 +3,16 @@ import { define } from "superimg";
 /** US streaming subscribers (millions) — illustrative Q1→Q4 arc with a late upset */
 const KEYFRAMES = [
   {
+    time: -1.5,
+    rankings: [
+      { label: "Netflix", value: 0 },
+      { label: "Disney+", value: 0 },
+      { label: "Max", value: 0 },
+      { label: "Hulu", value: 0 },
+      { label: "Apple TV+", value: 0 },
+    ],
+  },
+  {
     time: 0,
     rankings: [
       { label: "Netflix", value: 92 },
@@ -80,7 +90,9 @@ export default define({
     const t = ctx.director({ intro: "10%", race: "75%", hold: "15%" });
     // Drive keyframes from the race phase (0→RACE_END), not raw timeline.seconds —
     // wall clock stops at duration−1/fps, which never reaches the last keyframe time.
-    const raceTime = t.at("race", RACE_END);
+    const raceTime = t.active === "intro"
+      ? std.interpolate(t.in("intro"), [0, 1], [-1.5, 0], "easeOutCubic")
+      : t.at("race", RACE_END);
 
     const coords = viz.createCoords({
       width,
@@ -90,8 +102,9 @@ export default define({
       padding: { top: 160, bottom: 80, left: 220, right: 120 },
     });
 
-    const gridEl = viz.grid(coords, { color: "#1e2640", ticks: 5, progress: t.in("intro") });
-    const axesEl = viz.axes(coords, { color: "#3d4a68", ticks: 5, progress: t.in("intro") });
+    const introP = std.interpolate(t.in("intro"), [0, 1], [0, 1], "easeOutCubic");
+    const gridEl = viz.grid(coords, { color: "#1e2640", ticks: 5, progress: introP });
+    const axesEl = viz.axes(coords, { color: "#3d4a68", ticks: 5, progress: introP });
     const raceEl = viz.charts.barRace(coords, KEYFRAMES, raceTime, {
       showLabels: true,
       showValueLabels: true,

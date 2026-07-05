@@ -40,9 +40,11 @@ export default define({
     if (demo.active) {
       const local = demo.director();
       const title = local.motion({ y: 24 });
-      const highlight = feature.active
-        ? feature.director().motion({ scale: 0.95 }).style
-        : "opacity:0.6";
+      // Smooth emphasis: dim → full over the first 25% of the feature clip.
+      // (feature.progress is clamped, so the text stays emphasized afterwards
+      // instead of flashing to opacity 0 when the nested clip re-enters.)
+      const emphasis = std.interpolate(feature.progress, [0, 0.25], [0, 1], "easeOutCubic");
+      const highlight = `opacity:${(0.6 + 0.4 * emphasis).toFixed(3)}`;
       return `
         <div style="${std.css({ width, height }, std.css.center(), std.css.column())}">
           <p style="${std.css({ fontSize: 28, opacity: 0.5, marginBottom: 16 }, title.style)}">Demo</p>

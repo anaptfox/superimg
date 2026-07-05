@@ -16,7 +16,7 @@ export default define({
   sample: { cta: "Thanks for watching!" },
   render(ctx) {
     const { std, data } = ctx;
-    const t = ctx.director({ enter: "70%", hold: "20%", exit: "10%" });
+    const t = ctx.director({ enter: "35%", hold: "50%", exit: "15%" });
     const cta = t.motion({ during: "enter", scale: 0.88, y: 16, easing: "easeOutBack" });
 
     return `

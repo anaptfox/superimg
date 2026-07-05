@@ -24,16 +24,16 @@ export default define<ScheduleVideoData>({
   sample: {
     schedule: {
       Mon: [
-        { start: 9, duration: "2s", type: "deep", label: "Deep work" },
-        { start: 14, duration: "100%", type: "meeting", label: "Standup" },
+        { start: 9, duration: 2, type: "deep", label: "Deep work" },
+        { start: 14, duration: 1, type: "meeting", label: "Standup" },
       ],
-      Tue: [{ start: 14, duration: "100%", type: "meeting", label: "Code review" }],
+      Tue: [{ start: 14, duration: 1, type: "meeting", label: "Code review" }],
       Wed: [
-        { start: 11, duration: "2s", type: "deep", label: "Sprint planning" },
-        { start: 15, duration: "100%", type: "meeting", label: "1:1" },
+        { start: 11, duration: 2, type: "deep", label: "Sprint planning" },
+        { start: 15, duration: 1, type: "meeting", label: "1:1" },
       ],
-      Thu: [{ start: 10, duration: "3s", type: "deep", label: "Feature build" }],
-      Fri: [{ start: 13, duration: "2s", type: "meeting", label: "Demo day" }],
+      Thu: [{ start: 10, duration: 3, type: "deep", label: "Feature build" }],
+      Fri: [{ start: 13, duration: 2, type: "meeting", label: "Demo day" }],
     },
     theme: "dark",
   },
@@ -116,6 +116,7 @@ export default define<ScheduleVideoData>({
 
     const legendOpacity = t.tween(0, 1, { during: "enter", at: "42%", for: "18%", easing: "easeOutCubic" });
     const titleOpacity = t.tween(0, 1, { during: "enter", at: "0%", for: "20%", easing: "easeOutCubic" });
+    const globalOpacity = 1 - t.tween(0, 1, { during: "exit", easing: "easeInCubic" });
 
     return `
     <div style="
@@ -125,6 +126,7 @@ export default define<ScheduleVideoData>({
       font-family: 'Inter', system-ui, sans-serif;
       padding: ${padding}px;
       box-sizing: border-box;
+      opacity: ${globalOpacity};
     ">
       <div style="margin-bottom: 20px; margin-left: ${labelWidth}px; opacity: ${titleOpacity};">
         <div style="font-size: 28px; font-weight: 600; color: ${textColor}; letter-spacing: -0.02em;">Weekly schedule</div>

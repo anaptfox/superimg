@@ -89,7 +89,7 @@ export default define<GitHubWrappedVideoData>({
     const reposP = t.in("repos");
     const streakP = t.in("streak");
     const outroP = t.in("outro", { easing: "easeOutExpo" });
-    const fadeP = t.in("fadeOut", { easing: "easeOutExpo" });
+    const fadeP = t.in("fadeOut", { easing: "easeInCubic" });
 
     const globalOp = 1 - fadeP;
     const fontSize = Math.min(width, height) * 0.045;
@@ -127,6 +127,17 @@ export default define<GitHubWrappedVideoData>({
       </div>`;
         })
         .join("");
+    }
+
+    // Crossfade each stat beat in/out so phase changes don't hard-cut.
+    const beatPhases = ["intro", "commits", "languages", "repos", "streak"];
+    let phaseOp = 1;
+    if (t.active && beatPhases.includes(t.active)) {
+      const phaseP = t.in(t.active);
+      phaseOp = Math.min(
+        std.interpolate(phaseP, [0, 0.12], [0, 1], "easeOutCubic"),
+        std.interpolate(phaseP, [0.9, 1], [1, 0], "easeInCubic"),
+      );
     }
 
     const renderCounter = (value: number, progress: number) =>
@@ -195,7 +206,7 @@ export default define<GitHubWrappedVideoData>({
         </div>
       ` : ""}
 
-      ${mainContent}
+      <div style="display:flex;flex-direction:column;align-items:center;opacity:${phaseOp};">${mainContent}</div>
 
       <div style="position:absolute;bottom:8%;opacity:${introP * 0.6};">
         <div style="font-size:${fontSize * 0.3}px;color:${themeConfig.accent};">GitHub Wrapped ${year}</div>

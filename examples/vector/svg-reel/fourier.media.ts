@@ -28,7 +28,7 @@ export default define({
     const { std, width, height, timeline } = ctx;
     const viz = std.viz;
 
-    const t = viz.tracker(timeline, {
+    const t = viz.tracker(timeline.progress, {
       intro: [0.0, 0.15],
       grid: [0.05, 0.25],
       circles: [0.18, 0.38],

@@ -175,7 +175,8 @@ export default define<HttpTraceData>({
           lang: "json",
           theme: palette.shiki,
           variance: 0.7,
-          time: timeline,           accentColor: methodColor,
+          time: timeline.seconds,
+          accentColor: methodColor,
         })
       : null;
     const resStream = resBodyPretty
@@ -183,7 +184,8 @@ export default define<HttpTraceData>({
           lang: "json",
           theme: palette.shiki,
           variance: 0.7,
-          time: timeline,           accentColor: statusColor,
+          time: timeline.seconds,
+          accentColor: statusColor,
         })
       : null;
 

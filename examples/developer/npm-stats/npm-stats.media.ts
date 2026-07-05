@@ -61,7 +61,7 @@ export default define<NpmStatsVideoData>({
 
     const titleProgress = t.in("title", { easing: "easeOutCubic" });
     const chartProgress = t.in("chart", { easing: "easeInOutCubic" });
-    const globalOpacity = 1 - t.in("exit", { easing: "easeOutCubic" });
+    const globalOpacity = 1 - t.in("exit", { easing: "easeInCubic" });
 
     const padding = { top: 140, right: 80, bottom: 100, left: 100 };
     const dates = downloads.map((d) => new Date(d.date).getTime());

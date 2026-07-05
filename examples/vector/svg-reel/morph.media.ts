@@ -71,7 +71,7 @@ export default define({
   </defs>
   <rect width="${width}" height="${height}" fill="url(#mBg)"/>
   ${particles.join("\n")}
-  <g transform="rotate(${rot.toFixed(2)} ${cx} ${cy}) scale(${pulse.toFixed(4)})" filter="url(#morphGlow)">
+  <g transform="rotate(${rot.toFixed(2)} ${cx} ${cy}) translate(${cx} ${cy}) scale(${pulse.toFixed(4)}) translate(${-cx} ${-cy})" filter="url(#morphGlow)">
     <path d="${path}" fill="${color}" opacity="0.88"/>
     <path d="${path}" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.25"/>
   </g>

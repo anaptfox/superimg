@@ -70,7 +70,7 @@ export default define<ContributorsVideoData>({
 
     const headerProgress = std.interpolate(timeline.progress, [TIMING.headerFadeIn.start, TIMING.headerFadeIn.end], [0, 1], "easeOutCubic");
     const avatarProgress = std.interpolate(timeline.progress, [TIMING.avatarReveal.start, TIMING.avatarReveal.end], [0, 1]);
-    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeOutCubic");
+    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeInCubic");
 
     const globalOpacity = 1 - fadeOutProgress;
 

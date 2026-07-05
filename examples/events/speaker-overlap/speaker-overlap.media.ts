@@ -80,7 +80,8 @@ export default define({
     // Card with enter and exit
     const cardAnim = t.motion({
       during: "main", at: "0%", for: "0.5s", scale: 0.05,
-      exit: { during: "main", at: "8.5s", for: "0.5s" }
+      // Exit window is in absolute scene fractions: fade out 8.5s–9s, before the outro
+      exit: { window: [8.5 / 12, 9 / 12], y: 0, scale: 1 }
     });
 
     const hook1Visible = std.text.type(hook, hook1P).visible;

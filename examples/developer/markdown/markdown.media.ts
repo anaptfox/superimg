@@ -46,13 +46,15 @@ export default define<MarkdownVideoData>({
 
     const fadeInProgress = std.interpolate(timeline.progress, [TIMING.fadeIn.start, TIMING.fadeIn.end], [0, 1], "easeOutCubic");
     const contentProgress = std.interpolate(timeline.progress, [TIMING.contentReveal.start, TIMING.contentReveal.end], [0, 1]);
-    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeOutCubic");
+    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeInCubic");
 
     const opacity = Math.min(fadeInProgress, 1 - fadeOutProgress);
 
-    const totalChars = html.length;
+    // Slice by code points (not UTF-16 units) so emoji are never cut mid-surrogate.
+    const htmlChars = Array.from(html);
+    const totalChars = htmlChars.length;
     const visibleChars = Math.floor(contentProgress * totalChars);
-    const displayHtml = html.substring(0, visibleChars);
+    const displayHtml = htmlChars.slice(0, visibleChars).join("");
     const cursor = contentProgress < 1 ? '<span style="animation: blink 0.5s infinite;">|</span>' : "";
 
     const borderColor = theme === "dark" ? "#2f3336" : "#e5e7eb";

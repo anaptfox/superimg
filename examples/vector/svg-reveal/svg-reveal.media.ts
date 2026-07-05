@@ -38,8 +38,8 @@ export default define({
     ];
 
     // Stagger the reveals
-    const items = std.stagger(reveals, timeline, {
-      duration: "50%",
+    const items = std.stagger(reveals, timeline.progress, {
+      duration: 0.5,
       from: "start",
       easing: "easeOutCubic",
     });
@@ -49,7 +49,7 @@ export default define({
 
     const quadrants = items.map(({ item, progress: p }, i) => {
       const pos = positions[i];
-      const clip = item.fn(timeline.progress);
+      const clip = item.fn(p);
 
       return `
         <div style="position:absolute;left:${pos.x}px;top:${pos.y}px;width:${halfW}px;height:${halfH}px;

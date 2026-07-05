@@ -118,7 +118,7 @@ export default define<BeforeAfterTerminalData>({
 
     const titleProgress = std.interpolate(timeline.progress, [TIMING.titleFadeIn.start, TIMING.titleFadeIn.end], [0, 1], "easeOutCubic");
     const transitionProgress = std.interpolate(timeline.progress, [TIMING.transition.start, TIMING.transition.end], [0, 1], "easeInOutCubic");
-    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeOutCubic");
+    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeInCubic");
 
     const globalOpacity = 1 - fadeOutProgress;
 
@@ -140,8 +140,8 @@ export default define<BeforeAfterTerminalData>({
       const wipePosition = transitionProgress * 100;
       contentHtml = `
       <div style="position:absolute;top:${contentTop}px;left:${contentPadding}px;width:${contentWidth}px;height:${contentHeight}px;overflow:hidden;">
-        <div style="position:absolute;inset:0;clip-path:inset(0 ${wipePosition}% 0 0);">${renderTerminalWindow(data.before, baseFontSize, theme)}</div>
-        <div style="position:absolute;inset:0;clip-path:inset(0 0 0 ${100 - wipePosition}%);">${renderTerminalWindow(data.after, baseFontSize, theme)}</div>
+        <div style="position:absolute;inset:0;clip-path:inset(0 ${100 - wipePosition}% 0 0);">${renderTerminalWindow(data.after, baseFontSize, theme)}</div>
+        <div style="position:absolute;inset:0;clip-path:inset(0 0 0 ${wipePosition}%);">${renderTerminalWindow(data.before, baseFontSize, theme)}</div>
         <div style="position:absolute;top:0;bottom:0;left:${wipePosition}%;width:4px;background:${accentColor};transform:translateX(-50%);box-shadow:0 0 30px ${accentColor};opacity:${transitionProgress > 0 && transitionProgress < 1 ? 1 : 0};z-index:10;"></div>
       </div>
       <div style="position:absolute;top:${headerHeight}px;left:${contentPadding}px;height:${labelHeight}px;display:flex;align-items:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${mutedColor};letter-spacing:0.15em;opacity:${1 - transitionProgress};">${beforeLabel}</div>
@@ -152,8 +152,8 @@ export default define<BeforeAfterTerminalData>({
       const wipePosition = transitionProgress * 100;
       contentHtml = `
       <div style="position:absolute;top:${contentTop}px;left:${contentPadding}px;width:${contentWidth}px;height:${contentHeight}px;overflow:hidden;">
-        <div style="position:absolute;inset:0;clip-path:inset(0 ${wipePosition}% 0 0);">${renderTerminalWindow(data.before, baseFontSize, theme)}</div>
-        <div style="position:absolute;inset:0;clip-path:inset(0 0 0 ${100 - wipePosition}%);">${renderTerminalWindow(data.after, baseFontSize, theme)}</div>
+        <div style="position:absolute;inset:0;clip-path:inset(0 ${100 - wipePosition}% 0 0);">${renderTerminalWindow(data.after, baseFontSize, theme)}</div>
+        <div style="position:absolute;inset:0;clip-path:inset(0 0 0 ${wipePosition}%);">${renderTerminalWindow(data.before, baseFontSize, theme)}</div>
         <div style="position:absolute;top:0;bottom:0;left:${wipePosition}%;width:4px;background:${accentColor};transform:translateX(-50%);box-shadow:0 0 30px ${accentColor};opacity:${transitionProgress > 0 && transitionProgress < 1 ? 1 : 0};z-index:10;"></div>
       </div>
       <div style="position:absolute;top:${headerHeight}px;left:${contentPadding}px;height:${labelHeight}px;display:flex;align-items:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${mutedColor};letter-spacing:0.15em;opacity:${1 - transitionProgress};">${beforeLabel}</div>

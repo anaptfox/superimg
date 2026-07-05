@@ -23,7 +23,7 @@ export default compose(
       id: "morph",
       label: "Shape Morph",
       enter: { type: "fade", duration: "600ms", easing: "easeOutCubic" },
-      exit: { type: "slide-right", duration: "700ms", easing: "easeInCubic" },
+      exit: { type: "slide-up", duration: "700ms", easing: "easeInCubic" },
     }),
     scene(orbit, {
       id: "orbit",

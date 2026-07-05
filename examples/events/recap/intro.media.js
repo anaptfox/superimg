@@ -15,8 +15,10 @@ export default define({
   },
   sample: { title: "Welcome" },
   render(ctx) {
-    const opacity = ctx.std.interpolate(ctx.timeline, [0, 1], [0, 1], "easeOutCubic");
-    const scale = ctx.std.interpolate(ctx.timeline, [0, 1], [0.8, 1], "easeOutCubic");
+    const enter = ctx.std.interpolate(ctx.timeline.progress * 2, [0, 1], [0, 1], "easeOutCubic");
+    const exitFade = ctx.std.interpolate(ctx.timeline.progress, [0.8, 1], [1, 0], "easeInCubic");
+    const opacity = enter * exitFade;
+    const scale = ctx.std.interpolate(ctx.timeline.progress * 2, [0, 1], [0.8, 1], "easeOutCubic");
     return `
       <div style="${ctx.std.css.fill()};${ctx.std.css.center()};
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">

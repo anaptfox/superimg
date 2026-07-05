@@ -16,7 +16,7 @@ export default define({
   sample: { title: "Welcome", accentColor: "#667eea" },
   render(ctx) {
     const { std, data } = ctx;
-    const t = ctx.director({ enter: "75%", hold: "15%", exit: "10%" });
+    const t = ctx.director({ enter: "35%", hold: "50%", exit: "15%" });
     const card = t.motion({ during: "enter", y: 24, scale: 0.9, easing: "easeOutCubic" });
 
     return `

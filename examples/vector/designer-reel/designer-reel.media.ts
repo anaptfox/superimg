@@ -16,7 +16,8 @@ export default compose(
       id: "spline-draw",
       label: "Spline Draw",
       enter: { type: "slide-up", duration: "700ms", easing: "easeOutCubic" },
-      exit: { type: "slide-down", duration: "600ms", easing: "easeInCubic" },
+      // Exit left so the bar-race scene's slide-left entrance carries the momentum
+      exit: { type: "slide-left", duration: "600ms", easing: "easeInCubic" },
     }),
     scene(barRace, {
       id: "bar-race",

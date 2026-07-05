@@ -25,7 +25,7 @@ export default define({
     const body = std.layout.inset(frame, { x: 80, y: 120, bottom: 80 });
     const cells = std.layout.grid(body, { cols: 2, rows: 2, gap: 36 });
 
-    const staggered = std.stagger(PANELS, t.in("enter"), { duration: "55%", from: "start" });
+    const staggered = std.stagger(PANELS, t.in("enter"), { duration: 0.55, from: "start" });
 
     const panels = cells.map((cell, i) => {
       const panel = std.layout.inset(cell, { x: 28, y: 28 });

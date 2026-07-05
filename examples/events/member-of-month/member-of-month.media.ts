@@ -50,25 +50,28 @@ export default define({
     });
 
     // Build animations
-    const frameAnim = t.motion({ at: "0%", duration: "60%", scale: 0.8 });
-    const photoAnim = t.motion({ at: "50%", duration: "80%", scale: 0 });
-    const logoAnim  = t.motion({ at: "70%", duration: "50%", y: -20 });
-    const titleAnim = t.motion({ at: "30%", duration: "50%", y: 20 });
+    const frameAnim = t.motion({ at: "0%", for: "0.8s", scale: 0.8 });
+    const photoAnim = t.motion({ at: "50%", for: "0.8s", scale: 0 });
+    const logoAnim  = t.motion({ at: "70%", for: "0.5s", y: -20 });
+    // Title fades out at the end of content, before the poster badge replaces it
+    const titleAnim = t.motion({ at: "30%", for: "0.5s", y: 20, exit: { window: [0.66, 0.7], y: 0 } });
 
     // Content animations
-    const nameAnim = t.motion({ during: "content", at: "0%", duration: "40%", y: 30 });
-    const roleAnim = t.motion({ during: "content", at: "15%", duration: "40%", y: 20 });
-    const quoteAnim = t.motion({ 
-      during: "content", 
-      at: "30%", 
-      duration: "40%", 
+    const nameAnim = t.motion({ during: "content", at: "0s", for: "0.6s", y: 30 });
+    const roleAnim = t.motion({ during: "content", at: "0.15s", for: "0.6s", y: 20 });
+    const quoteAnim = t.motion({
+      during: "content",
+      at: "1.2s",
+      for: "0.6s",
       y: isPortrait ? 40 : -40,
-      exit: { opacity: 0 } // Custom exit to match original's quoteEnd timing
+      // Fade out over the last 0.6s of the content phase so the quote is gone
+      // before the poster moment starts (window is in absolute scene fractions)
+      exit: { window: [0.66, 0.7], y: 0 }
     });
 
     // Poster moment
-    const badgeAnim = t.motion({ during: "poster", at: "0%", duration: "40%", scale: 0.9 });
-    const ctaAnim = t.motion({ during: "poster", at: "40%", duration: "40%", y: 20 });
+    const badgeAnim = t.motion({ during: "poster", at: "0%", for: "0.6s", scale: 0.9 });
+    const ctaAnim = t.motion({ during: "poster", at: "40%", for: "0.5s", y: 20 });
 
     // Pulse effect for final badge
     const badgePulse = t.active === "poster" ? 1 + Math.sin((timeline.seconds - 11) * 3) * 0.02 : 1;

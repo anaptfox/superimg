@@ -31,7 +31,8 @@ export default define({
   render(ctx) {
     const { std, width, height, data, timeline } = ctx;
     const t = ctx.director({ enter: "15%", hold: "70%", exit: "15%" });
-    const header = t.motion({ y: 20, opacity: 0, easing: "easeOutCubic" });
+    const header = t.motion({ at: "0.2s", for: "0.6s", y: 20, easing: "easeOutCubic" });
+    const captionBox = t.motion({ at: "0.3s", for: "0.5s", y: 20, easing: "easeOutCubic" });
     const transcript = ctx.track({ words: data.words }).transcript();
     const active = transcript.current();
 
@@ -51,7 +52,7 @@ export default define({
             <p class="mono" style="font-size: 18px; letter-spacing: 0.2em; text-transform: uppercase; color: #64748b; margin-bottom: 12px;">${data.chapter}</p>
             <h1 style="font-size: 72px; font-weight: 700; line-height: 1.05;">${data.title}</h1>
           </div>
-          <div style="margin-top: auto; padding: 28px 32px; background: rgba(15,23,42,0.75); border: 1px solid rgba(148,163,184,0.2); border-radius: 16px; font-size: 36px; line-height: 1.5;">
+          <div style="margin-top: auto; padding: 28px 32px; background: rgba(15,23,42,0.75); border: 1px solid rgba(148,163,184,0.2); border-radius: 16px; font-size: 36px; line-height: 1.5; ${captionBox.style}">
             ${caption}
           </div>
         </div>

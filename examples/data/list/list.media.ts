@@ -66,7 +66,7 @@ export default define<ListVideoData>({
 
     const titleProgress = std.interpolate(d.in("intro"), [0, 1], [0, 1], "easeOutCubic");
     const finalHoldProgress = std.interpolate(d.in("hold"), [0, 1], [0, 1]);
-    const fadeOutProgress = std.interpolate(d.in("outro"), [0, 1], [0, 1], "easeOutCubic");
+    const fadeOutProgress = std.interpolate(d.in("outro"), [0, 1], [0, 1], "easeInCubic");
     const globalOpacity = 1 - fadeOutProgress;
 
     const baseFontSize = Math.min(width, height) * 0.045;
@@ -90,7 +90,7 @@ export default define<ListVideoData>({
         if (state.state === "hidden") return "";
 
         const rawProgress = state.enter;
-        const numberProgress = std.interpolate(Math.min(1, rawProgress * 1.5), [0, 1], [0, 1], "easeOutElastic");
+        const numberProgress = std.interpolate(Math.min(1, rawProgress * 1.5), [0, 1], [0, 1], "easeOutBack");
         const textProgress = std.interpolate(rawProgress, [0, 1], [0, 1], "easeOutCubic");
         const anim = {
           numberScale: numberProgress,

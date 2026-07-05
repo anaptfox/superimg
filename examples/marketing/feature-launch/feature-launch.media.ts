@@ -154,11 +154,11 @@ export default define({
     }
 
     function featureStaggerInput(featuresLocal: number) {
-      return std.interpolate(featuresLocal, [0.06, 0.88], [0, 1], "linear");
+      return std.interpolate(featuresLocal, [0.06, 0.18], [0, 1], "linear");
     }
 
     function featureHighlight(featuresLocal: number) {
-      return std.stagger.lead(features, featureStaggerInput(featuresLocal), { duration: "48%"});
+      return std.stagger.lead(features, featureStaggerInput(featuresLocal), { duration: 0.48 });
     }
 
     function buildPhone(
@@ -186,13 +186,13 @@ export default define({
 
     function textInset() {
       return isPortrait
-        ? { top: "11%", left: 48, right: 48, bottom: "56%" }
+        ? { top: "14%", left: 48, right: 48, bottom: "56%" } // Respect 12% top dead zone
         : { top: "20%", left: "7%", right: "48%", bottom: "16%" };
     }
 
     function buildHookContent() {
-      const headlineStyle = t.motion({ during: "hook", at: "8%", for: "38%", y: 32 }).style;
-      const subStyle = t.motion({ during: "hook", at: "18%", for: "36%", y: 22 }).style;
+      const headlineStyle = t.motion({ during: "hook", at: "0.2s", for: "0.5s", y: 32, easing: "easeOutCubic" }).style;
+      const subStyle = t.motion({ during: "hook", at: "0.3s", for: "0.5s", y: 22, easing: "easeOutCubic" }).style;
 
       return `
         <div style="${std.css({ textAlign: isPortrait ? "center" : "left", maxWidth: r({ portrait: "100%", default: "100%" }) })}">
@@ -203,7 +203,7 @@ export default define({
     }
 
     function buildHookShot(introWipe?: ReturnType<typeof std.reveal.wipe>) {
-      const phoneMotion = t.motion({ during: "hook", at: "12%", for: "48%", scale: 0.94 }).style;
+      const phoneMotion = t.motion({ during: "hook", at: "0s", for: "0.6s", scale: 0.94, easing: "easeOutExpo" }).style;
       const layers = [
         L.bg(APP_BG),
         L.tint(isPortrait ? SCRIM_CENTER : SCRIM_LEFT),
@@ -220,15 +220,15 @@ export default define({
 
     function buildFeaturesContent(featuresLocal: number) {
       const featureEnterP = std.stagger(features.length, featureStaggerInput(featuresLocal), {
-        duration: "50%",
+        each: 0.15,
         easing: "easeOutCubic",
       });
 
       const metricCount = Math.floor(
-        t.tween(0, metric.value, { during: "features", at: "48%", for: "38%", easing: "easeOutCubic" }),
+        t.tween(0, metric.value, { during: "features", at: "1.5s", for: "1.0s", easing: "easeOutQuart" }),
       );
-      const metricStyle = t.motion({ during: "features", at: "48%", for: "38%", scale: 0.92 }).style;
-      const badgeStyle = t.motion({ during: "features", at: "6%", for: "32%", y: -16 }).style;
+      const metricStyle = t.motion({ during: "features", at: "1.5s", for: "0.6s", scale: 0.92, easing: "easeOutCubic" }).style;
+      const badgeStyle = t.motion({ during: "features", at: "0.4s", for: "0.5s", y: -16, easing: "easeOutCubic" }).style;
 
       const featureCards = features
         .map((f: Feature, i: number) => {
@@ -327,10 +327,10 @@ export default define({
     }
 
     function buildCtaContent(d: typeof t) {
-      const kickerStyle = d.motion({ at: "4%", for: "40%", y: 14 }).style;
-      const headlineStyle = d.motion({ at: "10%", for: "55%", y: 28 }).style;
-      const tagStyle = d.motion({ at: "18%", for: "45%", y: 18 }).style;
-      const btnStyle = d.motion({ at: "28%", for: "50%", scale: 0.9 }).style;
+      const kickerStyle = d.motion({ at: "0.1s", for: "0.5s", y: 14, easing: "easeOutCubic" }).style;
+      const headlineStyle = d.motion({ at: "0.2s", for: "0.6s", y: 28, easing: "easeOutCubic" }).style;
+      const tagStyle = d.motion({ at: "0.3s", for: "0.5s", y: 18, easing: "easeOutCubic" }).style;
+      const btnStyle = d.motion({ at: "0.5s", for: "0.5s", scale: 0.9, easing: "easeOutBack" }).style;
 
       const storeBadge = `
         <div class="store-badge" style="${btnStyle}">
@@ -386,7 +386,7 @@ export default define({
           </div>
         `;
 
-      const lowerMotion = d.motion({ at: "42%", for: "45%", y: 32 });
+      const lowerMotion = d.motion({ at: "0.6s", for: "0.5s", y: 32, easing: "easeOutCubic" });
 
       const ctaLowerThird = `
         <div class="url-pill" style="${std.css({ display: "flex", alignItems: "center", gap: 12 })}">
@@ -401,9 +401,9 @@ export default define({
     function buildCtaShot(d: typeof t) {
       const { ctaCenterHtml, ctaLowerThird, lowerMotion } = buildCtaContent(d);
       const streak = Math.floor(
-        d.tween(0, 12, { at: "20%", for: "32%", easing: "easeOutCubic" }),
+        d.tween(0, 12, { at: "0.8s", for: "0.8s", easing: "easeOutQuart" }),
       );
-      const phoneMotion = d.motion({ at: "8%", for: "55%", scale: 0.94 }).style;
+      const phoneMotion = d.motion({ at: "0s", for: "0.6s", scale: 0.94, easing: "easeOutCubic" }).style;
       const accentGlow = `radial-gradient(ellipse 80% 60% at 50% 30%, ${std.color.alpha(accentColor, 0.2)} 0%, transparent 70%)`;
 
       const layers = [
@@ -418,7 +418,7 @@ export default define({
         }),
         lowerThirdOverlay(L, ctaLowerThird, {
           motion: lowerMotion,
-          offset: { y: r({ portrait: 48, default: 72 }) },
+          offset: { y: r({ portrait: 360, default: 72 }) }, // 360px clears bottom 18% dead zone
         }),
       ];
 
@@ -431,8 +431,8 @@ export default define({
 
     // --- Render routing ---
 
-    if (t.inSpan("3.0s", "4.0s")) {
-      const hookToFeaturesP = t.transition("3.0s", "4.0s", "easeInOutCubic");
+    if (t.inSpan("3.4s", "4.0s")) {
+      const hookToFeaturesP = t.transition("3.4s", "4.0s", "easeInOutCubic");
       const handoffFeaturesLocal = std.reveal.handoffLocal(hookToFeaturesP);
       const screen: AppScreen = hookToFeaturesP < 0.55 ? "splash" : "features";
       const highlight = hookToFeaturesP < 0.55 ? 0 : featureHighlight(handoffFeaturesLocal);
@@ -451,8 +451,8 @@ export default define({
       });
     }
 
-    if (t.inSpan("9.8s", "10.8s")) {
-      const featuresToCtaP = t.transition("9.8s", "10.8s", "easeInOutCubic");
+    if (t.inSpan("10.2s", "10.8s")) {
+      const featuresToCtaP = t.transition("10.2s", "10.8s", "easeInOutCubic");
       const handoffDir = t.clip({ from: "9.8s", duration: "1s" }).director({ enter: "100%" });
       return std.reveal.crossfade({
         from: buildFeaturesShot(1),

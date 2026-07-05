@@ -46,8 +46,8 @@ export default define({
     const offScreenX = -(width * 0.45);
 
     const t = ctx.director({ enter: "0.75s", hold: "2.5s", exit: "0.75s" });
-    const enterP = std.stagger(3, t.in("enter"), { duration: "50%", easing: "easeOutCubic" });
-    const exitP = std.stagger(3, t.in("exit"), { duration: "50%", from: "end", easing: "easeInCubic" });
+    const enterP = std.stagger(3, t.in("enter"), { duration: 0.5, easing: "easeOutCubic" });
+    const exitP = std.stagger(3, t.in("exit"), { duration: 0.5, from: "end", easing: "easeInCubic" });
 
     const slideX = (i) =>
       std.interpolate(enterP[i], [0, 1], [offScreenX, 0]) +

@@ -52,7 +52,7 @@
   "pelican-bicycle": {
     "title": "Pelican Bicycle",
     "category": "vector",
-    "description": "Whimsical video loop — pelican pedaling a bike with scene-time SVG motion"
+    "description": "Whimsical video loop \u2014 pelican pedaling a bike with scene-time SVG motion"
   },
   "watermark-demo": {
     "title": "Watermark Demo",
@@ -77,12 +77,12 @@
   "feature-launch": {
     "title": "Feature Launch",
     "category": "marketing",
-    "description": "Mobile app launch spot with SVG iPhone mockup and in-app UI — layers, score, reveal transitions, multi-format outputs"
+    "description": "Mobile app launch spot with SVG iPhone mockup and in-app UI \u2014 layers, score, reveal transitions, multi-format outputs"
   },
   "http-spotlight": {
     "title": "HTTP Spotlight",
     "category": "marketing",
-    "description": "Hero clip showcasing an HTTP endpoint — for launches and social"
+    "description": "Hero clip showcasing an HTTP endpoint \u2014 for launches and social"
   },
   "logo-reveal": {
     "title": "Logo Reveal",
@@ -207,7 +207,7 @@
   "list": {
     "title": "List",
     "category": "data",
-    "description": "Numbered lists with dramatic reveals — perfect for top 5s"
+    "description": "Numbered lists with dramatic reveals \u2014 perfect for top 5s"
   },
   "schedule": {
     "title": "Schedule",
@@ -262,7 +262,7 @@
   "http-trace": {
     "title": "HTTP Trace",
     "category": "developer",
-    "description": "Follow an HTTP request from method through response — for docs and tutorials"
+    "description": "Follow an HTTP request from method through response \u2014 for docs and tutorials"
   },
   "karaoke": {
     "title": "Karaoke",
@@ -272,7 +272,7 @@
   "markdown": {
     "title": "Markdown",
     "category": "developer",
-    "description": "Animated prose from markdown — headings, bullets, quotes"
+    "description": "Animated prose from markdown \u2014 headings, bullets, quotes"
   },
   "npm-stats": {
     "title": "NPM Stats",
@@ -302,7 +302,7 @@
   "svg-filter": {
     "title": "SVG Filter",
     "category": "vector",
-    "description": "Animated SVG filter effects — blur, glow, displacement"
+    "description": "Animated SVG filter effects \u2014 blur, glow, displacement"
   },
   "svg-morph": {
     "title": "SVG Morph",
@@ -342,17 +342,17 @@
   "wow-demo": {
     "title": "Fourier Wow",
     "category": "vector",
-    "description": "Epicycle chain tracing a square wave — the classic Fourier series reveal"
+    "description": "Epicycle chain tracing a square wave \u2014 the classic Fourier series reveal"
   },
   "svg-reel": {
     "title": "SVG Reel",
     "category": "vector",
-    "description": "Multi-scene compose reel — Fourier epicycles, shape morph, orbital trails, rendered browser-free via resvg"
+    "description": "Multi-scene compose reel \u2014 Fourier epicycles, shape morph, orbital trails, rendered browser-free via resvg"
   },
   "gradient-wash": {
     "title": "Gradient Wash",
     "category": "vector",
-    "description": "Animated SVG gradient morph — linear to radial via std.svg.gradient.animate and animateGradientStops"
+    "description": "Animated SVG gradient morph \u2014 linear to radial via std.svg.gradient.animate and animateGradientStops"
   },
   "spline-draw": {
     "title": "Spline Draw",
@@ -372,12 +372,12 @@
   "designer-reel": {
     "title": "Designer Reel",
     "category": "vector",
-    "description": "Flagship SVG compose reel — gradient wash, spline draw, bar race, and wireframe cube scenes"
+    "description": "Flagship SVG compose reel \u2014 gradient wash, spline draw, bar race, and wireframe cube scenes"
   },
   "grid-dashboard": {
     "title": "Grid Dashboard",
     "category": "data",
-    "description": "2×2 dashboard panels with std.layout.grid, std.layout.inset, and staggered entrance"
+    "description": "2\u00d72 dashboard panels with std.layout.grid, std.layout.inset, and staggered entrance"
   },
   "bar-race": {
     "title": "Bar Race",
@@ -402,7 +402,7 @@
   "earnings-card": {
     "title": "Earnings Card",
     "category": "data",
-    "description": "Composite earnings card — bar + pie in layout.grid cells with std.svg.fitText headline"
+    "description": "Composite earnings card \u2014 bar + pie in layout.grid cells with std.svg.fitText headline"
   },
   "treemap-breakdown": {
     "title": "Treemap Breakdown",
@@ -427,21 +427,26 @@
   "product-spin": {
     "title": "Product Spin",
     "category": "marketing",
-    "description": "Rotating 3D product box with viz.three.scene — HTML medium WebGL capture"
+    "description": "Rotating 3D product box with viz.three.scene \u2014 HTML medium WebGL capture"
   },
   "mesh-reveal": {
     "title": "Mesh Reveal",
     "category": "marketing",
-    "description": "Torus knot mesh with color morph via viz.three.scene — HTML medium WebGL capture"
+    "description": "Torus knot mesh with color morph via viz.three.scene \u2014 HTML medium WebGL capture"
   },
   "code-galaxy": {
     "title": "Code Galaxy",
     "category": "marketing",
-    "description": "14k particle logarithmic spiral — parametric positions/colors from pure math, not filmed footage"
+    "description": "14k particle logarithmic spiral \u2014 parametric positions/colors from pure math, not filmed footage"
   },
   "math-tunnel": {
     "title": "Math Tunnel",
     "category": "marketing",
-    "description": "Fly-through tube with morphing cross-section — control points driven by timeline.progress"
+    "description": "Fly-through tube with morphing cross-section \u2014 control points driven by timeline.progress"
+  },
+  "perfect-vs-good-enough": {
+    "title": "Perfect vs Good Enough",
+    "category": "vector",
+    "description": "Hand-drawn lemonade stand comparison with staggered SVG line-art reveals"
   }
 }

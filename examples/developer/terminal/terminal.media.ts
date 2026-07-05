@@ -79,38 +79,41 @@ export default define<TerminalVideoData>({
     });
     const commandsProgress = score.in("commands");
     const numCommands = commands.length;
-    const commandDuration = numCommands > 0 ? 1 / numCommands : 1;
-    const commandDurationSeconds = numCommands > 0 ? (timeline.durationSeconds * PHASE_WEIGHTS.commands) / numCommands : 1;
-    const responsePause = Math.min(0.2, RESPONSE_PAUSE_SECONDS / commandDurationSeconds);
-    const outputBurstSpan = Math.max(0.03, OUTPUT_BURST_SECONDS / commandDurationSeconds);
-
+    // commands phase is 5.28s long
+    const commandDurationSeconds = numCommands > 0 ? 5.28 / numCommands : 1;
+    
     let linesHtml = "";
+    const cursorOpacity = (timeline.seconds % 1.0) < 0.5 ? 0.75 : 0;
 
     for (let i = 0; i < numCommands; i++) {
       const cmd = commands[i]!;
-      const cmdStart = i * commandDuration;
-      const cmdEnd = cmdStart + commandDuration;
-      const cmdProgress = std.interpolate(commandsProgress, [cmdStart, cmdEnd], [0, 1]);
+      const localSec = commandsProgress * 5.28;
+      const cmdLocalSec = localSec - (i * commandDurationSeconds);
+      
+      if (cmdLocalSec < 0) continue;
 
-      if (cmdProgress <= 0) continue;
-
-      const typingSpan = Math.max(0.001, cmd.outputDelay);
-      const typingProgress = std.clamp01(cmdProgress / typingSpan);
+      // Typing speed: 30ms per char
+      const typingSecs = Math.max(0.01, cmd.command.length * 0.03);
+      const typingProgress = std.clamp01(cmdLocalSec / typingSecs);
       const visibleCmdChars = Math.floor(typingProgress * cmd.command.length);
       const displayCmd = cmd.command.substring(0, visibleCmdChars);
-      const cursor = typingProgress < 1 ? '<span class="cursor">&nbsp;</span>' : "";
+      
+      // Cursor stays solid while typing, blinks when idle
+      const isActiveCursor = typingProgress < 1;
+      const currentCursorOp = isActiveCursor ? 0.75 : cursorOpacity;
+      const cursor = `<span class="cursor" style="opacity: ${currentCursorOp}">&nbsp;</span>`;
 
-      linesHtml += `<div class="line"><span class="prompt">${cmd.prompt}</span><span class="command">${displayCmd}${cursor}</span></div>`;
+      linesHtml += `<div class="line"><span class="prompt">${cmd.prompt}</span><span class="command">${displayCmd}${isActiveCursor ? cursor : ""}</span></div>`;
 
-      const outputStart = Math.min(0.94, typingSpan + responsePause);
+      const responseStartSec = typingSecs + RESPONSE_PAUSE_SECONDS;
 
-      if (typingProgress >= 1 && cmdProgress < outputStart && cmd.output) {
-        linesHtml += `<div class="line running"><span class="cursor">&nbsp;</span></div>`;
+      if (typingProgress >= 1 && cmdLocalSec < responseStartSec && cmd.output) {
+        linesHtml += `<div class="line running"><span class="cursor" style="opacity: ${cursorOpacity}">&nbsp;</span></div>`;
       }
 
-      if (cmdProgress >= outputStart && cmd.output) {
+      if (cmdLocalSec >= responseStartSec && cmd.output) {
         const outputLines = cmd.output.split("\n");
-        const outputBurstProgress = std.clamp01((cmdProgress - outputStart) / outputBurstSpan);
+        const outputBurstProgress = std.clamp01((cmdLocalSec - responseStartSec) / OUTPUT_BURST_SECONDS);
         const visibleOutputLines = Math.min(
           outputLines.length,
           Math.floor(outputBurstProgress * outputLines.length) + 1,
@@ -124,12 +127,11 @@ export default define<TerminalVideoData>({
 
     if (score.active === "prompt" && commands.length > 0) {
       const firstPrompt = commands[0]!.prompt;
-      linesHtml += `<div class="line"><span class="prompt">${firstPrompt}</span><span class="cursor">&nbsp;</span></div>`;
+      linesHtml += `<div class="line"><span class="prompt">${firstPrompt}</span><span class="cursor" style="opacity: ${cursorOpacity}">&nbsp;</span></div>`;
     }
 
     return `
     <style>
-      @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
       .terminal {
         font-family: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
         font-weight: 400;
@@ -147,8 +149,6 @@ export default define<TerminalVideoData>({
         height: 1.05em;
         margin-left: 2px;
         background: ${t.text};
-        opacity: 0.75;
-        animation: blink 1s steps(1, end) infinite;
         vertical-align: -0.12em;
       }
     </style>
