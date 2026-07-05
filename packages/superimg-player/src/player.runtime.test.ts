@@ -2,10 +2,11 @@
 
 import { describe, expect, it } from "vitest";
 import { define } from "@superimg/types";
+import { compose } from "@superimg/core";
 import { Player, type PlayerInput } from "./player.js";
 
-describe("Player vNext runtime-web integration", () => {
-  it("loads, seeks, updates, and disposes through runtime-web", async () => {
+describe("Player vNext MediaSession integration", () => {
+  it("loads, seeks, updates, and disposes through MediaSession", async () => {
     const container = document.createElement("div");
     const template = define({
       sample: { label: "initial" },
@@ -42,6 +43,49 @@ describe("Player vNext runtime-web integration", () => {
     expect(player.store.getState().totalFrames).toBe(10);
     player.store.getState().setFrame(5);
     expect(player.currentFrame).toBe(5);
+  });
+
+  it("emits ready after the runtime store is available", async () => {
+    const container = document.createElement("div");
+    const template = define({
+      config: { width: 320, height: 180, fps: 10, duration: 1 },
+      render: (ctx) => `<div>${ctx.globalFrame}</div>`,
+    });
+    const player = new Player({ container });
+    const readySnapshots: boolean[] = [];
+    player.on("ready", () => {
+      readySnapshots.push(player.getRuntimeStore().getState().isReady);
+    });
+
+    const result = await player.load(template as unknown as PlayerInput);
+
+    expect(result.status).toBe("success");
+    expect(readySnapshots).toEqual([true]);
+  });
+
+  it("forwards scenechange events from composed media sessions", async () => {
+    const sceneA = define({
+      config: { width: 320, height: 180, fps: 10, duration: 0.5 },
+      render: (ctx) => `<main>A:${ctx.globalFrame}</main>`,
+    });
+    const sceneB = define({
+      config: { width: 320, height: 180, fps: 10, duration: 0.5 },
+      render: (ctx) => `<main>B:${ctx.globalFrame}</main>`,
+    });
+    const template = compose([
+      { id: "a", template: sceneA },
+      { id: "b", template: sceneB },
+    ]);
+    const player = new Player({ container: document.createElement("div") });
+    const sceneIds: string[] = [];
+    player.on("scenechange", (scene) => sceneIds.push(scene.id));
+
+    const result = await player.load(template as unknown as PlayerInput);
+    await player.render(5);
+
+    expect(result.status).toBe("success");
+    expect(sceneIds).toContain("a");
+    expect(sceneIds).toContain("b");
   });
 
   it("does not expose removed legacy aliases", () => {

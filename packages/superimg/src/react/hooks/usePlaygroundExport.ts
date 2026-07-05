@@ -49,7 +49,7 @@ export function usePlaygroundExport({
       exportCanvas.width = exportWidth;
       exportCanvas.height = exportHeight;
 
-      const { CanvasRenderer } = await import("../../index.export.js");
+      const { CanvasRenderer } = await import("@superimg/browser-export");
       const exportRenderer = new CanvasRenderer(exportCanvas);
       await exportRenderer.warmup();
 

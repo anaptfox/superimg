@@ -1,7 +1,7 @@
 //! SuperImg React preview hooks — no compile/export graph.
 //! Only hooks whose static import graph is free of the bundler (rolldown) and
 //! the export stack (mediabunny / snapdom). The compile/export hooks live in
-//! "./index.js" and are surfaced via superimg/react/compile and superimg/react/export.
+//! "./index.js". Browser export lives in @superimg/browser-export.
 
 export { useMediaQuery, useIsMobile } from "./useMediaQuery.js";
 export {

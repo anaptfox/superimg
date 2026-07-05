@@ -21,19 +21,14 @@ import {
   type FormatOption,
 } from "../../index.player.js";
 import {
-  isComposedTemplate,
   type AssetMeta,
   type CompileError,
   type EncodingOptions,
   type TemplateModule,
 } from "@superimg/types";
-import type { RuntimeStore } from "@superimg/runtime-web";
+import type { RuntimeStore } from "@superimg/media";
 import { VideoControls } from "./VideoControls.js";
-import { noopExportLayer, type ExportLayerState } from "./export-layer-state.js";
-import {
-  DynamicCompileLayer,
-  DynamicExportLayer,
-} from "./PlayerDynamicLayers.js";
+import { DynamicCompileLayer } from "./PlayerDynamicLayers.js";
 import type { CompileLayerState } from "./PlayerCompileLayer.js";
 import type { ExportOptions } from "./ExportDialog.js";
 
@@ -205,19 +200,13 @@ export function Player({
   }, []);
 
   const needsCompile = !!(code || bundled);
-  const needsBuiltInExport = controls === "full" && !onExportProp;
-
   const [compileState, setCompileState] = useState<CompileLayerState>({
     template: null,
     compiling: false,
     error: null,
   });
-  const [builtInExport, setBuiltInExport] =
-    useState<ExportLayerState>(noopExportLayer);
 
   const template = templateProp ?? compileState.template;
-  const exportTemplate =
-    template && !isComposedTemplate(template) ? template : null;
 
   const isLoading =
     compileState.compiling || (!!template && !isReady);
@@ -428,15 +417,10 @@ export function Player({
   const showTimeline = controls === true || isFull;
   const resolvedShowTime = showTime ?? (controls === true || isFull);
   const resolvedShowFormat = showFormat ?? isFull;
-  const resolvedShowExport = showExport ?? isFull;
+  const resolvedShowExport = showExport ?? (isFull && !!onExportProp && !!onDownloadProp);
 
-  const handleExport =
-    onExportProp ?? (isFull ? builtInExport.exportMp4 : undefined);
-  const handleDownload =
-    onDownloadProp ?? (isFull ? builtInExport.download : undefined);
-  const resolvedExporting = exportingProp ?? (isFull ? builtInExport.exporting : false);
-  const resolvedExportProgress =
-    exportProgressProp ?? (isFull ? builtInExport.exportProgress : 0);
+  const resolvedExporting = exportingProp ?? false;
+  const resolvedExportProgress = exportProgressProp ?? 0;
 
   const showHoverPlayOverlay = hoverBehavior === "play" && isReady && !isPlaying;
   const clickable = hoverBehavior === "none" && isReady;
@@ -455,16 +439,6 @@ export function Player({
           onChange={setCompileState}
           onCompiling={onCompiling}
           onCompileError={onCompileError}
-        />
-      )}
-
-      {needsBuiltInExport && (
-        <DynamicExportLayer
-          template={exportTemplate}
-          data={data ?? {}}
-          {...(fps !== undefined ? { fps } : {})}
-          {...(encoding !== undefined ? { encoding } : {})}
-          onChange={setBuiltInExport}
         />
       )}
 
@@ -543,8 +517,8 @@ export function Player({
           showTime={resolvedShowTime}
           showFormat={resolvedShowFormat}
           showExport={resolvedShowExport}
-          onExport={handleExport}
-          onDownload={handleDownload}
+          onExport={onExportProp}
+          onDownload={onDownloadProp}
           exporting={resolvedExporting}
           exportProgress={resolvedExportProgress}
           currentFormat={effectiveFormat ?? "horizontal"}

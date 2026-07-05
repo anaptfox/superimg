@@ -88,6 +88,6 @@ export type {
   LoadResult,
 } from "../index.player.js";
 
-export type { RuntimeState, RuntimeStore } from "@superimg/runtime-web";
+export type { RuntimeState, RuntimeStore } from "@superimg/media";
 
 export { isComposedTemplate } from "@superimg/types";

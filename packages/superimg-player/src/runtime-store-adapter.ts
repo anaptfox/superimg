@@ -1,16 +1,16 @@
-import type { RuntimeState, RuntimeStore } from "@superimg/runtime-web";
+import type { RuntimeState, RuntimeStore } from "@superimg/media";
 import type { PlayerStore } from "./state.js";
-import type { WebRuntime } from "@superimg/runtime-web";
+import type { MediaSession } from "@superimg/media";
 
 function buildRuntimeState(
   store: PlayerStore,
-  getRuntime: () => WebRuntime | null,
+  getSession: () => MediaSession | null,
 ): RuntimeState {
   const s = store.getState();
-  const runtime = getRuntime()?.getState();
+  const session = getSession()?.getState();
   return {
-    medium: runtime?.medium ?? "html",
-    animated: runtime?.animated ?? true,
+    medium: session?.medium ?? "html",
+    animated: session?.animated ?? s.totalFrames > 1,
     isReady: s.isReady,
     isPlaying: s.isPlaying,
     isScrubbing: s.isScrubbing,
@@ -18,8 +18,8 @@ function buildRuntimeState(
     totalFrames: s.totalFrames,
     fps: s.fps,
     duration: s.duration,
-    width: runtime?.width ?? 0,
-    height: runtime?.height ?? 0,
+    width: session?.width ?? 0,
+    height: session?.height ?? 0,
     progress: s.totalFrames > 1 ? s.currentFrame / (s.totalFrames - 1) : 0,
   };
 }
@@ -44,12 +44,12 @@ function runtimeStatesEqual(a: RuntimeState, b: RuntimeState): boolean {
 /** Adapts the Zustand PlayerStore to the RuntimeStore interface used by React controls. */
 export function createRuntimeStoreAdapter(
   store: PlayerStore,
-  getRuntime: () => WebRuntime | null,
+  getSession: () => MediaSession | null,
 ): RuntimeStore {
-  let snapshot = buildRuntimeState(store, getRuntime);
+  let snapshot = buildRuntimeState(store, getSession);
 
   const refreshSnapshot = (): void => {
-    const next = buildRuntimeState(store, getRuntime);
+    const next = buildRuntimeState(store, getSession);
     if (!runtimeStatesEqual(snapshot, next)) {
       snapshot = next;
     }

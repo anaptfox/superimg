@@ -13,6 +13,7 @@ export type {
   FormatOption,
   PlayerUpdate,
 } from "@superimg/player";
+export type { PreResolvedFonts } from "@superimg/player";
 
 export type {
   PlaybackMode,

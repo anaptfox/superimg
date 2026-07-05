@@ -1,5 +1,5 @@
-//! SuperImg React export hooks — opt-in client-side MP4 encoding.
-//! Import from "superimg/react/export" (pulls mediabunny via superimg/export).
+//! SuperImg React export hooks — internal source retained for package tests.
+//! Public browser export lives in @superimg/browser-export.
 "use client";
 
 export { useExport, type UseExportReturn } from "./hooks/useExport.js";
@@ -22,4 +22,4 @@ export type {
 } from "@superimg/types";
 
 export type { FormatOption } from "../index.player.js";
-export type { RuntimeStore } from "@superimg/runtime-web";
+export type { RuntimeStore } from "@superimg/media";

@@ -1,17 +1,18 @@
-//! Player - high-level browser controller for SuperImg runtime-web
+//! Player - high-level browser controller over MediaSession
 
 import { CheckpointResolver } from "@superimg/core";
 import {
-  createRuntime,
+  createMediaSession,
+  type MediaFrameResult,
+  type MediaSession,
+  type PreResolvedFonts,
   type RuntimeInput,
   type RuntimeRenderedPayload,
   type RuntimeState,
   type RuntimeStore,
-  type WebRuntime,
-} from "@superimg/runtime-web";
+} from "@superimg/media";
 import { getPreset } from "@superimg/stdlib";
 import { HoverController } from "./player-hover.js";
-import { createPlaybackController, type PlaybackController } from "./playback.js";
 import { createPlayerStore, type PlayerStore } from "./state.js";
 import { createRuntimeStoreAdapter } from "./runtime-store-adapter.js";
 import {
@@ -79,6 +80,8 @@ export interface LoadOptions {
   assets?: Record<string, AssetMeta>;
   /** Resolve co-located asset filenames to URLs */
   assetResolver?: (filename: string) => string;
+  /** Host-resolved fonts; suppresses Google Fonts resolution of `config.fonts` */
+  fonts?: PreResolvedFonts;
 }
 
 export type LoadResult =
@@ -138,10 +141,11 @@ class PlayerNotReadyError extends SuperImgError {
 
 export class Player {
   private container: HTMLElement;
-  private runtime: WebRuntime | null = null;
+  private session: MediaSession | null = null;
   private playerStore: PlayerStore | null = null;
   private runtimeStore: RuntimeStore | null = null;
-  private playbackController: PlaybackController | null = null;
+  private sessionDisposer: (() => void) | null = null;
+  private sessionEventDisposers: Array<() => void> = [];
   private template: PlayerInput | null = null;
   private checkpointResolverInstance: CheckpointResolver | null = null;
   private markerList: Marker[] = [];
@@ -176,7 +180,7 @@ export class Player {
     this.hoverController = new HoverController(
       this.container,
       { behavior: this.options.hoverBehavior, delayMs: this.options.hoverDelayMs },
-      () => (this.runtime && this.playerStore ? this : null)
+      () => (this.session && this.playerStore ? this : null)
     );
     this.hoverController.install();
   }
@@ -189,57 +193,50 @@ export class Player {
       this.lastCheckpointId = null;
 
       const dimensions = this.format ? resolveFormat(this.format) : {};
-      this.runtime = createRuntime(input, {
+      this.session = await createMediaSession(input, {
         ...dimensions,
         ...(options.data !== undefined ? { data: options.data } : {}),
         ...(options.assets !== undefined ? { assets: options.assets } : {}),
         ...(options.assetResolver !== undefined ? { assetResolver: options.assetResolver } : {}),
+        ...(options.fonts !== undefined ? { fonts: options.fonts } : {}),
         playbackMode: this.options.playbackMode,
-        autoplay: false,
+        playback: "native",
       });
-      this.wireRuntimeEvents(this.runtime);
-      this.runtime.attach(this.container);
-
-      const runtimeState = this.runtime.getState();
+      const initialState = this.session.getState();
       this.rebuildCheckpointResolver();
 
       this.playerStore = createPlayerStore(
-        { fps: runtimeState.fps, duration: runtimeState.duration },
+        { fps: initialState.fps, duration: initialState.duration },
         {
           onPlay: () => {
-            this.playbackController?.play();
-            this.emit("play");
+            this.session?.play();
           },
           onPause: () => {
-            this.playbackController?.pause();
-            this.emit("pause");
+            this.session?.pause();
           },
           onFrameChange: (frame) => {
-            void this.runtime?.render(frame).then(() => {
-              const total = this.playerStore?.getState().totalFrames ?? 0;
-              this.emit("frame", frame, total);
-              this.emitCheckpoint(frame);
-            });
+            void this.session?.seekFrame(frame).catch((error) => this.emit("error", error));
           },
         },
         this.checkpointResolverInstance ?? undefined
       );
-
-      this.playbackController = createPlaybackController(this.playerStore, {
-        onFrame: (frame) => this.playerStore!.getState().setFrame(frame),
-        onEnd: () => this.handlePlaybackEnd(),
-      });
-
-      this.runtimeStore = createRuntimeStoreAdapter(this.playerStore, () => this.runtime);
+      this.sessionDisposer = this.session.subscribe(() => this.syncStoreFromSession());
+      this.runtimeStore = createRuntimeStoreAdapter(this.playerStore, () => this.session);
+      this.wireSessionEvents(this.session);
+      await this.session.mount(this.container);
+      await this.session.ready();
       this.playerStore.getState().setReady(true);
+      this.syncStoreFromSession();
+
+      const sessionState = this.session.getState();
 
       return {
         status: "success",
-        totalFrames: runtimeState.totalFrames,
-        duration: runtimeState.duration,
-        width: runtimeState.width,
-        height: runtimeState.height,
-        fps: runtimeState.fps,
+        totalFrames: sessionState.totalFrames,
+        duration: sessionState.duration,
+        width: sessionState.width,
+        height: sessionState.height,
+        fps: sessionState.fps,
       };
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -255,7 +252,7 @@ export class Player {
   }
 
   update(update: PlayerUpdate): void {
-    const runtime = this.requireRuntime("update");
+    const session = this.requireSession("update");
     const next = { ...update };
     if (next.format) {
       this.format = next.format;
@@ -264,18 +261,19 @@ export class Player {
       next.height = dimensions.height;
       delete next.format;
     }
-    runtime.update(next);
+    session.update(next);
     this.rebuildCheckpointResolver();
 
     if (this.playerStore) {
-      const state = runtime.getState();
+      const state = session.getState();
       this.playerStore.getState().updateConfig({ fps: state.fps, duration: state.duration });
+      this.syncStoreFromSession();
     }
   }
 
   render(frame?: number): Promise<void> {
     const target = frame ?? this.currentFrame;
-    return this.requireRuntime("render").render(target);
+    return this.requireSession("render").renderFrame(target).then(() => undefined);
   }
 
   play(): void {
@@ -418,8 +416,8 @@ export class Player {
   dispose(): void {
     this.teardownPlayback();
     this.hoverController.dispose();
-    this.runtime?.dispose();
-    this.runtime = null;
+    this.session?.dispose();
+    this.session = null;
     this.template = null;
     this.checkpointResolverInstance = null;
     this.events = {};
@@ -459,11 +457,11 @@ export class Player {
   }
 
   get renderWidth(): number {
-    return this.runtime?.getState().width ?? 0;
+    return this.session?.getState().width ?? 0;
   }
 
   get renderHeight(): number {
-    return this.runtime?.getState().height ?? 0;
+    return this.session?.getState().height ?? 0;
   }
 
   get scenes(): readonly ResolvedScene[] {
@@ -482,7 +480,7 @@ export class Player {
   private handlePlaybackEnd(): void {
     if (this.options.playbackMode === "loop") {
       this.playerStore!.getState().setFrame(0);
-      this.playbackController!.play(0);
+      this.session?.play();
       return;
     }
     this.playerStore!.getState().pause();
@@ -490,26 +488,36 @@ export class Player {
   }
 
   private teardownPlayback(): void {
-    this.playbackController?.destroy();
-    this.playbackController = null;
+    this.sessionDisposer?.();
+    this.sessionDisposer = null;
+    for (const dispose of this.sessionEventDisposers) dispose();
+    this.sessionEventDisposers = [];
     this.playerStore = null;
     this.runtimeStore = null;
-    this.runtime?.dispose();
-    this.runtime = null;
+    this.session?.dispose();
+    this.session = null;
   }
 
-  private wireRuntimeEvents(runtime: WebRuntime): void {
-    runtime.on("ready", () => {
+  private wireSessionEvents(session: MediaSession): void {
+    this.sessionEventDisposers.push(session.on("ready", () => {
       this.playerStore?.getState().setReady(true);
       this.emit("ready");
-    });
-    runtime.on("rendered", (payload) => this.emit("rendered", payload));
-    runtime.on("error", (error) => this.emit("error", error));
-    runtime.on("scenechange", (scene) => this.emit("scenechange", scene));
+    }));
+    this.sessionEventDisposers.push(session.on("rendered", (result) => {
+      this.emit("rendered", toRenderedPayload(result));
+      const total = this.playerStore?.getState().totalFrames ?? session.getState().totalFrames;
+      this.emit("frame", result.frame, total);
+      this.emitCheckpoint(result.frame);
+    }));
+    this.sessionEventDisposers.push(session.on("play", () => this.emit("play")));
+    this.sessionEventDisposers.push(session.on("pause", () => this.emit("pause")));
+    this.sessionEventDisposers.push(session.on("ended", () => this.handlePlaybackEnd()));
+    this.sessionEventDisposers.push(session.on("error", (error) => this.emit("error", error)));
+    this.sessionEventDisposers.push(session.on("scenechange", (scene) => this.emit("scenechange", scene)));
   }
 
   private rebuildCheckpointResolver(): void {
-    const state = this.runtime?.getState();
+    const state = this.session?.getState();
     if (!state) {
       this.checkpointResolverInstance = null;
       return;
@@ -521,6 +529,31 @@ export class Player {
     );
   }
 
+  private syncStoreFromSession(): void {
+    if (!this.session || !this.playerStore) return;
+    const sessionState = this.session.getState();
+    const current = this.playerStore.getState();
+    const next = {
+      isReady: sessionState.isReady,
+      isPlaying: sessionState.isPlaying,
+      currentFrame: sessionState.currentFrame,
+      totalFrames: sessionState.totalFrames,
+      fps: sessionState.fps,
+      duration: sessionState.duration,
+    };
+    if (
+      current.isReady === next.isReady &&
+      current.isPlaying === next.isPlaying &&
+      current.currentFrame === next.currentFrame &&
+      current.totalFrames === next.totalFrames &&
+      current.fps === next.fps &&
+      current.duration === next.duration
+    ) {
+      return;
+    }
+    this.playerStore.setState(next);
+  }
+
   private emitCheckpoint(frame: number): void {
     const checkpoint = this.getCheckpoints().find((item) => item.frame === frame);
     if (!checkpoint || checkpoint.id === this.lastCheckpointId) return;
@@ -528,9 +561,9 @@ export class Player {
     this.emit("checkpoint", checkpoint);
   }
 
-  private requireRuntime(operation: string): WebRuntime {
-    if (!this.runtime) throw new PlayerNotReadyError(operation);
-    return this.runtime;
+  private requireSession(operation: string): MediaSession {
+    if (!this.session) throw new PlayerNotReadyError(operation);
+    return this.session;
   }
 
   private requireStore(operation: string): PlayerStore {
@@ -555,4 +588,12 @@ export class Player {
       (callback as (...a: Parameters<PlayerEvents[K]>) => void)(...args);
     });
   }
+}
+
+function toRenderedPayload(result: MediaFrameResult): RuntimeRenderedPayload {
+  return {
+    frame: result.frame,
+    html: result.html,
+    compositeHtml: result.compositeHtml,
+  };
 }

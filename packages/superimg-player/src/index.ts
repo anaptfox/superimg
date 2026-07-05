@@ -10,6 +10,7 @@ export type {
   FormatOption,
   PlayerUpdate,
 } from "./player.js";
+export type { PreResolvedFonts } from "@superimg/media";
 
 export type {
   PlaybackMode,

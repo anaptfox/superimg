@@ -1,5 +1,5 @@
 //! SuperImg - Browser-specific exports
-//! Runtime-web, Player, rendering, and export utilities for client-side usage
+//! Browser playback and media-session exports.
 
 export * from "./index.shared.js";
 
@@ -10,10 +10,10 @@ export * from "./index.shared.js";
 export { Player, resolveFormat } from "@superimg/player";
 
 // =============================================================================
-// RUNTIME-WEB (canonical display runtime)
+// MEDIA SESSION RUNTIME
 // =============================================================================
 
-export { createRuntime, mount } from "@superimg/runtime-web";
+export { createMediaSession, MediaClock, MediaSession } from "@superimg/media";
 
 // =============================================================================
 // PLAYER UTILITIES
@@ -23,18 +23,29 @@ export {
   formatTime,
 } from "@superimg/player";
 
-// Runtime-web types
+export type { RuntimeState, RuntimeStore } from "@superimg/media";
+
+// Media types
 export type {
-  RuntimeInput,
-  RuntimeOptions,
-  RuntimeUpdate,
-  RuntimeState,
-  RuntimeEvents,
-  RuntimeStore,
-  RuntimeRenderedPayload,
-  RuntimePlaybackMode,
-  WebRuntime,
-} from "@superimg/runtime-web";
+  DomMediaSurface,
+  ExternalEmbedNode,
+  FormatOption as MediaFormatOption,
+  MediaClockOptions,
+  MediaClockState,
+  MediaFrameResult,
+  MediaGraph,
+  MediaGraphNode,
+  MediaPlaybackMode,
+  MediaSessionEvents,
+  MediaSessionOptions,
+  MediaSessionPlayback,
+  MediaSessionState,
+  MediaSessionUpdate,
+  MediaSurface,
+  MediaSurfaceKind,
+  MediaSurfaceMountOptions,
+  VideoMediaNode,
+} from "@superimg/media";
 
 // Player types
 export type {

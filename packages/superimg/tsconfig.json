@@ -7,8 +7,10 @@
     "paths": {
       "@superimg/cli": ["../superimg-cli/src/cli/index.ts"],
       "@superimg/cli/server": ["../superimg-cli/src/server.ts"],
+      "@superimg/browser-export": ["../superimg-browser-export/src/index.ts"],
       "@superimg/core": ["../superimg-core/src/index.ts"],
       "@superimg/core/*": ["../superimg-core/src/*.ts", "../superimg-core/src/*/index.ts"],
+      "@superimg/media": ["../superimg-media/src/index.ts"],
       "@superimg/player": ["../superimg-player/src/index.ts"],
       "@superimg/playwright": ["../superimg-playwright/src/index.ts"],
       "@superimg/runtime": ["../superimg-runtime/src/index.ts"],

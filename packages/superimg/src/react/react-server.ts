@@ -51,7 +51,7 @@ export type {
   LoadResult,
 } from "../index.player.js";
 
-export type { RuntimeState, RuntimeStore } from "@superimg/runtime-web";
+export type { RuntimeState, RuntimeStore } from "@superimg/media";
 
 const MSG =
   'superimg/react is client-only. Use superimg/react/player in Server Components, or mark the file with "use client".';
@@ -60,7 +60,7 @@ const COMPILE_MSG =
   'Import compile hooks from "superimg/react/compile" in a Client Component.';
 
 const EXPORT_MSG =
-  'Import export hooks from "superimg/react/export" in a Client Component.';
+  'Use @superimg/browser-export in a Client Component.';
 
 function clientOnly(name: string, hint = MSG): never {
   throw new Error(`${name}: ${hint}`);

@@ -8,6 +8,9 @@ export default defineConfig({
       // the built dist for tests. Map to the source-level shared entrypoint, which
       // re-exports define/defineConfig.
       superimg: fileURLToPath(new URL("./src/index.shared.ts", import.meta.url)),
+      "@superimg/browser-export": fileURLToPath(
+        new URL("../superimg-browser-export/src/index.ts", import.meta.url),
+      ),
     },
   },
   test: {
