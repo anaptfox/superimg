@@ -1,0 +1,41 @@
+{
+  "name": "@superimg/browser-export",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser capture and export runtime for SuperImg MediaSession",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./encoder": {
+      "import": "./dist/encoder.js",
+      "types": "./dist/encoder.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest --run --passWithNoTests",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@superimg/core": "workspace:*",
+    "@superimg/media": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "@zumer/snapdom": "^2.15.0",
+    "mediabunny": "^1.49.0"
+  },
+  "devDependencies": {
+    "happy-dom": "^20.10.6",
+    "vitest": "^4.1.9"
+  }
+}
