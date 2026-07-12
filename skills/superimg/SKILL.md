@@ -51,6 +51,9 @@ Single `render(ctx)` call — no `timeline`. Use `std.css`, `std.layout`, `std.c
 - **Flat HTML (no layers):** set root `width` / `height` via `std.css`
 - **`compose()` vs `mergeMotion()`:** scenes vs motion values
 - **Clock:** `timeline.seconds` is always `progress × durationSeconds` — use `timeline` for scene-local time, not `globalTimeSeconds`
+- **Phases on stills:** prefer **percent** phases summing to 100% — second-based phases can blow up when single-frame paths use short totalSeconds. Prefer `layoutTimeline({…seconds})` which always emits percents.
+- **Config const refs:** `const DURATION = 12; duration: DURATION` is folded by metadata AST; dynamic `resolve()` duration still needs runtime/`inspect`
+- **Fixed duration + stack:** equal slots compress when item count grows — use `resolve` + `layoutTimeline` (+ optional `stack` `weights`) for programmable lists/sessions
 
 ## Quick Start (video)
 
@@ -65,8 +68,8 @@ export default define({
   },
   render(ctx) {
     const { std, width, height, data } = ctx;
-    const d = ctx.director();
-    const card = d.motion({ y: 30 });
+    const t = ctx.director();
+    const card = t.motion({ y: 30 });
 
     return `
       <div style="${std.css({ width, height }, std.css.center())}">
@@ -89,15 +92,15 @@ export default define({
 
 **Director API (video/gif):**
 ```typescript
-const d = ctx.director({ enter: "15%", hold: "70%", exit: "15%" });
-const card = d.motion({ scale: 0.8, easing: "easeOutBack" });
-const count = Math.floor(d.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
+const t = ctx.director({ enter: "15%", hold: "70%", exit: "15%" });
+const card = t.motion({ scale: 0.8, easing: "easeOutBack" });
+const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
 ```
 
 **Nested clips (sequence-like timing):**
 ```typescript
-const d = ctx.director({ hook: "2s", demo: "5s" });
-const hook = d.clip({ during: "hook" });
+const t = ctx.director({ hook: "2s", demo: "5s" });
+const hook = t.clip({ during: "hook" });
 if (hook.active) {
   const local = hook.director({ enter: "20%", hold: "60%", exit: "20%" });
   return `<div style="${local.motion({ y: 24 }).style}">Hook</div>`;
@@ -106,8 +109,13 @@ if (hook.active) {
 
 **Stack (accumulate — chat, FAQ, lists):**
 ```typescript
-const d = ctx.director({ messages: "90%", hold: "10%" });
-const stk = std.stack(messages, { during: d.in("messages"), lead: 0.05, trail: 0.05 });
+const t = ctx.director({ messages: "90%", hold: "10%" });
+const stk = std.stack(messages, {
+  during: t.in("messages"),
+  lead: 0.05,
+  trail: 0.05,
+  weights: messages.map((m) => Math.max(1, m.text.length / 40)), // optional
+});
 for (let i = 0; i < messages.length; i++) {
   const item = stk.state(i);
   if (item.state === "hidden") continue;
@@ -115,10 +123,37 @@ for (let i = 0; i < messages.length; i++) {
 }
 ```
 
+**Variable-length sessions (resolve + layoutTimeline):**
+```typescript
+import { define, layoutTimeline } from "superimg";
+
+function estimate(data: { items: unknown[] }) {
+  return layoutTimeline({
+    intro: 1,
+    main: Math.max(2, data.items.length * 1.2),
+    hold: 0.8,
+  });
+}
+
+export default define({
+  sample: { items: [1, 2, 3] },
+  config: { width: 1920, height: 1080, fps: 30, duration: "8s" }, // AST fallback
+  resolve({ data }) {
+    const { totalSeconds, phases } = estimate(data);
+    return { duration: `${totalSeconds}s`, phases };
+  },
+  render(ctx) {
+    const { phases } = estimate(ctx.data);
+    const t = ctx.director(phases);
+    // …
+  },
+});
+```
+
 **Carousel (replace — threads, wizards):**
 ```typescript
-const d = ctx.director({ tweets: "84%", hold: "16%" });
-const car = std.carousel(tweets, { during: d.in("tweets"), exit: 0.15, last: "hold" });
+const t = ctx.director({ tweets: "84%", hold: "16%" });
+const car = std.carousel(tweets, { during: t.in("tweets"), exit: 0.15, last: "hold" });
 const item = car.state(0); // states: hidden | entering | hold | exiting | gone
 ```
 
@@ -131,8 +166,8 @@ const charP = vo.charProgress();
 
 **Data-driven viz (bar race, force graphs):**
 ```typescript
-const d = ctx.director({ intro: "10%", race: "80%", outro: "10%" });
-const bars = std.viz.charts.barRace(keyframes, d.at("race", timeline.seconds));
+const t = ctx.director({ intro: "10%", race: "80%", outro: "10%" });
+const bars = std.viz.charts.barRace(keyframes, t.at("race", timeline.seconds));
 ```
 
 **Embedded video (frame-accurate):**
@@ -144,13 +179,13 @@ return clip.html; // not <video autoplay>
 **Layer stack (video/gif, layered scenes):**
 ```typescript
 const L = std.layers({ width, height, mode: "opaque" });
-const wipe = std.reveal.wipe({ progress: d.in("intro"), direction: "diagonal", color: "#000" });
+const wipe = std.reveal.wipe({ progress: t.in("intro"), direction: "diagonal", color: "#000" });
 return L.render(
   L.bg(kenBurns.html),
   L.tint("rgba(0,0,0,0.5)"),
   L.content(`<h1 style="${card.style}">...</h1>`, { safe: "broadcast" }),
   L.overlay(lowerThirdHtml, { anchor: "bottom-left", offset: { y: 80 }, safe: true, motion: badgeAnim }),
-  L.fx(wipe.html, { visible: () => d.in("intro") < 1 }),
+  L.fx(wipe.html, { visible: () => t.in("intro") < 1 }),
 );
 ```
 
@@ -177,7 +212,8 @@ export default define({
 - `ctx.director(phases?)` — video/gif only. `{ motion, tween, value, active, in, clip, at, span, transition, inSpan }`
 - `ctx.track({ words, markers })` — transcript/marker sync using `timeline.seconds`
 - `std.carousel(items, opts)` — one active item; prior items exit (`last: "hold"` keeps final)
-- `std.stack(items, opts)` — accumulate items; `enter` + `slot` for sub-beats
+- `std.stack(items, opts)` — accumulate items; `enter` + `slot`; optional `weights` for unequal slots
+- `std.layoutTimeline(segments)` / `layoutTimeline` — pure seconds → percent phases + `totalSeconds` (use in resolve + render)
 - `std.video.sync(opts, fps)` — frame-accurate embedded `<video>` for headless render
 - `std.layers(opts)` — video/gif only. `.bg()`, `.tint()`, `.content()`, `.overlay()`, `.fx()`, `.handoff()`, `.render()`
 - `std.reveal.wipe/split/curtain/crossfade/iris/handoffLocal()` — transition overlays (utility)
@@ -206,15 +242,51 @@ superimg dev intro
 superimg render intro
 superimg render intro --format png --frame 45   # single-frame still
 superimg render intro --format html --frame 45  # HTML snapshot (no browser)
+superimg inspect intro --pretty                 # multi-progress + phases (JSON)
+superimg inspect intro --diff 0.35,0.85         # what changed between beats?
 superimg list
 superimg setup
 ```
+
+## Debug (agent loop)
+
+**Start with inspect** — do not shell five single-frame renders to learn timing.
+
+```bash
+# 1. Runtime config + director phases + samples at 0/25/50/75/100%
+superimg inspect path/to/foo.media.ts --pretty
+
+# 2. Did beat B introduce content vs beat A?
+superimg inspect path/to/foo.media.ts --diff 0.35,0.85
+
+# 3. Only if HTML semantics are ambiguous
+superimg inspect path/to/foo.media.ts --at 0.5,0.9 --png
+
+# 4. Final motion polish
+superimg render path/to/foo.media.ts -y
+```
+
+| Tool | Use for |
+|------|---------|
+| **`inspect`** | Phases, multi-progress text/colors/`data-eq-key`, semantic `--diff` (default JSON, no browser) |
+| **`info`** | Runtime config + phase summary |
+| **`validate`** | Crashes, NaN, empty output, bad easing names |
+| **`doctor` / `setup`** | Env / Chromium only |
+| **`render --format html\|png --frame N`** | One exact frame still |
+| **`render --debug-html`** | Full-render HTML dump (heavy) |
+
+`inspect` stdout is machine JSON (`config`, `phases`, `samples`, optional `diff`). Prefer reading that over opening MP4s when fixing timing/content bugs.
 
 ## Additional Resources
 
 - **[references/api.md](references/api.md)** — Full API, template kinds, composition model
 - **[examples/hello-world.ts](examples/hello-world.ts)** — Minimal video
 - **[examples/stats-card.ts](examples/stats-card.ts)** — Director + counters
+
+### Related (motion & design)
+
+- **animator skill** — timing, easing, stagger, framing, SVG craft, critique checklist (`skills/animator/SKILL.md` in SuperImg monorepos; complements this skill's API mechanics)
+- **video-designer agent** — heavy scene/visual design (diagrams, line art, palettes, explainers); loads this skill + animator first
 
 ### Project Examples
 

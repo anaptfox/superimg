@@ -64,9 +64,9 @@ All templates use `*.media.ts`. Output kind is determined by `define()` config �
 
 | Output | Config signal | Stdlib |
 |--------|---------------|--------|
-| **MP4/WebM** | `fps` + `duration` | Full (`score`, `layers`, `reveal`, `cue`, …) |
+| **MP4/WebM** | `fps` + `duration` | Full (`director`, `layers`, `reveal`, `track`, …) |
 | **GIF** | `fps` + `duration` + `--format gif` | Full (temporal APIs) |
-| **Image** | no `fps`/`duration` | Static — no `score`/`layers`/`reveal`/`cue` |
+| **Image** | no `fps`/`duration` | Static — no `director`/`layers`/`reveal`/`track` |
 | **SVG** | `medium: "svg"` | Static + `std.svg` / `std.viz` |
 
 ```bash
@@ -86,7 +86,7 @@ npx superimg render intro.media.ts --frame 45 --format png  # single-frame still
 
 ## Add Animation
 
-Every frame receives a context with a standard library for animation. `ctx.director()` breaks the scene into enter/hold/exit phases and `d.motion()` gives each element a fade-in, transform, and fade-out automatically:
+Every frame receives a context with a standard library for animation. `ctx.director()` breaks the scene into enter/hold/exit phases and `t.motion()` gives each element a fade-in, transform, and fade-out automatically:
 
 ```typescript
 import { define } from 'superimg'
@@ -97,10 +97,10 @@ export default define({
     const { std, width, height } = ctx
 
     // Phases default to enter 15% / hold 70% / exit 15%
-    const d = ctx.director()
+    const t = ctx.director()
 
     // scale 0.8 → 1 on enter, hold, then auto fade + scale back on exit
-    const card = d.motion({ scale: 0.8, easing: 'easeOutCubic' })
+    const card = t.motion({ scale: 0.8, easing: 'easeOutCubic' })
 
     return `
       <div style="
@@ -115,7 +115,7 @@ export default define({
 })
 ```
 
-`ctx.director()` handles phase timing. For nested clips use `d.clip()`, for accumulating lists use `std.stack()`, for one-at-a-time slides use `std.carousel()`, for layered scenes use `std.layers()`, for embedded video use `std.video.sync()`. For custom-progress math reach for `std.interpolate(progress, inputRange, outputRange, easing?)`. [See the full API →](./docs/api.md)
+`ctx.director()` handles phase timing. For nested clips use `t.clip()`, for accumulating lists use `std.stack()`, for one-at-a-time slides use `std.carousel()`, for layered scenes use `std.layers()`, for embedded video use `std.video.sync()`. For custom-progress math reach for `std.interpolate(progress, inputRange, outputRange, easing?)`. [See the full API →](./docs/api.md)
 
 ## Data-Driven Templates
 

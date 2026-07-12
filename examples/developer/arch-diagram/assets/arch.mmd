@@ -1,0 +1,6 @@
+%% Source diagram for arch.svg — pre-render offline if you change this.
+%% SuperImg templates use the committed SVG + std.viz.mermaid (sync wrap only).
+flowchart LR
+  client[Client] --> api[API]
+  api --> db[DB]
+  api --> worker[Worker]

@@ -73,15 +73,25 @@ the matching `easeIn*` unless you override `exitEasing`.
 
 ### Springs
 
+Prefer **named springs** (omakase defaults in `@superimg/stdlib`):
+
 ```typescript
-d.motion({ scale: 0.8, easing: { stiffness: 170, damping: 14 } }); // SpringConfig
-std.spring(from, to, progress, { stiffness: 100, damping: 10, mass: 1 });
+t.motion({ scale: 0.8, easing: "playful" });   // SpringName on motion
+std.spring(from, to, progress, "gentle");      // default when omitted
+// names: gentle (default, critically damped) | snappy | fluid | playful | wobbly
+```
+
+Raw config still works when you need a one-off:
+
+```typescript
+t.motion({ scale: 0.8, easing: { stiffness: 170, damping: 26 } });
+std.spring(from, to, progress, { stiffness: 170, damping: 26, mass: 1 });
 ```
 
 - Higher `stiffness` = faster; higher `damping` = less oscillation.
-- Gentle settle: `{ stiffness: 120, damping: 18 }` (no visible bounce).
-- Playful pop: `{ stiffness: 170, damping: 12 }` (one visible overshoot).
-- Wobbly: `damping < 10` — two+ oscillations; expressive, use rarely.
+- **Default `gentle`** is near-critically damped (no visible bounce).
+- `playful` ≈ one soft overshoot; `wobbly` is rare/expressive.
+- Designer-friendly params: `std.spring` via `springFromResponse({ response, dampingFraction })`.
 - A spring's "duration" is emergent — verify the settle finishes inside the
   phase window by checking a mid-phase and end-of-phase frame.
 
@@ -96,15 +106,15 @@ std.spring(from, to, progress, { stiffness: 100, damping: 10, mass: 1 });
 **Standard enter/exit** — the defaults are already right:
 
 ```typescript
-const d = ctx.director({ enter: "0.6s", hold: "3.2s", exit: "0.5s" });
-const card = d.motion({ y: 24 });           // easeOutCubic in, easeInCubic out
+const t = ctx.director({ enter: "0.6s", hold: "3.2s", exit: "0.5s" });
+const card = t.motion({ y: 24 });           // easeOutCubic in, easeInCubic out
 return `<div style="${card.style}">…</div>`;
 ```
 
 **Anticipation dip** (rise that dips first):
 
 ```typescript
-const p = d.in("enter");
+const p = t.in("enter");
 const y = std.interpolate(p, [0, 0.2, 1], [0, 6, -40], "easeOutCubic");
 // 20% of the window and ~15% of the magnitude go to the counter-move
 ```
@@ -112,21 +122,21 @@ const y = std.interpolate(p, [0, 0.2, 1], [0, 6, -40], "easeOutCubic");
 **Overshoot-settle without easeOutBack** (explicit control):
 
 ```typescript
-const scale = std.interpolate(d.in("enter"), [0, 0.8, 1], [0.9, 1.06, 1], "easeOutCubic");
+const scale = std.interpolate(t.in("enter"), [0, 0.8, 1], [0.9, 1.06, 1], "easeOutCubic");
 ```
 
 **Follow-through group** (container leads, contents trail):
 
 ```typescript
-const panel = d.motion({ y: 32, for: "0.5s" });
-const title = d.motion({ y: 16, at: "0.12s", for: "0.4s" });
-const body  = d.motion({ y: 12, at: "0.22s", for: "0.4s" });
+const panel = t.motion({ y: 32, for: "0.5s" });
+const title = t.motion({ y: 16, at: "0.12s", for: "0.4s" });
+const body  = t.motion({ y: 12, at: "0.22s", for: "0.4s" });
 ```
 
 **Secondary action** (shadow grows as card lifts):
 
 ```typescript
-const lift = d.tween(0, 1, { during: "enter", easing: "easeOutCubic" });
+const lift = t.tween(0, 1, { during: "enter", easing: "easeOutCubic" });
 const shadow = `0 ${4 + lift * 12}px ${8 + lift * 24}px rgba(0,0,0,${0.1 + lift * 0.15})`;
 ```
 
@@ -141,7 +151,7 @@ const drift = std.wiggle(timeline.seconds, i, { freq: 0.4, amp: 2 });
 **Count-up** (ease the value, land exactly, keep digits stable):
 
 ```typescript
-const n = Math.round(d.tween(0, 1287, { during: "enter", easing: "easeOutQuart" }));
+const n = Math.round(t.tween(0, 1287, { during: "enter", easing: "easeOutQuart" }));
 // render with font-variant-numeric: tabular-nums (or a monospace font)
 // so the number's width doesn't jitter while counting
 ```

@@ -26,7 +26,7 @@ All templates use `define()`. Output kind is config-driven:
 
 **Satellites:** `ctx.track()`, `std.carousel()` / `std.stack()`, `css`/`layout`, `interpolate`/`spring`/`stagger`, `mergeMotion`, `std.reveal.*` (transition overlays — utility, not a tier).
 
-Wire director into layers: `L.overlay(html, { motion: d.motion({ y: 20 }) })` or inline `style="${card.style}"` in content HTML.
+Wire director into layers: `L.overlay(html, { motion: t.motion({ y: 20 }) })` or inline `style="${card.style}"` in content HTML.
 
 ## RenderContext (video + gif)
 
@@ -149,7 +149,7 @@ Same as image, plus optional `duration?: number` for CSS `animation-duration`. `
 The primary primitive for layout orchestration and phased animation. Breaks a scene into enter/hold/exit phases and exposes motions scoped to those phases with automatic fade-in + fade-out.
 
 ```typescript
-const d = ctx.director(phases?: PhaseConfig);  // default: { enter: "15%", hold: "70%", exit: "15%" }
+const t = ctx.director(phases?: PhaseConfig);  // default: { enter: "15%", hold: "70%", exit: "15%" }
 ```
 
 **Returns** a director with `motion()`, `tween()`, `value()`, `active`, `in()`, `at()`, `clip()`.
@@ -159,7 +159,7 @@ const d = ctx.director(phases?: PhaseConfig);  // default: { enter: "15%", hold:
 The 80% case for animating elements. Returns a `.style` string combining opacity + transform.
 
 ```typescript
-const card = d.motion({ y: 30, scale: 0.8, easing: "easeOutBack" });
+const card = t.motion({ y: 30, scale: 0.8, easing: "easeOutBack" });
 // <div style="${card.style}">...</div>
 ```
 
@@ -172,15 +172,15 @@ const card = d.motion({ y: 30, scale: 0.8, easing: "easeOutBack" });
 Phase-scoped scalar interpolation. Use for counters or progress bars tied to a specific phase.
 
 ```typescript
-const count = Math.floor(d.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
+const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
 ```
 
-### d.in(phase, opts?)
+### t.in(phase, opts?)
 
 Returns 0-1 progress inside a specific phase, with optional stagger (`at`) and `duration`.
 
 ```typescript
-const p = d.in("hold", { at: "50%", duration: "50%" });
+const p = t.in("hold", { at: "50%", duration: "50%" });
 ```
 
 ### t.span(from, to)
@@ -188,7 +188,7 @@ const p = d.in("hold", { at: "50%", duration: "50%" });
 Scene-absolute progress window in seconds (e.g. intro wipe from scene start):
 
 ```typescript
-const introP = d.span("0s", "1s");
+const introP = t.span("0s", "1s");
 const wipe = std.reveal.wipe({ progress: introP, direction: "diagonal", color: accent });
 ```
 
@@ -197,21 +197,21 @@ const wipe = std.reveal.wipe({ progress: introP, direction: "diagonal", color: a
 Eased scene-absolute handoff progress. Use with `t.inSpan()` for cross-phase transitions:
 
 ```typescript
-if (d.inSpan("3s", "4s")) {
-  const p = d.transition("3s", "4s", "easeInOutCubic");
+if (t.inSpan("3s", "4s")) {
+  const p = t.transition("3s", "4s", "easeInOutCubic");
   const toLocal = std.reveal.handoffLocal(p);
   // split/crossfade content panels only — keep shared bg outside
 }
 ```
 
-**Phases vs spans:** `d.active` / `d.in("hook")` for steady shots; `d.inSpan()` + `d.transition()` for windows that cross phase boundaries.
+**Phases vs spans:** `t.active` / `t.in("hook")` for steady shots; `t.inSpan()` + `t.transition()` for windows that cross phase boundaries.
 
-### d.at(phase, dataSeconds)
+### t.at(phase, dataSeconds)
 
 Maps scene-local data time (seconds) to progress within a named phase. Use for data-driven viz (bar race, force graphs).
 
 ```typescript
-const bars = std.viz.charts.barRace(keyframes, d.at("race", timeline.seconds));
+const bars = std.viz.charts.barRace(keyframes, t.at("race", timeline.seconds));
 ```
 
 ## ctx.track()
@@ -229,8 +229,8 @@ const charP = vo.charProgress();
 One active item at a time; previous items exit their slot. Use for thread slides, wizard steps, single-card transitions.
 
 ```typescript
-const d = ctx.director({ tweets: "84%", hold: "16%" });
-const car = std.carousel(tweets, { during: d.in("tweets"), exit: 0.15, last: "hold" });
+const t = ctx.director({ tweets: "84%", hold: "16%" });
+const car = std.carousel(tweets, { during: t.in("tweets"), exit: 0.15, last: "hold" });
 const item = car.state(0); // { enter, exit, visible, active, state: hidden|entering|hold|exiting|gone }
 ```
 
@@ -239,8 +239,8 @@ const item = car.state(0); // { enter, exit, visible, active, state: hidden|ente
 Ordered reveal; items stay visible once shown. Use for chat, FAQ, ranked lists.
 
 ```typescript
-const d = ctx.director({ messages: "90%", hold: "10%" });
-const stk = std.stack(messages, { during: d.in("messages"), lead: 0.05, trail: 0.05 });
+const t = ctx.director({ messages: "90%", hold: "10%" });
+const stk = std.stack(messages, { during: t.in("messages"), lead: 0.05, trail: 0.05 });
 const item = stk.state(0); // { enter, slot, visible, active, state: hidden|entering|revealed }
 ```
 
@@ -590,81 +590,67 @@ return renderCaption({ text: active?.text ?? "", opacity });
 
 Use `ctx.director()` for scene-local phase choreography. Use `ctx.track()` when timing comes from absolute timestamps or external narration data.
 
-## std.spring / std.springTween / std.createSpring
+## std.spring
 
-Spring physics for organic motion with overshoot and bounce.
+Spring physics for organic motion. Prefer **named** presets (omakase).
 
 ```typescript
-// Spring curve: 0→1 with overshoot based on physics config
-const val = std.spring(progress);                    // default config
-const val = std.spring(progress, { stiffness: 200, damping: 8 });
+// Named springs (recommended)
+const scale = std.spring(0.8, 1, progress, "gentle");   // default if omitted
+const pop   = std.spring(0.85, 1, progress, "playful");
+// names: gentle | snappy | fluid | playful | wobbly
 
-// Interpolate between values with spring physics
-const scale = std.springTween(0.8, 1, progress);     // 0.8→overshoot→1
-const x = std.springTween(0, 500, progress, { stiffness: 200, damping: 8 });
+// Also valid as director easing
+t.motion({ scale: 0.92, easing: "playful" });
 
-// Create reusable easing function for std.interpolate()
-const bounce = std.createSpring({ stiffness: 200, damping: 8 });
-const y = std.interpolate(progress, [0, 1], [0, 100], bounce);
+// Raw SpringConfig when needed
+std.spring(0, 100, progress, { stiffness: 170, damping: 26, mass: 1 });
 ```
 
-**SpringConfig:**
-| Param | Default | Description |
-|---|---|---|
-| `stiffness` | `100` | Spring constant — higher = faster oscillation |
-| `damping` | `10` | Friction — lower = more bouncy |
-| `mass` | `1` | Mass — higher = slower, more momentum |
+**Named springs (defaults when config omitted → `gentle`):**
 
-**Example:**
-```typescript
-// Bouncy card entrance
-const bounce = std.createSpring({ stiffness: 150, damping: 12 });
-const scale = std.interpolate(enterProgress, [0, 1], [0.8, 1], bounce);
-const y = std.interpolate(enterProgress, [0, 1], [40, 0], bounce);
-```
+| Name | Feel |
+|---|---|
+| `gentle` | Critically damped settle (default) |
+| `snappy` | Fast UI settle |
+| `fluid` | Between gentle and snappy |
+| `playful` | Soft overshoot — entrances |
+| `wobbly` | Expressive bounce — rare |
+
+**SpringConfig:** `stiffness`, `damping`, `mass` (optional overrides).
 
 ## std.stagger
 
 Distribute progress across items for cascading animations.
 
 ```typescript
-// Count-based: returns array of per-item progress values (each 0-1)
-const progresses = std.stagger(5, timeline.progress, { duration: 0.3 });
-// progresses[0] leads, progresses[4] trails
+// Preferred: ms gaps + hard 500ms cascade cap
+const items = std.stagger.ms(["A", "B", "C"], t.in("enter"), {
+  windowSeconds: 1.5,
+  eachMs: 50,
+  capMs: 500,
+  from: "start",
+});
 
-// Items-based: returns enriched objects with per-item progress
-const items = std.stagger(["A", "B", "C"], timeline.progress, { duration: 0.4 });
-items.map(({ item, progress }) =>
-  `<div style="opacity: ${progress}">${item}</div>`
-).join("");
+// Fraction API (default easing: easeOutCubic)
+const progresses = std.stagger(5, timeline.progress, { duration: 0.3 });
 ```
 
-**StaggerOptions:**
+**StaggerOptions (fraction):**
 | Param | Default | Description |
 |---|---|---|
 | `each` | auto | Delay between item starts (0-1 fraction) |
 | `duration` | auto | Each item's animation window (0-1 fraction) |
 | `from` | `"start"` | Direction: `"start"`, `"end"`, `"center"`, `"edges"` |
-| `easing` | linear | Per-item easing name or function |
+| `easing` | `easeOutCubic` | Per-item easing name or function |
 
-**StaggerItem (items-based overload):**
-`{ item, progress, index, active, done }`
+**stagger.ms options:** `windowSeconds` (required), `eachMs` (default 50), `capMs` (default 500), plus `from` / `easing`.
 
-**Lead index:** `std.stagger.lead(items, progress, opts?)` — index of the item with highest progress above threshold (sync phone mockups, highlights).
+**StaggerItem:** `{ item, progress, index, active, done, startMs?, eachMs?, totalStaggerMs? }`
 
-**Example:**
-```typescript
-// Drive a staggered cascade off the "enter" phase of a director
-const d = ctx.director({ enter: "25%", hold: "50%", exit: "25%" });
-const items = std.stagger(["First", "Second", "Third"], d.in("enter"), {
-  duration: 0.4, from: "center", easing: "easeOutCubic"
-});
-return items.map(({ item, progress }) => {
-  const opacity = std.interpolate(progress, [0, 1], [0, 1]);
-  const y      = std.interpolate(progress, [0, 1], [20, 0]);
-  return `<div style="opacity: ${opacity}; transform: translateY(${y}px)">${item}</div>`;
-}).join("");
-```
+**Lead index:** `std.stagger.lead(items, progress, opts?)` — highest progress above threshold.
+
+**Also:** `std.phases.recipe("card"|"establish"|"punchy"|…)` and `std.timing.readTime(text)`.
 
 ## std.interpolate / std.interpolateColor
 
@@ -742,8 +728,8 @@ const { visible } = std.text.type(CODE, progress, { by: 'line' });
 const highlighted = std.code.highlight(visible, { lang: 'typescript' });
 
 // Terminal commands with director()
-const d = ctx.director({ enter: "25%", hold: "50%", exit: "25%" });
-const cmdProgress = d.in("enter");
+const t = ctx.director({ enter: "25%", hold: "50%", exit: "25%" });
+const cmdProgress = t.in("enter");
 const { visible: cmdVisible } = std.text.type("npm run dev", cmdProgress);
 ```
 

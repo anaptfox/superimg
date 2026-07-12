@@ -352,6 +352,17 @@ Only `superimg` is published. The `@superimg/*` packages shown here are private 
 - **Server-only** (`./bundler`): Template bundling — requires `rolldown`, `fs`
 - **Engine** (`./engine`): `createRenderPlan()`, `executeRenderPlan()` — browser-safe but exposed as a separate entry point for tree-shaking
 
+### Template bundler (`import … from "superimg"`)
+
+Templates are real ESM. The bundler plugin maps bare `superimg` / `superimg/define` to **built modules**, not hand-written JS strings:
+
+| Path | Resolve target |
+|------|----------------|
+| **Server** (`@superimg/core/bundler`) | Real files: `@superimg/core/template-runtime`, `superimg/define`, stdlib dist |
+| **Browser** (`superimg/bundler-browser` / `@superimg/core/bundler-browser`) | Virtual modules filled at **build time** from those same sources (`scripts/build-browser-virtuals.mjs` → gitignored `browser-virtuals.gen.ts`, then folded into published dist) |
+
+Canonical `define()` lives only in `@superimg/types`. Integrity: `pnpm --filter @superimg/core run verify:virtuals` (also wired into `just check`).
+
 ### RenderContext Flow
 
 ```

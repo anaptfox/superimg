@@ -66,21 +66,29 @@ look at — a small moving thing beats a large static one. So:
 - `director.motion()` already defaults to `easeOutCubic` enter / `easeInCubic`
   exit — trust it unless you have a reason.
 - Tone dial: calm/premium → symmetric `easeInOut*`, zero bounce.
-  Playful/social → `easeOutBack`, `spring(stiffness, damping)`, snappier curves.
+  Playful/social → `easeOutBack`, `easing: "playful"` spring, snappier curves.
+- Prefer named springs: `"gentle"` (default), `"snappy"`, `"fluid"`, `"playful"`, `"wobbly"`.
 - An element should never hit its final state at max velocity — the last
   10–20% of any move is deceleration tail (or a micro-overshoot that settles).
 
 ## Stagger
 
 ```typescript
-std.stagger(items, d.in("enter"), { each: 0.08, from: "start", easing: "easeOutCubic" });
-// each/duration are fractions (0–1) of the driving progress, mutually exclusive
+// Omakase: ms gaps + hard 500ms cascade cap (preferred)
+std.stagger.ms(items, d.in("enter"), {
+  windowSeconds: 1.5, // length of the enter phase
+  eachMs: 50,
+  capMs: 500,
+  from: "start",
+});
+// Fraction API still works; default easing is easeOutCubic
+std.stagger(items, d.in("enter"), { each: 0.08, from: "start" });
 ```
 
 - **30–80ms between siblings**; ~100ms between distinct groups.
   <20ms reads as simultaneous; >150ms reads as separate events.
-- **Cap total stagger ≤ ~500ms** no matter the item count — shrink `each` or
-  stagger by row/cluster instead of by item.
+- **Cap total stagger ≤ ~500ms** no matter the item count — use `stagger.ms`
+  (cap is automatic) or shrink `each` / cluster by row.
 - Each item's own animation must be **longer than the stagger interval**
   (e.g. 400ms items, 50ms gaps) so entrances overlap and flow.
 - `from:` direction points the eye: `"start"` follows reading order,
@@ -144,11 +152,17 @@ Run this before calling any animation done:
 Iterate cheaply before rendering video:
 
 ```bash
-superimg render <name> --format html --frame 45   # instant HTML snapshot, no browser
-superimg render <name> --format png --frame 45    # single-frame still
+superimg inspect <name> --pretty                  # phases + multi-progress semantics (JSON)
+superimg inspect <name> --critique --pretty       # craft: hold length, exit vs enter, text settle
+superimg inspect <name> --diff 0.3,0.8            # did the beat land?
+superimg validate <name> --craft                  # NaN + craft warnings
+superimg inspect <name> --at 0.5 --png            # pixel still only if needed
+superimg render <name> --format html --frame 45   # single HTML snapshot
 superimg dev <name>                                # live preview player
 superimg render <name>                             # final MP4
 ```
+
+**Timing/content bugs:** start with `inspect` (see superimg skill Debug section), then apply craft judgment here.
 
 Check at minimum: first frame, one mid-entrance frame (is the easing visible?),
 the settled hold frame (is the composition right?), one mid-exit frame, and
@@ -168,4 +182,4 @@ at them.
   reveal, viz); read it first if you don't know the framework
 - Live demonstrations: `examples/vector/` (`svg-draw`, `svg-morph`,
   `pelican-bicycle`, `wow-demo`, `perfect-vs-good-enough`), `examples/basics/`
-  (`layer-shots`, `score-clips`), indexed in `examples/_templates.json`
+  (`layer-shots`, `director-clips`), indexed in `examples/_templates.json`

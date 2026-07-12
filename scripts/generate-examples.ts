@@ -51,19 +51,37 @@ const EDITOR_WASM_DEMO_IDS = new Set([
   "svg-filter",
 ]);
 
-type TemplateCategory =
-  | "basics"
-  | "marketing"
-  | "events"
-  | "social"
-  | "interfaces"
-  | "data"
-  | "vector"
-  | "developer";
+const EXAMPLE_CATEGORIES = [
+  "basics",
+  "marketing",
+  "events",
+  "social",
+  "interfaces",
+  "data",
+  "vector",
+  "developer",
+  "composed",
+] as const;
+
+type ExampleCategory = (typeof EXAMPLE_CATEGORIES)[number];
+/** @deprecated Use ExampleCategory */
+type TemplateCategory = ExampleCategory;
+
+function assertExampleCategory(
+  id: string,
+  category: string,
+): asserts category is ExampleCategory {
+  if (!(EXAMPLE_CATEGORIES as readonly string[]).includes(category)) {
+    throw new Error(
+      `examples/_templates.json: "${id}" has invalid category "${category}". ` +
+        `Expected one of: ${EXAMPLE_CATEGORIES.join(", ")}`,
+    );
+  }
+}
 
 interface TemplateMetadata {
   title: string;
-  category: TemplateCategory;
+  category: ExampleCategory;
   description?: string;
   liveEdit?: boolean;
 }
@@ -356,9 +374,14 @@ ${examples.map(formatExample).join(",\n")}
   fs.writeFileSync(filePath, output);
 }
 
-const metadata: Record<string, TemplateMetadata> = JSON.parse(
+const rawMetadata = JSON.parse(
   fs.readFileSync(METADATA_PATH, "utf-8"),
-);
+) as Record<string, { title: string; category: string; description?: string; liveEdit?: boolean }>;
+const metadata: Record<string, TemplateMetadata> = {};
+for (const [id, meta] of Object.entries(rawMetadata)) {
+  assertExampleCategory(id, meta.category);
+  metadata[id] = meta as TemplateMetadata;
+}
 
 async function loadBuiltinModules() {
   const modules: Record<string, Record<string, string>> = {};

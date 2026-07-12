@@ -49,7 +49,7 @@ Net effect: design 9:16 content as a centered vertical column roughly
 Every scene, regardless of length:
 
 ```typescript
-const d = ctx.director({ enter: "20%", hold: "62%", exit: "18%" });
+const t = ctx.director({ enter: "20%", hold: "62%", exit: "18%" });
 ```
 
 1. **Establish (15–25%)** — staged, staggered entrances teach the layout.
@@ -71,8 +71,8 @@ percentages keep the shape stable when duration changes.
 A scene with multiple internal beats uses `director.clip`:
 
 ```typescript
-const d = ctx.director({ setup: "2s", payoff: "3s", outro: "1s" });
-const setup = d.clip({ during: "setup" });
+const t = ctx.director({ setup: "2s", payoff: "3s", outro: "1s" });
+const setup = t.clip({ during: "setup" });
 if (setup.active) {
   const local = setup.director({ enter: "25%", hold: "60%", exit: "15%" });
   // each beat gets its own establish/develop/resolve

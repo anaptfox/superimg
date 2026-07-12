@@ -26,7 +26,7 @@ All templates use `define()`. Output kind is config-driven:
 
 **Satellites:** `ctx.track()`, `std.carousel()` / `std.stack()`, `css`/`layout`, `interpolate`/`spring`/`stagger`, `mergeMotion`, `std.reveal.*` (transition overlays — utility, not a tier).
 
-Wire director into layers: `L.overlay(html, { motion: d.motion({ y: 20 }) })` or inline `style="${card.style}"` in content HTML.
+Wire director into layers: `L.overlay(html, { motion: t.motion({ y: 20 }) })` or inline `style="${card.style}"` in content HTML.
 
 ## RenderContext (video + gif)
 
@@ -149,7 +149,7 @@ Same as image, plus optional `duration?: number` for CSS `animation-duration`. `
 The primary primitive for layout orchestration and phased animation. Breaks a scene into enter/hold/exit phases and exposes motions scoped to those phases with automatic fade-in + fade-out.
 
 ```typescript
-const d = ctx.director(phases?: PhaseConfig);  // default: { enter: "15%", hold: "70%", exit: "15%" }
+const t = ctx.director(phases?: PhaseConfig);  // default: { enter: "15%", hold: "70%", exit: "15%" }
 ```
 
 **Returns** a director with `motion()`, `tween()`, `value()`, `active`, `in()`, `at()`, `clip()`.
@@ -159,7 +159,7 @@ const d = ctx.director(phases?: PhaseConfig);  // default: { enter: "15%", hold:
 The 80% case for animating elements. Returns a `.style` string combining opacity + transform.
 
 ```typescript
-const card = d.motion({ y: 30, scale: 0.8, easing: "easeOutBack" });
+const card = t.motion({ y: 30, scale: 0.8, easing: "easeOutBack" });
 // <div style="${card.style}">...</div>
 ```
 
@@ -172,15 +172,15 @@ const card = d.motion({ y: 30, scale: 0.8, easing: "easeOutBack" });
 Phase-scoped scalar interpolation. Use for counters or progress bars tied to a specific phase.
 
 ```typescript
-const count = Math.floor(d.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
+const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
 ```
 
-### d.in(phase, opts?)
+### t.in(phase, opts?)
 
 Returns 0-1 progress inside a specific phase, with optional stagger (`at`) and `duration`.
 
 ```typescript
-const p = d.in("hold", { at: "50%", duration: "50%" });
+const p = t.in("hold", { at: "50%", duration: "50%" });
 ```
 
 ### t.span(from, to)
@@ -188,7 +188,7 @@ const p = d.in("hold", { at: "50%", duration: "50%" });
 Scene-absolute progress window in seconds (e.g. intro wipe from scene start):
 
 ```typescript
-const introP = d.span("0s", "1s");
+const introP = t.span("0s", "1s");
 const wipe = std.reveal.wipe({ progress: introP, direction: "diagonal", color: accent });
 ```
 
@@ -197,22 +197,120 @@ const wipe = std.reveal.wipe({ progress: introP, direction: "diagonal", color: a
 Eased scene-absolute handoff progress. Use with `t.inSpan()` for cross-phase transitions:
 
 ```typescript
-if (d.inSpan("3s", "4s")) {
-  const p = d.transition("3s", "4s", "easeInOutCubic");
+if (t.inSpan("3s", "4s")) {
+  const p = t.transition("3s", "4s", "easeInOutCubic");
   const toLocal = std.reveal.handoffLocal(p);
   // split/crossfade content panels only — keep shared bg outside
 }
 ```
 
-**Phases vs spans:** `d.active` / `d.in("hook")` for steady shots; `d.inSpan()` + `d.transition()` for windows that cross phase boundaries.
+**Phases vs spans:** `t.active` / `t.in("hook")` for steady shots; `t.inSpan()` + `t.transition()` for windows that cross phase boundaries.
 
-### d.at(phase, dataSeconds)
+### t.at(phase, dataSeconds)
 
 Maps scene-local data time (seconds) to progress within a named phase. Use for data-driven viz (bar race, force graphs).
 
 ```typescript
-const bars = std.viz.charts.barRace(keyframes, d.at("race", timeline.seconds));
+const bars = std.viz.charts.barRace(keyframes, t.at("race", timeline.seconds));
 ```
+
+## Explainer path (`std.viz` + `std.svg`)
+
+Pure progress → markup (not Manim mobjects). **Job** time = `resolve`; **scene** time = director + viz; **capture** = fonts/images/readiness.
+
+### Golden recipe
+
+```typescript
+render(ctx) {
+  const { std, width, height } = ctx;
+  const t = ctx.director({ intro: "15%", main: "70%", outro: "15%" });
+  const coords = std.viz.createCoords({ width, height, xRange: [-4, 4], yRange: [-2, 2] });
+  const p = t.in("main");
+
+  const cam = std.viz.camera.autoZoom({
+    width, height,
+    rects: [{ x: 200, y: 100, width: 400, height: 300 }],
+    progress: p,
+  });
+
+  const curve = std.viz.plot(coords, (x) => Math.sin(x), { progress: p });
+  const eq = std.viz.equationSteps("E = {{mc^2}}", { progress: p, lag: 0.25 });
+  const ring = std.viz.indicate.circle(
+    { x: 200, y: 100, width: 400, height: 300 },
+    t.in("outro"),
+  );
+
+  // std.svg.drawMany([pathA, pathB], p, { lag: 0.2 })
+  // std.svg.morph(a, b, p, { arc: Math.PI / 2 })
+  // std.svg.arcPoint(from, to, p, Math.PI / 2)
+
+  return `
+    <div style="${std.css({ width, height })}">
+      <div style="${cam.style}">
+        <svg width="${width}" height="${height}">${curve}${ring}</svg>
+        ${eq}
+      </div>
+    </div>`;
+}
+```
+
+| API | Role |
+|-----|------|
+| `std.viz.camera.panZoom` / `autoZoom` / `lerp` | Stage focus (Manim camera) |
+| `std.viz.lagProgress` / `revealLocal` / `multiPathDraw` | Shared lag_ratio reveal |
+| `std.viz.indicate.*` | Circle / rect / flash / wiggle |
+| `std.viz.equationSteps` / `equationMatch` | Keyed KaTeX steps + crossfade |
+| `std.viz.tracker` | Multi-channel progress windows (prefer `t.tween` for phase-tied values) |
+| `std.svg.drawMany` / `morph(..., { arc })` / `arcPoint` | Stroke lag + arc morph |
+
+See examples: `examples/vector/math-explainer`, `examples/data/bar-race`.
+
+### Charts (`std.viz.charts`) — D3 geometry, SuperImg time
+
+Charts use **pure D3** (`d3-scale` / `d3-shape` / layouts) and return SVG strings. Motion is only via `progress` + `animate: "grow" | "draw" | "fade"` from the director. Do **not** use d3-transition / d3-timer / selection joins.
+
+| API | Role |
+|-----|------|
+| `bar` / `barHorizontal` / `bars` / `barRace` | Bars |
+| `line` / `lineTime` / `lines` / `area` | Lines & area |
+| `stack({ mode: "bar" \| "area" })` | Stacked series (optional `expand`) |
+| `pie` / `scatter` / `sparkline` / hierarchy / force / contour | Other marks |
+| `std.viz.scale.*` | `linear`, `band`, `time`, `log`, `point`, `sequential`, `color` |
+
+Examples: `examples/data/stacked-area`, `examples/data/bar-race`, `examples/data/chart-reel`.
+
+### Sketch (`std.svg.rough`)
+
+Seeded [Rough.js](https://roughjs.com) generator → pure SVG path HTML. Always non-zero `seed` (default `1`). `fillStyle: "dots"` is rejected (non-deterministic). Prefer caching rough paths and animating with opacity / `std.svg.draw` rather than re-roughing morphing geometry every frame.
+
+```typescript
+const mark = std.svg.rough.rect(x, y, w, h, {
+  seed: 42,
+  fill: "#5b8cff",
+  fillStyle: "hachure",
+  stroke: "#93c5fd",
+});
+```
+
+Examples: `examples/vector/rough-sketch`, `examples/data/rough-charts`.
+
+### Three.js (`std.viz.three.scene`)
+
+CDN WebGL (pinned). Single `renderer.render` per frame; `preserveDrawingBuffer: true`; dispose + forceContextLoss after paint. `progress` must be a **finite number** (`timeline.progress` / `t.in(...)`).
+
+Example: `examples/vector/three-orbit`.
+
+### Lottie (`std.viz.lottie`)
+
+Seek-only player (`autoplay: false`, `goToAndStop(frame, true)`). Prefer inlined `animationData`. Default light SVG CDN build.
+
+Example: `examples/vector/lottie-logo`.
+
+### Mermaid (`std.viz.mermaid`)
+
+**Sync wrap of pre-rendered SVG only** — never call `mermaid.render` inside pure `render(ctx)`. Pre-render offline, then highlight nodes/edges with director progress.
+
+Example: `examples/developer/arch-diagram`.
 
 ## ctx.track()
 
@@ -229,8 +327,8 @@ const charP = vo.charProgress();
 One active item at a time; previous items exit their slot. Use for thread slides, wizard steps, single-card transitions.
 
 ```typescript
-const d = ctx.director({ tweets: "84%", hold: "16%" });
-const car = std.carousel(tweets, { during: d.in("tweets"), exit: 0.15, last: "hold" });
+const t = ctx.director({ tweets: "84%", hold: "16%" });
+const car = std.carousel(tweets, { during: t.in("tweets"), exit: 0.15, last: "hold" });
 const item = car.state(0); // { enter, exit, visible, active, state: hidden|entering|hold|exiting|gone }
 ```
 
@@ -239,8 +337,8 @@ const item = car.state(0); // { enter, exit, visible, active, state: hidden|ente
 Ordered reveal; items stay visible once shown. Use for chat, FAQ, ranked lists.
 
 ```typescript
-const d = ctx.director({ messages: "90%", hold: "10%" });
-const stk = std.stack(messages, { during: d.in("messages"), lead: 0.05, trail: 0.05 });
+const t = ctx.director({ messages: "90%", hold: "10%" });
+const stk = std.stack(messages, { during: t.in("messages"), lead: 0.05, trail: 0.05 });
 const item = stk.state(0); // { enter, slot, visible, active, state: hidden|entering|revealed }
 ```
 
@@ -655,8 +753,8 @@ items.map(({ item, progress }) =>
 **Example:**
 ```typescript
 // Drive a staggered cascade off the "enter" phase of a director
-const d = ctx.director({ enter: "25%", hold: "50%", exit: "25%" });
-const items = std.stagger(["First", "Second", "Third"], d.in("enter"), {
+const t = ctx.director({ enter: "25%", hold: "50%", exit: "25%" });
+const items = std.stagger(["First", "Second", "Third"], t.in("enter"), {
   duration: 0.4, from: "center", easing: "easeOutCubic"
 });
 return items.map(({ item, progress }) => {
@@ -742,8 +840,8 @@ const { visible } = std.text.type(CODE, progress, { by: 'line' });
 const highlighted = std.code.highlight(visible, { lang: 'typescript' });
 
 // Terminal commands with director()
-const d = ctx.director({ enter: "25%", hold: "50%", exit: "25%" });
-const cmdProgress = d.in("enter");
+const t = ctx.director({ enter: "25%", hold: "50%", exit: "25%" });
+const cmdProgress = t.in("enter");
 const { visible: cmdVisible } = std.text.type("npm run dev", cmdProgress);
 ```
 
@@ -819,3 +917,131 @@ export default define({
   render(ctx) { return `<svg xmlns="http://www.w3.org/2000/svg">...</svg>`; },
 });
 ```
+
+### resolve() — data-driven duration and geometry
+
+`resolve` runs **once per job** (not per frame), before any `render` call. Use it when duration, size, or data depend on external content (transcript length, API payload, item count).
+
+Authority order: `template.config` → `resolve()` → explicit job/CLI overrides.
+
+```typescript
+export default define({
+  sample: { words: [] as Array<{ text: string }> },
+  // fps required; duration may be omitted when resolve supplies it
+  config: { width: 1920, height: 1080, fps: 30 },
+  async resolve({ data }) {
+    const wordCount = data.words?.length ?? 0;
+    return {
+      duration: Math.max(3, wordCount * 0.08 + 1.5),
+      // optional: data merge, markers, phases for timeline UI
+      // markers.at: seconds (number) or "1.2s" / "500ms"
+      markers: [{ id: "mid", at: 2, label: "Mid" }],
+      phases: { enter: "10%", main: "80%", exit: "10%" },
+    };
+  },
+  render(ctx) {
+    return `<div>${ctx.data.words.length} words</div>`;
+  },
+});
+```
+
+Rules:
+
+- `render` stays **pure and synchronous**. Async work belongs in `resolve` or the capture harness.
+- After resolve, animated templates **must** have a concrete `duration` or the plan fails with a clear error.
+- `resolve` may return `duration`, `width`, `height`, `fps`, `data`, `markers`, `phases`, and `meta`.
+- Authority: `config` → `resolve()` → **explicit** CLI/API flags (e.g. `--duration` wins over resolve). Soft job defaults do not overwrite resolve.
+- Keep a static `config.duration` as an **AST discovery fallback** so the template is listed as video; `resolve` overrides at runtime.
+
+### layoutTimeline + variable-length sessions
+
+When list/event length should drive **video length**, use pure estimators + `layoutTimeline` (also `std.layoutTimeline`) in **both** `resolve` and `render`:
+
+```typescript
+import { define, layoutTimeline } from "superimg";
+
+function estimate(data: { events: { kind: string }[] }) {
+  const segments: Record<string, number> = { boot: 1, type: 1.5 };
+  data.events.forEach((e, i) => {
+    segments[`event_${i}`] = e.kind === "tool" ? 0.9 : 1.2;
+  });
+  return layoutTimeline(segments); // → { phases as "%", totalSeconds, order }
+}
+
+export default define({
+  sample: { events: [{ kind: "tool" }, { kind: "note" }] },
+  config: { width: 1920, height: 1080, fps: 30, duration: "8s" /* fallback */ },
+  resolve({ data }) {
+    const { totalSeconds, phases } = estimate(data);
+    return { duration: `${totalSeconds}s`, phases };
+  },
+  render(ctx) {
+    const { phases } = estimate(ctx.data);
+    const t = ctx.director(phases);
+    // t.in("event_0"), …
+  },
+});
+```
+
+`std.stack(items, { weights })` partitions a **parent phase** by relative weights (longer messages get more of the window). It does **not** set duration — pair with `resolve` + `layoutTimeline` for that.
+
+**Footgun:** fixed `duration` + equal `stack` compresses pacing when N grows. Prefer the recipe above for programmable content.
+
+## Frame readiness (Playwright capture)
+
+Headless export waits until the DOM is **paintable** before each screenshot. This is a **capture** concern — not scene timing. Duration and beats stay in `resolve` / `director`.
+
+### Golden path (most templates)
+
+**Do nothing.** Default waits: fonts + all images (including `std.video.sync` injects). Marketing cards, lower-thirds, stacks, stats — no readiness API.
+
+### Media (optional attribute)
+
+```html
+<img data-superimg-wait="logo" src="..." />
+```
+
+Labeled **img/video** auto-clear after load/decode. Use when you want a named timeout if that asset hangs.
+
+### WebGL / canvas via stdlib (auto-wired)
+
+```typescript
+// std.viz.three.scene and std.viz.canvas stamp wait + done for you
+return std.viz.three.scene({
+  width, height, progress: timeline.progress,
+  setup: `/* … */`,
+  animate: `/* … */`,
+  // wait: "my-scene" | false  — optional override / disable
+});
+```
+
+### Custom GPU (advanced)
+
+Keep `render` pure. Use **matched** token strings — never hand-sync free-floating labels:
+
+```typescript
+const w = ctx.std.ready.token("particles");
+return `
+  <canvas ${w.attr} id="c" width="${width}" height="${height}"></canvas>
+  <script>
+    // … draw …
+    ${w.done}
+    // on error: ${w.fail("WebGL unavailable")}
+  </script>
+`;
+```
+
+`window.__superimgReady` is an **implementation detail** of the capture shell — prefer `std.ready` / stdlib auto-wire.
+
+### Config (policy only)
+
+```typescript
+config: {
+  readiness: {
+    timeoutMs: 10000,                  // default 8000
+    waitImplicit: ["fonts", "images"], // default; ["fonts"] skips img decode
+  },
+}
+```
+
+Preview (`superimg dev`) does not block on readiness (keeps scrubbing fast). Export does.

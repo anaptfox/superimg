@@ -14,15 +14,15 @@
     "category": "basics",
     "description": "Animated title card with accent lines"
   },
-  "score-clips": {
-    "title": "Score Clips",
+  "director-clips": {
+    "title": "Director Clips",
     "category": "basics",
-    "description": "Nested score.clip() windows for sequence-like timing inside custom phases"
+    "description": "Nested director.clip() windows for sequence-like timing inside custom phases"
   },
   "clip-reel": {
     "title": "Clip Reel",
     "category": "basics",
-    "description": "Product-style reel combining nested score.clip() segments with std.video.sync"
+    "description": "Product-style reel combining nested director.clip() segments with std.video.sync"
   },
   "video-sync": {
     "title": "Video Sync",
@@ -32,7 +32,7 @@
   "layer-shots": {
     "title": "Layer Shots",
     "category": "basics",
-    "description": "Video composition model: template, layers stack, score phases, reveal FX"
+    "description": "Video composition model: template, layers stack, director phases, reveal FX"
   },
   "og-card": {
     "title": "OG Card",
@@ -77,7 +77,7 @@
   "feature-launch": {
     "title": "Feature Launch",
     "category": "marketing",
-    "description": "Mobile app launch spot with SVG iPhone mockup and in-app UI \u2014 layers, score, reveal transitions, multi-format outputs"
+    "description": "Mobile app launch spot with SVG iPhone mockup and in-app UI \u2014 layers, director, reveal transitions, multi-format outputs"
   },
   "http-spotlight": {
     "title": "HTTP Spotlight",
@@ -182,7 +182,12 @@
   "claude-code": {
     "title": "Claude Code",
     "category": "interfaces",
-    "description": "Agentic Claude Code session in a terminal-style CLI"
+    "description": "Programmable Claude Code session — events[] transcript with resolve()-scaled duration"
+  },
+  "grok-build": {
+    "title": "Grok Build",
+    "category": "interfaces",
+    "description": "Grok Build fullscreen TUI — plan.md, subagents, progress, approve"
   },
   "imessage": {
     "title": "iMessage",
@@ -339,6 +344,11 @@
     "category": "vector",
     "description": "Animated equation reveal with coordinate grid and curve tracing"
   },
+  "explainer-focus": {
+    "title": "Derivative of Sine",
+    "category": "vector",
+    "description": "Pedagogical: f=sin, peak slope=0, f'=cos — camera, equationMatch, indicate, dual plots"
+  },
   "wow-demo": {
     "title": "Fourier Wow",
     "category": "vector",
@@ -423,6 +433,36 @@
     "title": "Chart Reel",
     "category": "data",
     "description": "Multi-scene compose reel combining bar-race and line-trend chart scenes"
+  },
+  "stacked-area": {
+    "title": "Stacked Area",
+    "category": "data",
+    "description": "Stacked area chart via viz.charts.stack (D3 stack geometry + director progress)"
+  },
+  "rough-charts": {
+    "title": "Rough Charts",
+    "category": "data",
+    "description": "Bar chart with seeded Rough.js marks and clip-based grow (no re-rough per frame)"
+  },
+  "rough-sketch": {
+    "title": "Rough Sketch",
+    "category": "vector",
+    "description": "Sketchy frame and shapes via std.svg.rough (roughjs generator, pure SVG)"
+  },
+  "three-orbit": {
+    "title": "Three Orbit",
+    "category": "vector",
+    "description": "Three.js icosahedron orbit with dispose-safe WebGL capture and seeded RNG"
+  },
+  "lottie-logo": {
+    "title": "Lottie Logo",
+    "category": "vector",
+    "description": "Seek-driven Lottie logo via std.viz.lottie (goToAndStop, autoplay false)"
+  },
+  "arch-diagram": {
+    "title": "Architecture Diagram",
+    "category": "developer",
+    "description": "Pre-rendered architecture SVG with std.viz.mermaid highlight steps"
   },
   "product-spin": {
     "title": "Product Spin",

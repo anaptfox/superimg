@@ -17,9 +17,9 @@ export const helloTemplate = define({
   },
   render(ctx) {
     const { std, width, height, data } = ctx;
-    const d = ctx.director({ enter: "35%", hold: "45%", exit: "20%" });
-    const title = d.motion({ during: "enter", at: "10%", for: "55%", y: 36, fromOpacity: 0 });
-    const subtitle = d.motion({ during: "enter", at: "35%", for: "45%", y: 20, fromOpacity: 0 });
+    const t = ctx.director({ enter: "35%", hold: "45%", exit: "20%" });
+    const title = t.motion({ during: "enter", at: "10%", for: "55%", y: 36, fromOpacity: 0 });
+    const subtitle = t.motion({ during: "enter", at: "35%", for: "45%", y: 20, fromOpacity: 0 });
 
     return `
       <div style="${std.css({ width, height, position: "relative", overflow: "hidden" })}">

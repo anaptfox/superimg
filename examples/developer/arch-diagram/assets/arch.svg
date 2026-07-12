@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+  <rect width="900" height="420" fill="transparent"/>
+  <!-- Pre-rendered architecture plate (static). Highlight via std.viz.mermaid. -->
+  <g class="node" id="flowchart-client-1">
+    <rect x="40" y="160" width="140" height="72" rx="12" fill="#1e293b" stroke="#5b8cff" stroke-width="2"/>
+    <text x="110" y="204" text-anchor="middle" fill="#e2e8f0" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="600">Client</text>
+  </g>
+  <g class="edgePath" id="edge-client-api" data-id="client-api" data-edge="true">
+    <path d="M180 196 H 300" stroke="#64748b" stroke-width="2" fill="none"/>
+    <polygon points="300,196 288,190 288,202" fill="#64748b"/>
+  </g>
+  <g class="node" id="flowchart-api-2">
+    <rect x="300" y="160" width="160" height="72" rx="12" fill="#1e293b" stroke="#4fd1c5" stroke-width="2"/>
+    <text x="380" y="204" text-anchor="middle" fill="#e2e8f0" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="600">API</text>
+  </g>
+  <g class="edgePath" id="edge-api-db" data-id="api-db" data-edge="true">
+    <path d="M460 196 H 580" stroke="#64748b" stroke-width="2" fill="none"/>
+    <polygon points="580,196 568,190 568,202" fill="#64748b"/>
+  </g>
+  <g class="node" id="flowchart-db-3">
+    <rect x="580" y="160" width="160" height="72" rx="12" fill="#1e293b" stroke="#f093fb" stroke-width="2"/>
+    <text x="660" y="204" text-anchor="middle" fill="#e2e8f0" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="600">DB</text>
+  </g>
+  <g class="edgePath" id="edge-api-worker" data-id="api-worker" data-edge="true">
+    <path d="M380 232 V 320 H 520" stroke="#64748b" stroke-width="2" fill="none"/>
+    <polygon points="520,320 508,314 508,326" fill="#64748b"/>
+  </g>
+  <g class="node" id="flowchart-worker-4">
+    <rect x="520" y="290" width="160" height="72" rx="12" fill="#1e293b" stroke="#ffc857" stroke-width="2"/>
+    <text x="600" y="334" text-anchor="middle" fill="#e2e8f0" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="600">Worker</text>
+  </g>
+</svg>

@@ -35,7 +35,12 @@ export default define({
     }
 
     const letters = data.title.split("");
-    const letterPs = std.stagger(letters.length, t.in("enter"), { duration: 0.55 });
+    // Letter cascade: ~50ms gaps, capped at 500ms total (enter ≈ 55% of 3s)
+    const letterPs = std.stagger.ms(letters.length, t.in("enter"), {
+      windowSeconds: 1.65,
+      eachMs: 50,
+      capMs: 500,
+    });
     const letterEls = letters
       .map((ch, i) => {
         const item = letterPs[i] ?? 0;

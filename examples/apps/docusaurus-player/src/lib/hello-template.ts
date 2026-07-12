@@ -23,10 +23,10 @@ export const helloTemplate = define<HelloData>({
   },
   render(ctx) {
     const { std, width, height, data } = ctx;
-    const d = ctx.director({ enter: "35%", hold: "45%", exit: "20%" });
-    const title = d.motion({ during: "enter", at: "10%", for: "55%", y: 36, fromOpacity: 0 });
-    const subtitle = d.motion({ during: "enter", at: "35%", for: "45%", y: 20, fromOpacity: 0 });
-    const lineW = std.interpolate(d.in("enter"), [0.2, 0.75], [0, 200], "easeOutCubic");
+    const t = ctx.director({ enter: "35%", hold: "45%", exit: "20%" });
+    const title = t.motion({ during: "enter", at: "10%", for: "55%", y: 36, fromOpacity: 0 });
+    const subtitle = t.motion({ during: "enter", at: "35%", for: "45%", y: 20, fromOpacity: 0 });
+    const lineW = std.interpolate(t.in("enter"), [0.2, 0.75], [0, 200], "easeOutCubic");
 
     return `
       <div style="${std.css({ width, height, position: "relative", overflow: "hidden" })}">

@@ -52,19 +52,19 @@ export const timelineTemplate = define<TimelineData>({
     const count = events.length;
 
     // ~5s per event at 8 milestones; fewer events get even more hold time.
-    const d = ctx.director({ intro: "8%", events: "84%", outro: "8%" });
+    const t = ctx.director({ intro: "8%", events: "84%", outro: "8%" });
     const car = std.carousel(events, {
-      during: d.in("events"),
+      during: t.in("events"),
       enter: 0.14,
       exit: 0.1,
       last: "hold",
     });
 
-    const introP = d.in("intro");
-    const outroP = d.in("outro");
+    const introP = t.in("intro");
+    const outroP = t.in("outro");
     const globalOpacity = 1 - std.interpolate(outroP, [0, 1], [0, 1], "easeInOutCubic");
 
-    const titleIntro = d.motion({
+    const titleIntro = t.motion({
       during: "intro",
       at: "12%",
       for: "55%",
@@ -76,7 +76,7 @@ export const timelineTemplate = define<TimelineData>({
     const lineP = std.math.clamp((introP - 0.35) / 0.45, 0, 1);
     const accentLineWidth = std.interpolate(lineP, [0, 1], [0, 180], "easeOutCubic");
 
-    const subtitleIntro = d.motion({
+    const subtitleIntro = t.motion({
       during: "intro",
       at: "48%",
       for: "40%",
@@ -85,7 +85,7 @@ export const timelineTemplate = define<TimelineData>({
       easing: "easeOutCubic",
     });
 
-    const headerIntro = d.motion({
+    const headerIntro = t.motion({
       during: "events",
       at: "0%",
       for: "12%",
@@ -94,13 +94,13 @@ export const timelineTemplate = define<TimelineData>({
       easing: "easeOutCubic",
     });
 
-    const ambientDrift = d.motion({
+    const ambientDrift = t.motion({
       during: "events",
       at: "0%",
       for: "100%",
       x: -18,
       y: 12,
-      easing: "linear",
+      easing: "loop", // continuous ambient drift (not a positional enter)
     });
 
     const activeIndex = (() => {
@@ -228,7 +228,7 @@ export const timelineTemplate = define<TimelineData>({
     const eventCardHtml = eventCards.join("");
 
     const showIntro = introP < 1;
-    const showEvents = d.in("events") > 0 && outroP < 0.35;
+    const showEvents = t.in("events") > 0 && outroP < 0.35;
     const introOpacity = showIntro ? 1 - std.interpolate(introP, [0.82, 1], [0, 1], "easeInOutCubic") : 0;
     const eventsOpacity = showEvents ? globalOpacity : 0;
 
