@@ -70,7 +70,7 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
     const pw = await ensureEngine();
     const assetBaseUrl = pw.getBaseUrl();
 
-    const { job, resolvedAssets } = buildRenderJob({
+    const { job, resolvedAssets, explicitOverrides } = buildRenderJob({
       parsed: templateData,
       templateBundle,
       templateDir,
@@ -83,7 +83,12 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
       ...(job.encoding !== undefined ? { encoding: job.encoding } : {}),
       ...(job.audio !== undefined ? { audio: job.audio } : {}),
     });
-    const plan = await createRenderPlan(job, { assetBaseUrl, resolvedAssets, templateDir });
+    const plan = await createRenderPlan(job, {
+      assetBaseUrl,
+      resolvedAssets,
+      templateDir,
+      ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
+    });
     return executeRenderPlan(plan, renderer, encoder, {
       ...(options.onProgress
         ? { onProgress: (p) => options.onProgress!(p.frame, p.totalFrames) }

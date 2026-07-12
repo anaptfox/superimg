@@ -83,7 +83,7 @@ export function createRenderContext(
     ),
 
     timeline,
-    director: (phases) => createDirector(directorCtx, phases),
+    director: (phases, opts) => createDirector(directorCtx, phases, opts),
     track: (source: TrackSource) => createTrack(timeline, source),
 
     // Global position

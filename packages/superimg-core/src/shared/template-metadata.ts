@@ -202,7 +202,38 @@ function readAssetsConfig(
   return Object.keys(assets).length > 0 ? assets : undefined;
 }
 
-function readConfigObject(expr: AstObjectExpression): TemplateMetadataConfig | undefined {
+/**
+ * Resolve an AST expression value through const/let bindings (identifier chains only).
+ * Does not evaluate binary expressions or imports — those need runtime/inspect.
+ */
+function resolveConfigValue(
+  node: AstExpr,
+  variableInits: VariableInitMap,
+  visited: Set<string> = new Set(),
+): AstExpr | undefined {
+  if (node.type === "Identifier") {
+    if (visited.has(node.name)) return undefined;
+    visited.add(node.name);
+    const init = variableInits.get(node.name);
+    if (!init) return undefined;
+    return resolveConfigValue(init, variableInits, visited);
+  }
+  return node;
+}
+
+function readPositiveNumber(
+  node: AstExpr,
+  variableInits: VariableInitMap,
+): number | undefined {
+  const resolved = resolveConfigValue(node, variableInits);
+  if (!resolved) return undefined;
+  return readPositiveNumberLiteral(resolved);
+}
+
+function readConfigObject(
+  expr: AstObjectExpression,
+  variableInits: VariableInitMap = new Map(),
+): TemplateMetadataConfig | undefined {
   if (expr.type !== "ObjectExpression") return undefined;
 
   const config: TemplateMetadataConfig = {};
@@ -227,8 +258,8 @@ function readConfigObject(expr: AstObjectExpression): TemplateMetadataConfig | u
     }
 
     if (key === "outputs") {
-      const outputsExpr = property.value;
-      if (outputsExpr.type === "ObjectExpression") {
+      const outputsExpr = resolveConfigValue(property.value, variableInits);
+      if (outputsExpr && outputsExpr.type === "ObjectExpression") {
         const outputs: Record<string, { width?: number; height?: number; fps?: number; format?: string }> = {};
         for (const presetProp of outputsExpr.properties) {
           if (presetProp.type !== "Property" && presetProp.type !== "ObjectProperty") continue;
@@ -257,7 +288,7 @@ function readConfigObject(expr: AstObjectExpression): TemplateMetadataConfig | u
               preset.format = field.value.value;
               continue;
             }
-            const fieldValue = readPositiveNumberLiteral(field.value);
+            const fieldValue = readPositiveNumber(field.value, variableInits);
             if (fieldValue === undefined) continue;
             if (fieldKey === "width") preset.width = fieldValue;
             if (fieldKey === "height") preset.height = fieldValue;
@@ -320,7 +351,7 @@ function readConfigObject(expr: AstObjectExpression): TemplateMetadataConfig | u
       continue;
     }
 
-    const numericValue = readPositiveNumberLiteral(property.value);
+    const numericValue = readPositiveNumber(property.value, variableInits);
     if (numericValue === undefined) continue;
 
     if (key === "width") config.width = numericValue;
@@ -331,14 +362,15 @@ function readConfigObject(expr: AstObjectExpression): TemplateMetadataConfig | u
     }
   }
 
-  // Also check for string-valued duration (e.g. duration: "2s")
+  // Also check for string-valued duration (e.g. duration: "2s" or const D = "2s")
   for (const property of expr.properties) {
     if (property.type !== "Property" && property.type !== "ObjectProperty") continue;
     if (property.computed) continue;
     const key = property.key.type === "Identifier" ? property.key.name : undefined;
     if (key === "duration" && !config.duration) {
-      if (property.value.type === "Literal" && typeof property.value.value === "string") {
-        config.duration = property.value.value;
+      const resolved = resolveConfigValue(property.value, variableInits);
+      if (resolved && resolved.type === "Literal" && typeof resolved.value === "string") {
+        config.duration = resolved.value;
       }
     }
   }
@@ -464,9 +496,9 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
         if (key === "render") {
           hasRenderExport = true;
         } else if (key === "config") {
-          const configExpr = prop.value;
-          if (configExpr.type === "ObjectExpression") {
-            config = readConfigObject(configExpr);
+          const configExpr = resolveConfigValue(prop.value, variableInits);
+          if (configExpr && configExpr.type === "ObjectExpression") {
+            config = readConfigObject(configExpr, variableInits);
           }
         } else if (key === "medium") {
           // Top-level string literal: define({ medium: "svg", ... }).
@@ -495,20 +527,23 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
           for (const prop of props) {
             if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
             const key = getIdentifierName(prop.key);
-            if (key === "config" && prop.value.type === "ObjectExpression") {
-              config = readConfigObject(prop.value);
-              if (config && !medium) {
-                for (const p2 of prop.value.properties) {
-                  if (p2.type !== "Property" && p2.type !== "ObjectProperty") continue;
-                  if (getIdentifierName(p2.key) === "medium" && p2.value.type === "Literal" && p2.value.value === "svg") {
-                    medium = "svg";
+            if (key === "config") {
+              const configExpr = resolveConfigValue(prop.value, variableInits);
+              if (configExpr && configExpr.type === "ObjectExpression") {
+                config = readConfigObject(configExpr, variableInits);
+                if (config && !medium) {
+                  for (const p2 of configExpr.properties) {
+                    if (p2.type !== "Property" && p2.type !== "ObjectProperty") continue;
+                    if (getIdentifierName(p2.key) === "medium" && p2.value.type === "Literal" && p2.value.value === "svg") {
+                      medium = "svg";
+                    }
                   }
                 }
               }
             }
           }
           if (!config && configArg.properties) {
-            config = readConfigObject(configArg);
+            config = readConfigObject(configArg, variableInits);
           }
         }
       }

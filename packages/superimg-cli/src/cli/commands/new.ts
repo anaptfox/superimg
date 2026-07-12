@@ -25,9 +25,9 @@ export default define({
   render(ctx) {
     const { std, data } = ctx;
 
-    const t = ctx.director();
+    const t = ctx.director(std.phases.recipe("card"));
     const titleAnim = t.motion({ scale: 0.9, exit: false });
-    const subtitleAnim = t.motion({ at: "30%", exit: false });
+    const subtitleAnim = t.motion({ at: "30%", y: 16, exit: false });
 
     return \`
       <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -66,9 +66,9 @@ export default define({
   render(ctx) {
     const { std, width, height, data } = ctx;
 
-    const t = ctx.director();
-    const titleAnim = t.motion({ y: 30 });
-    const subtitleAnim = t.motion({ at: "20%", y: 20 });
+    const t = ctx.director(std.phases.recipe("card"));
+    const titleAnim = t.motion({ y: 28 });
+    const subtitleAnim = t.motion({ at: "20%", y: 16 });
 
     return \`
       <div style="\${std.css({ width, height }, std.css.center())}; flex-direction: column;">
@@ -110,8 +110,9 @@ export default define({
   config: { duration: "5s", tailwind: true },
   sample: { title: "Welcome" },
   render(ctx) {
-    const t = ctx.director();
-    const anim = t.motion({ scale: 0.8 });
+    const { std } = ctx;
+    const t = ctx.director(std.phases.recipe("hook"));
+    const anim = t.motion({ scale: 0.92, easing: "playful" });
     return \`
       <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
         <h1 class="text-9xl font-black text-white tracking-tight drop-shadow-2xl"
@@ -139,8 +140,9 @@ export default define({
   },
   sample: { title: "Welcome" },
   render(ctx) {
-    const t = ctx.director();
-    const anim = t.motion({ scale: 0.8 });
+    const { std } = ctx;
+    const t = ctx.director(std.phases.recipe("hook"));
+    const anim = t.motion({ scale: 0.92, easing: "playful" });
     return \`
       <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
@@ -165,7 +167,8 @@ export default define({
     body: "Add your content here.",
   },
   render(ctx) {
-    const t = ctx.director();
+    const { std } = ctx;
+    const t = ctx.director(std.phases.recipe("establish"));
     const anim = t.motion();
     return \`
       <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -200,7 +203,8 @@ export default define({
     body: "Add your content here.",
   },
   render(ctx) {
-    const t = ctx.director();
+    const { std } = ctx;
+    const t = ctx.director(std.phases.recipe("establish"));
     const anim = t.motion();
     return \`
       <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())}; flex-direction: column;
@@ -222,8 +226,9 @@ export default define({
   config: { duration: "2s", tailwind: true },
   sample: { cta: "Call to Action" },
   render(ctx) {
-    const t = ctx.director();
-    const anim = t.motion();
+    const { std } = ctx;
+    const t = ctx.director(std.phases.recipe("punchy"));
+    const anim = t.motion({ y: 20 });
     return \`
       <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-cyan-600">
         <h1 class="text-7xl font-bold text-white" style="\${anim.style}">
@@ -250,8 +255,9 @@ export default define({
   },
   sample: { cta: "Call to Action" },
   render(ctx) {
-    const t = ctx.director();
-    const anim = t.motion();
+    const { std } = ctx;
+    const t = ctx.director(std.phases.recipe("punchy"));
+    const anim = t.motion({ y: 20 });
     return \`
       <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
         background: linear-gradient(135deg, #059669 0%, #0891b2 100%);">

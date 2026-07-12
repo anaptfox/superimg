@@ -113,5 +113,30 @@ export function buildRenderJob(input: BuildRenderJobInput) {
     ...(resolvedAudio !== undefined ? { audio: resolvedAudio } : {}),
   };
 
-  return { job, resolvedAssets };
+  // Only keys the caller passed in overrides (CLI/API) — soft defaults stay on job only.
+  const explicitOverrides: {
+    width?: number;
+    height?: number;
+    fps?: number;
+    duration?: Duration;
+  } = {
+    ...(widthOverride !== undefined && overrides.width != null
+      ? { width: widthOverride }
+      : {}),
+    ...(heightOverride !== undefined && overrides.height != null
+      ? { height: heightOverride }
+      : {}),
+    ...(fpsOverride !== undefined && overrides.fps != null ? { fps: fpsOverride } : {}),
+    ...(durationOverride !== undefined && overrides.duration != null
+      ? { duration: durationOverride }
+      : {}),
+  };
+
+  return {
+    job,
+    resolvedAssets,
+    ...(Object.keys(explicitOverrides).length > 0
+      ? { explicitOverrides }
+      : {}),
+  };
 }

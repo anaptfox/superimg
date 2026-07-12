@@ -1,7 +1,7 @@
 /**
  * Line-oriented import/export scanning for dist/ policy checks.
- * Strips string literals first so embedded source (e.g. RUNTIME_CODE) cannot
- * trigger false positives like import('hast') inside JSDoc typedefs.
+ * Strips string literals first so embedded source (e.g. browser virtual maps)
+ * cannot trigger false positives like import('hast') inside JSDoc typedefs.
  */
 
 export const LINE_IMPORT_RE =

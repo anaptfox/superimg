@@ -30,6 +30,45 @@ describe("stack — spot checks", () => {
     expect(s.state(0).slot).toBeGreaterThan(0);
     expect(s.state(0).slot).toBeLessThanOrEqual(1);
   });
+
+  it("equal weights match unweighted equal slots", () => {
+    const during = 0.5;
+    const opts = { during, lead: 0.05, trail: 0.05, enter: 0.35 };
+    const a = stack(["a", "b", "c"], opts);
+    const b = stack(["a", "b", "c"], { ...opts, weights: [1, 1, 1] });
+    for (let i = 0; i < 3; i++) {
+      expect(b.state(i).state).toBe(a.state(i).state);
+      expect(b.state(i).enter).toBeCloseTo(a.state(i).enter, 5);
+      expect(b.state(i).slot).toBeCloseTo(a.state(i).slot, 5);
+    }
+  });
+
+  it("gives heavier items longer slots", () => {
+    // lead/trail 0, weights 1:3 → second item starts at 0.25
+    const early = stack(["a", "b"], {
+      during: 0.2,
+      lead: 0,
+      trail: 0,
+      weights: [1, 3],
+      enter: 0.5,
+    });
+    expect(early.state(0).visible).toBe(true);
+    expect(early.state(1).state).toBe("hidden");
+
+    const mid = stack(["a", "b"], {
+      during: 0.5,
+      lead: 0,
+      trail: 0,
+      weights: [1, 3],
+      enter: 0.5,
+    });
+    expect(mid.state(0).state).toBe("revealed");
+    expect(mid.state(1).visible).toBe(true);
+  });
+
+  it("throws on weight length mismatch", () => {
+    expect(() => stack(["a", "b"], { during: 0.5, weights: [1] })).toThrow(/weights length/);
+  });
 });
 
 describe("stack — sweep invariants", () => {

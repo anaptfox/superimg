@@ -51,5 +51,32 @@ describe("viz.three", () => {
     expect(helpers.point()).toContain("PointLight");
     expect(helpers.fog()).toContain("Fog");
     expect(helpers.grid()).toContain("GridHelper");
+    expect(helpers.seed(7)).toContain("seededRandom");
+  });
+
+  it("disposes GL context after paint", () => {
+    const html = scene({
+      width: 100,
+      height: 100,
+      progress: 0.1,
+      setup: "",
+      animate: "",
+    });
+    expect(html).toContain("preserveDrawingBuffer: true");
+    expect(html).toContain("renderer.dispose()");
+    expect(html).toContain("forceContextLoss()");
+    expect(html).toContain("setSize(100, 100, false)");
+  });
+
+  it("rejects non-finite progress", () => {
+    expect(() =>
+      scene({
+        width: 10,
+        height: 10,
+        progress: Number.NaN,
+        setup: "",
+        animate: "",
+      }),
+    ).toThrow(/progress/);
   });
 });

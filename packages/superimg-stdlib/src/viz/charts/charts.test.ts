@@ -13,6 +13,8 @@ import { pie } from "./pie.js";
 import { scatter } from "./scatter.js";
 import { sparkline } from "./sparkline.js";
 import { legend } from "./legend.js";
+import { area } from "./area.js";
+import { stack } from "./stack.js";
 import { chartScales, DEFAULT_CHART_COLORS, plotArea } from "./shared.js";
 
 const SAMPLE = [
@@ -395,5 +397,48 @@ describe("charts.legend", () => {
     );
     const rects = [...svg.matchAll(/<rect x="([\d.]+)"/g)].map((m) => Number(m[1]));
     expect(rects[1]).toBeGreaterThan(rects[0]!);
+  });
+});
+
+describe("charts.area", () => {
+  it("renders fill path at full progress", () => {
+    const svg = area(chartCoords(), SAMPLE, { progress: 1 });
+    expect(svg).toContain("<path");
+    expect(svg).toContain('fill="#5b8cff"');
+  });
+
+  it("grow at 0 collapses values", () => {
+    const full = area(chartCoords(), SAMPLE, { animate: "grow", progress: 1 });
+    const zero = area(chartCoords(), SAMPLE, { animate: "grow", progress: 0 });
+    expect(full.length).toBeGreaterThan(0);
+    expect(zero).toContain("<path");
+  });
+});
+
+describe("charts.stack", () => {
+  const series = [
+    {
+      id: "a",
+      data: SAMPLE.map((d) => ({ label: d.label, value: d.value })),
+    },
+    {
+      id: "b",
+      data: SAMPLE.map((d) => ({ label: d.label, value: d.value / 2 })),
+    },
+  ];
+
+  it("renders stacked bars", () => {
+    const svg = stack(chartCoords(), series, { mode: "bar", progress: 1 });
+    expect((svg.match(/<rect/g) ?? []).length).toBe(SAMPLE.length * 2);
+  });
+
+  it("renders stacked area", () => {
+    const svg = stack(chartCoords(), series, { mode: "area", progress: 1 });
+    expect((svg.match(/<path/g) ?? []).length).toBe(2);
+  });
+
+  it("expand mode stacks to unit height", () => {
+    const svg = stack(chartCoords(), series, { mode: "bar", expand: true, progress: 1 });
+    expect(svg).toContain("<rect");
   });
 });

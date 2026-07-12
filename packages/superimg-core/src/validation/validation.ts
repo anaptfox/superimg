@@ -25,6 +25,8 @@ const DEFAULTS: Required<Omit<ValidationOptions, "data">> = {
   duration: 3,
   checkOutput: true,
   checkEasingNames: true,
+  craft: false,
+  craftStrict: false,
 };
 
 /**
@@ -53,10 +55,22 @@ function extractProblemContext(html: string, needle: string): string {
   return "..." + html.slice(start, end) + "...";
 }
 
+const SPRING_AND_SEMANTIC = [
+  "gentle",
+  "snappy",
+  "fluid",
+  "playful",
+  "wobbly",
+  "enter",
+  "exit",
+  "move",
+  "loop",
+] as const;
+
 /** Check easing names in source code */
 function checkEasingNames(code: string): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const validEasings = new Set<string>(EASING_NAMES);
+  const validEasings = new Set<string>([...EASING_NAMES, ...SPRING_AND_SEMANTIC]);
 
   // Match calls with string easing: interpolate(p, ir, or, 'easingName'), t.tween(a, b, 'easingName'),
   // or { easing: 'easingName' } in options objects.
@@ -73,7 +87,7 @@ function checkEasingNames(code: string): ValidationIssue[] {
           severity: "error",
           code: "INVALID_EASING_NAME",
           message: `Unknown easing function: "${easingName}"`,
-          suggestion: `Use one of: ${EASING_NAMES.slice(0, 5).join(", ")}, ... (${EASING_NAMES.length} total)`,
+          suggestion: `Use a named curve, spring (gentle|snappy|fluid|playful|wobbly), or semantic (enter|exit|move|loop)`,
           context: match[0],
         });
       }
@@ -285,10 +299,38 @@ export async function validateAITemplate(
   }
 
   const template = compileResult.template!;
+  const cfg = template.config ?? {};
 
   // Phase 5: Multi-frame render validation
-  const resolvedDuration = typeof opts.duration === "string" ? parseFloat(opts.duration) || 3 : opts.duration;
-  const totalFrames = Math.ceil(resolvedDuration * opts.fps);
+  // Prefer template config over defaults so absolute-second director phases match.
+  const fps = typeof cfg.fps === "number" ? cfg.fps : opts.fps;
+  const width = typeof cfg.width === "number" ? cfg.width : opts.width;
+  const height = typeof cfg.height === "number" ? cfg.height : opts.height;
+  let resolvedDuration = opts.duration;
+  if (cfg.duration !== undefined && options?.duration === undefined) {
+    if (typeof cfg.duration === "number") {
+      resolvedDuration = cfg.duration;
+    } else if (typeof cfg.duration === "string") {
+      try {
+        const { parseDuration } = await import("../shared/utils.js");
+        resolvedDuration = parseDuration(cfg.duration, "duration", fps);
+      } catch {
+        const n = parseFloat(cfg.duration);
+        if (Number.isFinite(n) && n > 0) resolvedDuration = n;
+      }
+    }
+  } else if (typeof resolvedDuration === "string") {
+    try {
+      const { parseDuration } = await import("../shared/utils.js");
+      resolvedDuration = parseDuration(resolvedDuration, "duration", fps);
+    } catch {
+      resolvedDuration = parseFloat(resolvedDuration) || 3;
+    }
+  }
+  if (typeof resolvedDuration !== "number" || !Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
+    resolvedDuration = 3;
+  }
+  const totalFrames = Math.ceil(resolvedDuration * fps);
   const mergedData = { ...(template.sample ?? {}), ...(opts.data ?? {}) };
 
   for (const progress of opts.sampleFrames) {
@@ -298,10 +340,10 @@ export async function validateAITemplate(
     );
     const ctx = createRenderContext(
       frame,
-      opts.fps,
+      fps,
       totalFrames,
-      opts.width,
-      opts.height,
+      width,
+      height,
       mergedData
     );
 
@@ -383,6 +425,40 @@ export async function validateAITemplate(
       message: `Template uses undeclared asset: ${url}`,
       suggestion: "Consider adding to config.assets for reliable preloading",
     });
+  }
+
+  // Phase 6: Motion craft heuristics (optional)
+  if (opts.craft) {
+    const { critiqueTemplate } = await import("../critique/motion-critique.js");
+    const craft = critiqueTemplate(template, {
+      source: code,
+      data: opts.data as Record<string, unknown> | undefined,
+    });
+    const codeMap = {
+      HOLD_TOO_SHORT: "CRAFT_HOLD_TOO_SHORT",
+      EXIT_SLOWER_THAN_ENTER: "CRAFT_EXIT_SLOWER_THAN_ENTER",
+      TEXT_HOLD_SHORT: "CRAFT_TEXT_HOLD_SHORT",
+      STAGGER_OVER_CAP: "CRAFT_STAGGER_OVER_CAP",
+      LINEAR_POSITIONAL: "CRAFT_LINEAR_POSITIONAL",
+      LONG_CONTINUOUS_MOVE: "CRAFT_LONG_CONTINUOUS_MOVE",
+      NO_HOLD_PHASE: "CRAFT_NO_HOLD_PHASE",
+    } as const;
+    for (const issue of craft.issues) {
+      const mapped = codeMap[issue.code];
+      if (!mapped) continue;
+      issues.push({
+        severity:
+          opts.craftStrict && issue.severity !== "info"
+            ? "error"
+            : issue.severity === "error"
+              ? "error"
+              : "warning",
+        code: mapped,
+        message: issue.message,
+        suggestion: issue.suggestion,
+        progress: issue.progress,
+      });
+    }
   }
 
   // Determine validity (errors = invalid, warnings = valid)

@@ -16,6 +16,7 @@ import type {
 } from "@superimg/stdlib/director";
 import type { carousel, Carousel, CarouselOpts, CarouselItemState } from "@superimg/stdlib/carousel";
 import type { stack, Stack, StackOpts, StackItemState } from "@superimg/stdlib/stack";
+import type { layoutTimeline, LayoutTimelineResult } from "@superimg/stdlib/layout-timeline";
 import type * as backgrounds from "@superimg/stdlib/backgrounds";
 import type { montage } from "@superimg/stdlib/montage";
 import type { spring } from "@superimg/stdlib/spring";
@@ -23,6 +24,10 @@ import type { clamp01 } from "@superimg/stdlib/easing";
 import type { stagger } from "@superimg/stdlib/stagger";
 import type { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
 import type { path, createMotionPath } from "@superimg/stdlib/path";
+import type { timing } from "@superimg/stdlib/timing";
+import type { phases } from "@superimg/stdlib/phase-recipes";
+import type { motion } from "@superimg/stdlib/motion-presets";
+import type { getSafeArea, getSafeBox } from "@superimg/stdlib/safe-area";
 import type {
   draw,
   filter,
@@ -41,6 +46,7 @@ import type { oscillate, loop, pingpong, wiggle } from "@superimg/stdlib/oscilla
 import type * as viz from "@superimg/stdlib/viz";
 import type { layers, LayerStack } from "@superimg/stdlib/layers";
 import type { revealFx } from "@superimg/stdlib/reveal";
+import type { ready } from "@superimg/stdlib/ready";
 import type { sync as videoSync, ClipSyncOptions, ClipSyncResult } from "@superimg/stdlib/video";
 import type {
   MediaVideoOptions,
@@ -70,6 +76,8 @@ export interface Stdlib {
   code: typeof code;
   carousel: typeof carousel;
   stack: typeof stack;
+  /** Pure seconds → percent phases + total. Same call in resolve() and render(). */
+  layoutTimeline: typeof layoutTimeline;
   video: {
     sync: (opts: ClipSyncOptions) => ClipSyncResult;
   };
@@ -86,13 +94,24 @@ export interface Stdlib {
   spring: typeof spring;
   clamp01: typeof clamp01;
   stagger: typeof stagger;
+  /** Craft timing: readTime, sceneDuration, msToFraction, … */
+  timing: typeof timing;
+  /** Named phase recipes + fromText → layoutTimeline */
+  phases: typeof phases;
+  /** Tone styles: motion.style("premium") */
+  motion: typeof motion;
+  /** Safe-area insets (broadcast / social / title / …) */
+  safeArea: typeof getSafeArea;
+  safeBox: typeof getSafeBox;
   interpolate: typeof interpolate;
   interpolateColor: typeof interpolateColor;
   path: typeof path & { parse: typeof createMotionPath };
   svg: {
     draw: typeof draw;
+    drawMany: typeof import("@superimg/stdlib/svg").drawMany;
     filter: typeof filter;
     morph: typeof morph;
+    arcPoint: typeof import("@superimg/stdlib/svg").arcPoint;
     shape: typeof shape;
     textPath: typeof textPath;
     bezier: typeof bezier;
@@ -100,6 +119,7 @@ export interface Stdlib {
     measureText: typeof measureText;
     wrapText: typeof wrapText;
     fitText: typeof fitText;
+    rough: typeof import("@superimg/stdlib/svg").rough;
   };
   layout: typeof layout;
   oscillate: typeof oscillate;
@@ -107,11 +127,25 @@ export interface Stdlib {
   pingpong: typeof pingpong;
   wiggle: typeof wiggle;
   viz: typeof viz;
+  /**
+   * Capture readiness string helpers (Playwright). Pure builders — prefer over
+   * teaching `window.__superimgReady`. Most templates need neither (fonts+images auto).
+   */
+  ready: typeof ready;
   px: (value: number) => string;
   scale: number;
 }
 
-export type { Carousel, CarouselOpts, CarouselItemState, Stack, StackOpts, StackItemState, LayerStack };
+export type {
+  Carousel,
+  CarouselOpts,
+  CarouselItemState,
+  Stack,
+  StackOpts,
+  StackItemState,
+  LayoutTimelineResult,
+  LayerStack,
+};
 
 export type ImageStdlib = Omit<
   Stdlib,

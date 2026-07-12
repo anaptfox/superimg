@@ -24,7 +24,15 @@ export type ValidationErrorCode =
   // Stdlib usage
   | "INVALID_EASING_NAME"
   // Asset usage
-  | "UNDECLARED_ASSET";
+  | "UNDECLARED_ASSET"
+  // Motion craft (warnings by default)
+  | "CRAFT_HOLD_TOO_SHORT"
+  | "CRAFT_EXIT_SLOWER_THAN_ENTER"
+  | "CRAFT_STAGGER_OVER_CAP"
+  | "CRAFT_TEXT_HOLD_SHORT"
+  | "CRAFT_LINEAR_POSITIONAL"
+  | "CRAFT_LONG_CONTINUOUS_MOVE"
+  | "CRAFT_NO_HOLD_PHASE";
 
 /**
  * A single validation issue found during template validation.
@@ -82,4 +90,8 @@ export interface ValidationOptions {
   checkOutput?: boolean;
   /** Check for invalid easing names in code (default: true) */
   checkEasingNames?: boolean;
+  /** Run motion craft heuristics (default: false) */
+  craft?: boolean;
+  /** Treat craft warnings as errors (default: false) */
+  craftStrict?: boolean;
 }

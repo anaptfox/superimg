@@ -1,5 +1,6 @@
 /**
  * Stack — ordered reveal; items stay visible once shown (chat, FAQ, lists).
+ * Optional weights give longer content more of the parent phase window.
  */
 
 import { clamp01 } from "./easing.js";
@@ -12,6 +13,11 @@ export interface StackOpts {
   trail?: number;
   /** Per-item enter fraction of slot (default 0.35). */
   enter?: number;
+  /**
+   * Relative slot widths (same length as items). Omitted → equal slots.
+   * Values must be finite and > 0.
+   */
+  weights?: readonly number[];
 }
 
 export interface StackItemState {
@@ -31,6 +37,39 @@ export interface Stack<T> {
   each(fn: (item: T, state: StackItemState, index: number) => void): void;
 }
 
+function resolveWeights(count: number, weights?: readonly number[]): number[] {
+  if (count === 0) return [];
+  if (!weights) return Array.from({ length: count }, () => 1);
+  if (weights.length !== count) {
+    throw new Error(
+      `stack(): weights length (${weights.length}) must match items length (${count})`,
+    );
+  }
+  return weights.map((w, i) => {
+    if (!Number.isFinite(w) || w <= 0) {
+      throw new Error(`stack(): weights[${i}] must be a finite number > 0 (got ${w})`);
+    }
+    return w;
+  });
+}
+
+/** Cumulative [start, end) windows in content-normalized [0, 1] for each item. */
+export function stackSlotWindows(
+  count: number,
+  weights?: readonly number[],
+): { start: number; end: number; fraction: number }[] {
+  const w = resolveWeights(count, weights);
+  const total = w.reduce((a, b) => a + b, 0) || 1;
+  let acc = 0;
+  return w.map((wi) => {
+    const fraction = wi / total;
+    const start = acc;
+    const end = acc + fraction;
+    acc = end;
+    return { start, end, fraction };
+  });
+}
+
 export function stack<T>(items: readonly T[], opts: StackOpts): Stack<T> {
   const count = items.length;
   const lead = opts.lead ?? 0.05;
@@ -41,16 +80,18 @@ export function stack<T>(items: readonly T[], opts: StackOpts): Stack<T> {
   const contentStart = lead;
   const contentEnd = 1 - trail;
   const contentSpan = Math.max(0.001, contentEnd - contentStart);
-  const slot = count > 0 ? contentSpan / count : contentSpan;
+  const windows = stackSlotWindows(count, opts.weights);
 
   function state(index: number): StackItemState {
     if (index < 0 || index >= count) {
       return { index, enter: 0, slot: 0, visible: false, active: false, state: "hidden" };
     }
 
-    const itemStart = contentStart + index * slot;
-    const itemEnd = itemStart + slot;
-    const enterEnd = itemStart + slot * enterFrac;
+    const win = windows[index]!;
+    const itemStart = contentStart + win.start * contentSpan;
+    const itemEnd = contentStart + win.end * contentSpan;
+    const slotLen = Math.max(0.0001, itemEnd - itemStart);
+    const enterEnd = itemStart + slotLen * enterFrac;
     const globalP = parent;
 
     const slotP = clamp01(interpolate(globalP, [itemStart, itemEnd], [0, 1]));

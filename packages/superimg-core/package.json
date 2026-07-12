@@ -23,6 +23,14 @@
       "import": "./dist/bundler-browser.js",
       "types": "./dist/bundler-browser.d.ts"
     },
+    "./bundler-plugin": {
+      "import": "./dist/bundler-plugin.js",
+      "types": "./dist/bundler-plugin.d.ts"
+    },
+    "./template-runtime": {
+      "import": "./dist/template-runtime.js",
+      "types": "./dist/template-runtime.d.ts"
+    },
     "./engine": {
       "import": "./dist/engine.js",
       "types": "./dist/engine.d.ts"
@@ -31,13 +39,13 @@
       "import": "./dist/template-metadata.js",
       "types": "./dist/template-metadata.d.ts"
     },
-    "./bundler-plugin": {
-      "import": "./dist/bundler-plugin.js",
-      "types": "./dist/bundler-plugin.d.ts"
-    },
     "./validation": {
       "import": "./dist/validation.js",
       "types": "./dist/validation.d.ts"
+    },
+    "./critique": {
+      "import": "./dist/critique.js",
+      "types": "./dist/critique.d.ts"
     },
     "./errors": {
       "import": "./dist/errors.js",
@@ -61,11 +69,13 @@
     }
   },
   "scripts": {
-    "generate": "node --import tsx scripts/generate-runtime.ts",
-    "build": "pnpm run generate && tsdown",
+    "build:virtuals": "node scripts/build-browser-virtuals.mjs",
+    "verify:virtuals": "node scripts/verify-browser-virtuals.mjs",
+    "build": "pnpm run build:virtuals && tsdown",
     "dev": "tsdown --watch",
     "test": "vitest --run",
-    "clean": "rm -rf dist src/generated"
+    "prepublishOnly": "pnpm run verify:virtuals",
+    "clean": "rm -rf dist src/bundler/browser-virtuals.gen.ts"
   },
   "files": [
     "dist"

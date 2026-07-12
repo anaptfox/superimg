@@ -54,7 +54,7 @@ That's it. A function that returns HTML → an MP4 file.
 
 ## Add Animation
 
-Every frame receives a context with a standard library for animation. `ctx.director()` breaks the scene into enter/hold/exit phases and `d.motion()` gives each element a fade-in, transform, and fade-out automatically:
+Every frame receives a context with a standard library for animation. `ctx.director()` breaks the scene into enter/hold/exit phases and `t.motion()` gives each element a fade-in, transform, and fade-out automatically:
 
 ```typescript
 import { define } from 'superimg'
@@ -65,10 +65,10 @@ export default define({
     const { std, width, height } = ctx
 
     // Phases default to enter 15% / hold 70% / exit 15%
-    const d = ctx.director()
+    const t = ctx.director()
 
     // scale 0.8 → 1 on enter, hold, then auto fade + scale back on exit
-    const card = d.motion({ scale: 0.8, easing: 'easeOutCubic' })
+    const card = t.motion({ scale: 0.8, easing: 'easeOutCubic' })
 
     return `
       <div style="

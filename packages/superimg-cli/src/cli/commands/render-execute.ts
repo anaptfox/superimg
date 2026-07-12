@@ -241,7 +241,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       buildEncodingOptions(options),
     );
 
-    const { job, resolvedAssets } = buildRenderJob({
+    const { job, resolvedAssets, explicitOverrides } = buildRenderJob({
       parsed: templateData,
       templateBundle: templateBundle!,
       templateDir,
@@ -261,6 +261,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
     const plan = await createRenderPlan(job, {
       resolvedAssets,
       templateDir,
+      ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
     });
 
     const rasterizer = new ResvgRasterizer();
@@ -344,7 +345,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
 
       const targetData = target.data;
 
-      const { job, resolvedAssets } = buildRenderJob({
+      const { job, resolvedAssets, explicitOverrides } = buildRenderJob({
         parsed: templateData,
         templateBundle,
         templateDir,
@@ -386,7 +387,12 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         continue;
       }
 
-      const planBase = { assetBaseUrl, resolvedAssets, templateDir };
+      const planBase = {
+        assetBaseUrl,
+        resolvedAssets,
+        templateDir,
+        ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
+      };
       const plan =
         target.frame !== undefined
           ? await (async () => {

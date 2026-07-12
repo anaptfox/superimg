@@ -78,6 +78,10 @@ export const cliNeverBundle = [
   "rolldown",
   "oxc-parser",
   /^@oxc-parser\//,
+  "playwright",
+  "mediabunny",
+  "@mediabunny/server",
+  "sharp",
 ];
 
 /** Published superimg policy */

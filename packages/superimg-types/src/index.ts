@@ -36,6 +36,7 @@ export type {
   Medium,
   TemplateModule,
   TemplateConfig,
+  FrameReadinessPolicy,
   OutputPreset,
   ProjectConfig,
   DeployConfig,
@@ -115,6 +116,7 @@ export {
   type SvgRenderContext,
   type SvgAnimatedRenderContext,
   type AnimatedConfig,
+  type ResolveAnimatedConfig,
   type StaticConfig,
   type AnimatedTemplateModule,
   type StaticTemplateModule,
@@ -124,6 +126,14 @@ export {
   type DefineHtmlAnimatedInput,
   type DefineHtmlStaticInput,
 } from "./define.js";
+
+export type {
+  ResolveInput,
+  ResolveResult,
+  ResolveFn,
+  ResolveMarker,
+  ResolvePhaseConfig,
+} from "./resolve.js";
 
 // =============================================================================
 // RESULT TYPES & ERRORS

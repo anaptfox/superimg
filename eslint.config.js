@@ -13,7 +13,7 @@ export default tseslint.config(
       "packages/**/scripts/**",
       "packages/**/harness/**",
       "packages/superimg-codex-plugin/**",
-      "packages/superimg-core/src/generated/**",
+      "packages/superimg-core/src/bundler/browser-virtuals.gen.ts",
       "**/*.config.ts",
       "**/vitest*.ts",
     ],

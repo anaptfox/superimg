@@ -247,20 +247,3 @@ export function numberLine(opts: NumberLineOptions): string {
     ${ticks.join("")}
   </g>`;
 }
-
-export interface CameraOptions {
-  zoom?: number;
-  pan?: [number, number];
-}
-
-export function camera(coords: CoordSystem, opts: CameraOptions = {}): { transform: string; style: string } {
-  const { zoom = 1, pan = [0, 0] } = opts;
-  const { px, py } = coords.toPixel(pan[0], pan[1]);
-  const centerX = coords.width / 2;
-  const centerY = coords.height / 2;
-  const translateX = centerX - px;
-  const translateY = centerY - py;
-  const transform = `translate(${translateX}px, ${translateY}px) scale(${zoom})`;
-  const style = `transform: ${transform}; transform-origin: center center;`;
-  return { transform, style };
-}

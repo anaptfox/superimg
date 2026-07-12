@@ -20,6 +20,11 @@
  * ```
  */
 
+import {
+  getSafeBox as safeBoxFromInsets,
+  type SafeAreaPreset,
+} from "./safe-area.js";
+
 export interface Box {
   x: number;
   y: number;
@@ -173,6 +178,18 @@ export function inset(area: Box, pad: InsetPadding = {}): Box {
     width: Math.max(0, area.width - left - right),
     height: Math.max(0, area.height - top - bottom),
   };
+}
+
+/**
+ * Content box inside a safe-area preset (broadcast, social, title, …).
+ * Pair with std.css for flat HTML or use layers `{ safe: "social" }`.
+ */
+export function safeBox(
+  width: number,
+  height: number,
+  preset: SafeAreaPreset = "broadcast",
+): Box {
+  return safeBoxFromInsets(width, height, preset);
 }
 
 /** Horizontally partition `area` into columns (mirror of partitionY). */

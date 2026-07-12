@@ -1,11 +1,8 @@
 //! Server-side template bundling with Rolldown (Node/Bun/Deno)
 
 import { rolldown } from "rolldown";
-import { existsSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createSuperimgPlugin } from "./plugin.js";
+import { resolve } from "node:path";
+import { createSuperimgPlugin, resolveDefinePath } from "./plugin.js";
 import {
   logBundlerDebug,
   logBundlerEntry,
@@ -21,33 +18,12 @@ import type {
 
 export type { BundledTemplate, RawSourceMap };
 
-// Find the stdlib package location for resolution
-// This file is at packages/superimg-core/dist/bundler.js
-// The stdlib is at packages/superimg-stdlib (symlinked in node_modules)
-const require = createRequire(import.meta.url);
-const __dirname = dirname(fileURLToPath(import.meta.url));
-// Go from dist/ to packages/superimg-core/node_modules
-const stdlibNodePath = resolve(__dirname, "../node_modules");
-
-/** Absolute path for `gumbo/media/define` alias (scene authoring only). */
-function resolveGumboMediaDefinePath(): string {
-  const sibling = resolve(__dirname, "../../superimg/dist/define.js");
-  if (existsSync(sibling)) return sibling;
-  try {
-    return require.resolve("superimg/define");
-  } catch {
-    throw new Error(
-      `Cannot resolve gumbo/media/define → superimg/define (checked ${sibling}). ` +
-        "Build packages/superimg or install the superimg package.",
-    );
-  }
-}
-
 function templateRolldownInput() {
   return templateBundlerInputOptions({
     alias: {
       "superimg/stdlib": "@superimg/stdlib",
-      "gumbo/media/define": resolveGumboMediaDefinePath(),
+      // Scene authoring alias — same real define module as superimg/define.
+      "gumbo/media/define": resolveDefinePath(),
     },
   });
 }

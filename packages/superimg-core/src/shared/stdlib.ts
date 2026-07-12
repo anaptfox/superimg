@@ -13,6 +13,7 @@ import * as code from "@superimg/stdlib/code";
 import { mergeMotion } from "@superimg/stdlib/director";
 import { carousel } from "@superimg/stdlib/carousel";
 import { stack } from "@superimg/stdlib/stack";
+import { layoutTimeline } from "@superimg/stdlib/layout-timeline";
 import { layers } from "@superimg/stdlib/layers";
 import { revealFx } from "@superimg/stdlib/reveal";
 import { oscillate, loop, pingpong, wiggle } from "@superimg/stdlib/oscillate";
@@ -22,11 +23,17 @@ import { spring } from "@superimg/stdlib/spring";
 import { clamp01 } from "@superimg/stdlib/easing";
 import { stagger } from "@superimg/stdlib/stagger";
 import { interpolate, interpolateColor } from "@superimg/stdlib/interpolate";
+import { timing } from "@superimg/stdlib/timing";
+import { phases } from "@superimg/stdlib/phase-recipes";
+import { motion } from "@superimg/stdlib/motion-presets";
+import { getSafeArea, getSafeBox } from "@superimg/stdlib/safe-area";
 import { path, createMotionPath } from "@superimg/stdlib/path";
 import {
   draw,
+  drawMany,
   filter,
   morph,
+  arcPoint,
   shape,
   textPath,
   bezier,
@@ -34,9 +41,11 @@ import {
   measureText,
   wrapText,
   fitText,
+  rough as svgRough,
 } from "@superimg/stdlib/svg";
 import * as layout from "@superimg/stdlib/layout";
 import * as viz from "@superimg/stdlib/viz";
+import { ready } from "@superimg/stdlib/ready";
 
 const mathWithoutLerp = Object.fromEntries(
   Object.entries(math).filter(([key]) => key !== "lerp")
@@ -56,19 +65,27 @@ export const stdlib: StaticStdlib = {
   code,
   carousel,
   stack,
+  layoutTimeline,
   backgrounds,
   montage,
   createResponsive: responsive.createResponsive,
   spring,
   clamp01,
   stagger,
+  timing,
+  phases,
+  motion,
+  safeArea: getSafeArea,
+  safeBox: getSafeBox,
   interpolate,
   interpolateColor,
   path: Object.assign(path, { parse: createMotionPath }),
   svg: {
     draw,
+    drawMany,
     filter,
     morph,
+    arcPoint,
     shape,
     textPath,
     bezier,
@@ -76,6 +93,7 @@ export const stdlib: StaticStdlib = {
     measureText,
     wrapText,
     fitText,
+    rough: svgRough,
   },
   layout,
   mergeMotion,
@@ -86,4 +104,5 @@ export const stdlib: StaticStdlib = {
   pingpong,
   wiggle,
   viz,
+  ready,
 };

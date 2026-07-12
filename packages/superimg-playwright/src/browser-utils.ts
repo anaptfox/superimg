@@ -106,7 +106,7 @@ export async function checkBrowserStatus(): Promise<BrowserStatus> {
   try {
     const chromium = await getChromium();
     const browser = await chromium.launch({ headless: true });
-    executablePath = browser.process()?.spawnfile ?? chromium.executablePath();
+    executablePath = chromium.executablePath();
     await browser.close();
     installed = true;
   } catch {

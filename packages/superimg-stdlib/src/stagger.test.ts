@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stagger, staggerLead } from "./stagger.js";
+import { stagger, staggerLead, staggerPlan } from "./stagger.js";
 
 describe("stagger — count mode", () => {
   it("returns empty for count <= 0", () => {
@@ -7,8 +7,10 @@ describe("stagger — count mode", () => {
   });
 
   it("returns single progress for count 1", () => {
-    expect(stagger(1, 0.5)).toEqual([0.5]);
+    // Default easeOutCubic(0.5) > 0.5
+    expect(stagger(1, 0.5)[0]!).toBeGreaterThan(0.5);
     expect(stagger(1, 1)).toEqual([1]);
+    expect(stagger(1, 0.5, { easing: "linear" })).toEqual([0.5]);
   });
 
   it("distributes with duration option", () => {
@@ -52,5 +54,30 @@ describe("staggerLead", () => {
 
   it("returns 0 when nothing has started", () => {
     expect(staggerLead(["A", "B", "C"], 0, { duration: 0.5 })).toBe(0);
+  });
+});
+
+describe("stagger plan / ms (omakase)", () => {
+  it("caps total cascade at 500ms for many items", () => {
+    const plan = staggerPlan(20, { windowSeconds: 2, eachMs: 50, capMs: 500 });
+    expect(plan.totalMs).toBeLessThanOrEqual(500);
+    expect(plan.eachMs).toBeLessThan(50);
+  });
+
+  it("stagger.ms never exceeds cap", () => {
+    const items = Array.from({ length: 20 }, (_, i) => `i${i}`);
+    const result = stagger.ms(items, 0.5, {
+      windowSeconds: 1.5,
+      eachMs: 80,
+      capMs: 500,
+    });
+    expect(result[0]!.totalStaggerMs).toBeLessThanOrEqual(500);
+    expect(result[result.length - 1]!.startMs).toBeLessThanOrEqual(500);
+  });
+
+  it("default easing is easeOutCubic (midpoint > linear)", () => {
+    // With easeOutCubic at raw 0.5, eased > 0.5
+    const [p] = stagger(1, 0.5);
+    expect(p).toBeGreaterThan(0.5);
   });
 });

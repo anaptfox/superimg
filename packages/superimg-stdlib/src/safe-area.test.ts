@@ -41,4 +41,22 @@ describe("safe-area", () => {
   it("defaults to broadcast preset", () => {
     expect(getSafeArea(1920, 1080)).toEqual(getSafeArea(1920, 1080, "broadcast"));
   });
+
+  it("social portrait matches skill chrome zones", () => {
+    const insets = getSafeArea(1080, 1920, "social");
+    expect(insets.top).toBe(Math.round(1920 * 0.12));
+    expect(insets.bottom).toBe(Math.round(1920 * 0.18));
+    expect(insets.right).toBe(Math.round(1080 * 0.14));
+  });
+
+  it("title is ~10% all sides", () => {
+    const insets = getSafeArea(1000, 1000, "title");
+    expect(insets.top).toBe(100);
+    expect(insets.left).toBe(100);
+  });
+
+  it("action is ~5% all sides", () => {
+    const insets = getSafeArea(1000, 1000, "action");
+    expect(insets.top).toBe(50);
+  });
 });

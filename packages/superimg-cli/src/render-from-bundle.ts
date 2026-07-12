@@ -41,7 +41,7 @@ export async function renderFromBundle(
 
     const assetBaseUrl = engine.getBaseUrl();
 
-    const { job, resolvedAssets } = buildRenderJob({
+    const { job, resolvedAssets, explicitOverrides } = buildRenderJob({
       parsed: entry.parsed,
       templateBundle: entry.bundle,
       templateDir: "",
@@ -64,6 +64,7 @@ export async function renderFromBundle(
       templateDir: "",
       ...(options.startFrame !== undefined ? { startFrame: options.startFrame } : {}),
       ...(options.endFrame !== undefined ? { endFrame: options.endFrame } : {}),
+      ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
     });
 
     return await executeRenderPlan(plan, renderer, encoder, {

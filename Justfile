@@ -90,13 +90,14 @@ typecheck:
 clean:
     cd "{{root}}" && pnpm run clean
 
-# Run all quality gates: build + test + lint + typecheck + verify harness
+# Run all quality gates: build + test + lint + typecheck + verify harness/virtuals
 check:
     @just _spin "Building..." build
     @just _spin "Testing..." test
     @just _spin "Linting..." lint
     @just _spin "Type-checking..." typecheck
     @just _spin "Verifying harness integrity..." verify-harness
+    @just _spin "Verifying browser virtuals..." verify-browser-virtuals
     @gum style --foreground 212 "✓ All checks passed!"
 
 [private]
@@ -117,6 +118,10 @@ _spin title task:
 # Verify harness bundle integrity (source hash matches)
 verify-harness:
     cd "{{root}}/packages/superimg-playwright" && pnpm run verify:harness
+
+# Verify browser virtual modules are built from current sources
+verify-browser-virtuals:
+    cd "{{root}}/packages/superimg-core" && pnpm run verify:virtuals
 
 # Gate script for greenfield timing redesign (zero backward compat)
 verify-timing-redesign scratch="":
@@ -168,13 +173,11 @@ publish:
 
     just versions
     echo ""
-    if gum confirm "Publish superimg + @superimg/browser-bundler to npm?"; then
-        echo "Publishing @superimg/browser-bundler..."
-        cd "$ROOT/packages/superimg-browser-bundler" && pnpm publish
+    if gum confirm "Publish superimg to npm?"; then
         echo "Publishing superimg..."
         cd "$ROOT/packages/superimg" && pnpm publish
         echo ""
-        gum style --foreground 212 --bold "✓ superimg + @superimg/browser-bundler published!"
+        gum style --foreground 212 --bold "✓ superimg published!"
     else
         gum style --foreground 196 "Cancelled"
         exit 1
@@ -189,9 +192,6 @@ publish-dry:
     just versions
     echo ""
     gum style --foreground 99 "Dry-run: showing what would be published"
-    echo ""
-    echo "=== @superimg/browser-bundler ==="
-    cd "$ROOT/packages/superimg-browser-bundler" && pnpm publish --dry-run
     echo ""
     echo "=== superimg ==="
     cd "$ROOT/packages/superimg" && pnpm publish --dry-run

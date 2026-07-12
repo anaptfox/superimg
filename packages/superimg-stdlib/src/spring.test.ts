@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { spring, springCurve } from "./spring";
+import {
+  SPRINGS,
+  isSpringName,
+  resolveSpring,
+  spring,
+  springCurve,
+  springFromResponse,
+} from "./spring";
 
 describe("springCurve", () => {
   it("returns 0 at progress 0", () => {
@@ -8,6 +15,14 @@ describe("springCurve", () => {
 
   it("returns 1 at progress 1", () => {
     expect(springCurve(1)).toBe(1);
+  });
+
+  it("default gentle does not overshoot past ~1.02", () => {
+    let max = 0;
+    for (let p = 0; p <= 1; p += 0.01) {
+      max = Math.max(max, springCurve(p));
+    }
+    expect(max).toBeLessThanOrEqual(1.02);
   });
 
   it("overshoots with low damping (underdamped)", () => {
@@ -38,6 +53,31 @@ describe("springCurve", () => {
     expect(mid).toBeGreaterThan(0);
     expect(mid).toBeLessThan(1);
   });
+
+  it("accepts named spring playful", () => {
+    let max = 0;
+    for (let p = 0; p <= 1; p += 0.01) {
+      max = Math.max(max, springCurve(p, "playful"));
+    }
+    expect(max).toBeGreaterThan(1);
+  });
+});
+
+describe("resolveSpring / names", () => {
+  it("defaults to gentle", () => {
+    expect(resolveSpring()).toEqual(SPRINGS.gentle);
+  });
+
+  it("isSpringName detects presets", () => {
+    expect(isSpringName("gentle")).toBe(true);
+    expect(isSpringName("easeOutCubic")).toBe(false);
+  });
+
+  it("springFromResponse returns finite stiffness", () => {
+    const c = springFromResponse({ response: 0.35, dampingFraction: 1 });
+    expect(c.stiffness).toBeGreaterThan(0);
+    expect(c.damping).toBeGreaterThan(0);
+  });
 });
 
 describe("spring", () => {
@@ -59,5 +99,9 @@ describe("spring", () => {
     const value = spring(-10, 10, 0.5, { stiffness: 100, damping: 20 });
     expect(value).toBeGreaterThan(-10);
     expect(value).toBeLessThan(10);
+  });
+
+  it("accepts named springs", () => {
+    expect(spring(0, 100, 1, "snappy")).toBe(100);
   });
 });

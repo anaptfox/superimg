@@ -1,6 +1,10 @@
 //! Player - high-level browser controller over MediaSession
 
-import { CheckpointResolver } from "@superimg/core";
+import {
+  applyTemplateResolve,
+  CheckpointResolver,
+  sessionOptionsFromResolve,
+} from "@superimg/core";
 import {
   createMediaSession,
   type MediaFrameResult,
@@ -26,6 +30,7 @@ import {
   type Marker,
   type PlaybackMode,
   type ResolvedScene,
+  type TemplateModule,
 } from "@superimg/types";
 
 /** Simple format aliases that map to stdlib presets */
@@ -188,14 +193,54 @@ export class Player {
   async load(input: PlayerInput, options: LoadOptions = {}): Promise<LoadResult> {
     try {
       this.teardownPlayback();
-      this.template = input;
       this.markerList = options.markers ?? [];
       this.lastCheckpointId = null;
 
       const dimensions = this.format ? resolveFormat(this.format) : {};
-      this.session = await createMediaSession(input, {
+
+      // Pre-render resolve (once per load). Format dimensions act as explicit overrides.
+      let sessionInput: PlayerInput = input;
+      let sessionData = options.data;
+      let sessionDuration: number | undefined;
+      let sessionFps: number | undefined;
+      let sessionWidth: number | undefined;
+      let sessionHeight: number | undefined;
+
+      if (
+        input &&
+        typeof input === "object" &&
+        "render" in input &&
+        typeof (input as TemplateModule).render === "function" &&
+        !isComposedTemplate(input)
+      ) {
+        const applied = await applyTemplateResolve(input as TemplateModule, {
+          ...(options.data !== undefined ? { data: options.data } : {}),
+          ...(options.assets !== undefined ? { assets: options.assets } : {}),
+          ...(options.assetResolver !== undefined
+            ? { assetResolver: options.assetResolver }
+            : {}),
+        });
+        const session = sessionOptionsFromResolve(applied, {
+          formatDims: dimensions,
+          ...(options.markers !== undefined ? { extraMarkers: options.markers } : {}),
+        });
+        sessionInput = session.template as PlayerInput;
+        sessionData = session.data;
+        sessionDuration = session.durationSeconds;
+        sessionFps = session.fps;
+        sessionWidth = session.width;
+        sessionHeight = session.height;
+        this.markerList = session.markers;
+      }
+
+      this.template = sessionInput;
+      this.session = await createMediaSession(sessionInput, {
         ...dimensions,
-        ...(options.data !== undefined ? { data: options.data } : {}),
+        ...(sessionWidth !== undefined ? { width: sessionWidth } : {}),
+        ...(sessionHeight !== undefined ? { height: sessionHeight } : {}),
+        ...(sessionFps !== undefined ? { fps: sessionFps } : {}),
+        ...(sessionDuration !== undefined ? { duration: sessionDuration } : {}),
+        ...(sessionData !== undefined ? { data: sessionData } : {}),
         ...(options.assets !== undefined ? { assets: options.assets } : {}),
         ...(options.assetResolver !== undefined ? { assetResolver: options.assetResolver } : {}),
         ...(options.fonts !== undefined ? { fonts: options.fonts } : {}),

@@ -81,10 +81,10 @@ export function carouselSchedule(
   };
 }
 
-/** Stack slot schedule (mirrors stack.ts). */
+/** Stack slot schedule (mirrors stack.ts, equal weights). */
 export function stackSchedule(
   count: number,
-  opts: { lead?: number; trail?: number; enter?: number } = {},
+  opts: { lead?: number; trail?: number; enter?: number; weights?: readonly number[] } = {},
 ) {
   const lead = opts.lead ?? 0.05;
   const trail = opts.trail ?? 0.05;
@@ -92,11 +92,22 @@ export function stackSchedule(
   const contentStart = lead;
   const contentEnd = 1 - trail;
   const contentSpan = Math.max(0.001, contentEnd - contentStart);
-  const slot = count > 0 ? contentSpan / count : contentSpan;
+  const weights = opts.weights ?? Array.from({ length: count }, () => 1);
+  const totalW = weights.reduce((a, b) => a + b, 0) || 1;
+  let acc = 0;
+  const windows = weights.map((w) => {
+    const frac = w / totalW;
+    const start = acc;
+    const end = acc + frac;
+    acc = end;
+    return { start, end, frac };
+  });
 
   return (index: number) => {
-    const itemStart = contentStart + index * slot;
-    const itemEnd = itemStart + slot;
+    const win = windows[index] ?? { start: 0, end: 0, frac: 0 };
+    const itemStart = contentStart + win.start * contentSpan;
+    const itemEnd = contentStart + win.end * contentSpan;
+    const slot = Math.max(0.0001, itemEnd - itemStart);
     const enterEnd = itemStart + slot * enterFrac;
     return { itemStart, enterEnd, itemEnd, slot, contentStart, contentEnd };
   };

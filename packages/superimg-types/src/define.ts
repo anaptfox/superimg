@@ -3,7 +3,8 @@
 //! Unified template factory — one `define()` for all output kinds.
 //! Three orthogonal axes select behaviour:
 //!  - medium:   "html" (Chromium) | "svg" (resvg-wasm, browser-free, edge).
-//!  - animated: inferred from the config — true iff it declares fps AND duration.
+//!  - animated: inferred from the config — true iff it declares fps AND
+//!              (duration OR a `resolve` hook that will supply duration).
 //!  - sink:     chosen later (config.outputs / CLI / `as`), not at authoring time.
 //!
 //! TypeScript narrows `ctx` to the right variant at the call site via overloads:
@@ -22,6 +23,7 @@ import type {
   TemplateModule,
 } from "./types.js";
 import type { ImageStdlib, SvgStdlib, SvgAnimatedStdlib } from "./stdlib.js";
+import type { ResolveFn } from "./resolve.js";
 
 // =============================================================================
 // STATIC RENDER CONTEXTS (no temporal fields)
@@ -75,6 +77,12 @@ export type SvgAnimatedRenderContext<TData = JsonObject> = Omit<
 /** A config that makes a template animated: both fps and duration are present. */
 export type AnimatedConfig = TemplateConfig & { fps: number; duration: Duration };
 
+/**
+ * Animated when `fps` is set and duration will come from `resolve` (or optional static duration).
+ * Use with `define({ resolve, config: { fps } })`.
+ */
+export type ResolveAnimatedConfig = TemplateConfig & { fps: number; duration?: Duration };
+
 /** A static config (no required temporal fields). */
 export type StaticConfig = TemplateConfig;
 
@@ -101,8 +109,9 @@ export type StaticTemplateModule<
 /** SVG template with fps + duration — animated vector output. */
 export interface DefineSvgAnimatedInput<TData = JsonObject> {
   medium: "svg";
-  config: AnimatedConfig;
+  config: AnimatedConfig | ResolveAnimatedConfig;
   sample?: TData;
+  resolve?: ResolveFn<TData>;
   render: (ctx: SvgAnimatedRenderContext<TData>) => string;
 }
 
@@ -111,14 +120,16 @@ export interface DefineSvgStaticInput<TData = JsonObject> {
   medium: "svg";
   config?: StaticConfig;
   sample?: TData;
+  resolve?: ResolveFn<TData>;
   render: (ctx: SvgRenderContext<TData>) => string;
 }
 
 /** HTML template with fps + duration — video / GIF output. */
 export interface DefineHtmlAnimatedInput<TData = JsonObject> {
   medium?: "html";
-  config: AnimatedConfig;
+  config: AnimatedConfig | ResolveAnimatedConfig;
   sample?: TData;
+  resolve?: ResolveFn<TData>;
   render: (ctx: RenderContext<TData>) => string;
 }
 
@@ -127,6 +138,7 @@ export interface DefineHtmlStaticInput<TData = JsonObject> {
   medium?: "html";
   config?: StaticConfig;
   sample?: TData;
+  resolve?: ResolveFn<TData>;
   render: (ctx: ImageRenderContext<TData>) => string;
 }
 
@@ -146,11 +158,21 @@ export type { TailwindConfig, AssetDeclaration };
 // define() — overloads narrow ctx and animated; impl is a typed identity.
 // =============================================================================
 
-// 1. SVG + animated
+// 1. SVG + animated (static duration)
 export function define<TData, C extends AnimatedConfig = AnimatedConfig>(input: {
   medium: "svg";
   config: C;
   sample?: TData;
+  resolve?: ResolveFn<TData>;
+  render: (ctx: SvgAnimatedRenderContext<TData>) => string;
+}): AnimatedTemplateModule<TData, "svg">;
+
+// 1b. SVG + animated via resolve (duration optional at define-time)
+export function define<TData>(input: {
+  medium: "svg";
+  config: ResolveAnimatedConfig;
+  sample?: TData;
+  resolve: ResolveFn<TData>;
   render: (ctx: SvgAnimatedRenderContext<TData>) => string;
 }): AnimatedTemplateModule<TData, "svg">;
 
@@ -159,14 +181,25 @@ export function define<TData, C extends StaticConfig = StaticConfig>(input: {
   medium: "svg";
   config?: C;
   sample?: TData;
+  resolve?: ResolveFn<TData>;
   render: (ctx: SvgRenderContext<TData>) => string;
 }): StaticTemplateModule<TData, "svg">;
 
-// 3. HTML + animated
+// 3. HTML + animated (static duration)
 export function define<TData, C extends AnimatedConfig = AnimatedConfig>(input: {
   medium?: "html";
   config: C;
   sample?: TData;
+  resolve?: ResolveFn<TData>;
+  render: (ctx: RenderContext<TData>) => string;
+}): AnimatedTemplateModule<TData, "html">;
+
+// 3b. HTML + animated via resolve (duration optional at define-time)
+export function define<TData>(input: {
+  medium?: "html";
+  config: ResolveAnimatedConfig;
+  sample?: TData;
+  resolve: ResolveFn<TData>;
   render: (ctx: RenderContext<TData>) => string;
 }): AnimatedTemplateModule<TData, "html">;
 
@@ -175,19 +208,24 @@ export function define<TData, C extends StaticConfig = StaticConfig>(input: {
   medium?: "html";
   config?: C;
   sample?: TData;
+  resolve?: ResolveFn<TData>;
   render: (ctx: ImageRenderContext<TData>) => string;
 }): StaticTemplateModule<TData, "html">;
 
 export function define(input: DefineInput): TemplateModule {
   const medium: Medium = input.medium ?? "html";
   const c = input.config;
-  const animated = !!c && typeof c.fps === "number" && c.duration != null;
+  const hasResolve = typeof input.resolve === "function";
+  // Animated when fps is set and duration is known now or will be supplied by resolve.
+  const animated =
+    !!c && typeof c.fps === "number" && (c.duration != null || hasResolve);
   return {
     medium,
     animated,
     render: input.render as TemplateModule["render"],
     ...(input.config !== undefined ? { config: input.config } : {}),
     ...(input.sample !== undefined ? { sample: input.sample } : {}),
+    ...(hasResolve ? { resolve: input.resolve } : {}),
   };
 }
 

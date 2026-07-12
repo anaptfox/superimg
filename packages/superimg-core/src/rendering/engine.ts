@@ -26,6 +26,7 @@ import {
   sceneBoundariesFromResolved,
 } from "../shared/assets.js";
 import type { ResolvedAudioTimeline } from "@superimg/types";
+import { applyTemplateResolve } from "./resolve-template.js";
 
 function resolveAudioSrcToLocal(src: string, templateDir: string): string {
   try {
@@ -142,6 +143,14 @@ export async function createRenderPlan(
     templateDir?: string;
     startFrame?: number;
     endFrame?: number;
+    /**
+     * Explicit operator overrides (CLI flags / API). Applied after resolve.
+     * Soft job defaults must NOT be passed here — only user-explicit values.
+     */
+    explicitOverrides?: Partial<
+      Pick<import("@superimg/types").TemplateConfig, "duration" | "width" | "height" | "fps">
+    >;
+    signal?: AbortSignal;
   }
 ): Promise<RenderPlan> {
   const {
@@ -169,7 +178,20 @@ export async function createRenderPlan(
     if (result.error) throw enrichError(result.error, templateBundle);
     throw enrichError(new Error("Template compilation failed: unknown error"), templateBundle);
   }
-  const template = result.template;
+
+  // Pre-render resolve: template.config → resolve() → explicitOverrides (CLI/API).
+  // Soft job defaults (width/duration filled from config) only fill gaps below —
+  // they must not overwrite resolve results.
+  const applied = await applyTemplateResolve(result.template, {
+    ...(data !== undefined ? { data: data as Record<string, unknown> } : {}),
+    ...(options?.explicitOverrides !== undefined
+      ? { overrides: options.explicitOverrides }
+      : {}),
+    ...(options?.signal !== undefined ? { signal: options.signal } : {}),
+  });
+  const template = applied.template;
+  const resolveResult = applied.resolved;
+  const planData = applied.data;
 
   // Collect fonts
   const fontSet = new Set<string>(globalFonts ?? []);
@@ -186,13 +208,18 @@ export async function createRenderPlan(
   const templateTailwind = template.config?.tailwind;
   const tailwind = templateTailwind ?? globalTailwind;
 
-  // Prefer compiled template duration (compose/composeSvg compute scene sums at runtime).
+  // Geometry: resolve/template first, then job (CLI/build defaults).
+  const planFps = template.config?.fps ?? fps;
+  const planWidth = template.config?.width ?? width;
+  const planHeight = template.config?.height ?? height;
+
+  // Prefer compiled/resolved template duration (compose computes scene sums at runtime).
   const durationSeconds = parseDuration(
     template.config?.duration ?? duration,
     "duration",
-    fps,
+    planFps,
   );
-  const totalFrames = Math.ceil(durationSeconds * fps);
+  const totalFrames = Math.ceil(durationSeconds * planFps);
 
   const resolvedAssets = options?.resolvedAssets ?? [];
 
@@ -218,10 +245,10 @@ export async function createRenderPlan(
   const audioValue = audio ?? template.config?.audio;
   const scenes =
     "type" in template && (template as ComposedTemplate).type === "composed"
-      ? sceneBoundariesFromResolved((template as ComposedTemplate).scenes, fps)
+      ? sceneBoundariesFromResolved((template as ComposedTemplate).scenes, planFps)
       : undefined;
   let resolvedAudio = resolveAudioTimeline(audioValue, {
-    fps,
+    fps: planFps,
     videoDurationSeconds: durationSeconds,
     ...(scenes ? { scenes } : {}),
   });
@@ -233,9 +260,9 @@ export async function createRenderPlan(
     template,
     bundle: templateBundle,
     durationSeconds,
-    width,
-    height,
-    fps,
+    width: planWidth,
+    height: planHeight,
+    fps: planFps,
     totalFrames,
     medium,
     animated,
@@ -248,11 +275,15 @@ export async function createRenderPlan(
     ...(resolvedAudio ? { resolvedAudio } : {}),
     outputName,
     ...(encoding !== undefined ? { encoding } : {}),
-    ...(data !== undefined ? { data } : {}),
+    data: planData as import("@superimg/types").JsonObject,
     ...(finalBackground !== undefined ? { background: finalBackground } : {}),
     ...(finalWatermark !== undefined ? { watermark: finalWatermark } : {}),
     ...(options?.assetBaseUrl !== undefined ? { assetBaseUrl: options.assetBaseUrl } : {}),
     ...(options?.templateDir !== undefined ? { templateDir: options.templateDir } : {}),
+    resolveResult,
+    ...(template.config?.readiness !== undefined
+      ? { readiness: template.config.readiness }
+      : {}),
     resolvedAssets,
     mode: template.config?.mode ?? 'frame',
     ...(options?.startFrame !== undefined ? { startFrame: options.startFrame } : {}),
@@ -342,6 +373,7 @@ export async function executeRenderPlan<TFrame>(
     ...(tailwind !== undefined ? { tailwind } : {}),
     mode,
     ...(plan.fontBuffers !== undefined ? { fontBuffers: plan.fontBuffers } : {}),
+    ...(plan.readiness !== undefined ? { readiness: plan.readiness } : {}),
   });
 
   let assetsMap: Record<string, import("@superimg/types").AssetMeta> = {};

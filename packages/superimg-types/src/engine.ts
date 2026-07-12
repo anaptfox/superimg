@@ -85,6 +85,8 @@ export interface FrameRendererConfig {
   stylesheets?: string[];
   tailwind?: boolean | TailwindConfig;
   mode?: 'frame' | 'animation';
+  /** Headless capture readiness policy from template config. */
+  readiness?: import("./types.js").FrameReadinessPolicy;
 }
 
 export interface FrameRenderer<TFrame = unknown> {
@@ -228,6 +230,13 @@ export interface RenderPlan {
   startFrame?: number;
   /** Last frame to render, exclusive. Default: totalFrames. Used for distributed chunk rendering. */
   endFrame?: number;
+  /**
+   * Output of `define({ resolve })` for this plan (phases/markers/meta).
+   * Null when the template has no resolve hook.
+   */
+  resolveResult?: import("./resolve.js").ResolveResult | null;
+  /** Headless capture readiness from template config. */
+  readiness?: import("./types.js").FrameReadinessPolicy;
 }
 
 export interface FramePresenter {

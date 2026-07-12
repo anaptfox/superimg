@@ -59,8 +59,8 @@ export default define({
 
   render(ctx) {
     const { std, width, height, data } = ctx;
-    const t = ctx.director();
-    const anim = t.motion({ y: 30 });
+    const t = ctx.director(std.phases.recipe("card"));
+    const anim = t.motion({ y: 24 });
 
     return \`
       <div style="\${std.css({ width, height }, std.css.center())}">
@@ -91,8 +91,8 @@ export default define({
 
   render(ctx) {
     const { std, width, height, data } = ctx;
-    const t = ctx.director();
-    const anim = t.motion({ y: 30 });
+    const t = ctx.director(std.phases.recipe("card"));
+    const anim = t.motion({ y: 24 });
 
     return \`
       <div style="\${std.css({ width, height }, std.css.center())}">

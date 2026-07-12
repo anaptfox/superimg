@@ -68,7 +68,7 @@ export async function renderVideo(
     const assetBaseUrl = engine.getBaseUrl();
     const templateDir = dirname(resolvedPath);
 
-    const { job, resolvedAssets } = buildRenderJob({
+    const { job, resolvedAssets, explicitOverrides } = buildRenderJob({
       parsed: templateData,
       templateBundle,
       templateDir,
@@ -96,7 +96,13 @@ export async function renderVideo(
       templateDir: string;
       startFrame?: number;
       endFrame?: number;
-    } = { assetBaseUrl, resolvedAssets, templateDir };
+      explicitOverrides?: typeof explicitOverrides;
+    } = {
+      assetBaseUrl,
+      resolvedAssets,
+      templateDir,
+      ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
+    };
 
     if (options.frame !== undefined || options.progress !== undefined) {
       const probe = await createRenderPlan(job, planOpts);

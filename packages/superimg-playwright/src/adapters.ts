@@ -3,6 +3,7 @@
 import type { Page } from "playwright";
 import type {
   FrameRendererConfig,
+  FrameReadinessPolicy,
   VideoEncoderConfig,
   FrameRenderer,
   VideoEncoder,
@@ -14,6 +15,14 @@ import { buildPageShell } from "@superimg/core/html";
 
 import { FrameExtractor } from "./frame-extractor.js";
 import { preloadThreeModule } from "./three-preload.js";
+import { preloadLottieModule } from "./lottie-preload.js";
+import {
+  WAIT_ATTR,
+  formatReadinessFail,
+  formatReadinessTimeout,
+  readinessEvaluateInPage,
+  resolveReadinessPolicy,
+} from "./readiness.js";
 
 const CLIP_SYNC_ATTR = "data-superimg-clip";
 const EXTERNAL_EMBED_ATTR = "data-superimg-external-embed";
@@ -63,6 +72,7 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
   private height = 0;
   private fps = 30;
   private mode: 'frame' | 'animation' = 'frame';
+  private readiness: FrameReadinessPolicy | undefined;
 
   constructor(
     private readonly page: Page,
@@ -76,6 +86,7 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
     this.height = config.height;
     this.fps = config.fps ?? 30;
     this.mode = config.mode ?? 'frame';
+    this.readiness = config.readiness;
     await this.page.setViewportSize({ width: config.width, height: config.height });
     if (this.mode === 'animation') {
       await this.page.clock.install({ time: 0 });
@@ -100,8 +111,22 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
     if (injected.includes("__SUPERIMG_THREE__")) {
       await preloadThreeModule(this.page);
     }
+    if (
+      injected.includes("data-superimg-lottie") ||
+      injected.includes("lottie.loadAnimation") ||
+      injected.includes("loadAnimation({")
+    ) {
+      await preloadLottieModule(this.page, injected.includes("lottie.min.js"));
+    }
 
+    // Per-frame protocol: reset → inject HTML + run scripts (may done() sync) → wait.
+    // Reset MUST run before scripts; resetting after wipes three.scene / canvas signals.
     await this.page.evaluate(async (h: string) => {
+      const ready = (
+        window as unknown as { __superimgReady?: { __reset?: () => void } }
+      ).__superimgReady;
+      ready?.__reset?.();
+
       const el = document.getElementById("frame");
       if (!el) return;
       el.innerHTML = h;
@@ -128,9 +153,26 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
           });
         }
       }
-
-      await document.fonts.ready;
     }, injected);
+
+    const policy = resolveReadinessPolicy(this.readiness);
+    const waitFonts = policy.waitImplicit.includes("fonts");
+    const waitImages = policy.waitImplicit.includes("images");
+
+    const readinessResult = await this.page.evaluate(readinessEvaluateInPage, {
+      timeoutMs: policy.timeoutMs,
+      waitFonts,
+      waitImages,
+      waitAttr: WAIT_ATTR,
+    });
+
+    if (!readinessResult.ok) {
+      const msg =
+        !readinessResult.error || readinessResult.error === "timeout"
+          ? formatReadinessTimeout(readinessResult.open, policy.timeoutMs)
+          : formatReadinessFail(readinessResult.open, readinessResult.error);
+      throw new Error(msg);
+    }
 
     if (process.env.SUPERIMG_PROFILE === "1") {
       const stats = this.frameExtractor.getStats();

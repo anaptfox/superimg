@@ -2,7 +2,7 @@
 //! Explicit, typed, self-documenting interfaces for templates, rendering, and playback
 
 import type { Stdlib } from "./stdlib.js";
-import type { DirectorOf, PhaseConfig } from "@superimg/stdlib/director";
+import type { DirectorOf, DirectorOpts, PhaseConfig } from "@superimg/stdlib/director";
 import type { Track } from "@superimg/stdlib/track";
 import type { Checkpoint } from "./checkpoint.js";
 import type { EncodingOptions, OutputFormat } from "./encoding-types.js";
@@ -57,10 +57,14 @@ export interface RenderContext<TData = JsonObject> {
   timeline: Timeline;
 
   /**
-   * Phase choreography factory. Replaces the former `ctx.director()`.
-   * @example const d = ctx.director({ intro: "10%", main: "75%", hold: "15%" });
+   * Phase choreography factory. Replaces the former `ctx.score()`.
+   * @example const t = ctx.director({ intro: "10%", main: "75%", hold: "15%" });
+   * @example const t = ctx.director(std.phases.recipe("punchy"), { tone: "social" });
    */
-  director: <P extends PhaseConfig | undefined = undefined>(phases?: P) => DirectorOf<P>;
+  director: <P extends PhaseConfig | undefined = undefined>(
+    phases?: P,
+    opts?: DirectorOpts,
+  ) => DirectorOf<P>;
 
   /**
    * Named sync track (transcript, markers). Uses `timeline.seconds`.
@@ -164,7 +168,10 @@ export interface TemplateModule<
 > {
   /** Which rasterizer family renders this template. */
   readonly medium: Medium;
-  /** True when the template renders N frames (config has fps + duration). */
+  /**
+   * True when the template renders N frames.
+   * Animated when config has `fps` and (`duration` or a `resolve` hook that supplies duration).
+   */
   readonly animated: boolean;
   /** Render function that returns HTML or SVG markup. */
   render: (ctx: RenderContext<TData>) => string;
@@ -172,6 +179,12 @@ export interface TemplateModule<
   config?: TemplateConfig;
   /** Sample/preview data — the template renders from this when no external data is provided. */
   sample?: TData;
+  /**
+   * Optional pre-render hook. Runs once per job (not per frame).
+   * May set duration/size/data/markers/phases before any frame is rendered.
+   * @see ResolveInput / ResolveResult in resolve.ts
+   */
+  resolve?: import("./resolve.js").ResolveFn<TData>;
 }
 
 export interface OutputPreset {
@@ -190,6 +203,22 @@ export interface OutputPreset {
 }
 
 /**
+ * Frame readiness policy for headless capture (Playwright).
+ * Authors stamp `data-superimg-wait="label"` and/or call
+ * `window.__superimgReady.done(label)` from in-frame scripts.
+ */
+export interface FrameReadinessPolicy {
+  /** Overall wait timeout in ms. Default 8000. */
+  timeoutMs?: number;
+  /**
+   * Implicit waits each frame. Default: `["fonts", "images"]`.
+   * - `fonts`: `document.fonts.ready`
+   * - `images`: decode all `<img>` in `#frame` (covers video.sync injects)
+   */
+  waitImplicit?: Array<"fonts" | "images">;
+}
+
+/**
  * Shared configuration base for project and template configs.
  *
  * NOTE: These fields cascade from `_config.ts` files down to individual templates.
@@ -205,6 +234,11 @@ export interface BaseConfig {
   fps?: number;
   /** Default duration. Accepts number (seconds), "5s", "500ms", or "30f". */
   duration?: Duration;
+  /**
+   * Headless capture readiness (Playwright). Does not affect preview morphdom.
+   * @see FrameReadinessPolicy
+   */
+  readiness?: FrameReadinessPolicy;
   /**
    * List of Google Fonts to load.
    * Format: "Font+Name" or "Font+Name:wght@400;700"

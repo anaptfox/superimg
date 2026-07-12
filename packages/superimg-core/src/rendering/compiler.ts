@@ -62,10 +62,13 @@ export function compileTemplate(bundledCode: string): CompileResult {
   // Derive medium/animated if the runtime identity stamp is missing (e.g. a
   // hand-built module object). define() normally provides both.
   const config = def.config;
+  const hasResolve = typeof def.resolve === "function";
   const animated =
     typeof def.animated === "boolean"
       ? def.animated
-      : !!config && typeof config.fps === "number" && config.duration != null;
+      : !!config &&
+        typeof config.fps === "number" &&
+        (config.duration != null || hasResolve);
 
   const template: TemplateModule = {
     medium: def.medium ?? "html",
@@ -78,6 +81,7 @@ export function compileTemplate(bundledCode: string): CompileResult {
     render: def.render,
     config: def.config,
     sample: def.sample,
+    ...(hasResolve ? { resolve: def.resolve } : {}),
   };
 
   // Preserve composed-template identity (scene list, totalFrames, helpers).

@@ -235,9 +235,10 @@ describe("director — motion enter/exit", () => {
   });
 
   it("custom easing function works", () => {
-    const t = s(0.1);
-    const linear = t.motion({ easing: (x) => x });
-    const ease = t.motion({ easing: "easeOutCubic" });
+    // Use full phase enter so easing midpoints differ
+    const t = s(0.075, { enter: "15%", hold: "70%", exit: "15%" });
+    const linear = t.motion({ easing: (x) => x, for: "100%" });
+    const ease = t.motion({ easing: "easeOutCubic", for: "100%" });
     expect(ease.enter).toBeGreaterThan(linear.enter);
   });
 
@@ -246,6 +247,66 @@ describe("director — motion enter/exit", () => {
     const m = t.motion({ easing: { stiffness: 200, damping: 20 } });
     expect(m.enter).toBeGreaterThan(0);
     expect(m.enter).toBeLessThanOrEqual(1.5); // may overshoot
+  });
+
+  it("named spring easing works", () => {
+    const t = s(0.5);
+    const m = t.motion({ easing: "playful", for: "100%" });
+    expect(m.enter).toBeGreaterThan(0);
+  });
+
+  it("semantic enter/exit aliases work", () => {
+    const mid = s(0.05, { enter: "2s", hold: "6s", exit: "2s" }).motion({
+      for: "2s",
+      easing: "enter",
+    });
+    const linear = s(0.05, { enter: "2s", hold: "6s", exit: "2s" }).motion({
+      for: "2s",
+      easing: (x) => x,
+    });
+    expect(mid.enter).toBeGreaterThan(linear.enter);
+  });
+
+  it("omakase: default enter completes faster than full enter phase", () => {
+    // 10s scene, enter 15% = 1.5s; default cap 375ms → fully entered early in enter
+    const early = s(0.05).motion(); // 0.5s into 10s — past 375ms cap
+    expect(early.enter).toBe(1);
+    const start = s(0.01).motion(); // 0.1s — still entering
+    expect(start.enter).toBeGreaterThan(0);
+    expect(start.enter).toBeLessThan(1);
+  });
+
+  it("omakase: auto exit finishes before end of exit phase", () => {
+    // exit phase 85%–100%; 75% of that → exit window ends at 96.25%
+    const almostDone = s(0.97).motion({ for: "100%" });
+    expect(almostDone.exit).toBe(1);
+    // Early in exit phase, still exiting
+    const earlyExit = s(0.88).motion({ for: "100%" });
+    expect(earlyExit.exit).toBeGreaterThan(0);
+    expect(earlyExit.exit).toBeLessThan(1);
+  });
+
+  it("tone sets default pose", () => {
+    const t = createDirector(
+      { timeline: makeTimeline(0.5), fps: 30 },
+      undefined,
+      { tone: "social" },
+    );
+    const m = t.motion({ for: "100%" });
+    // fully entered in hold — y should be 0
+    expect(m.y).toBeCloseTo(0, 3);
+    // at start, social y is 32
+    const start = createDirector(
+      { timeline: makeTimeline(0), fps: 30 },
+      undefined,
+      { tone: "social" },
+    ).motion({ for: "100%" });
+    expect(start.y).toBeCloseTo(32, 3);
+  });
+
+  it("default y is 24", () => {
+    const m = s(0).motion({ for: "100%" });
+    expect(m.y).toBeCloseTo(24, 3);
   });
 
   it("all 31 EasingName values resolve without error", () => {
@@ -434,8 +495,9 @@ describe("director.clip", () => {
     const hook = t.clip({ during: "hook" });
     const local = hook.director({ enter: "50%", hold: "50%" });
     expect(local.active).toBe("enter");
-    expect(local.motion().opacity).toBeGreaterThan(0);
-    expect(local.motion().opacity).toBeLessThan(1);
+    const m = local.motion({ for: "100%" });
+    expect(m.opacity).toBeGreaterThan(0);
+    expect(m.opacity).toBeLessThan(1);
   });
 
   it("nested clip inside parent clip", () => {

@@ -65,3 +65,37 @@ export function draw(d: string, progress: number, opts?: DrawOptions): DrawResul
     strokeDashoffset: `${Math.round(offset * 1000) / 1000}`,
   };
 }
+
+export interface DrawManyOptions extends DrawOptions {
+  /** Lag ratio across paths (default 0.15). Same as Manim lag_ratio. */
+  lag?: number;
+}
+
+/**
+ * Draw multiple paths with lag_ratio-style stagger (shared reveal contract).
+ */
+export function drawMany(
+  paths: readonly string[],
+  progress: number,
+  opts?: DrawManyOptions,
+): DrawResult[] {
+  const n = paths.length;
+  if (n === 0) return [];
+  const lag = opts?.lag ?? 0.15;
+  // Inline lag to avoid viz↔svg circular imports
+  const start = opts?.start ?? 0;
+  const end = opts?.end ?? 1;
+  let global = progress;
+  if (start < end) global = clamp01((progress - start) / (end - start));
+  else global = progress >= start ? 1 : 0;
+
+  return paths.map((d, i) => {
+    let local: number;
+    if (n === 1 || lag <= 0) local = global;
+    else {
+      const fullLength = (n - 1) * lag + 1;
+      local = clamp01(global * fullLength - i * lag);
+    }
+    return draw(d, local, { easing: opts?.easing });
+  });
+}

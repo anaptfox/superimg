@@ -141,6 +141,23 @@ program
   });
 
 program
+  .command("inspect")
+  .description("Runtime-true multi-progress debug report (JSON). Phases, HTML semantics, optional --diff/--png.")
+  .argument("<template>", "Video name or path to template")
+  .option("--at <list>", "Progress samples 0–1 and/or f:N frames (default: 0,0.25,0.5,0.75,1)")
+  .option("--diff <a,b>", "Semantic-diff two progresses (e.g. 0.35,0.85)")
+  .option("--png", "Also write PNG stills via Playwright")
+  .option("-o, --output <dir>", "Artifact dir (default: <templateDir>/output/.superimg/inspect/)")
+  .option("--pretty", "Human phase/sample table on stderr (JSON still on stdout)")
+  .option("--critique", "Include motion craft critique (hold length, exit vs enter, text settle, …)")
+  .option("--data <path-or-json>", "Data override (object only)")
+  .option("--json", "Explicit JSON mode (default; no-op)")
+  .action(async (template: string, options) => {
+    const { inspectCommand } = await import("./commands/inspect.js");
+    await inspectCommand(template, options);
+  });
+
+program
   .command("list")
   .description("List all discovered videos in the project")
   .option("--json", "Output machine-readable JSON instead of human text")
@@ -163,8 +180,10 @@ program
   .description("Validate a template by rendering sample frames and checking for errors")
   .argument("<template>", "Video name or path to validate")
   .option("--frames <count>", "Number of sample frames to render (default: 5)", "5")
+  .option("--craft", "Also run motion craft checks (hold length, text settle, …) as warnings")
+  .option("--craft-strict", "Fail validation on craft issues")
   .option("--json", "Output machine-readable JSON instead of human text")
-  .action(async (template: string, options: { frames: string; json?: boolean }) => {
+  .action(async (template: string, options: { frames: string; json?: boolean; craft?: boolean; craftStrict?: boolean }) => {
     const { validateCommand } = await import("./commands/validate.js");
     await validateCommand(template, options);
   });

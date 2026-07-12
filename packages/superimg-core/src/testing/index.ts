@@ -35,3 +35,21 @@ export {
   type RenderTemplateFrameOptions,
   type RenderTemplateFrameResult,
 } from "../rendering/render-frame.js";
+
+export {
+  probeDirectorPhases,
+  activePhaseAt,
+  type ProbePhasesOptions,
+  type NormalizedPhase,
+  type PhaseConfig,
+} from "../rendering/probe-phases.js";
+
+export {
+  critiqueTemplate,
+  critiqueSource,
+  type CritiqueCode,
+  type CritiqueIssue,
+  type CritiqueMetrics,
+  type CritiqueReport,
+  type CritiqueOptions,
+} from "../critique/motion-critique.js";

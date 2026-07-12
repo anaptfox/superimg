@@ -179,7 +179,7 @@ export function compose(
         sceneIndex: scene.index,
         sceneId: scene.id,
         timeline: sceneTimeline,
-        director: (phases) => createDirector(directorCtx, phases),
+        director: (phases, opts) => createDirector(directorCtx, phases, opts),
         track: (source) => createTrack(sceneTimeline, source),
         data: { ...scene.data, ...ctx.data } as RenderContext["data"],
         std: bindStdTiming(

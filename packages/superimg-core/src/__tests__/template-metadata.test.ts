@@ -123,4 +123,56 @@ describe("extractTemplateMetadata", () => {
     expect(metadata.hasDefaultExport).toBe(true);
     expect(metadata.hasRenderExport).toBe(true);
   });
+
+  it("folds const-bound duration/width/height/fps identifiers", async () => {
+    const code = `
+      const DURATION = 12;
+      const W = 1920;
+      const H = 1080;
+      const FPS = 30;
+      export default define({
+        config: { width: W, height: H, fps: FPS, duration: DURATION },
+        render(ctx) { return "<div>ok</div>"; },
+      });
+    `;
+
+    const metadata = await extractTemplateMetadata(code);
+    expect(metadata.config).toEqual({
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      duration: 12,
+    });
+  });
+
+  it("folds config object referenced by identifier", async () => {
+    const code = `
+      function render(ctx) { return "<div>ok</div>"; }
+      const config = { height: 720, duration: 8, fps: 30 };
+      export default define({ render, config });
+    `;
+
+    const metadata = await extractTemplateMetadata(code);
+    expect(metadata.hasRenderExport).toBe(true);
+    expect(metadata.config).toEqual({
+      height: 720,
+      duration: 8,
+      fps: 30,
+    });
+  });
+
+  it("folds chained identifier aliases for duration", async () => {
+    const code = `
+      const D = 5;
+      const DUR = D;
+      export default define({
+        config: { fps: 30, duration: DUR },
+        render(ctx) { return ""; },
+      });
+    `;
+
+    const metadata = await extractTemplateMetadata(code);
+    expect(metadata.config?.duration).toBe(5);
+    expect(metadata.config?.fps).toBe(30);
+  });
 });

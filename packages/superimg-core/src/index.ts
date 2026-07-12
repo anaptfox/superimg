@@ -36,7 +36,20 @@ export * from "./shared/constants.js";
 export * from "./rendering/create-render-context.js";
 export * from "./rendering/runtime-info.js";
 export * from "./rendering/compiler.js";
-export * from "./rendering/resvg-rasterizer.node.js";
+export * from "./rendering/resolve-template.js";
+export * from "./rendering/probe-phases.js";
+// Bind Node ensureInit at package load (tsdown drops pure side-effect imports).
+import { bindEnsureInit } from "./rendering/resvg-rasterizer.js";
+import { nodeEnsureInit } from "./rendering/resvg-ensure-init.node.js";
+bindEnsureInit(nodeEnsureInit);
+export {
+  ensureInit,
+  rasterize,
+  rasterizeSvgSync,
+  ResvgRasterizer,
+  bindEnsureInit,
+} from "./rendering/resvg-rasterizer.js";
+export type { WasmSource, RasterizeSvgOptions } from "./rendering/resvg-rasterizer.js";
 export * from "./rendering/fonts.js";
 export * from "./rendering/rasterizer-registry.js";
 export * from "./shared/assets.js";

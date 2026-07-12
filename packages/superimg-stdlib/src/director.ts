@@ -18,7 +18,18 @@ import { clamp01, type EasingFn, type EasingName } from "./easing.js";
 import { interpolate } from "./interpolate.js";
 import * as easing from "./easing.js";
 import { lerp } from "./math.js";
-import { type SpringConfig, springCurve } from "./spring.js";
+import {
+  type SpringConfig,
+  type SpringName,
+  isSpringName,
+  resolveSpring,
+  springCurve,
+} from "./spring.js";
+import {
+  type MotionTone,
+  getMotionTone,
+  type MotionTonePreset,
+} from "./motion-presets.js";
 
 // -----------------------------------------------------------------------------
 // Types
@@ -30,13 +41,34 @@ import { type SpringConfig, springCurve } from "./spring.js";
  */
 export type PhaseConfig = Record<string, string>;
 
+/** Semantic easing aliases mapped to craft defaults. */
+export type SemanticEasing = "enter" | "exit" | "move" | "loop";
+
 /**
  * Easing for motion and tween calls. Accepts:
  * - Named easing: `"easeOutCubic"`, `"easeInBack"`, etc.
+ * - Semantic: `"enter"` | `"exit"` | `"move"` | `"loop"`
+ * - Spring name: `"gentle"` | `"playful"` | …
  * - Custom function: `(t: number) => number`
  * - Spring config: `{ stiffness: 180, damping: 18 }`
  */
-export type MotionEasing = EasingName | EasingFn | SpringConfig;
+export type MotionEasing =
+  | EasingName
+  | SemanticEasing
+  | SpringName
+  | EasingFn
+  | SpringConfig;
+
+/** Optional second arg to createDirector / ctx.director. */
+export interface DirectorOpts {
+  /** Motion tone — sets default enter pose + easings for motion(). */
+  tone?: MotionTone;
+}
+
+/** Default max enter duration when `for` is omitted (standard element enter). */
+const DEFAULT_ENTER_CAP_SECONDS = 0.375;
+/** Auto exit window as fraction of exit phase (exits ~25% faster). */
+const DEFAULT_EXIT_PHASE_SCALE = 0.75;
 
 export interface MotionOpts<P extends string = string> {
   x?: number;
@@ -48,7 +80,11 @@ export interface MotionOpts<P extends string = string> {
 
   during?: P;
   at?: string;  // e.g. "0.28s" or "20%"
-  for?: string; // e.g. "0.5s" or "30%"
+  /**
+   * Enter window length ("0.5s" or "30%"). When omitted, omakase caps wall-clock
+   * enter at ~375ms (or the full phase if shorter).
+   */
+  for?: string;
   window?: [start: number, end: number]; // absolute scene [0,1] fractions
 
   easing?: MotionEasing;
@@ -182,6 +218,11 @@ const NAMED_EASINGS: Record<string, EasingFn> = {
   easeInBack: easing.easeInBack,     easeOutBack: easing.easeOutBack,     easeInOutBack: easing.easeInOutBack,
   easeInElastic: easing.easeInElastic, easeOutElastic: easing.easeOutElastic, easeInOutElastic: easing.easeInOutElastic,
   easeInBounce: easing.easeInBounce, easeOutBounce: easing.easeOutBounce, easeInOutBounce: easing.easeInOutBounce,
+  // Semantic craft aliases
+  enter: easing.easeOutCubic,
+  exit: easing.easeInCubic,
+  move: easing.easeInOutCubic,
+  loop: easing.linear,
 };
 
 const EXIT_MIRROR: Record<string, EasingFn> = {
@@ -193,20 +234,36 @@ const EXIT_MIRROR: Record<string, EasingFn> = {
   easeInOutQuad: easing.easeInOutQuad,  easeInOutCubic: easing.easeInOutCubic,
   easeInOutQuart: easing.easeInOutQuart, easeInOutSine: easing.easeInOutSine,
   easeInOutExpo: easing.easeInOutExpo,
+  enter: easing.easeInCubic,
+  exit: easing.easeInCubic,
+  move: easing.easeInOutCubic,
+  loop: easing.linear,
 };
 
 function resolveEasing(spec: MotionEasing | undefined, fallback: EasingFn): EasingFn {
   if (spec === undefined) return fallback;
   if (typeof spec === "function") return spec;
-  if (typeof spec === "object") return (t: number) => springCurve(t, spec);
-  const fn = NAMED_EASINGS[spec];
-  if (!fn) throw new Error(`Unknown easing: "${spec}"`);
+  if (typeof spec === "object") return (t: number) => springCurve(t, resolveSpring(spec));
+  if (typeof spec === "string" && isSpringName(spec)) {
+    const cfg = resolveSpring(spec);
+    return (t: number) => springCurve(t, cfg);
+  }
+  const fn = NAMED_EASINGS[spec as string];
+  if (!fn) {
+    throw new Error(
+      `Unknown easing: "${spec}". Use a named curve, spring name (${Object.keys({ gentle: 1, snappy: 1, fluid: 1, playful: 1, wobbly: 1 }).join(", ")}), or semantic enter|exit|move|loop`,
+    );
+  }
   return fn;
 }
 
 function mirrorExitEasing(spec: MotionEasing | undefined, fallback: EasingFn): EasingFn {
   if (spec === undefined) return fallback;
   if (typeof spec === "string") {
+    if (isSpringName(spec)) {
+      // Springs on exit: use easeInCubic (no reverse overshoot)
+      return DEFAULT_EXIT_EASING;
+    }
     const mirrored = EXIT_MIRROR[spec];
     if (mirrored) return mirrored;
   }
@@ -217,11 +274,20 @@ function mirrorExitEasing(spec: MotionEasing | undefined, fallback: EasingFn): E
 // Phase normalization
 // -----------------------------------------------------------------------------
 
-interface NormalizedPhase {
+/** Normalized phase layout after percent/seconds resolve to scene fractions 0–1. */
+export interface NormalizedPhase {
   name: string;
   start: number;
   end: number;
   fraction: number;
+}
+
+/**
+ * Pure layout of director phases against a total duration.
+ * Used by createDirector and by inspect/probe tooling (no timeline required).
+ */
+export function layoutPhases(cfg: PhaseConfig, totalSeconds: number): NormalizedPhase[] {
+  return normalizePhases(cfg, totalSeconds);
 }
 
 function parsePhaseDuration(value: string, totalSeconds: number): number {
@@ -427,6 +493,7 @@ function makeResult(
 export function createDirector<P extends PhaseConfig | undefined = undefined>(
   ctx: DirectorContext,
   phases?: P,
+  opts?: DirectorOpts,
 ): DirectorOf<P> {
   const cfg = (phases ?? DEFAULT_PHASES) as PhaseConfig;
   const totalSeconds = ctx.timeline.durationSeconds > 0 ? ctx.timeline.durationSeconds : 1;
@@ -434,6 +501,9 @@ export function createDirector<P extends PhaseConfig | undefined = undefined>(
   const phaseMap = new Map<string, NormalizedPhase>(ordered.map((p) => [p.name, p]));
   const sp = ctx.timeline.progress;
   const secs = ctx.timeline.seconds;
+  const tonePreset: MotionTonePreset | null = opts?.tone
+    ? getMotionTone(opts.tone)
+    : null;
 
   const firstPhase = ordered[0]!;
   const lastPhase = ordered[ordered.length - 1]!;
@@ -500,42 +570,50 @@ export function createDirector<P extends PhaseConfig | undefined = undefined>(
     return raw > 0 && raw < 1;
   }
 
-  function motion(opts: MotionOpts = {}): MotionResult {
-    const {
-      x: startX = 0,
-      y: startY = 20,
-      scale: startScale = 1,
-      rotate: startRotate = 0,
-      blur: startBlur = 0,
-      fromOpacity = 0,
-      during,
-      at = "0s",
-      for: forOpt = "100%",
-      window,
-      easing: easingSpec,
-      exitEasing: exitEasingSpec,
-      exit = true,
-    } = opts;
+  function motion(motionOpts: MotionOpts = {}): MotionResult {
+    const toneEnter = tonePreset?.enter;
+    const startX = motionOpts.x ?? 0;
+    const startY = motionOpts.y ?? toneEnter?.y ?? 24;
+    const startScale = motionOpts.scale ?? toneEnter?.scale ?? 1;
+    const startRotate = motionOpts.rotate ?? 0;
+    const startBlur = motionOpts.blur ?? toneEnter?.blur ?? 0;
+    const fromOpacity = motionOpts.fromOpacity ?? toneEnter?.fromOpacity ?? 0;
+    const during = motionOpts.during;
+    const at = motionOpts.at ?? "0s";
+    const window = motionOpts.window;
+    const easingSpec = motionOpts.easing ?? tonePreset?.enterEasing;
+    const exitEasingSpec = motionOpts.exitEasing ?? tonePreset?.exitEasing;
+    const exit = motionOpts.exit ?? true;
 
-    // Enter window
+    // Enter window — omit `for` → omakase wall-clock cap (~375ms)
     let enterStart: number, enterEnd: number;
     if (window) {
       [enterStart, enterEnd] = window;
     } else {
       const phase = during ? phaseOf(during) : firstPhase;
-      const span = phase.end - phase.start;
-      const atFrac = parseMotionTime(at, span, totalSeconds);
-      const forFrac = parseMotionTime(forOpt, span, totalSeconds);
+      const phaseSpan = phase.end - phase.start;
+      const atFrac = parseMotionTime(at, phaseSpan, totalSeconds);
+      let forFrac: number;
+      if (motionOpts.for !== undefined) {
+        forFrac = parseMotionTime(motionOpts.for, phaseSpan, totalSeconds);
+      } else {
+        const capFrac = DEFAULT_ENTER_CAP_SECONDS / totalSeconds;
+        forFrac = Math.min(phaseSpan - atFrac, capFrac, phaseSpan);
+        if (forFrac <= 0) forFrac = Math.max(0, phaseSpan - atFrac);
+      }
       enterStart = phase.start + atFrac;
       enterEnd = enterStart + forFrac;
     }
     const enterSpan = enterEnd - enterStart;
     const enterRaw = enterSpan <= 0 ? (sp >= enterStart ? 1 : 0)
       : clamp01((sp - enterStart) / enterSpan);
-    const enterEasingFn = resolveEasing(easingSpec, DEFAULT_ENTER_EASING);
+    const enterDefault = tonePreset
+      ? resolveEasing(tonePreset.enterEasing, DEFAULT_ENTER_EASING)
+      : DEFAULT_ENTER_EASING;
+    const enterEasingFn = resolveEasing(easingSpec, enterDefault);
     const enter = enterEasingFn(enterRaw);
 
-    // Exit window + pose
+    // Exit window + pose — auto exit uses 75% of last phase (faster resolve)
     const exitOff = exit === false;
     const exitOpts: Partial<MotionOpts> = typeof exit === "object" ? exit : {};
     let exitStart: number, exitEnd: number, exitActive: boolean;
@@ -543,15 +621,36 @@ export function createDirector<P extends PhaseConfig | undefined = undefined>(
       exitActive = false; exitStart = 0; exitEnd = 0;
     } else if (exitOpts.window) {
       [exitStart, exitEnd] = exitOpts.window; exitActive = true;
+    } else if (exitOpts.for !== undefined || exitOpts.at !== undefined) {
+      const phase = lastPhase;
+      const phaseSpan = phase.end - phase.start;
+      const atFrac = exitOpts.at !== undefined
+        ? parseMotionTime(exitOpts.at, phaseSpan, totalSeconds)
+        : 0;
+      const forFrac = exitOpts.for !== undefined
+        ? parseMotionTime(exitOpts.for, phaseSpan, totalSeconds)
+        : phaseSpan * DEFAULT_EXIT_PHASE_SCALE;
+      exitStart = phase.start + atFrac;
+      exitEnd = exitStart + forFrac;
+      exitActive = ordered.length >= 2 && lastPhase.name !== firstPhase.name;
     } else if (ordered.length >= 2 && lastPhase.name !== firstPhase.name) {
-      exitStart = lastPhase.start; exitEnd = lastPhase.end; exitActive = true;
+      const phaseSpan = lastPhase.end - lastPhase.start;
+      const exitScale = tonePreset
+        ? Math.min(1, 1 / tonePreset.exitSpeed)
+        : DEFAULT_EXIT_PHASE_SCALE;
+      exitStart = lastPhase.start;
+      exitEnd = lastPhase.start + phaseSpan * exitScale;
+      exitActive = true;
     } else {
       exitActive = false; exitStart = 0; exitEnd = 0;
     }
     const exitSpan = exitEnd - exitStart;
     const exitRaw = !exitActive || exitSpan <= 0 ? 0
       : clamp01((sp - exitStart) / exitSpan);
-    const exitEasingFn = mirrorExitEasing(exitEasingSpec ?? easingSpec, DEFAULT_EXIT_EASING);
+    const exitDefault = tonePreset
+      ? resolveEasing(tonePreset.exitEasing, DEFAULT_EXIT_EASING)
+      : DEFAULT_EXIT_EASING;
+    const exitEasingFn = mirrorExitEasing(exitEasingSpec ?? easingSpec, exitDefault);
     const exitEased = exitEasingFn(exitRaw);
 
     const exitToX = exitOpts.x ?? -startX;

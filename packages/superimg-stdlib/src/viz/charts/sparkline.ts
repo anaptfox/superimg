@@ -48,7 +48,8 @@ export function sparkline(box: Box, values: number[], opts: SparklineOpts = {}):
     const areaD = areaGen(points) ?? "";
     const fillOp = opts.animate === "draw" ? opacity * 0.35 : 0.2 * grow;
     if (opts.animate === "draw") {
-      const clipId = `spark-fill-${Math.random().toString(36).slice(2, 9)}`;
+      // Deterministic id (avoid Math.random — parallel/export stable)
+      const clipId = `spark-fill-${box.x | 0}-${box.y | 0}-${box.width | 0}-${values.length}`;
       parts.push(
         `<defs><clipPath id="${clipId}"><rect x="${box.x}" y="${box.y}" width="${(box.width * progress).toFixed(1)}" height="${box.height}"/></clipPath></defs>`,
         `<path d="${areaD}" fill="${color}" opacity="${fillOp.toFixed(3)}" clip-path="url(#${clipId})"/>`,
