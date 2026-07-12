@@ -2,7 +2,6 @@
 
 import { useRef, useState, useCallback, useMemo } from "react";
 import { Player, type PlayerRef } from "superimg/react";
-import { usePlaygroundExport } from "superimg/react/export";
 import {
   timelineTemplate,
   calculateTimelineDuration,
@@ -26,6 +25,7 @@ export default function Page() {
   const [videoData, setVideoData] = useState<TimelineData | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const duration = useMemo(
     () =>
@@ -34,12 +34,6 @@ export default function Page() {
         : undefined,
     [videoData],
   );
-
-  const { exporting, exportProgress, exportMp4, download } = usePlaygroundExport({
-    template: timelineTemplate,
-    data: videoData ?? undefined,
-    duration,
-  });
 
   const generate = useCallback(async (inputTopic: string) => {
     const trimmed = inputTopic.trim();
@@ -78,11 +72,32 @@ export default function Page() {
   };
 
   const handleExport = async () => {
-    if (exporting) return;
-    const blob = await exportMp4();
-    if (blob) {
+    if (exporting || !videoData) return;
+    setExporting(true);
+    try {
+      const res = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: videoData }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error ?? `Export failed: ${res.status}`);
+      }
+
+      const blob = await res.blob();
       const filename = `${topic.slice(0, 40).replace(/\s+/g, "-").toLowerCase()}-timeline.mp4`;
-      download(blob, filename);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Export failed");
+      setStatus("error");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -359,7 +374,7 @@ export default function Page() {
                     }}
                   >
                     {exporting
-                      ? `Exporting ${Math.round((exportProgress ?? 0) * 100)}%…`
+                      ? "Exporting…"
                       : "Download MP4"}
                   </button>
                 </>
@@ -386,7 +401,7 @@ export default function Page() {
               ["1", "You type a topic"],
               ["2", "AI SDK generates structured JSON (title, events, accent color)"],
               ["3", "SuperImg Player renders every frame in your browser — 30fps"],
-              ["4", "Click Download MP4 to export headlessly to a file"],
+              ["4", "Click Download MP4 to render server-side with Playwright and download the file"],
             ].map(([n, text]) => (
               <div key={n} style={{ display: "flex", gap: 12, padding: "6px 0", alignItems: "flex-start" }}>
                 <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, fontWeight: 700, minWidth: 16, marginTop: 1 }}>{n}</span>

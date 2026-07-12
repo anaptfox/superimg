@@ -3,7 +3,6 @@ import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
 import { clientTools, createChatClientOptions } from "@tanstack/ai-client";
 import { Player, type PlayerRef } from "superimg/react";
-import { usePlaygroundExport } from "superimg/react/export";
 import { TimelineSchema, type ProviderId, type TimelineData } from "#/lib/ai/schema";
 import { previewAccentDef } from "#/lib/ai/tools";
 import {
@@ -38,6 +37,8 @@ function Home() {
   const [accentPreview, setAccentPreview] = useState<string | null>(null);
   const [videoData, setVideoData] = useState<TimelineData | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   const previewAccent = useMemo(
     () =>
@@ -77,12 +78,6 @@ function Home() {
       videoData ? calculateTimelineDuration(videoData.events.length) : undefined,
     [videoData],
   );
-
-  const { exporting, exportProgress, exportMp4, download } = usePlaygroundExport({
-    template: timelineTemplate,
-    data: videoData ?? undefined,
-    duration,
-  });
 
   useEffect(() => {
     if (!final) return;
@@ -124,10 +119,31 @@ function Home() {
 
   const handleExport = async () => {
     if (exporting || !videoData) return;
-    const blob = await exportMp4();
-    if (blob) {
+    setExporting(true);
+    setExportError("");
+    try {
+      const res = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: videoData }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error ?? `Export failed: ${res.status}`);
+      }
+
+      const blob = await res.blob();
       const slug = (videoData.title || topic).slice(0, 40).replace(/\s+/g, "-").toLowerCase();
-      download(blob, `${slug}-timeline.mp4`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug}-timeline.mp4`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -492,14 +508,15 @@ function Home() {
                       cursor: exporting ? "not-allowed" : "pointer",
                     }}
                   >
-                    {exporting
-                      ? `Exporting ${Math.round((exportProgress ?? 0) * 100)}%…`
-                      : "Download MP4"}
+                    {exporting ? "Exporting…" : "Download MP4"}
                   </button>
                 </>
               )}
             </div>
           </div>
+          {exportError && (
+            <p style={{ color: "#f87171", fontSize: 12, margin: "0 16px 12px" }}>{exportError}</p>
+          )}
         </div>
 
         <div
@@ -529,7 +546,7 @@ function Home() {
               ["1", "useChat streams AG-UI SSE from /api/chat (no hosted gateway)"],
               ["2", "Server tool enrich_topic pauses for approval; client tool preview_accent updates UI"],
               ["3", "Structured output (TimelineSchema) streams into partial → final"],
-              ["4", "SuperImg Player renders frames; usePlaygroundExport downloads MP4"],
+              ["4", "SuperImg Player renders frames in the browser; Download MP4 renders server-side"],
             ].map(([n, text]) => (
               <div
                 key={n}

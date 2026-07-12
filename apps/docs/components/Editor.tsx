@@ -12,7 +12,7 @@ import {
   type ExportOptions,
 } from "superimg/react";
 import { useCompiledTemplate } from "superimg/react/compile";
-import { usePlayerSession } from "superimg/react/export";
+import { usePlayerSession } from "superimg/react/session";
 import {
   playgroundAssetResolver,
   resolvePlaygroundAssets,

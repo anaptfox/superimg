@@ -2,7 +2,6 @@
 
 import { useRef, useState, useCallback, useMemo } from "react";
 import { Player, type PlayerRef } from "superimg/react";
-import { usePlaygroundExport } from "superimg/react/export";
 import {
   karaokeTemplate,
   calculateKaraokeDuration,
@@ -31,17 +30,12 @@ export default function Page() {
   const [videoData, setVideoData] = useState<KaraokeData | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const duration = useMemo(
     () => (videoData ? calculateKaraokeDuration(videoData) : undefined),
     [videoData],
   );
-
-  const { exporting, exportProgress, exportMp4, download } = usePlaygroundExport({
-    template: karaokeTemplate,
-    data: videoData ?? undefined,
-    duration,
-  });
 
   const generate = useCallback(
     async (input: { url?: string; useFixture?: boolean }) => {
@@ -90,14 +84,35 @@ export default function Page() {
 
   const handleExport = async () => {
     if (exporting || !videoData) return;
-    const blob = await exportMp4({ format });
-    if (blob) {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: videoData, format }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error ?? `Export failed: ${res.status}`);
+      }
+
+      const blob = await res.blob();
       const slug = videoData.title
         .slice(0, 40)
         .replace(/\s+/g, "-")
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, "");
-      download(blob, `${slug || "blog"}-readalong.mp4`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug || "blog"}-readalong.mp4`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Export failed");
+      setStatus("error");
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -420,7 +435,7 @@ export default function Page() {
                     }}
                   >
                     {exporting
-                      ? `Exporting ${Math.round((exportProgress ?? 0) * 100)}%…`
+                      ? "Exporting…"
                       : "Download MP4"}
                   </button>
                 </>
@@ -447,7 +462,7 @@ export default function Page() {
               ["1", "Paste a blog URL — the server fetches and extracts readable text (Mozilla Readability)"],
               ["2", "Word timings are estimated from your WPM setting and punctuation pauses"],
               ["3", "SuperImg Player renders the karaoke read-along live in your browser"],
-              ["4", "Download MP4 exports headlessly in the browser — no Playwright needed"],
+              ["4", "Download MP4 renders server-side with Playwright and streams back the file"],
             ].map(([n, text]) => (
               <div key={n} style={{ display: "flex", gap: 12, padding: "6px 0", alignItems: "flex-start" }}>
                 <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, fontWeight: 700, minWidth: 16, marginTop: 1 }}>{n}</span>
