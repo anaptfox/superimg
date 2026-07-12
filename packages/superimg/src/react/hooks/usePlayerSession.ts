@@ -24,6 +24,8 @@ import {
 } from "../utils/subscribeToPlayerRef.js";
 
 export interface UsePlayerSessionOptions {
+  /** `unknown` breaks assignability of a template's own `render(ctx: RenderContext<TData>)`. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   template: TemplateModule<any> | ComposedTemplate | null;
   data?: Record<string, unknown>;
   format?: FormatOption;

@@ -17,7 +17,7 @@ export default defineConfig({
     "react/react-server": "src/react/react-server.ts",
     "react/player": "src/react/player.ts",
     "react/compile": "src/react/compile.ts",
-    "react/session": "src/react/export.ts",
+    "react/session": "src/react/session.ts",
   },
   define: sharedDefine,
   deps: platformDeps,

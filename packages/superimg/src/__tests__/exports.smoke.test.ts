@@ -12,6 +12,7 @@ const pkg = JSON.parse(
 /** Built artifacts that must exist and be importable after `pnpm run build`. */
 const distEntrypoints = [
   ["index", "index.js"],
+  ["index.server", "index.server.js"],
   ["index.react-server", "index.react-server.js"],
   ["index.browser", "index.browser.js"],
   ["index.edge", "index.edge.js"],
@@ -54,7 +55,7 @@ describe("package.json exports map", () => {
     expect(keys).toContain("./react/player");
     expect(keys).toContain("./react/compile");
     expect(keys).toContain("./react/session");
-    expect(keys).not.toContain("./server");
+    expect(keys).toContain("./server");
     expect(keys).not.toContain("./export");
     expect(keys).not.toContain("./runtime-web");
     expect(keys).not.toContain("./react/export");

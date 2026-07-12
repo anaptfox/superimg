@@ -9,7 +9,10 @@ export const workspaceBundle = [
   "@superimg/stdlib",
   /^@superimg\/core/,
   "@superimg/media",
+  "@superimg/node",
+  /^@superimg\/node\//,
   "@superimg/player",
+  "@superimg/playwright",
   "@superimg/skill",
   "zod",
 ];
@@ -91,6 +94,9 @@ export const superimgNeverBundle = [
   "simplex-noise",
   "morphdom",
   "zustand",
+  "rolldown",
+  "oxc-parser",
+  /^@oxc-parser\//,
   ...wasmExternals,
   // Stdlib peers that may remain external on browser/edge platform builds
   "path-data-parser",

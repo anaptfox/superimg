@@ -25,18 +25,6 @@ export type {
 export { createRenderPlan, executeRenderPlan } from "@superimg/cli/server";
 
 // =============================================================================
-// PLAYWRIGHT (server default engine)
-// =============================================================================
-
-export { PlaywrightEngine, createRenderSession, RenderSession } from "@superimg/cli/server";
-export type {
-  PlaywrightEngineOptions,
-  RenderSessionEngine,
-  RenderSessionOptions,
-  RenderSessionRenderOptions,
-} from "@superimg/cli/server";
-
-// =============================================================================
 // HIGH-LEVEL API
 // =============================================================================
 

@@ -14,15 +14,15 @@ const pkg = JSON.parse(
 };
 
 describe("superimg package boundary", () => {
-  it("does not expose server, export, or runtime-web subpaths", () => {
+  it("does not expose export or runtime-web subpaths", () => {
     const keys = Object.keys(pkg.exports ?? {});
-    expect(keys).not.toContain("./server");
+    expect(keys).toContain("./server");
     expect(keys).not.toContain("./export");
     expect(keys).not.toContain("./runtime-web");
     expect(keys).not.toContain("./react/export");
   });
 
-  it("does not install server/browser-export runtimes from root superimg", () => {
+  it("does not install browser-export/CLI-only runtimes from root superimg", () => {
     const installed = {
       ...(pkg.dependencies ?? {}),
       ...(pkg.optionalDependencies ?? {}),
@@ -39,11 +39,13 @@ describe("superimg package boundary", () => {
       "mediabunny",
       "playwright",
       "playwright-core",
-      "sharp",
       "vite",
       "ws",
     ]) {
       expect(installed[name]).toBeUndefined();
     }
+    // sharp is a lazily-imported, optional dependency of superimg/server's
+    // still-image (webp/jpeg) encoding path only.
+    expect(pkg.optionalDependencies?.sharp).toBeDefined();
   });
 });

@@ -10,6 +10,7 @@ export default defineConfig({
   entry: {
     index: "src/index.shared.ts",
     "index.react-server": "src/index.react-server.ts",
+    "index.server": "src/index.server.ts",
     ...stdlibEntries,
   },
   define: sharedDefine,

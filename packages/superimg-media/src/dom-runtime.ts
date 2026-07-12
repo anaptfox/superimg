@@ -24,7 +24,9 @@ function logRenderError(context: string, error: unknown): void {
   superimgDebug(`render failed: ${context}`, error);
 }
 
-/** Accept any define()-authored template without casts (contravariant render ctx). */
+/** Accept any define()-authored template without casts (contravariant render ctx);
+ *  `unknown` breaks assignability of a template's own `render(ctx: RenderContext<TData>)`. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type RuntimeInput = AnyTemplateModule<any> | ComposedTemplate;
 export type RuntimePlaybackMode = "once" | "loop";
 

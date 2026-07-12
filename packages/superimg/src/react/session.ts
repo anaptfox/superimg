@@ -1,5 +1,6 @@
-//! SuperImg React export hooks — internal source retained for package tests.
-//! Public browser export lives in @superimg/browser-export.
+//! SuperImg React session hooks — published as "superimg/react/session".
+//! Kept off the main "superimg/react" entry so its export stack
+//! (mediabunny / snapdom) doesn't bloat preview-only consumers.
 "use client";
 
 export { useExport, type UseExportReturn } from "./hooks/useExport.js";
