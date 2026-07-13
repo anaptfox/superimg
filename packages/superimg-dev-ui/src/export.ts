@@ -125,6 +125,7 @@ export function initExportHandlers(
         { fps: devConfig.fps, width: w, height: h, duration: devConfig.duration } satisfies ExportConfig,
         renderAtExportSize,
         {
+          signal: exportAbortController.signal,
           onProgress: (f, t) => {
             if (exportAbortController?.signal.aborted) return;
             const pct = Math.round((f / t) * 100);

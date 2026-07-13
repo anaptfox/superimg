@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "bundles": {
+    "player": 180000,
+    "reactPlayer": 195000,
+    "reactCompile": 190000,
+    "reactSession": 180000
+  },
+  "docsRoutes": {
+    "/docs/[...slug]": 290000,
+    "/blog/[slug]": 270000,
+    "/": 270000,
+    "/playground": 270000
+  },
+  "examples": {
+    "totalGzipBytes": 400000,
+    "p75GzipBytes": 4500,
+    "p95GzipBytes": 6500,
+    "maxGzipBytes": 35000
+  },
+  "package": {
+    "maxTarballBytes": 4000000,
+    "maxUnpackedBytes": 16000000,
+    "maxSourceMapFiles": 0
+  },
+  "runtime": {
+    "rootImportP95Ms": 100,
+    "rootImportMaxRssMb": 100,
+    "playerImportP95Ms": 30,
+    "playerImportMaxRssMb": 80,
+    "serverImportP95Ms": 650,
+    "serverImportMaxRssMb": 320,
+    "cliHelpP95Ms": 150,
+    "listShallowP95Ms": 250,
+    "inspectSummaryP95Ms": 400
+  },
+  "browser": {
+    "chromiumLaunchMs": 750,
+    "playerFirstFrameP95Ms": 100,
+    "playerScrubP95Ms": 32,
+    "snapdomWarmP95Ms": 100,
+    "headlessCaptureP50Ms": 40,
+    "headlessCaptureP95Ms": 60,
+    "hmrP95Ms": 100,
+    "maxStressRssGrowthMb": 100
+  },
+  "parity": {
+    "maxMeanChannelDelta": 1.5,
+    "maxDifferingPixelRatio": 0.01,
+    "channelThreshold": 12
+  }
+}

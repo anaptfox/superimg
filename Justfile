@@ -29,11 +29,10 @@ dev:
 generate-examples:
     cd "{{root}}" && npx tsx scripts/generate-examples.ts
 
-# Start the docs site (port 3001) — builds workspace deps first
+# Start the docs site (port 3001) with Turbo-managed dependencies
 docs:
-    cd "{{root}}" && npx tsx scripts/generate-examples.ts
-    cd "{{root}}" && pnpm --filter 'superimg...' run build
-    cd "{{root}}/apps/docs" && pnpm run dev
+    cd "{{root}}" && pnpm run build:docs
+    cd "{{root}}" && pnpm --filter docs run dev
 
 # Run an example by name
 example name:
@@ -81,24 +80,17 @@ test-coverage:
 lint:
     cd "{{root}}" && pnpm run lint
 
-# Type-check (builds deps first, then checks docs app)
+# Type-check every workspace that declares a type-check task
 typecheck:
-    @just build
-    cd "{{root}}/apps/docs" && pnpm run check-types
+    cd "{{root}}" && pnpm run typecheck
 
 # Clean all build artifacts
 clean:
     cd "{{root}}" && pnpm run clean
 
-# Run all quality gates: build + test + lint + typecheck + verify harness/virtuals
+# Run the authoritative Turbo quality graph
 check:
-    @just _spin "Building..." build
-    @just _spin "Testing..." test
-    @just _spin "Linting..." lint
-    @just _spin "Type-checking..." typecheck
-    @just _spin "Verifying harness integrity..." verify-harness
-    @just _spin "Verifying browser virtuals..." verify-browser-virtuals
-    @gum style --foreground 212 "✓ All checks passed!"
+    cd "{{root}}" && pnpm run check
 
 [private]
 _spin title task:
@@ -117,11 +109,11 @@ _spin title task:
 
 # Verify harness bundle integrity (source hash matches)
 verify-harness:
-    cd "{{root}}/packages/superimg-playwright" && pnpm run verify:harness
+    cd "{{root}}/packages/superimg-playwright" && pnpm run verify:generated
 
 # Verify browser virtual modules are built from current sources
 verify-browser-virtuals:
-    cd "{{root}}/packages/superimg-core" && pnpm run verify:virtuals
+    cd "{{root}}/packages/superimg-core" && pnpm run verify:generated
 
 # Gate script for greenfield timing redesign (zero backward compat)
 verify-timing-redesign scratch="":
@@ -145,13 +137,14 @@ bump:
     if gum confirm "Bump superimg ($BUMP_TYPE)?"; then
         cd "$ROOT/packages/superimg" && pnpm version $BUMP_TYPE --no-git-tag-version
         NEW_VERSION=$(cd "$ROOT/packages/superimg" && node -p 'require("./package.json").version')
+        cd "$ROOT/packages/superimg-cli" && pnpm version "$NEW_VERSION" --no-git-tag-version
         echo ""
         gum style --foreground 212 "✓ superimg bumped to v$NEW_VERSION!"
         echo ""
         just versions
         echo ""
         # Commit the version bump so the working tree is clean for publish
-        cd "$ROOT" && git add packages/superimg/package.json
+        cd "$ROOT" && git add packages/superimg/package.json packages/superimg-cli/package.json
         cd "$ROOT" && git commit -m "chore: bump to v$NEW_VERSION"
         cd "$ROOT" && git tag "v$NEW_VERSION"
         gum style --foreground 212 "✓ Committed and tagged v$NEW_VERSION"
@@ -168,7 +161,7 @@ publish:
 
     # Verify harness integrity before publishing
     echo "Verifying harness integrity..."
-    cd "$ROOT/packages/superimg-playwright" && pnpm run verify:harness
+    cd "$ROOT/packages/superimg-playwright" && pnpm run verify:generated
     echo ""
 
     just versions

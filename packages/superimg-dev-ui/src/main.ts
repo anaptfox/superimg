@@ -17,6 +17,7 @@ interface DevConfig {
   duration: number;
   outputs?: Record<string, { width?: number; height?: number; fps?: number }>;
   audio?: AudioValue;
+  assetUrls?: Record<string, string>;
   templateDir?: string;
 }
 
@@ -434,9 +435,15 @@ async function initPlayer() {
     setStatus("Loading template...");
     const template = await loadTemplate(templatePath);
     loadedTemplate = template;
-    const loadOpts = currentBundle
-      ? { sourceMap: currentBundle.sourceMap, sourceFile: currentBundle.sourceFile }
+    const assetResolver = devConfig.assetUrls
+      ? (filename: string) => devConfig.assetUrls?.[filename] ?? filename
       : undefined;
+    const loadOpts = {
+      ...(currentBundle
+        ? { sourceMap: currentBundle.sourceMap, sourceFile: currentBundle.sourceFile }
+        : {}),
+      ...(assetResolver ? { assetResolver } : {}),
+    };
     const result = await player.load(template, loadOpts);
 
     if (result.status === "error") {
@@ -457,7 +464,7 @@ async function initPlayer() {
       const previewClip = normalizeAudioInput(devConfig.audio).clips[0];
       if (previewClip) {
       audioElement = new Audio();
-      audioElement.src = `/api/assets?path=${encodeURIComponent(previewClip.src)}`;
+      audioElement.src = previewClip.src;
       audioElement.volume = previewClip.volume ?? 1;
       audioElement.loop = previewClip.loop ?? false;
       audioElement.preload = "auto";

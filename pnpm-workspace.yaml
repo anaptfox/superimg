@@ -1,9 +1,9 @@
 packages:
   - packages/*
   - apps/*
-
-  - examples/*/*
-  - videos
+  - examples/apps/*
+  - tooling/*
+  - tests/integration
 
 allowBuilds:
   '@parcel/watcher': set this to true or false

@@ -1,0 +1,149 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "cacheDir": ".turbo/cache",
+  "futureFlags": {
+    "affectedUsingTaskInputs": true
+  },
+  "globalDependencies": [
+    ".turbo-platform.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml"
+  ],
+  "tasks": {
+    "generate": {
+      "dependsOn": ["^build"],
+      "outputs": [".generated/**"]
+    },
+    "docs#generate": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/generate-examples.ts",
+        "$TURBO_ROOT$/examples/_templates.json",
+        "$TURBO_ROOT$/examples/basics/**",
+        "$TURBO_ROOT$/examples/composed/**",
+        "$TURBO_ROOT$/examples/data/**",
+        "$TURBO_ROOT$/examples/developer/**",
+        "$TURBO_ROOT$/examples/events/**",
+        "$TURBO_ROOT$/examples/interfaces/**",
+        "$TURBO_ROOT$/examples/marketing/**",
+        "$TURBO_ROOT$/examples/social/**",
+        "$TURBO_ROOT$/examples/vector/**"
+      ],
+      "outputs": [
+        "lib/video/examples/from-templates.ts",
+        "lib/video/examples/from-builtins.ts",
+        "public/playground/examples/**",
+        "public/playground/assets/**",
+        "public/playground/.build-cache.json"
+      ]
+    },
+    "docs#build": {
+      "dependsOn": ["^build", "generate"],
+      "env": ["NODE_ENV"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/generate-examples.ts",
+        "$TURBO_ROOT$/examples/_templates.json",
+        "$TURBO_ROOT$/examples/basics/**",
+        "$TURBO_ROOT$/examples/composed/**",
+        "$TURBO_ROOT$/examples/data/**",
+        "$TURBO_ROOT$/examples/developer/**",
+        "$TURBO_ROOT$/examples/events/**",
+        "$TURBO_ROOT$/examples/interfaces/**",
+        "$TURBO_ROOT$/examples/marketing/**",
+        "$TURBO_ROOT$/examples/social/**",
+        "$TURBO_ROOT$/examples/vector/**"
+      ],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "docs#lint": {
+      "dependsOn": ["generate"],
+      "outputs": []
+    },
+    "build": {
+      "dependsOn": ["^build", "generate"],
+      "env": ["NODE_ENV"],
+      "outputs": [
+        "dist/**",
+        "build/**",
+        ".next/**",
+        "!.next/cache/**",
+        ".output/**",
+        ".vinxi/**",
+        ".astro/**",
+        ".react-router/**"
+      ]
+    },
+    "superimg#build:node": {
+      "dependsOn": ["^build"],
+      "env": ["NODE_ENV"],
+      "outputs": [".build/node/**"]
+    },
+    "superimg#build:define": {
+      "dependsOn": ["^build"],
+      "env": ["NODE_ENV"],
+      "outputs": [".build/define/**"]
+    },
+    "superimg#build:edge": {
+      "dependsOn": ["^build"],
+      "env": ["NODE_ENV"],
+      "outputs": [".build/edge/**"]
+    },
+    "superimg#build:browser": {
+      "dependsOn": ["^build"],
+      "env": ["NODE_ENV"],
+      "outputs": [".build/browser/**"]
+    },
+    "superimg#assemble": {
+      "dependsOn": ["build:node", "build:define", "build:edge", "build:browser"],
+      "outputs": ["dist/**"]
+    },
+    "superimg#build": {
+      "dependsOn": ["assemble"],
+      "outputs": []
+    },
+    "@superimg/codex-plugin#build": {
+      "dependsOn": ["^build", "generate"],
+      "outputs": ["plugin/skills/**", "plugin/.mcp.json"]
+    },
+    "test": {
+      "dependsOn": ["^build", "generate"],
+      "env": ["CI"],
+      "outputs": []
+    },
+    "superimg#test": {
+      "dependsOn": ["build"],
+      "env": ["CI"],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["^build", "generate"],
+      "outputs": []
+    },
+    "check-types": {
+      "dependsOn": ["^build", "generate"],
+      "outputs": [".next/types/**"]
+    },
+    "lint": {
+      "outputs": []
+    },
+    "//#lint:root": {
+      "inputs": ["$TURBO_DEFAULT$", "eslint.config.js", "packages/**", "tooling/**", "tests/**"],
+      "outputs": []
+    },
+    "verify": {
+      "dependsOn": ["build", "test", "typecheck"],
+      "outputs": []
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true,
+      "interruptible": true
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

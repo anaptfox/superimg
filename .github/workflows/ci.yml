@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Restore Turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}-
+            turbo-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Turbo graph
+        run: |
+          pnpm turbo:prepare
+          pnpm exec turbo run build --filter=!docs --dry=json > /tmp/turbo-graph.json
+
+      - name: Check affected workspaces
+        if: github.event_name == 'pull_request'
+        run: pnpm check:affected
+
+      - name: Check full workspace
+        if: github.event_name != 'pull_request'
+        run: pnpm check
+
+      - name: Verify packed public package
+        if: github.event_name != 'pull_request'
+        working-directory: packages/superimg
+        run: npm pack --ignore-scripts --pack-destination /tmp
+
+      - name: Record cold and warm build summaries
+        if: github.event_name != 'pull_request'
+        run: |
+          pnpm exec turbo run build --filter=!docs --force --summarize
+          pnpm exec turbo run build --filter=!docs --summarize
