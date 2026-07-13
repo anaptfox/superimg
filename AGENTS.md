@@ -27,7 +27,7 @@
 | **Layers** (optional) | `std.layers()` | Shot stack — bg → tint → content → overlay → fx |
 | **Director** | `ctx.director()` | Phase timing + motion (`t.motion().style`, `tween`, `in`) |
 
-**Satellites:** `ctx.track()` (transcript/marker sync), `std.carousel()` / `std.stack()` (ordered item choreography), `std.css` / `std.layout` (spatial layout), `interpolate` / `spring` / `stagger` (escape hatches), `mergeMotion` (combine motions), `std.reveal.*` (transition overlay utilities — mount on `L.fx()`, not a compositional tier).
+**Satellites:** `ctx.track()` (transcript/marker sync), `std.carousel()` / `std.stack()` (ordered item choreography), `std.css` / `std.layout` (spatial layout), `interpolate` / `spring` / `stagger` (escape hatches), `mergeMotion` (combine motions), `std.transition.*` (full-frame transition FX — mount on `L.fx()`, not a compositional tier).
 
 Simple centered card → template + director. Layered broadcast layout → add layers. Voiceover sync → track + director.
 
@@ -38,13 +38,14 @@ Single `render(ctx)` call — no `timeline`. Use `std.css`, `std.layout`, `std.c
 ### Footguns
 
 - **image/svg:** no `ctx.director()` or `std.layers()` — types exclude them
-- **`std.reveal` overlays vs `std.reveal.clip`:** full-frame transition FX vs clip-path strings
+- **`std.transition.*` vs `std.reveal.*`:** full-frame FX overlays vs clip-path strings
 - **Broadcast overlays:** `std.layers({ mode: "transparent" })`
 - **Flat HTML (no layers):** set root `width` / `height` via `std.css`
 - **`compose()` vs `mergeMotion()`:** scenes vs motion values
-- **Clock:** `timeline.seconds` is always `progress × durationSeconds` — use `timeline` for scene-local time, not `globalTimeSeconds`
-- **Phases on stills:** prefer **percent** phases summing to 100% — second-based phases can blow up when single-frame paths use short totalSeconds
+- **Clock:** `timeline.seconds` is always `progress × durationSeconds` — use `timeline` for scene-local time, not `ctx.global`
+- **Phases on stills:** prefer **percent** phases summing to 100% — second-based phases can blow up when single-frame paths use short totalSeconds. Prefer `layoutTimeline({…seconds})` which always emits percents.
 - **Config const refs:** `const DURATION = 12; duration: DURATION` is folded by metadata AST; dynamic `resolve()` duration still needs runtime/`inspect`
+- **Fixed duration + stack:** equal slots compress when item count grows — use `resolve` + `layoutTimeline` (+ optional `stack` `weights`) for programmable lists/sessions
 
 ## Quick Start (video)
 
@@ -101,12 +102,44 @@ if (hook.active) {
 **Stack (accumulate — chat, FAQ, lists):**
 ```typescript
 const t = ctx.director({ messages: "90%", hold: "10%" });
-const stk = std.stack(messages, { during: t.in("messages"), lead: 0.05, trail: 0.05 });
+const stk = std.stack(messages, {
+  during: t.in("messages"),
+  lead: 0.05,
+  trail: 0.05,
+  weights: messages.map((m) => Math.max(1, m.text.length / 40)), // optional
+});
 for (let i = 0; i < messages.length; i++) {
   const item = stk.state(i);
   if (item.state === "hidden") continue;
   // item.enter: 0→1 during reveal; item.slot: 0→1 across slot (typing, q→a)
 }
+```
+
+**Variable-length sessions (resolve + layoutTimeline):**
+```typescript
+import { define, layoutTimeline } from "superimg";
+
+function estimate(data: { items: unknown[] }) {
+  return layoutTimeline({
+    intro: 1,
+    main: Math.max(2, data.items.length * 1.2),
+    hold: 0.8,
+  });
+}
+
+export default define({
+  sample: { items: [1, 2, 3] },
+  config: { width: 1920, height: 1080, fps: 30, duration: "8s" }, // AST fallback
+  resolve({ data }) {
+    const { totalSeconds, phases } = estimate(data);
+    return { duration: `${totalSeconds}s`, phases };
+  },
+  render(ctx) {
+    const { phases } = estimate(ctx.data);
+    const t = ctx.director(phases);
+    // …
+  },
+});
 ```
 
 **Carousel (replace — threads, wizards):**
@@ -138,7 +171,7 @@ return clip.html; // not <video autoplay>
 **Layer stack (video/gif, layered scenes):**
 ```typescript
 const L = std.layers({ width, height, mode: "opaque" });
-const wipe = std.reveal.wipe({ progress: t.in("intro"), direction: "diagonal", color: "#000" });
+const wipe = std.transition.wipe({ progress: t.in("intro"), direction: "diagonal", color: "#000" });
 return L.render(
   L.bg(kenBurns.html),
   L.tint("rgba(0,0,0,0.5)"),
@@ -171,10 +204,11 @@ export default define({
 - `ctx.director(phases?)` — video/gif only. `{ motion, tween, value, active, in, clip, at, span, transition, inSpan }`
 - `ctx.track({ words, markers })` — transcript/marker sync using `timeline.seconds`
 - `std.carousel(items, opts)` — one active item; prior items exit (`last: "hold"` keeps final)
-- `std.stack(items, opts)` — accumulate items; `enter` + `slot` for sub-beats
+- `std.stack(items, opts)` — accumulate items; `enter` + `slot`; optional `weights` for unequal slots
+- `std.layoutTimeline(segments)` / `layoutTimeline` — pure seconds → percent phases + `totalSeconds` (use in resolve + render)
 - `std.video.sync(opts, fps)` — frame-accurate embedded `<video>` for headless render
 - `std.layers(opts)` — video/gif only. `.bg()`, `.tint()`, `.content()`, `.overlay()`, `.fx()`, `.handoff()`, `.render()`
-- `std.reveal.wipe/split/curtain/crossfade/iris/handoffLocal()` — transition overlays (utility)
+- `std.transition.wipe/split/curtain/crossfade/iris/handoffLocal()` — transition overlays (utility)
 - `std.stagger.lead(items, progress)` — leading stagger index (sync phone mockups)
 - `std.mergeMotion(...)` — merge motion values (not `compose()`)
 - `std.interpolate`, `std.spring`, `std.stagger`
@@ -185,7 +219,7 @@ export default define({
 
 **DO:** Use `*.media.ts` for all templates. Use `ctx.director()` for phased video/gif animation. Use explicit time units in motion (`at: "0.2s"`, `for: "30%"`). Put shared CSS in `config.inlineCss`. Use `std.css()` for inline styles.
 
-**DON'T:** Use `director`/`layers` in image/svg templates. Return JSX. Mutate state in render. Use `globalTimeSeconds` for scene-local video animation (use `timeline`). Use unitless numeric `at`/`for` in motion calls.
+**DON'T:** Use `director`/`layers` in image/svg templates. Return JSX. Mutate state in render. Do not use `ctx.global` for scene-local animation (use `timeline`). Use unitless numeric `at`/`for` in motion calls.
 
 ## Config
 
@@ -201,8 +235,10 @@ superimg render intro
 superimg render intro --format png --frame 45   # single-frame still
 superimg render intro --format html --frame 45  # HTML snapshot (no browser)
 superimg inspect intro --pretty                 # multi-progress + phases (JSON)
+superimg inspect intro --summary --pretty       # config + phases only (fast)
 superimg inspect intro --diff 0.35,0.85         # what changed between beats?
 superimg list
+superimg list --shallow                         # paths only (no template parse)
 superimg setup
 ```
 
@@ -213,6 +249,9 @@ superimg setup
 ```bash
 # 1. Runtime config + director phases + samples at 0/25/50/75/100%
 superimg inspect path/to/foo.media.ts --pretty
+
+# 1b. Config + phases only (no HTML samples)
+superimg inspect path/to/foo.media.ts --summary --pretty
 
 # 2. Did beat B introduce content vs beat A?
 superimg inspect path/to/foo.media.ts --diff 0.35,0.85
@@ -227,11 +266,11 @@ superimg render path/to/foo.media.ts -y
 | Tool | Use for |
 |------|---------|
 | **`inspect`** | Phases, multi-progress text/colors/`data-eq-key`, semantic `--diff` (default JSON, no browser) |
-| **`info`** | Runtime config + phase summary |
+| **`inspect --summary`** | Config + phases only (fast metadata) |
 | **`validate`** | Crashes, NaN, empty output, bad easing names |
 | **`doctor` / `setup`** | Env / Chromium only |
-| **`render --format html\|png --frame N`** | One exact frame still |
-| **`render --debug-html`** | Full-render HTML dump (heavy) |
+| **`render --format html\|png --frame N`** | One exact frame still (export) |
+| **`list` / `list --shallow`** | Enumerate templates (deep metadata vs paths only) |
 
 `inspect` stdout is machine JSON (`config`, `phases`, `samples`, optional `diff`). Prefer reading that over opening MP4s when fixing timing/content bugs.
 
@@ -260,7 +299,7 @@ The managed block above is the **superimg** skill (API + inspect debug loop). Fo
 | Name | Path | Role |
 |------|------|------|
 | **animator** skill | `skills/animator/SKILL.md` (+ `references/motion-craft.md`, `scene-framing.md`, `svg-techniques.md`) | Timing, easing, stagger, framing, SVG craft, critique checklist. Claude host: `.claude/skills/animator` → symlink to repo skill. |
-| **video-designer** agent | `.claude/agents/video-designer.md` (Claude) · `.codex/agents/video-designer.toml` (Codex) | Heavy visual/scene design for SuperImg: diagrams, line art, palettes, motion graphics, explainers. Loads superimg + animator before implementing. |
+| **video-designer** skill | `skills/video-designer/SKILL.md` (+ `agent.toml` for Codex; host symlinks under `.claude/agents/` / `.codex/agents/`) | Heavy visual/scene design for SuperImg: diagrams, line art, palettes, motion graphics, explainers. Loads superimg + animator before implementing. |
 
 **When to load which**
 1. **superimg** — always for `*.media.ts` API, config, CLI, `inspect`/`render`

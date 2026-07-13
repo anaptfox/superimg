@@ -9,11 +9,8 @@
 import { builtinModules } from "node:module";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { profiles } from "./bundle-deps.mjs";
 import { collectLineImports, isCommentLine } from "./scan-imports.mjs";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const args = process.argv.slice(2);
 let profileName = "superimg";
@@ -34,7 +31,7 @@ if (!policy) {
 }
 
 const { alwaysBundle, neverBundle } = policy;
-const ROOT = resolve(rootArg ?? join(__dirname, "..", profileName === "superimg" ? "superimg" : profileName === "cli" ? "superimg-cli" : "superimg-core"));
+const ROOT = resolve(rootArg ?? process.cwd());
 const DIST = join(ROOT, "dist");
 const PKG_PATH = join(ROOT, "package.json");
 

@@ -9,7 +9,7 @@
 - `setData()` / `setFormat()` → `update({ data })` / `update({ format })`
 - Removed `maxCacheFrames` and `captureFrame()` from `Player`
 - `PlaybackMode` no longer includes `"ping-pong"` (use `std.math.pingPong()` in templates for motion)
-- Removed unused `BrowserScheduler` export from `@superimg/runtime`
+- Removed unused `BrowserScheduler` export from `@superimg/runtime-web`
 - `Player.store` — Zustand store for vanilla timeline/shortcut integrations; React controls use `getRuntimeStore()`
 
 **Breaking:** Audio config is clip-based only — `AudioOptions` and bare `audio: "path.mp3"` are removed.

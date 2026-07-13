@@ -87,25 +87,24 @@ export type {
   SvgRenderContext,
   SvgAnimatedRenderContext,
 
-  // Engine contract types
-  RenderJob,
-  RenderProgress,
-  FrameRendererConfig,
-  FrameRenderer,
-  VideoEncoderConfig,
-  VideoEncoder,
-  RenderEngine,
-  RenderPlan,
-  FramePresenter,
 } from "@superimg/types";
 
-// Template helpers
+// Template authoring helpers. Keep the root runtime graph intentionally small;
+// operational APIs belong to explicit server/browser/edge subpaths.
 export {
   define,
   defineConfig,
   defineBatch,
+  compose,
+  scene,
+  layoutTimeline,
+} from "@superimg/core/template-runtime";
+
+export {
   isAnimatedTemplate,
   isStaticTemplate,
+  isComposedTemplate,
+  isAnyComposedTemplate,
 } from "@superimg/types";
 
 // Error classes
@@ -117,23 +116,3 @@ export {
   RenderError,
   IOError,
 } from "@superimg/types";
-
-// =============================================================================
-// CORE UTILITIES
-// =============================================================================
-
-export {
-  createRenderContext,
-  createImageRenderContext,
-  createSvgRenderContext,
-  resolveRuntimeTemplateInfo,
-  compileTemplate,
-  validateTemplate,
-  CheckpointResolver,
-  compose,
-  scene,
-  transitions,
-  parseDuration,
-} from "@superimg/core";
-export { buildCompositeHtml } from "@superimg/core/html";
-export { isComposedTemplate, isAnyComposedTemplate } from "@superimg/types";

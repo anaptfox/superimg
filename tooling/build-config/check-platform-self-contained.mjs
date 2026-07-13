@@ -4,7 +4,7 @@
  *
  * A downstream consumer copies these dist files verbatim, so their runtime import
  * graph may reference only the host-provided externals below — everything else must
- * be inlined by the build (see platformDeps in build-policy/bundle-deps.mjs).
+ * be inlined by the build (see platformDeps in @superimg/build-config/bundle-deps).
  *
  * Usage:
  *   node check-platform-self-contained.mjs [packageRoot]
@@ -12,16 +12,13 @@
 
 import { readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   collectLineImports,
   isCommentLine,
   LINE_IMPORT_RE,
 } from "./scan-imports.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const ROOT = resolve(process.argv[2] ?? join(__dirname, "..", "superimg"));
+const ROOT = resolve(process.argv[2] ?? process.cwd());
 const DIST = join(ROOT, "dist");
 
 /** Platform closure entry points (relative to dist/). */
@@ -30,6 +27,12 @@ const PLATFORM_ROOTS = {
   player: "player.js",
   reactHook: "react/compile.js",
   compiler: "bundler-browser.js",
+  capabilityCode: "chunks/browser/code.js",
+  capabilityKatex: "chunks/browser/katex.js",
+  capabilityLottie: "chunks/browser/lottie.js",
+  capabilityMermaid: "chunks/browser/mermaid.js",
+  capabilityRough: "chunks/browser/rough.js",
+  capabilityThree: "chunks/browser/three.js",
 };
 
 /** Host-provided externals allowed in every platform closure. */
@@ -123,7 +126,7 @@ if (errors.length) {
   console.error(
     "\n  Platform closures may import only react/react-dom (+ jsx/client subpaths), " +
       "@resvg/resvg-wasm, and @rolldown/browser (compiler only).\n" +
-      "  Add the offending package to platformAlwaysBundle in build-policy/bundle-deps.mjs.",
+      "  Add the offending package to platformAlwaysBundle in @superimg/build-config/bundle-deps.",
   );
   process.exit(1);
 }

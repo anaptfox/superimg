@@ -3,6 +3,17 @@
 
 export * from "./index.shared.js";
 
+// Browser-only operational utilities intentionally excluded from the root
+// authoring API. React compiler/export hooks consume this explicit subpath.
+export {
+  createRenderContext,
+  createImageRenderContext,
+  createSvgRenderContext,
+  resolveRuntimeTemplateInfo,
+  compileTemplate,
+  validateTemplate,
+} from "@superimg/core";
+
 // =============================================================================
 // PLAYER (main browser export)
 // =============================================================================

@@ -7,7 +7,7 @@ import {
   platformNeverBundle,
   superimgAlwaysBundle,
   superimgNeverBundle,
-} from "../build-policy/bundle-deps.mjs";
+} from "@superimg/build-config/bundle-deps";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(__dirname, "package.json"), "utf8"));

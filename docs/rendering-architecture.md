@@ -114,7 +114,7 @@ Direct client-side pixel pipeline using WebCodecs and Snapdom v2.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  BrowserRenderer (private @superimg/runtime)                    │
+│  BrowserRenderer (private @superimg/runtime-web)                │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  HTML String                                                    │
@@ -147,7 +147,7 @@ Direct client-side pixel pipeline using WebCodecs and Snapdom v2.
 └─────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  BrowserEncoder (private @superimg/runtime)                     │
+│  BrowserEncoder (private @superimg/runtime-web)                 │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ImageData                                                      │
@@ -222,8 +222,8 @@ Server-side rendering uses headless Chromium orchestrated from Node.js. Public c
 │  │  2. PlaywrightEngine                (@superimg/playwright) │   │
 │  │     engine.init():                                        │   │
 │  │     - Launch Chromium (headless, DPR=1, frozen clock)     │   │
-│  │     - Start Hono HTTP server for harness                  │   │
-│  │     - Navigate to harness page                            │   │
+│  │     - Start Hono HTTP server for local assets             │   │
+│  │     - Reuse Chromium pages or isolated render contexts    │   │
 │  │     engine.createAdapters():                              │   │
 │  │     - Return { renderer, encoder } adapters               │   │
 │  └────────────────────────┬────────────────────────────────┘   │
@@ -246,15 +246,15 @@ Server-side rendering uses headless Chromium orchestrated from Node.js. Public c
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
-Adapter layer (inside Chromium):
+Adapter layer:
 
 ┌─────────────────────────────────────────────────────────────────┐
-│  PlaywrightFrameRenderer          PlaywrightVideoEncoder        │
+│  PlaywrightFrameRenderer          NodeVideoEncoder              │
 │  (FrameRenderer<Buffer>)          (VideoEncoder<Buffer>)        │
 │                                                                 │
 │  captureFrame(html) →             addFrame(buffer, ts) →        │
-│    page.evaluate(set #frame html)   page.evaluate(addFrame)     │
-│    page.screenshot()                (BrowserEncoder in harness) │
+│    page.evaluate(set #frame html)   decode PNG in Node          │
+│    page.screenshot()                feed Mediabunny source      │
 │    → Buffer (PNG)                                               │
 │                                   finalize() →                  │
 │                                     page.evaluate(finalize)     │
@@ -359,9 +359,9 @@ Templates are real ESM. The bundler plugin maps bare `superimg` / `superimg/defi
 | Path | Resolve target |
 |------|----------------|
 | **Server** (`@superimg/core/bundler`) | Real files: `@superimg/core/template-runtime`, `superimg/define`, stdlib dist |
-| **Browser** (`superimg/bundler-browser` / `@superimg/core/bundler-browser`) | Virtual modules filled at **build time** from those same sources (`scripts/build-browser-virtuals.mjs` → gitignored `browser-virtuals.gen.ts`, then folded into published dist) |
+| **Browser** (`superimg/bundler-browser` / `@superimg/core/bundler-browser`) | Virtual modules filled at **build time** from those same sources (`scripts/build-browser-virtuals.mjs` → cacheable `.generated/browser-virtuals.ts`, then folded into published dist) |
 
-Canonical `define()` lives only in `@superimg/types`. Integrity: `pnpm --filter @superimg/core run verify:virtuals` (also wired into `just check`).
+Canonical `define()` lives only in `@superimg/types`. Integrity: `pnpm --filter @superimg/core run verify:generated` (also wired into `just check`).
 
 ### RenderContext Flow
 
@@ -484,17 +484,17 @@ Canonical `define()` lives only in `@superimg/types`. Integrity: `pnpm --filter 
 
 | File | Description |
 |------|-------------|
-| `packages/superimg-runtime/src/renderer.ts` | `BrowserRenderer` - HTML to ImageData via Snapdom v2 (iframe isolation) |
-| `packages/superimg-runtime/src/encoder.ts` | `BrowserEncoder` - ImageData to MP4 via WebCodecs |
-| `packages/superimg-runtime/src/index.ts` | Private runtime exports bundled behind `superimg/browser` |
+| `packages/superimg-runtime-web/src/renderer.ts` | `BrowserRenderer` - HTML to ImageData via Snapdom v2 (iframe isolation) |
+| `packages/superimg-runtime-web/src/encoder.ts` | `BrowserEncoder` - ImageData to MP4 via WebCodecs |
+| `packages/superimg-runtime-web/src/index.ts` | Private runtime exports bundled behind `superimg/browser` |
 
 ### Playwright Rendering
 
 | File | Description |
 |------|-------------|
 | `packages/superimg-playwright/src/playwright-engine.ts` | `PlaywrightEngine` - Chromium lifecycle, Hono server, adapter factory |
-| `packages/superimg-playwright/src/adapters.ts` | `PlaywrightFrameRenderer`, `PlaywrightVideoEncoder` - engine adapter implementations |
-| `packages/superimg-playwright/src/harness/harness.ts` | Render harness (runs inside Chromium) |
+| `packages/superimg-playwright/src/adapters.ts` | `PlaywrightFrameRenderer` - Chromium frame capture adapter |
+| `packages/superimg-playwright/src/node-encoder.ts` | `NodeVideoEncoder` - active server video encoder |
 | `packages/superimg-playwright/src/browser-utils.ts` | Browser install/check utilities |
 
 ### Core (Browser-Safe)

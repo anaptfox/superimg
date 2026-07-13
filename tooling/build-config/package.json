@@ -1,12 +1,37 @@
 {
-  "name": "@superimg/build-policy",
+  "name": "@superimg/build-config",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Shared tsdown bundle policy and build verification for SuperImg packages",
+  "description": "Compiled build configuration and package verification tools for SuperImg",
+  "scripts": {
+    "build": "tsdown tsdown.base.ts bundle-deps.ts --format esm --dts --out-dir dist --clean && node scripts/copy-runtime.mjs",
+    "clean": "rm -rf dist"
+  },
   "exports": {
-    "./bundle-deps": "./bundle-deps.mjs",
-    "./check-externals": "./check-externals.mjs",
-    "./tsdown.base": "./tsdown.base.ts"
+    "./bundle-deps": {
+      "types": "./dist/bundle-deps.d.mts",
+      "import": "./dist/bundle-deps.mjs"
+    },
+    "./check-externals": "./dist/check-externals.mjs",
+    "./check-no-react": "./dist/check-no-react.mjs",
+    "./check-platform-self-contained": "./dist/check-platform-self-contained.mjs",
+    "./check-workerd-compat": "./dist/check-workerd-compat.mjs",
+    "./generate-platform-manifest": "./dist/generate-platform-manifest.mjs",
+    "./scan-imports": "./dist/scan-imports.mjs",
+    "./tsdown": {
+      "types": "./dist/tsdown.base.d.mts",
+      "import": "./dist/tsdown.base.mjs"
+    }
+  },
+  "bin": {
+    "superimg-check-externals": "./dist/check-externals.mjs",
+    "superimg-check-no-react": "./dist/check-no-react.mjs",
+    "superimg-check-platform-self-contained": "./dist/check-platform-self-contained.mjs",
+    "superimg-check-workerd-compat": "./dist/check-workerd-compat.mjs",
+    "superimg-generate-platform-manifest": "./dist/generate-platform-manifest.mjs"
+  },
+  "devDependencies": {
+    "tsdown": "^0.22.3"
   }
 }

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Player } from "superimg/react";
+import { Player } from "superimg/react/player";
 import { landingCountdownTemplate } from "@/content/templates/landing-demos";
 import { useIsMobile } from "@/hooks/use-mobile";
 import CodeMirror from "@uiw/react-codemirror";

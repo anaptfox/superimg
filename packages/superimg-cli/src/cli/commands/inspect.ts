@@ -25,6 +25,7 @@ export interface InspectOptions {
   png?: boolean;
   output?: string;
   pretty?: boolean;
+  summary?: boolean;
   data?: string;
   json?: boolean;
   critique?: boolean;
@@ -236,7 +237,7 @@ export async function inspectCommand(
   const samples: InspectSample[] = [];
   let hadError = false;
 
-  for (const at of atList) {
+  for (const at of options.summary ? [] : atList) {
     const { progress, frame } = sampleProgress(at, fps, duration);
     const seconds = progress * duration;
     const active = rawPhases ? activePhaseAt(rawPhases, progress) : null;

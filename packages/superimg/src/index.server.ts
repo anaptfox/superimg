@@ -3,6 +3,20 @@
 
 export * from "./index.shared.js";
 
+// Server-only core utilities intentionally excluded from the root authoring API.
+export {
+  createRenderContext,
+  createImageRenderContext,
+  createSvgRenderContext,
+  resolveRuntimeTemplateInfo,
+  compileTemplate,
+  validateTemplate,
+  CheckpointResolver,
+  transitions,
+  parseDuration,
+} from "@superimg/core";
+export { buildCompositeHtml } from "@superimg/core/html";
+
 // =============================================================================
 // SERVER BUNDLER (rolldown for template bundling)
 // =============================================================================

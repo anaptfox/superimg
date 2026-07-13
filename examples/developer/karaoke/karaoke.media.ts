@@ -81,9 +81,9 @@ export default define({
       .map((w) => ({ text: w.text, start: w.start, end: w.end }));
 
     const vo = track({ words });
-    const t = vo.transcript();
+    const transcript = vo.transcript();
 
-    const wordCaptions = t.map((word) => {
+    const wordCaptions = transcript.map((word) => {
       const scale = word.active ? 1.1 : 1;
       const opacity = word.progress > 0 ? 1 : 0.3;
       const color = word.active ? accentColor : "white";
@@ -96,11 +96,11 @@ export default define({
       })}">${word.text}</span>`;
     }).join("");
 
-    const currentWord = t.current();
+    const currentWord = transcript.current();
     let karaokeHtml = "";
 
     if (currentWord) {
-      const charProg = t.charProgress();
+      const charProg = transcript.charProgress();
       const fullChars = Math.floor(charProg);
       const partialChar = charProg - fullChars;
 

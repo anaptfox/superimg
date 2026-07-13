@@ -10,7 +10,7 @@ Use these when building or critiquing SuperImg media — not only the framework 
 |------|------|------|-------------|
 | **superimg** | Skill | `skills/superimg/SKILL.md` (also managed block in `AGENTS.md`; Claude: `.claude/skills/superimg` via install) | API mechanics: `define()`, director, layers, stdlib, CLI, **inspect** debug loop |
 | **animator** | Skill | `skills/animator/SKILL.md` (symlink: `.claude/skills/animator` → repo skill) | Motion craft: timing tables, easing, stagger, framing, SVG techniques, critique checklist. Load `skills/animator/references/` (`motion-craft.md`, `scene-framing.md`, `svg-techniques.md`) when going deep |
-| **video-designer** | Subagent | Claude: `.claude/agents/video-designer.md` · Codex: `.codex/agents/video-designer.toml` | Heavy creative work: scenes, diagrams, line art, palettes, motion graphics, explainer visuals. Reads superimg + animator skills first, then designs/implements |
+| **video-designer** | Skill (+ host agent) | `skills/video-designer/SKILL.md` (Claude: `.claude/agents/` · Codex: `.codex/agents/` → symlinks) | Heavy creative work: scenes, diagrams, line art, palettes, motion graphics, explainer visuals. Reads superimg + animator skills first, then designs/implements |
 
 **Routing:**
 - Framework / CLI / template bugs → **superimg** skill + `inspect`
@@ -101,10 +101,11 @@ $CLI render path/to/foo.media.ts -y                     # final polish
 | Tool | For |
 |------|-----|
 | `inspect` | Runtime config, director phases, multi-progress text/colors, `--diff` (JSON, no browser by default) |
-| `info` | Config + phase summary |
+| `inspect --summary` | Config + phases only (fast) |
 | `validate` | NaN / throws / empty frames |
 | `doctor` / `setup` | Environment / Chromium |
-| `render --format html\|png --frame N` | One exact still |
+| `render --format html\|png --frame N` | One exact still (export) |
+| `list` / `list --shallow` | Enumerate templates (metadata vs paths only) |
 
 Full portable debug guidance lives in the superimg skill (`skills/superimg/SKILL.md` → `superimg skill update`). See also `docs/testing.md`.
 

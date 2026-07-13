@@ -1,4 +1,4 @@
-// Generate src/_generated.ts from the canonical skills/ directory at the repo root.
+// Generate .generated/content.ts from the canonical skills/ directory at the repo root.
 // Embeds SKILL.md (frontmatter stripped), references/*, and examples/* as TS string constants.
 // Skill version is read from this package's package.json so version-bump-and-publish stays linked.
 
@@ -120,10 +120,19 @@ ${exEntries}
 
 function main() {
   const out = generate();
-  const dir = join(PKG_ROOT, "src");
+  const dir = join(PKG_ROOT, ".generated");
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "_generated.ts"), out);
-  console.log(`@superimg/skill: generated _generated.ts (${out.length} bytes)`);
+  const outputPath = join(dir, "content.ts");
+  if (process.argv.includes("--check")) {
+    const current = existsSync(outputPath) ? readFileSync(outputPath, "utf8") : "";
+    if (current !== out) {
+      throw new Error("@superimg/skill generated content is stale; run pnpm generate");
+    }
+    console.log("@superimg/skill: generated content is current");
+    return;
+  }
+  writeFileSync(outputPath, out);
+  console.log(`@superimg/skill: generated content.ts (${out.length} bytes)`);
 }
 
 main();

@@ -31,6 +31,9 @@
     "browser"
   ],
   "license": "MIT",
+  "devDependencies": {
+    "@superimg/build-config": "workspace:*"
+  },
   "dependencies": {
     "@superimg/core": "workspace:*",
     "@superimg/media": "workspace:*",

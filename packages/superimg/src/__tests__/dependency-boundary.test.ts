@@ -11,6 +11,7 @@ const pkg = JSON.parse(
   optionalDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   exports?: Record<string, unknown>;
+  engines?: Record<string, string>;
 };
 
 describe("superimg package boundary", () => {
@@ -20,6 +21,24 @@ describe("superimg package boundary", () => {
     expect(keys).not.toContain("./export");
     expect(keys).not.toContain("./runtime-web");
     expect(keys).not.toContain("./react/export");
+  });
+
+  it("resolves every root condition to the authoring-only entry", () => {
+    const root = pkg.exports?.["."] as Record<string, unknown>;
+    for (const condition of [
+      "react-server",
+      "edge-light",
+      "workerd",
+      "deno",
+      "worker",
+      "browser",
+      "node",
+      "import",
+      "default",
+    ]) {
+      expect(root[condition]).toBe("./dist/index.js");
+    }
+    expect(pkg.engines?.node).toBe(">=22.12.0");
   });
 
   it("does not install browser-export/CLI-only runtimes from root superimg", () => {

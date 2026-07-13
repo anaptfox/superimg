@@ -115,6 +115,14 @@
       "import": "./dist/svg/index.js",
       "types": "./dist/svg/index.d.ts"
     },
+    "./svg/base": {
+      "import": "./dist/svg/base.js",
+      "types": "./dist/svg/base.d.ts"
+    },
+    "./svg/rough": {
+      "import": "./dist/svg/rough.js",
+      "types": "./dist/svg/rough.d.ts"
+    },
     "./layout": {
       "import": "./dist/layout.js",
       "types": "./dist/layout.d.ts"
@@ -150,14 +158,36 @@
     "./viz": {
       "import": "./dist/viz/index.js",
       "types": "./dist/viz/index.d.ts"
+    },
+    "./viz/base": {
+      "import": "./dist/viz/base.js",
+      "types": "./dist/viz/base.d.ts"
+    },
+    "./viz/three": {
+      "import": "./dist/viz/three.js",
+      "types": "./dist/viz/three.d.ts"
+    },
+    "./viz/lottie": {
+      "import": "./dist/viz/lottie.js",
+      "types": "./dist/viz/lottie.d.ts"
+    },
+    "./viz/mermaid": {
+      "import": "./dist/viz/mermaid.js",
+      "types": "./dist/viz/mermaid.d.ts"
+    },
+    "./viz/katex": {
+      "import": "./dist/viz/katex.js",
+      "types": "./dist/viz/katex.d.ts"
     }
   },
   "scripts": {
-    "prebuild": "node scripts/gen-katex-css.mjs",
+    "generate": "node scripts/gen-katex-css.mjs",
+    "verify:generated": "node scripts/gen-katex-css.mjs --check",
+    "verify": "pnpm run verify:generated",
     "build": "tsdown",
     "dev": "tsdown --watch",
     "test": "vitest --run",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist .generated"
   },
   "files": [
     "dist"
@@ -193,6 +223,7 @@
     "simplex-noise": "^4.0.3"
   },
   "devDependencies": {
+    "@superimg/build-config": "workspace:*",
     "@types/d3-array": "^3.2.2",
     "@types/d3-contour": "^3.0.6",
     "@types/d3-format": "^3.0.4",

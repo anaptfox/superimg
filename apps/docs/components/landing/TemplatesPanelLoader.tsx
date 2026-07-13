@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { DeferredLanding } from "./DeferredLanding";
 
 const TemplatesPanel = dynamic(() => import("./TemplatesPanel"), {
   ssr: false,
@@ -33,7 +34,18 @@ export function TemplatesPanelSection() {
           </p>
         </div>
 
-        <TemplatesPanel />
+        <DeferredLanding
+          minHeight={280}
+          fallback={
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-[280px] animate-pulse rounded-lg bg-muted" />
+              ))}
+            </div>
+          }
+        >
+          <TemplatesPanel />
+        </DeferredLanding>
 
         <div className="mt-10 flex items-center justify-center">
           <Button asChild size="lg">

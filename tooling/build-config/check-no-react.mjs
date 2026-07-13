@@ -4,14 +4,13 @@
  */
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join, resolve } from "node:path";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..");
+const packageRoot = resolve(process.argv[2] ?? process.cwd());
+const ROOT = dirname(packageRoot);
 
 const TARGETS = [
-  join(ROOT, "superimg-runtime"),
+  join(ROOT, "superimg-runtime-web"),
   join(ROOT, "superimg-media"),
   join(ROOT, "superimg-player"),
 ];

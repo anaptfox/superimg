@@ -13,10 +13,13 @@
     }
   },
   "scripts": {
-    "build": "tsx scripts/generate-content.ts && tsdown",
+    "generate": "tsx scripts/generate-content.ts",
+    "verify:generated": "tsx scripts/generate-content.ts --check",
+    "verify": "pnpm run verify:generated",
+    "build": "tsdown",
     "dev": "tsx scripts/generate-content.ts && tsdown --watch",
     "test": "vitest --run --passWithNoTests",
-    "clean": "rm -rf dist src/_generated.ts"
+    "clean": "rm -rf dist .generated"
   },
   "files": [
     "dist"

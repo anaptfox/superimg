@@ -1,6 +1,6 @@
 import { defineConfig } from "tsdown";
-import { coreNeverBundle } from "../build-policy/bundle-deps.mjs";
-import { libraryDefaults } from "../build-policy/tsdown.base.ts";
+import { coreNeverBundle } from "@superimg/build-config/bundle-deps";
+import { libraryDefaults } from "@superimg/build-config/tsdown";
 
 export default defineConfig({
   ...libraryDefaults,

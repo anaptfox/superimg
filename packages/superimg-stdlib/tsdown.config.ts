@@ -1,5 +1,5 @@
 import { defineConfig } from "tsdown";
-import { libraryDefaults } from "../build-policy/tsdown.base.ts";
+import { libraryDefaults } from "@superimg/build-config/tsdown";
 
 export default defineConfig({
   ...libraryDefaults,
@@ -31,6 +31,8 @@ export default defineConfig({
     "src/interpolate.ts",
     "src/path.ts",
     "src/svg/index.ts",
+    "src/svg/base.ts",
+    "src/svg/rough.ts",
     "src/layout.ts",
     "src/layers.ts",
     "src/safe-area.ts",
@@ -40,6 +42,11 @@ export default defineConfig({
     "src/oscillate.ts",
     "src/ready.ts",
     "src/viz/index.ts",
+    "src/viz/base.ts",
+    "src/viz/three.ts",
+    "src/viz/lottie.ts",
+    "src/viz/mermaid.ts",
+    "src/viz/katex.ts",
     "src/index.ts",
   ],
   outDir: "dist",

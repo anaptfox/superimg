@@ -8,6 +8,6 @@ export {
   get2DContext,
   BrowserRenderer,
   BrowserEncoder,
-} from "@superimg/runtime";
+} from "@superimg/runtime-web";
 
-export type { ExportConfig, ExportOptions } from "@superimg/runtime";
+export type { ExportConfig, ExportOptions } from "@superimg/runtime-web";

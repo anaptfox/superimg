@@ -91,7 +91,7 @@ export default define<TerminalVideoData>({
     const { std, width, height, timeline, data } = ctx;
     const { commands, title, theme, fontSize } = data;
 
-    const t = (THEMES[theme] ?? THEMES.dark) as (typeof THEMES)["dark"];
+    const themeStyle = (THEMES[theme] ?? THEMES.dark) as (typeof THEMES)["dark"];
     const termFontSize = FONT_SIZE_MAP[fontSize] ?? "20px";
 
     const { phases } = estimateTerminalTimeline(data);
@@ -175,27 +175,27 @@ export default define<TerminalVideoData>({
         letter-spacing: 0;
       }
       .line { min-height: 1.35em; padding: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-      .prompt { color: ${t.prompt}; }
-      .command { color: ${t.text}; }
-      .output { color: ${t.text}; }
+      .prompt { color: ${themeStyle.prompt}; }
+      .command { color: ${themeStyle.text}; }
+      .output { color: ${themeStyle.text}; }
       .cursor {
         display: inline-block;
         width: 0.62em;
         height: 1.05em;
         margin-left: 2px;
-        background: ${t.text};
+        background: ${themeStyle.text};
         vertical-align: -0.12em;
       }
     </style>
     <div style="width: ${width}px; height: ${height}px; background: linear-gradient(180deg, #0f0f0f 0%, #171720 100%); display: flex; align-items: center; justify-content: center; padding: 60px; box-sizing: border-box;">
-      <div style="width: 100%; max-width: 1100px; background: ${t.bg}; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; box-shadow: 0 22px 42px -22px rgba(0, 0, 0, 0.85); ${terminalAnim.style}">
-        <div style="background: ${t.headerBg}; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 12px 20px; display: flex; align-items: center; gap: 12px;">
+      <div style="width: 100%; max-width: 1100px; background: ${themeStyle.bg}; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; box-shadow: 0 22px 42px -22px rgba(0, 0, 0, 0.85); ${terminalAnim.style}">
+        <div style="background: ${themeStyle.headerBg}; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 12px 20px; display: flex; align-items: center; gap: 12px;">
           <div style="display: flex; gap: 8px;">
             <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56;"></div>
             <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
             <div style="width: 12px; height: 12px; border-radius: 50%; background: #27ca40;"></div>
           </div>
-          <span style="flex: 1; text-align: center; color: ${t.title}; font-size: 14px; font-family: -apple-system, sans-serif;">${title}</span>
+          <span style="flex: 1; text-align: center; color: ${themeStyle.title}; font-size: 14px; font-family: -apple-system, sans-serif;">${title}</span>
         </div>
         <div class="terminal" style="padding: 26px 28px; font-size: ${termFontSize}; line-height: 1.35; min-height: 300px;">
           ${linesHtml}

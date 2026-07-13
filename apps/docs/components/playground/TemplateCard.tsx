@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import posthog from "posthog-js";
-import { Player, type PlayerRef } from "superimg/react";
+import { Player } from "superimg/react/player";
 import type { EditorExample } from "@/lib/video/examples";
 import { usePlaygroundExample } from "@/lib/playground/example";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TemplateCardProps {
   example: EditorExample;
+  active: boolean;
+  onPreview: (exampleId: string | null) => void;
   onSelect?: (example: EditorExample) => void;
 }
 
-export function TemplateCard({ example, onSelect }: TemplateCardProps) {
-  const playerRef = useRef<PlayerRef>(null);
+export function TemplateCard({ example, active, onPreview, onSelect }: TemplateCardProps) {
   const hoverTimeoutRef = useRef<number | undefined>(undefined);
   const [isHovering, setIsHovering] = useState(false);
   const isMobile = useIsMobile();
@@ -25,16 +26,22 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
     if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
+        const nextVisible = entry?.isIntersecting ?? false;
+        setVisible(nextVisible);
+        if (!nextVisible && active) onPreview(null);
       },
       { rootMargin: "200px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [active, onPreview]);
+
+  useEffect(
+    () => () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    },
+    [],
+  );
 
   const {
     template,
@@ -44,14 +51,14 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
     compiling,
     error,
     missingBundle,
-  } = usePlaygroundExample(example, { preview: true, enabled: visible });
+  } = usePlaygroundExample(example, { preview: true, enabled: visible && active });
 
   const handleMouseEnter = () => {
     if (isMobile) return;
     setIsHovering(true);
     hoverTimeoutRef.current = window.setTimeout(() => {
-      playerRef.current?.play();
-    }, 400);
+      onPreview(example.id);
+    }, 250);
   };
 
   const handleMouseLeave = () => {
@@ -60,7 +67,7 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    playerRef.current?.pause();
+    if (active) onPreview(null);
   };
 
   const handleClick = () => {
@@ -102,20 +109,21 @@ export function TemplateCard({ example, onSelect }: TemplateCardProps) {
                 "Missing bundle — run `just generate-examples`"}
             </div>
           )}
-          <Player
-            ref={playerRef}
-            template={template ?? undefined}
-            assets={assets}
-            assetResolver={assetResolver}
-            format="horizontal"
-            playbackMode="loop"
-            loadMode="eager"
-            autoPlay
-            hoverBehavior="none"
-            className="h-full w-full"
-            style={{ aspectRatio: "16/9" }}
-          />
-          {compiling && !template && (
+          {active && template && (
+            <Player
+              template={template}
+              assets={assets}
+              assetResolver={assetResolver}
+              format="horizontal"
+              playbackMode="loop"
+              loadMode="eager"
+              autoPlay
+              hoverBehavior="none"
+              className="h-full w-full"
+              style={{ aspectRatio: "16/9" }}
+            />
+          )}
+          {active && compiling && !template && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-neutral-950/60 text-xs text-white/70">
               Loading…
             </div>

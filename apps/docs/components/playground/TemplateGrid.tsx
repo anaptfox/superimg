@@ -22,6 +22,7 @@ export function TemplateGrid() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState<EditorExample | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const handleCategoryChange = (category: string) => {
     setActiveCategory(category);
@@ -153,6 +154,8 @@ export function TemplateGrid() {
             <TemplateCard
               key={example.id}
               example={example}
+              active={previewId === example.id}
+              onPreview={setPreviewId}
               onSelect={handleSelectTemplate}
             />
           ))}

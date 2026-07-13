@@ -1,5 +1,5 @@
 import { defineConfig } from "tsdown";
-import { libraryDefaults } from "../build-policy/tsdown.base.ts";
+import { libraryDefaults } from "@superimg/build-config/tsdown";
 
 export default defineConfig({
   ...libraryDefaults,

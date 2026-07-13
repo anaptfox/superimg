@@ -8,11 +8,8 @@
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const ROOT = resolve(process.argv[2] ?? join(__dirname, "..", "superimg"));
+const ROOT = resolve(process.argv[2] ?? process.cwd());
 const DIST = join(ROOT, "dist");
 const EDGE_ROOT = join(DIST, "index.edge.js");
 

@@ -13,6 +13,7 @@ export const workspaceBundle = [
   /^@superimg\/node\//,
   "@superimg/player",
   "@superimg/playwright",
+  "@superimg/runtime-web",
   "@superimg/skill",
   "zod",
 ];
@@ -139,6 +140,7 @@ export const platformAlwaysBundle = [
   "morphdom",
   /^zustand($|\/)/,
   "mediabunny",
+  /^roughjs($|\/)/,
   /^path-data-parser($|\/)/,
   /^source-map-js($|\/)/,
 ];

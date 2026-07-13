@@ -1,0 +1,15 @@
+{
+  "name": "@superimg/integration-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest --run",
+    "clean": "rm -rf coverage"
+  },
+  "devDependencies": {
+    "@superimg/core": "workspace:*",
+    "superimg": "workspace:*",
+    "vitest": "^4.1.9"
+  }
+}

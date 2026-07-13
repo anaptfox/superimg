@@ -2,16 +2,16 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "tsdown";
-import { cliAlwaysBundle, cliNeverBundle } from "../build-policy/bundle-deps.mjs";
-import { libraryDefaults } from "../build-policy/tsdown.base.ts";
+import { cliAlwaysBundle, cliNeverBundle } from "@superimg/build-config/bundle-deps";
+import { libraryDefaults } from "@superimg/build-config/tsdown";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const superimgPkg = JSON.parse(
-  readFileSync(resolve(__dirname, "../superimg/package.json"), "utf8"),
+const cliPkg = JSON.parse(
+  readFileSync(resolve(__dirname, "package.json"), "utf8"),
 );
-if (typeof superimgPkg.version !== "string" || !superimgPkg.version) {
+if (typeof cliPkg.version !== "string" || !cliPkg.version) {
   throw new Error(
-    "tsdown.config.ts: could not read version from ../superimg/package.json",
+    "tsdown.config.ts: could not read version from package.json",
   );
 }
 
@@ -22,15 +22,15 @@ export default defineConfig({
     cli: "src/cli/index.ts",
     server: "src/server.ts",
     container: "src/container/handler.ts",
+    "container-worker": "src/container/render-worker.ts",
     integration: "src/integration/index.ts",
   },
   clean: true,
   define: {
-    __SUPERIMG_VERSION__: JSON.stringify(superimgPkg.version),
+    __SUPERIMG_VERSION__: JSON.stringify(cliPkg.version),
   },
   deps: {
     alwaysBundle: cliAlwaysBundle,
     neverBundle: cliNeverBundle,
   },
-  onSuccess: "cd dev-ui && vite build",
 });

@@ -2,8 +2,17 @@
 
 import { listVideos } from "../../list-videos.js";
 import { formatError } from "@superimg/core/errors";
+import { findProjectRoot } from "../utils/find-project-root.js";
+import { discoverVideos } from "../utils/discover-videos.js";
 
-export async function listCommand(options: { json?: boolean } = {}) {
+export async function listCommand(options: { json?: boolean; shallow?: boolean } = {}) {
+  if (options.shallow) {
+    const videos = discoverVideos(findProjectRoot());
+    const paths = videos.map((video) => video.relativePath);
+    console.log(options.json ? JSON.stringify(paths, null, 2) : paths.join("\n"));
+    return;
+  }
+
   let videos: Awaited<ReturnType<typeof listVideos>>;
   try {
     videos = await listVideos();

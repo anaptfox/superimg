@@ -12,10 +12,6 @@ import * as crypto from "node:crypto";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import {
-  bundleTemplate,
-  bundleTemplateCode,
-} from "../packages/superimg-core/dist/bundler.js";
 
 const EXAMPLES_DIR = path.join(__dirname, "../examples");
 const METADATA_PATH = path.join(EXAMPLES_DIR, "_templates.json");
@@ -38,6 +34,14 @@ const PUBLIC_PLAYGROUND_DIR = path.join(
 const EXAMPLES_PUBLIC_DIR = path.join(PUBLIC_PLAYGROUND_DIR, "examples");
 const ASSETS_PUBLIC_DIR = path.join(PUBLIC_PLAYGROUND_DIR, "assets");
 const CACHE_FILE = path.join(PUBLIC_PLAYGROUND_DIR, ".build-cache.json");
+const REPO_ROOT = path.join(__dirname, "..");
+
+/**
+ * Bump when the generated preview format or bundle policy changes. The value is
+ * folded into every sidecar fingerprint so stale outputs cannot survive a
+ * generator upgrade.
+ */
+const BUNDLE_CACHE_SCHEMA = 2;
 
 const BUNDLE_CONCURRENCY = 6;
 
@@ -140,6 +144,35 @@ const BUILTIN_SPECS: BuiltinSpec[] = [
 
 type BuildCache = Record<string, { hash: string; bundled: boolean }>;
 
+const BUNDLE_PROVENANCE_PATHS = [
+  path.join(REPO_ROOT, "pnpm-lock.yaml"),
+  path.join(REPO_ROOT, "packages/superimg-core/dist"),
+  path.join(REPO_ROOT, "packages/superimg-stdlib/dist"),
+  path.join(REPO_ROOT, "packages/superimg-types/dist"),
+  path.join(REPO_ROOT, "packages/superimg/dist/define.js"),
+];
+
+const BUNDLE_SOURCE_EXTENSIONS = new Set([
+  ".css",
+  ".js",
+  ".json",
+  ".jsx",
+  ".mjs",
+  ".ts",
+  ".tsx",
+]);
+
+const GENERATED_SOURCE_DIRS = new Set([
+  ".next",
+  ".output",
+  ".turbo",
+  ".vinxi",
+  "build",
+  "dist",
+  "node_modules",
+  "output",
+]);
+
 function hasRelativeImports(code: string): boolean {
   return /from\s+["'][./]/.test(code) || /import\s+["'][./]/.test(code);
 }
@@ -174,6 +207,80 @@ function needsPreBundle(dirPath: string, code: string): boolean {
 
 function hashContent(parts: string[]): string {
   return crypto.createHash("sha256").update(parts.join("\0")).digest("hex").slice(0, 16);
+}
+
+function filesUnder(root: string): string[] {
+  if (!fs.existsSync(root)) return [];
+  const stat = fs.statSync(root);
+  if (stat.isFile()) return [root];
+  if (!stat.isDirectory()) return [];
+
+  return fs
+    .readdirSync(root, { withFileTypes: true })
+    .flatMap((entry) => filesUnder(path.join(root, entry.name)))
+    .sort();
+}
+
+function hashFiles(paths: string[], filter?: (file: string) => boolean): string {
+  const hash = crypto.createHash("sha256");
+  for (const file of paths.flatMap(filesUnder).sort()) {
+    if (filter && !filter(file)) continue;
+    hash.update(path.relative(REPO_ROOT, file));
+    hash.update("\0");
+    hash.update(fs.readFileSync(file));
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
+const BUNDLE_PROVENANCE = hashContent([
+  `schema:${BUNDLE_CACHE_SCHEMA}`,
+  hashFiles(BUNDLE_PROVENANCE_PATHS),
+]);
+
+function hashExampleSources(dirPath: string): string {
+  const files: string[] = [];
+  const visit = (directory: string) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!GENERATED_SOURCE_DIRS.has(entry.name)) visit(path.join(directory, entry.name));
+        continue;
+      }
+      const file = path.join(directory, entry.name);
+      if (entry.isFile() && BUNDLE_SOURCE_EXTENSIONS.has(path.extname(file).toLowerCase())) {
+        files.push(file);
+      }
+    }
+  };
+  visit(dirPath);
+  return hashFiles(files);
+}
+
+async function bundleTemplate(entryPoint: string): Promise<string> {
+  const bundler = await import("../packages/superimg-core/dist/bundler.js");
+  return bundler.bundleTemplate(entryPoint, { minify: true, sourcemap: false });
+}
+
+async function bundleTemplateCode(
+  code: string,
+  options: { sourcefile: string; resolveDir: string },
+): Promise<string> {
+  const bundler = await import("../packages/superimg-core/dist/bundler.js");
+  return bundler.bundleTemplateCode(code, {
+    ...options,
+    minify: true,
+    sourcemap: false,
+  });
+}
+
+/** Production preview bundles do not execute through the sourcemap-aware error
+ * path. Source lives in its own code sidecar, so retaining a base64 inline map
+ * only multiplies catalog transfer and repository size. */
+function stripInlineSourceMap(code: string): string {
+  return code.replace(
+    /\n?\/\/# sourceMappingURL=data:application\/json[^\n]*\s*$/,
+    "\n",
+  );
 }
 
 function codeFilename(hash: string): string {
@@ -325,7 +432,7 @@ async function bundleExample(
   }
 
   try {
-    const bundled = await bundleFn();
+    const bundled = stripInlineSourceMap(await bundleFn());
     const urls = writeSidecar(id, code, contentHash, bundled);
     if (assetDir) copyCompanionAssets(assetDir, id);
     cache[id] = { hash: contentHash, bundled: true };
@@ -422,7 +529,13 @@ async function main() {
     const complexTemplate = needsPreBundle(dirPath, code);
     const needsAssets = hasConfigAssets(code);
     const duration = parseDuration(code);
-    const contentHash = hashContent([code, filePath, JSON.stringify(meta)]);
+    const contentHash = hashContent([
+      BUNDLE_PROVENANCE,
+      code,
+      path.relative(REPO_ROOT, filePath),
+      JSON.stringify(meta),
+      hashExampleSources(dirPath),
+    ]);
 
     templateJobs.push(async () => {
       const urls = await bundleExample(
@@ -483,7 +596,12 @@ async function main() {
       continue;
     }
 
-    const contentHash = hashContent([code, spec.module, spec.export]);
+    const contentHash = hashContent([
+      BUNDLE_PROVENANCE,
+      code,
+      spec.module,
+      spec.export,
+    ]);
     const duration = parseDuration(code);
 
     builtinJobs.push(async () => {

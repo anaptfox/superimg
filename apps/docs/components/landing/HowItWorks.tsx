@@ -2,12 +2,12 @@
 
 import { useRef } from "react";
 import { Code, Sparkles, Eye, Video } from "lucide-react";
-import { Player, type PlayerRef } from "superimg/react";
+import { Player, type PlayerRef } from "superimg/react/player";
 import {
   howItWorksBeforeTemplate,
   howItWorksAfterTemplate,
 } from "@/content/templates/landing-demos";
-import type { TemplateModule } from "superimg/react";
+import type { TemplateModule } from "superimg";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";

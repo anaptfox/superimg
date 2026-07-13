@@ -9,11 +9,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const ROOT = resolve(process.argv[2] ?? join(__dirname, "..", "superimg"));
+const ROOT = resolve(process.argv[2] ?? process.cwd());
 const DIST = join(ROOT, "dist");
 const PKG = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
 
@@ -25,6 +22,18 @@ const PLATFORM_ROOTS = {
   player: "player.js",
   reactHook: "react/compile.js",
   compiler: "bundler-browser.js",
+};
+
+// These chunks are loaded on demand by stdlib-capabilities.ts. They are not
+// reachable through the static Player closure, but Gumbo still needs their
+// complete relative-import graph and hashes when it mirrors the browser runtime.
+const CAPABILITY_ROOTS = {
+  code: "chunks/browser/code.js",
+  katex: "chunks/browser/katex.js",
+  lottie: "chunks/browser/lottie.js",
+  mermaid: "chunks/browser/mermaid.js",
+  rough: "chunks/browser/rough.js",
+  three: "chunks/browser/three.js",
 };
 
 function sha256File(absPath) {
@@ -74,7 +83,16 @@ for (const [key, root] of Object.entries(PLATFORM_ROOTS)) {
   closures[key] = [...walkRelativeGraph(root)].sort();
 }
 
-const allFiles = new Set(Object.values(closures).flat());
+const capabilities = {};
+for (const [key, root] of Object.entries(CAPABILITY_ROOTS)) {
+  const files = [...walkRelativeGraph(root)].sort();
+  capabilities[key] = { files, hashes: hashFiles(files) };
+}
+
+const allFiles = new Set([
+  ...Object.values(closures).flat(),
+  ...Object.values(capabilities).flatMap((entry) => entry.files),
+]);
 
 const manifest = {
   version: PKG.version,
@@ -92,6 +110,7 @@ const manifest = {
       "@rolldown/browser": rolldownBrowserHash(),
     },
   },
+  capabilities,
   hashes: hashFiles(allFiles),
 };
 

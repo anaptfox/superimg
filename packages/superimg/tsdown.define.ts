@@ -1,13 +1,15 @@
 import { defineConfig } from "tsdown";
-import { libraryDefaults } from "../build-policy/tsdown.base.ts";
+import { libraryDefaults } from "@superimg/build-config/tsdown";
 import { sharedDefine } from "./tsdown.shared.ts";
 
 export default defineConfig({
   name: "define",
   ...libraryDefaults,
+  outDir: ".build/define",
   platform: "neutral",
-  clean: false,
+  clean: true,
   entry: {
+    index: "src/index.shared.ts",
     define: "src/index.define.ts",
   },
   define: sharedDefine,
@@ -17,6 +19,6 @@ export default defineConfig({
   },
   // Namespace shared chunks so this secondary build can't overwrite node entries.
   outputOptions: {
-    chunkFileNames: "chunks/[name].js",
+    chunkFileNames: "chunks/define/[name].js",
   },
 });

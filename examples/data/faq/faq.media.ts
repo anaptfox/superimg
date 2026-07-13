@@ -55,7 +55,7 @@ export default define<FaqVideoData>({
     const { std, width, height, timeline, data } = ctx;
     const { topic, items, theme, accentColor } = data;
 
-    const t = (THEMES[theme] ?? THEMES.dark) as (typeof THEMES)["dark"];
+    const themeStyle = (THEMES[theme] ?? THEMES.dark) as (typeof THEMES)["dark"];
     const isNeon = theme === "neon";
 
     const { phases } = estimateFaqTimeline(data);
@@ -88,12 +88,12 @@ export default define<FaqVideoData>({
         <div style="margin-bottom: 32px; opacity: ${qProgress * globalOpacity}; transform: translateY(${(1 - qProgress) * 20}px);">
           <div style="display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px;">
             <div style="background: ${accentColor}20; color: ${accentColor}; font-weight: 800; font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; flex-shrink: 0; transform: scale(${breathe}); box-shadow: ${qGlow}; text-shadow: ${isNeon ? "0 0 10px " + accentColor : "none"};">Q</div>
-            <div style="font-size: 28px; font-weight: 600; color: ${t.text}; line-height: 1.4; padding-top: 2px;">${item.question}</div>
+            <div style="font-size: 28px; font-weight: 600; color: ${themeStyle.text}; line-height: 1.4; padding-top: 2px;">${item.question}</div>
           </div>
           ${aProgress > 0 ? `
             <div style="display: flex; gap: 16px; align-items: flex-start; opacity: ${aProgress * globalOpacity}; transform: translateY(${(1 - aProgress) * 10}px);">
-              <div style="background: ${t.border}; color: ${t.muted}; font-weight: 800; font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; flex-shrink: 0; transform: scale(${breathe});">A</div>
-              <div style="font-size: 24px; color: ${t.muted}; line-height: 1.5; padding-top: 4px;">${item.answer}</div>
+              <div style="background: ${themeStyle.border}; color: ${themeStyle.muted}; font-weight: 800; font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; flex-shrink: 0; transform: scale(${breathe});">A</div>
+              <div style="font-size: 24px; color: ${themeStyle.muted}; line-height: 1.5; padding-top: 4px;">${item.answer}</div>
             </div>
           ` : ""}
         </div>
@@ -105,12 +105,12 @@ export default define<FaqVideoData>({
       : `radial-gradient(ellipse at 30% 20%, ${accentColor}10 0%, transparent 50%)`;
 
     return `
-    <div style="width: ${width}px; height: ${height}px; background: ${t.bg}; padding: 80px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; flex-direction: column; position: relative; opacity: ${globalOpacity};">
+    <div style="width: ${width}px; height: ${height}px; background: ${themeStyle.bg}; padding: 80px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; flex-direction: column; position: relative; opacity: ${globalOpacity};">
       <div style="position: absolute; inset: 0; background: ${gradientOverlay}; pointer-events: none;"></div>
 
       <div style="opacity: ${topicProgress}; transform: translateY(${(1 - topicProgress) * -20}px); margin-bottom: 60px; text-align: center; position: relative;">
         <div style="display: inline-block; background: ${accentColor}; color: white; font-weight: 700; font-size: 20px; padding: 8px 24px; border-radius: 99px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 24px; box-shadow: ${isNeon ? "0 0 25px " + accentColor + "80" : "none"};">FAQ / Myth Busting</div>
-        <div style="font-size: 48px; font-weight: 800; color: ${t.text}; text-shadow: ${isNeon ? "0 0 20px " + accentColor + "40" : "none"};">${topic}</div>
+        <div style="font-size: 48px; font-weight: 800; color: ${themeStyle.text}; text-shadow: ${isNeon ? "0 0 20px " + accentColor + "40" : "none"};">${topic}</div>
       </div>
 
       <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 900px; margin: 0 auto; width: 100%; position: relative;">

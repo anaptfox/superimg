@@ -11,7 +11,7 @@ import {
   SKILL_BODY,
   REFERENCES,
   EXAMPLES,
-} from "./_generated.js";
+} from "../.generated/content.js";
 
 export interface SkillFrontmatter {
   name: string;

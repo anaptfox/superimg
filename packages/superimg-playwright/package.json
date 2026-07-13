@@ -13,12 +13,8 @@
     }
   },
   "scripts": {
-    "build": "npm run build:harness && npm run embed:harness && tsdown && tsx scripts/harness-integrity.ts embed",
-    "build:harness": "vite build --config vite.harness.config.ts",
-    "embed:harness": "node scripts/embed-harness.mjs",
+    "build": "tsdown",
     "dev": "tsdown --watch",
-    "verify:harness": "tsx scripts/harness-integrity.ts verify",
-    "prepublishOnly": "npm run verify:harness",
     "test": "vitest run",
     "clean": "rm -rf dist"
   },
@@ -34,12 +30,12 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@superimg/build-config": "workspace:*",
     "@superimg/stdlib": "workspace:*"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.6",
     "@mediabunny/server": "^1.49.0",
-    "@superimg/browser-export": "workspace:*",
     "@superimg/core": "workspace:*",
     "@superimg/types": "workspace:*",
     "execa": "^9.6.1",

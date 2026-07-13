@@ -27,6 +27,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@superimg/build-config": "workspace:*",
     "@superimg/stdlib": "workspace:*"
   }
 }

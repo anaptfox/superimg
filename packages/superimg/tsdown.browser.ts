@@ -1,13 +1,14 @@
 import { defineConfig } from "tsdown";
-import { libraryDefaults, publishChecks } from "../build-policy/tsdown.base.ts";
+import { libraryDefaults } from "@superimg/build-config/tsdown";
 import { platformDeps, sharedDefine } from "./tsdown.shared.ts";
 
 export default defineConfig({
   name: "browser",
   ...libraryDefaults,
+  outDir: ".build/browser",
   platform: "browser",
   shims: false,
-  clean: false,
+  clean: true,
   entry: {
     "index.browser": "src/index.browser.ts",
     "bundler-browser": "src/bundler-browser.ts",
@@ -25,7 +26,6 @@ export default defineConfig({
   // Namespace shared chunks under dist/chunks/ so they never collide with — and
   // overwrite — the node build's package entry (e.g. dist/index.d.ts).
   outputOptions: {
-    chunkFileNames: "chunks/[name].js",
+    chunkFileNames: "chunks/browser/[name].js",
   },
-  ...publishChecks,
 });

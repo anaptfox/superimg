@@ -4,11 +4,15 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "predev": "tsx ../../scripts/generate-examples.ts",
+    "generate": "tsx ../../scripts/generate-examples.ts",
+    "predev": "pnpm run generate",
     "dev": "next dev --port 3001",
-    "build": "pnpm --filter 'superimg...' run build && tsx ../../scripts/generate-examples.ts && next build",
+    "prebuild": "pnpm run generate",
+    "build": "next build",
     "start": "next start",
+    "prelint": "pnpm run generate",
     "lint": "eslint --max-warnings 0",
+    "precheck-types": "pnpm run generate",
     "check-types": "next typegen && tsc --noEmit",
     "clean": "rm -rf .next dist"
   },
