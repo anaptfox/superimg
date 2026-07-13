@@ -7,7 +7,12 @@ import {
   type RuntimeUpdate,
   type WebRuntime,
 } from "./dom-runtime.js";
-import { getPreset } from "@superimg/stdlib";
+import {
+  prepareStdlibForTemplate,
+  resolveRuntimeTemplateInfo,
+  type RuntimeTemplate,
+} from "@superimg/core";
+import { getPreset } from "@superimg/stdlib/presets";
 import type { AssetMeta, Medium, PlaybackMode, ResolvedScene } from "@superimg/types";
 import { MediaClock, type MediaClockState, type MediaPlaybackMode } from "./clock.js";
 import type { DomPresenter } from "./dom-presenter.js";
@@ -56,6 +61,7 @@ export interface MediaSessionUpdate {
   assets?: Record<string, AssetMeta>;
   assetResolver?: (filename: string) => string;
   fonts?: PreResolvedFonts;
+  playbackMode?: MediaPlaybackMode;
 }
 
 export interface MediaSessionState {
@@ -98,6 +104,7 @@ export async function createMediaSession(
   template: RuntimeInput,
   options: MediaSessionOptions = {},
 ): Promise<MediaSession> {
+  await prepareStdlibForTemplate(template as RuntimeTemplate);
   return new MediaSession(template, options);
 }
 
@@ -111,7 +118,9 @@ export class MediaSession {
   private readonly listeners = new Set<Listener>();
   private runtimeEventDisposers: Array<() => void> = [];
   private renderToken = 0;
+  private renderChain: Promise<void> = Promise.resolve();
   private lastResult: MediaFrameResult | null = null;
+  private lastGraphHtml: string | null = null;
   private suppressClockRender = false;
   private events: Partial<{ [K in keyof MediaSessionEvents]: Set<MediaSessionEvents[K]> }> = {};
   private readyPromise: Promise<void>;
@@ -126,30 +135,35 @@ export class MediaSession {
       this.rejectReady = reject;
     });
 
-    const infoRuntime = createRuntime(template, this.toRuntimeOptions({ autoplay: false }));
-    const runtimeState = infoRuntime.getState();
-    infoRuntime.dispose();
+    const runtimeOptions = this.toRuntimeOptions({ autoplay: false });
+    const runtimeInfo = resolveRuntimeTemplateInfo(template as RuntimeTemplate, {
+      ...(runtimeOptions.data !== undefined ? { data: runtimeOptions.data } : {}),
+      ...(runtimeOptions.width !== undefined ? { width: runtimeOptions.width } : {}),
+      ...(runtimeOptions.height !== undefined ? { height: runtimeOptions.height } : {}),
+      ...(runtimeOptions.fps !== undefined ? { fps: runtimeOptions.fps } : {}),
+      ...(runtimeOptions.duration !== undefined ? { duration: runtimeOptions.duration } : {}),
+    });
 
     const graph = buildMediaGraph("");
     this.state = {
-      medium: runtimeState.medium,
-      animated: runtimeState.animated,
+      medium: runtimeInfo.medium,
+      animated: runtimeInfo.isAnimated,
       isReady: false,
       isPlaying: false,
       currentFrame: 0,
-      totalFrames: runtimeState.totalFrames,
-      fps: runtimeState.fps,
-      duration: runtimeState.duration,
-      width: runtimeState.width,
-      height: runtimeState.height,
-      progress: runtimeState.progress,
+      totalFrames: runtimeInfo.totalFrames,
+      fps: runtimeInfo.fps,
+      duration: runtimeInfo.duration,
+      width: runtimeInfo.width,
+      height: runtimeInfo.height,
+      progress: 0,
       graph,
       surface: null,
     };
 
     this.clock = new MediaClock({
-      fps: runtimeState.fps,
-      totalFrames: runtimeState.totalFrames,
+      fps: runtimeInfo.fps,
+      totalFrames: runtimeInfo.totalFrames,
       playbackMode: options.playbackMode ?? "once",
       onFrame: (frame) => {
         if (!this.suppressClockRender) {
@@ -180,7 +194,7 @@ export class MediaSession {
       this.runtime.on("scenechange", (scene) => this.emitEvent("scenechange", scene)),
     );
     this.surface = new DomMediaSurface(() => this.runtime?.getElement() ?? null);
-    this.runtime.attach(container);
+    this.runtime.attach(container, { render: false });
 
     try {
       await this.renderFrame(this.state.currentFrame);
@@ -223,39 +237,29 @@ export class MediaSession {
   async renderFrame(frame: number): Promise<MediaFrameResult> {
     const runtime = this.requireRuntime("renderFrame");
     const token = ++this.renderToken;
-    let payload: RuntimeRenderedPayload;
-    try {
-      payload = await this.renderRuntimeFrame(runtime, frame);
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.emitEvent("error", err);
-      throw err;
-    }
-    const graph = buildMediaGraph(payload.html);
-    const result: MediaFrameResult = {
-      frame: payload.frame,
-      html: payload.html,
-      compositeHtml: payload.compositeHtml,
-      graph,
-    };
+    let accepted: MediaFrameResult | null = null;
+    const task = this.renderChain.then(async () => {
+      // A newer request superseded this one before it reached the renderer.
+      if (token !== this.renderToken) return;
+      let payload: RuntimeRenderedPayload;
+      try {
+        payload = await this.renderRuntimeFrame(runtime, frame);
+      } catch (error) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        this.emitEvent("error", err);
+        throw err;
+      }
+      // Presentation is serialized. If a newer request arrived while it was in
+      // flight, leave session state untouched and let the newest queued render win.
+      if (token !== this.renderToken) return;
+      accepted = this.acceptRenderedPayload(payload);
+    });
+    this.renderChain = task.catch(() => undefined);
+    await task;
 
-    if (token !== this.renderToken) {
-      return this.lastResult ? { ...this.lastResult, stale: true } : { ...result, stale: true };
-    }
-
-    this.lastResult = result;
-    this.state = {
-      ...this.state,
-      isReady: this.state.isReady,
-      currentFrame: payload.frame,
-      graph,
-      surface: this.surface,
-    };
-    this.syncClockToRenderedFrame(payload.frame);
-    this.syncNativeMedia();
-    this.emit();
-    this.emitEvent("rendered", result);
-    return result;
+    if (accepted) return accepted;
+    if (this.lastResult) return { ...this.lastResult, stale: true };
+    throw new Error(`MediaSession renderFrame(${frame}) was superseded before the first frame`);
   }
 
   update(update: MediaSessionUpdate): void {
@@ -268,6 +272,7 @@ export class MediaSession {
     if (update.assets !== undefined) this.options.assets = update.assets;
     if (update.assetResolver !== undefined) this.options.assetResolver = update.assetResolver;
     if (update.fonts !== undefined) this.options.fonts = update.fonts;
+    if (update.playbackMode !== undefined) this.options.playbackMode = update.playbackMode;
 
     const runtime = this.runtime;
     if (!runtime) return;
@@ -281,9 +286,13 @@ export class MediaSession {
     if (update.data !== undefined) runtimeUpdate.data = update.data;
     if (update.assets !== undefined) runtimeUpdate.assets = update.assets;
     if (update.assetResolver !== undefined) runtimeUpdate.assetResolver = update.assetResolver;
-    runtime.update(runtimeUpdate);
+    runtime.update(runtimeUpdate, { render: false });
     const runtimeState = runtime.getState();
-    this.clock.configure({ fps: runtimeState.fps, totalFrames: runtimeState.totalFrames });
+    this.clock.configure({
+      fps: runtimeState.fps,
+      totalFrames: runtimeState.totalFrames,
+      ...(update.playbackMode !== undefined ? { playbackMode: update.playbackMode } : {}),
+    });
     this.state = {
       ...this.state,
       medium: runtimeState.medium,
@@ -296,6 +305,10 @@ export class MediaSession {
       progress: runtimeState.progress,
     };
     this.emit();
+    void this.renderFrame(this.state.currentFrame).catch((error) => {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.emitEvent("error", err);
+    });
   }
 
   getState(): MediaSessionState {
@@ -316,7 +329,11 @@ export class MediaSession {
   }
 
   on<K extends keyof MediaSessionEvents>(event: K, callback: MediaSessionEvents[K]): () => void {
-    const set = (this.events[event] ??= new Set<MediaSessionEvents[K]>());
+    let set = this.events[event] as Set<MediaSessionEvents[K]> | undefined;
+    if (!set) {
+      set = new Set<MediaSessionEvents[K]>();
+      Object.assign(this.events, { [event]: set });
+    }
     set.add(callback);
     return () => this.off(event, callback);
   }
@@ -376,14 +393,47 @@ export class MediaSession {
     return payload;
   }
 
+  private acceptRenderedPayload(payload: RuntimeRenderedPayload): MediaFrameResult {
+    const graph = payload.html === this.lastGraphHtml && this.lastResult
+      ? this.lastResult.graph
+      : buildMediaGraph(payload.html);
+    const result: MediaFrameResult = {
+      frame: payload.frame,
+      html: payload.html,
+      compositeHtml: payload.compositeHtml,
+      graph,
+    };
+    this.lastGraphHtml = payload.html;
+    this.lastResult = result;
+    this.state = {
+      ...this.state,
+      currentFrame: payload.frame,
+      graph,
+      surface: this.surface,
+    };
+    this.syncClockToRenderedFrame(payload.frame);
+    this.syncNativeMedia();
+    this.emit();
+    this.emitEvent("rendered", result);
+    return result;
+  }
+
   private syncClockToRenderedFrame(frame: number): void {
     const runtimeState = this.requireRuntime("syncClock").getState();
-    this.clock.configure({
-      fps: runtimeState.fps,
-      totalFrames: runtimeState.totalFrames,
-      playbackMode: this.options.playbackMode ?? "once",
-    });
-    const clockState = this.clock.getState();
+    let clockState = this.clock.getState();
+    const playbackMode = this.options.playbackMode ?? "once";
+    if (
+      clockState.fps !== runtimeState.fps ||
+      clockState.totalFrames !== runtimeState.totalFrames ||
+      clockState.playbackMode !== playbackMode
+    ) {
+      this.clock.configure({
+        fps: runtimeState.fps,
+        totalFrames: runtimeState.totalFrames,
+        playbackMode,
+      });
+      clockState = this.clock.getState();
+    }
     this.state = {
       ...this.state,
       medium: runtimeState.medium,

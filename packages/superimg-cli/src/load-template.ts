@@ -7,12 +7,23 @@ import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 import { enrichError } from "@superimg/core/errors";
 import { PlaywrightEngine } from "@superimg/node/internal";
 import { parseTemplate } from "./cli/utils/template-config.js";
-import type { Duration, EncodingOptions, TemplateModule } from "@superimg/types";
+import type {
+  Duration,
+  EncodingOptions,
+  RenderExecutionOptions,
+  RenderLimits,
+  TemplateModule,
+} from "@superimg/types";
+import {
+  RenderExecutionError,
+  raceWithExecution,
+  throwIfExecutionCancelled,
+} from "@superimg/types";
 import { discoverTemplateAssets } from "./cli/utils/asset-discovery.js";
 import { buildRenderJob } from "./utils/build-render-job.js";
-import { writeFileRecursive } from "./utils/fs.js";
+import { writeFileAtomic } from "./utils/fs.js";
 
-export interface LoadedTemplateRenderOptions {
+export interface LoadedTemplateRenderOptions extends RenderExecutionOptions {
   width?: number;
   height?: number;
   fps?: number;
@@ -20,6 +31,7 @@ export interface LoadedTemplateRenderOptions {
   data?: Record<string, unknown>;
   encoding?: EncodingOptions;
   onProgress?: (frame: number, totalFrames: number) => void;
+  limits?: RenderLimits;
 }
 
 export interface LoadedTemplate {
@@ -53,28 +65,44 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
   const template: TemplateModule = compileResult.template;
 
   let engine: PlaywrightEngine | null = null;
+  let enginePromise: Promise<PlaywrightEngine> | null = null;
+  let renderTail: Promise<void> = Promise.resolve();
+  let disposed = false;
 
   // Discover assets at load time (not per-render) to avoid repeated filesystem scans
   const templateDir = dirname(resolvedPath);
   const autoDiscovered = discoverTemplateAssets(templateDir);
 
   async function ensureEngine(): Promise<PlaywrightEngine> {
-    if (!engine) {
-      engine = new PlaywrightEngine();
-      await engine.init();
+    if (disposed) throw new RenderExecutionError("aborted", "Loaded template has been disposed");
+    if (engine) return engine;
+    enginePromise ??= (async () => {
+      const next = new PlaywrightEngine();
+      await next.init();
+      if (disposed) {
+        await next.dispose();
+        throw new RenderExecutionError("aborted", "Loaded template has been disposed");
+      }
+      engine = next;
+      return next;
+    })();
+    try {
+      return await enginePromise;
+    } finally {
+      enginePromise = null;
     }
-    return engine;
   }
 
-  async function render(options: LoadedTemplateRenderOptions = {}): Promise<Uint8Array> {
-    const pw = await ensureEngine();
-    const assetBaseUrl = pw.getBaseUrl();
+  async function renderNow(options: LoadedTemplateRenderOptions = {}): Promise<Uint8Array> {
+    throwIfExecutionCancelled(options);
+    const pw = await raceWithExecution(ensureEngine(), options);
+    const assetUrlResolver = (filePath: string) => pw.registerAsset(filePath);
 
     const { job, resolvedAssets, explicitOverrides } = buildRenderJob({
       parsed: templateData,
       templateBundle,
       templateDir,
-      assetBaseUrl,
+      assetUrlResolver,
       autoDiscovered,
       overrides: options,
     });
@@ -84,16 +112,37 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
       ...(job.audio !== undefined ? { audio: job.audio } : {}),
     });
     const plan = await createRenderPlan(job, {
-      assetBaseUrl,
+      assetUrlResolver,
       resolvedAssets,
       templateDir,
       ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(options.deadlineMs !== undefined ? { deadlineMs: options.deadlineMs } : {}),
+      ...(options.cleanupTimeoutMs !== undefined ? { cleanupTimeoutMs: options.cleanupTimeoutMs } : {}),
+      ...(options.limits !== undefined ? { limits: options.limits } : {}),
     });
     return executeRenderPlan(plan, renderer, encoder, {
       ...(options.onProgress
         ? { onProgress: (p) => options.onProgress!(p.frame, p.totalFrames) }
         : {}),
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(options.deadlineMs !== undefined ? { deadlineMs: options.deadlineMs } : {}),
+      ...(options.cleanupTimeoutMs !== undefined ? { cleanupTimeoutMs: options.cleanupTimeoutMs } : {}),
     });
+  }
+
+  // A LoadedTemplate owns one shared Playwright page, so renders are serialized.
+  async function render(options: LoadedTemplateRenderOptions = {}): Promise<Uint8Array> {
+    if (disposed) throw new RenderExecutionError("aborted", "Loaded template has been disposed");
+    const previous = renderTail;
+    let release!: () => void;
+    renderTail = new Promise<void>((resolveTail) => { release = resolveTail; });
+    try {
+      await raceWithExecution(previous, options);
+      return await renderNow(options);
+    } finally {
+      release();
+    }
   }
 
   return {
@@ -106,10 +155,14 @@ export async function loadTemplate(templatePath: string): Promise<LoadedTemplate
     render,
     async renderToFile(outputPath: string, options?: LoadedTemplateRenderOptions): Promise<Uint8Array> {
       const result = await render(options);
-      writeFileRecursive(resolve(outputPath), result);
+      throwIfExecutionCancelled(options);
+      writeFileAtomic(resolve(outputPath), result);
       return result;
     },
     async dispose(): Promise<void> {
+      if (disposed) return;
+      disposed = true;
+      await renderTail;
       if (engine) {
         await engine.dispose();
         engine = null;

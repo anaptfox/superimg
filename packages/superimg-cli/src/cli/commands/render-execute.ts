@@ -18,8 +18,13 @@ import {
 } from "@superimg/core";
 import { renderTemplateFrame } from "@superimg/core/engine";
 import { FfmpegGifEncoder, NodeVideoEncoder, PlaywrightEngine } from "@superimg/node/internal";
-import type { VideoEncoder } from "@superimg/types";
+import type {
+  RenderExecutionOptions,
+  RenderLimits,
+  VideoEncoder,
+} from "@superimg/types";
 import type { RenderProgress, TemplateBundle } from "@superimg/types";
+import { raceWithExecution, throwIfExecutionCancelled } from "@superimg/types";
 import { discoverTemplateAssets } from "../utils/asset-discovery.js";
 import { mergeEncoding } from "../utils/merge-encoding.js";
 import { buildRenderJob } from "../../utils/build-render-job.js";
@@ -30,8 +35,9 @@ import type {
   RenderTarget,
   ResolvedTargets,
 } from "./render-targets.js";
+import { writeFileAtomic } from "../../utils/fs.js";
 
-export interface ExecuteRenderOptions {
+export interface ExecuteRenderOptions extends RenderExecutionOptions {
   resolved: ResolvedTargets;
   options: RenderOptions;
   /** Called once per target, before rendering begins. */
@@ -44,6 +50,7 @@ export interface ExecuteRenderOptions {
   onTargetComplete?: (target: RenderTarget, result: Uint8Array) => void;
   /** Optional cancellation signal, polled between targets. */
   isCancelled?: () => boolean;
+  limits?: RenderLimits;
 }
 
 /** Validate that a string is SVG markup. Returns null if valid, warning string if not. */
@@ -179,13 +186,19 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
   const { resolved, options, onTargetStart, onProgress, onTargetComplete, isCancelled } = opts;
   const { resolvedTemplate, templateData, targets } = resolved;
   const templateDir = dirname(resolvedTemplate);
+  const execution = {
+    ...(opts.signal !== undefined ? { signal: opts.signal } : {}),
+    ...(opts.deadlineMs !== undefined ? { deadlineMs: opts.deadlineMs } : {}),
+    ...(opts.cleanupTimeoutMs !== undefined ? { cleanupTimeoutMs: opts.cleanupTimeoutMs } : {}),
+  };
+  throwIfExecutionCancelled(execution);
 
   let templateBundle: TemplateBundle | undefined;
   if (templateData.templateCode) {
-    templateBundle = await bundleTemplateCodeWithMap(templateData.templateCode, {
+    templateBundle = await raceWithExecution(bundleTemplateCodeWithMap(templateData.templateCode, {
       resolveDir: templateDir,
       sourcefile: resolvedTemplate,
-    });
+    }), execution);
   }
   if (!templateBundle) {
     throw new Error("Template bundle missing — parseTemplate did not produce templateCode.");
@@ -230,7 +243,12 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
   });
   if (needsResvgFonts) {
     const specs = templateData.templateConfig?.fonts ?? [];
-    fontBuffers = specs.length ? await resolveFontBuffers(specs) : [];
+    fontBuffers = specs.length
+      ? await raceWithExecution(
+          resolveFontBuffers(specs, { ...(opts.signal ? { signal: opts.signal } : {}) }),
+          execution,
+        )
+      : [];
   }
 
   const renderResvgVideoTarget = async (target: RenderTarget): Promise<void> => {
@@ -245,7 +263,6 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       parsed: templateData,
       templateBundle: templateBundle!,
       templateDir,
-      assetBaseUrl: "",
       autoDiscovered,
       overrides: {
         width: target.width,
@@ -262,6 +279,8 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       resolvedAssets,
       templateDir,
       ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
+      ...execution,
+      ...(opts.limits !== undefined ? { limits: opts.limits } : {}),
     });
 
     const rasterizer = new ResvgRasterizer();
@@ -274,16 +293,17 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
 
     const result = await executeRenderPlan(plan, rasterizer, encoder, {
       onProgress: (p) => {
-        if (isCancelled?.()) return;
         onProgress?.(target, p);
       },
+      ...execution,
       onFrameRendered: (frame, _html, compositeHtml) => {
         if (options.debugHtml) writeDebugHtmlFrame(target, frame, compositeHtml);
       },
     });
 
     mkdirSync(dirname(target.outputPath), { recursive: true });
-    writeFileSync(target.outputPath, result);
+    throwIfExecutionCancelled(execution);
+    writeFileAtomic(target.outputPath, result);
     onTargetComplete?.(target, result);
   };
 
@@ -304,6 +324,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
   if (!needsPlaywright) {
     for (let i = 0; i < targets.length; i++) {
       if (isCancelled?.()) return;
+      throwIfExecutionCancelled(execution);
       const target = targets[i];
       if (!target) continue;
       onTargetStart?.(target, i, targets.length);
@@ -314,11 +335,12 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
 
   const engine = new PlaywrightEngine();
   try {
-    await engine.init();
-    const assetBaseUrl = engine.getBaseUrl();
+    await raceWithExecution(engine.init(), execution);
+    const assetUrlResolver = (filePath: string) => engine.registerAsset(filePath);
 
     for (let i = 0; i < targets.length; i++) {
       if (isCancelled?.()) return;
+      throwIfExecutionCancelled(execution);
       const target = targets[i];
       if (!target) continue;
 
@@ -349,7 +371,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         parsed: templateData,
         templateBundle,
         templateDir,
-        assetBaseUrl,
+        assetUrlResolver,
         autoDiscovered,
         overrides: {
           width: target.width,
@@ -381,6 +403,7 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
           onProgress: (chunksComplete, totalChunks) => {
             onProgress?.(target, { frame: chunksComplete, totalFrames: totalChunks, fps: 0 });
           },
+          ...execution,
         });
         const bytes = readFileSync(target.outputPath);
         onTargetComplete?.(target, bytes);
@@ -388,10 +411,12 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       }
 
       const planBase = {
-        assetBaseUrl,
+        assetUrlResolver,
         resolvedAssets,
         templateDir,
         ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
+        ...execution,
+        ...(opts.limits !== undefined ? { limits: opts.limits } : {}),
       };
       const plan =
         target.frame !== undefined
@@ -406,7 +431,11 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
             })()
           : await createRenderPlan(job, planBase);
 
-      const parallelN = Math.max(1, parseInt(process.env.SUPERIMG_PARALLEL ?? "1", 10) || 1);
+      const maxParallel = Math.max(1, parseInt(process.env.SUPERIMG_MAX_PARALLEL ?? "8", 10) || 8);
+      const parallelN = Math.min(
+        maxParallel,
+        Math.max(1, parseInt(process.env.SUPERIMG_PARALLEL ?? "1", 10) || 1),
+      );
       let result: Uint8Array;
 
       if (parallelN > 1) {
@@ -417,9 +446,9 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         const renderers = await engine.createParallelRenderers(parallelN);
         result = await executeRenderPlanParallel(plan, renderers, encoder, {
           onProgress: (p) => {
-            if (isCancelled?.()) return;
             onProgress?.(target, p);
           },
+          ...execution,
           onFrameRendered: (frame, _html, compositeHtml) => {
             if (options.debugHtml) writeDebugHtmlFrame(target, frame, compositeHtml);
           },
@@ -431,9 +460,9 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
         });
         result = await executeRenderPlan(plan, renderer, encoder, {
           onProgress: (p) => {
-            if (isCancelled?.()) return;
             onProgress?.(target, p);
           },
+          ...execution,
           onFrameRendered: (frame, _html, compositeHtml) => {
             if (options.debugHtml) {
               writeDebugHtmlFrame(target, frame, compositeHtml);
@@ -443,7 +472,8 @@ export async function executeRenderTargets(opts: ExecuteRenderOptions): Promise<
       }
 
       mkdirSync(dirname(target.outputPath), { recursive: true });
-      writeFileSync(target.outputPath, result);
+      throwIfExecutionCancelled(execution);
+      writeFileAtomic(target.outputPath, result);
       onTargetComplete?.(target, result);
     }
   } finally {

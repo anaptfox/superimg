@@ -70,6 +70,8 @@ export interface RenderOptions {
    * then stitched locally with ffmpeg. Example: "https://render-a.example.com,https://render-b.example.com"
    */
   distributed?: string;
+  /** Absolute execution budget for each CLI render invocation, in seconds. */
+  timeout?: string;
 }
 
 export interface RenderTarget {

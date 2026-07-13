@@ -7,6 +7,7 @@ export interface MediaClockState {
   totalFrames: number;
   duration: number;
   progress: number;
+  playbackMode: MediaPlaybackMode;
 }
 
 export interface MediaClockOptions {
@@ -85,6 +86,7 @@ export class MediaClock {
       totalFrames: this.totalFrames,
       duration: this.totalFrames / this.fps,
       progress: this.totalFrames > 1 ? currentFrame / (this.totalFrames - 1) : 1,
+      playbackMode: this.playbackMode,
     };
   }
 

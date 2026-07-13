@@ -91,7 +91,7 @@ export interface FrameRendererConfig {
 
 export interface FrameRenderer<TFrame = unknown> {
   init(config: FrameRendererConfig): Promise<void>;
-  captureFrame(html: string, options?: { alpha?: boolean }): Promise<TFrame>;
+  captureFrame(html: string, options?: { alpha?: boolean; signal?: AbortSignal }): Promise<TFrame>;
   dispose(): Promise<void>;
   /**
    * Optional: Advance the fake clock by `ms` milliseconds before the next capture.
@@ -148,7 +148,7 @@ export interface Rasterizer<TFrame = unknown> {
   accepts(medium: Medium): boolean;
   init(config: RasterizerConfig): Promise<void>;
   /** Rasterize one markup string (HTML or SVG) into a frame. */
-  rasterize(markup: string, options?: { alpha?: boolean }): Promise<TFrame>;
+  rasterize(markup: string, options?: { alpha?: boolean; signal?: AbortSignal }): Promise<TFrame>;
   dispose(): Promise<void>;
   /**
    * Optional: Advance the fake clock by `ms` milliseconds before the next capture.
@@ -183,8 +183,8 @@ export interface VideoEncoder<TFrame = unknown> {
 
 export interface RenderEngine<TFrame = unknown> {
   init(): Promise<void>;
-  /** Returns the base URL of the engine's local asset server (used to resolve asset URLs for the renderer). */
-  getBaseUrl(): string;
+  /** Register a local file for this engine session and return its opaque URL. */
+  registerAsset(filePath: string): string;
   createAdapters(options?: { encoding?: EncodingOptions; audio?: AudioValue }): { renderer: FrameRenderer<TFrame>; encoder: VideoEncoder<TFrame> };
   dispose(): Promise<void>;
 }
@@ -218,8 +218,8 @@ export interface RenderPlan {
   data?: JsonObject;
   background?: BackgroundValue;
   watermark?: WatermarkValue;
-  /** Base URL for serving local relative assets to browser context */
-  assetBaseUrl?: string;
+  /** Engine-owned local file registration boundary. */
+  assetUrlResolver?: (absolutePath: string) => string;
   /** Template directory for resolving co-located assets */
   templateDir?: string;
   /** Resolved config.assets for preloading */

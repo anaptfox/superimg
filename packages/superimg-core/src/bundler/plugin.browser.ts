@@ -1,8 +1,8 @@
 //! Browser-side superimg bundler plugin (@rolldown/browser).
 //! No node:* imports — virtual modules are filled from a build-time map
-//! (see scripts/build-browser-virtuals.mjs → browser-virtuals.gen.ts).
+//! (see scripts/build-browser-virtuals.mjs → .generated/browser-virtuals.ts).
 
-import { BROWSER_VIRTUAL_MODULES } from "./browser-virtuals.gen.js";
+import { BROWSER_VIRTUAL_MODULES } from "../../.generated/browser-virtuals.js";
 import {
   buildSuperimgPlugin,
   type BundledStdlibSubpath,

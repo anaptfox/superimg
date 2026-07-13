@@ -3,7 +3,14 @@
 
 import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 import { PlaywrightEngine } from "@superimg/node/internal";
-import type { EncodingOptions, RenderEngine, TemplateBundle } from "@superimg/types";
+import type {
+  EncodingOptions,
+  RenderEngine,
+  RenderExecutionOptions,
+  RenderLimits,
+  TemplateBundle,
+} from "@superimg/types";
+import { raceWithExecution, throwIfExecutionCancelled } from "@superimg/types";
 import type { ParsedTemplate } from "./cli/utils/template-config.js";
 import { buildRenderJob } from "./utils/build-render-job.js";
 
@@ -13,7 +20,7 @@ export interface ManifestEntry {
   parsed: ParsedTemplate;
 }
 
-export interface RenderFromBundleOptions {
+export interface RenderFromBundleOptions extends RenderExecutionOptions {
   /** Pre-initialized engine to reuse. Caller owns lifecycle. If omitted, a PlaywrightEngine is created and disposed per render. */
   engine?: RenderEngine;
   data?: Record<string, unknown>;
@@ -23,6 +30,8 @@ export interface RenderFromBundleOptions {
   startFrame?: number;
   /** Last frame to render, exclusive. Default: totalFrames. Used for distributed chunk rendering. */
   endFrame?: number;
+  /** Limits applied after resolve and before renderer allocation. */
+  limits?: RenderLimits;
 }
 
 /**
@@ -33,19 +42,20 @@ export async function renderFromBundle(
   entry: ManifestEntry,
   options: RenderFromBundleOptions = {}
 ): Promise<Uint8Array> {
+  throwIfExecutionCancelled(options);
   const ownsEngine = !options.engine;
   const engine = options.engine ?? new PlaywrightEngine();
 
   try {
-    if (ownsEngine) await engine.init();
+    if (ownsEngine) await raceWithExecution(engine.init(), options);
 
-    const assetBaseUrl = engine.getBaseUrl();
+    const assetUrlResolver = (filePath: string) => engine.registerAsset(filePath);
 
     const { job, resolvedAssets, explicitOverrides } = buildRenderJob({
       parsed: entry.parsed,
       templateBundle: entry.bundle,
       templateDir: "",
-      assetBaseUrl,
+      assetUrlResolver,
       autoDiscovered: [],
       overrides: {
         ...(options.data !== undefined ? { data: options.data } : {}),
@@ -59,18 +69,25 @@ export async function renderFromBundle(
     });
 
     const plan = await createRenderPlan(job, {
-      assetBaseUrl,
+      assetUrlResolver,
       resolvedAssets,
       templateDir: "",
       ...(options.startFrame !== undefined ? { startFrame: options.startFrame } : {}),
       ...(options.endFrame !== undefined ? { endFrame: options.endFrame } : {}),
       ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(options.deadlineMs !== undefined ? { deadlineMs: options.deadlineMs } : {}),
+      ...(options.cleanupTimeoutMs !== undefined ? { cleanupTimeoutMs: options.cleanupTimeoutMs } : {}),
+      ...(options.limits !== undefined ? { limits: options.limits } : {}),
     });
 
     return await executeRenderPlan(plan, renderer, encoder, {
       ...(options.onProgress
         ? { onProgress: (p) => options.onProgress!(p.frame, p.totalFrames) }
         : {}),
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(options.deadlineMs !== undefined ? { deadlineMs: options.deadlineMs } : {}),
+      ...(options.cleanupTimeoutMs !== undefined ? { cleanupTimeoutMs: options.cleanupTimeoutMs } : {}),
     });
   } finally {
     if (ownsEngine) await engine.dispose();

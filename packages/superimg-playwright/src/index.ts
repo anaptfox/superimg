@@ -12,11 +12,13 @@ export type {
 } from "./render-session.js";
 
 // Adapters (advanced use)
-export { PlaywrightFrameRenderer, PlaywrightVideoEncoder } from "./adapters.js";
+export { PlaywrightFrameRenderer } from "./adapters.js";
 export { FfmpegGifEncoder } from "./ffmpeg-gif-encoder.js";
 export { NodeVideoEncoder } from "./node-encoder.js";
 export { SharpStillEncoder } from "./sharp-still-encoder.js";
 export type { StillFormat } from "./sharp-still-encoder.js";
+export { AssetRegistry, openRegisteredAsset, parseRangeHeader } from "./asset-server.js";
+export type { AssetResponse, ByteRange, OpenAssetOptions, ParseRangeResult } from "./asset-server.js";
 
 // Browser management
 export {

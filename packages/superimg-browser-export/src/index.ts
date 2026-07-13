@@ -8,6 +8,7 @@ export { BrowserEncoder, validateFrameDimensions } from "./encoder.js";
 export {
   downloadBlob,
   exportToVideo,
+  exportImageDataToVideo,
   type ExportConfig,
   type ExportOptions,
 } from "./export.js";

@@ -299,6 +299,8 @@ export async function validateAITemplate(
   }
 
   const template = compileResult.template!;
+  const { prepareStdlibForTemplate } = await import("../shared/stdlib-capabilities.js");
+  await prepareStdlibForTemplate(template);
   const cfg = template.config ?? {};
 
   // Phase 5: Multi-frame render validation

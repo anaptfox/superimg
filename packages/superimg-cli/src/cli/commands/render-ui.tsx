@@ -21,6 +21,8 @@ function RenderUI({ resolved, options }: { resolved: ResolvedTargets; options: R
 
   useEffect(() => {
     let mounted = true;
+    const controller = new AbortController();
+    const timeoutSeconds = Number(options.timeout);
 
     (async () => {
       try {
@@ -28,6 +30,10 @@ function RenderUI({ resolved, options }: { resolved: ResolvedTargets; options: R
         await executeRenderTargets({
           resolved,
           options,
+          signal: controller.signal,
+          ...(Number.isFinite(timeoutSeconds) && timeoutSeconds > 0
+            ? { deadlineMs: Date.now() + timeoutSeconds * 1_000 }
+            : {}),
           isCancelled: () => !mounted,
           onTargetStart: (_target, index, total) => {
             if (!mounted) return;
@@ -59,6 +65,7 @@ function RenderUI({ resolved, options }: { resolved: ResolvedTargets; options: R
 
     return () => {
       mounted = false;
+      controller.abort();
     };
   }, []);
 

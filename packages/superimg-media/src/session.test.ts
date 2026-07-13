@@ -33,6 +33,14 @@ class TestPresenter implements DomPresenter {
   }
 }
 
+class DelayedPresenter extends TestPresenter {
+  async present(html: string, width: number, height: number): Promise<void> {
+    const frame = Number(html.match(/data-frame="(\d+)"/)?.[1] ?? 0);
+    await new Promise((resolve) => setTimeout(resolve, frame === 1 ? 20 : 1));
+    super.present(html, width, height);
+  }
+}
+
 const template = define({
   sample: { label: "hello" },
   config: {
@@ -101,10 +109,12 @@ describe("MediaSession", () => {
 
   it("re-emits scene changes from composed templates", async () => {
     const sceneA = define({
+      sample: {},
       config: { width: 320, height: 180, fps: 10, duration: 0.5 },
       render: (ctx) => `<main>A:${ctx.globalFrame}</main>`,
     });
     const sceneB = define({
+      sample: {},
       config: { width: 320, height: 180, fps: 10, duration: 0.5 },
       render: (ctx) => `<main>B:${ctx.globalFrame}</main>`,
     });
@@ -155,7 +165,7 @@ describe("MediaSession", () => {
   });
 
   it("prevents stale rapid renders from overwriting session state", async () => {
-    const presenter = new TestPresenter();
+    const presenter = new DelayedPresenter();
     const session = await createMediaSession(template, { presenter });
     await session.mount(document.createElement("div"));
 
@@ -163,7 +173,18 @@ describe("MediaSession", () => {
 
     expect(session.getState().currentFrame).toBe(3);
     expect(presenter.records.at(-1)?.html).toContain('data-frame="3"');
+    expect(presenter.records.filter((record) => record.html.includes('data-frame="1"'))).toHaveLength(0);
 
+    session.dispose();
+  });
+
+  it("presents exactly one initial frame during mount", async () => {
+    const presenter = new TestPresenter();
+    const session = await createMediaSession(template, { presenter });
+
+    await session.mount(document.createElement("div"));
+
+    expect(presenter.records).toHaveLength(1);
     session.dispose();
   });
 

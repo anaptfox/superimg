@@ -5,7 +5,7 @@ import type { ManifestEntry } from "../render-from-bundle.js";
 
 const defaultMockEngine = vi.hoisted(() => ({
   init: vi.fn().mockResolvedValue(undefined),
-  getBaseUrl: vi.fn().mockReturnValue("http://localhost:9999"),
+  registerAsset: vi.fn((filePath: string) => `http://localhost:9999/assets/${filePath}`),
   createAdapters: vi.fn().mockReturnValue({ renderer: {}, encoder: {} }),
   dispose: vi.fn().mockResolvedValue(undefined),
 }));
@@ -31,7 +31,7 @@ vi.mock("../utils/build-render-job.js", () => ({
 function makeMockEngine(overrides?: Partial<RenderEngine>): RenderEngine {
   return {
     init: vi.fn().mockResolvedValue(undefined),
-    getBaseUrl: vi.fn().mockReturnValue("http://localhost:9999"),
+    registerAsset: vi.fn((filePath: string) => `http://localhost:9999/assets/${filePath}`),
     createAdapters: vi.fn().mockReturnValue({ renderer: {}, encoder: {} }),
     dispose: vi.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -80,13 +80,16 @@ describe("renderFromBundle — engine injection seam", () => {
     expect(engine.dispose).not.toHaveBeenCalled();
   });
 
-  it("calls getBaseUrl() on the injected engine", async () => {
+  it("passes the engine-owned asset registrar into the render job", async () => {
+    const { buildRenderJob } = await import("../utils/build-render-job.js");
     const { renderFromBundle } = await import("../render-from-bundle.js");
     const engine = makeMockEngine();
 
     await renderFromBundle(makeManifestEntry(), { engine });
 
-    expect(engine.getBaseUrl).toHaveBeenCalled();
+    const input = vi.mocked(buildRenderJob).mock.calls[0]?.[0];
+    expect(input?.assetUrlResolver?.("/tmp/a.png")).toContain("/assets/");
+    expect(engine.registerAsset).toHaveBeenCalledWith("/tmp/a.png");
   });
 
   it("passes empty autoDiscovered and blank templateDir to buildRenderJob", async () => {

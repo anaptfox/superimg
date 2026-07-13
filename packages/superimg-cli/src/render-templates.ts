@@ -14,6 +14,7 @@ import { RENDER_EVENT_VERSION } from "@superimg/types";
 import type { OutputFormat } from "@superimg/types";
 import { renderVideo } from "./render-video.js";
 import { parseTemplate } from "./cli/utils/template-config.js";
+import { mapBounded } from "./utils/bounded-pool.js";
 
 export interface RenderTemplatesOptions {
   /** Max templates rendered in parallel (default: 2). */
@@ -54,14 +55,19 @@ export async function* renderTemplates(
 
   // Split into browser-free (svg medium → resvg) and Playwright lists. Medium
   // comes from each template's parsed config, not the filename.
-  const media = await Promise.all(
-    videos.map(async (v) => {
+  const media = await mapBounded(
+    videos,
+    {
+      concurrency: Math.min(16, Math.max(concurrency, 4)),
+      ...(signal !== undefined ? { signal } : {}),
+    },
+    async (v) => {
       try {
         return { v, medium: (await parseTemplate(v.entrypoint)).medium };
       } catch {
         return { v, medium: "html" as const };
       }
-    }),
+    },
   );
   const bypass = media.filter((m) => m.medium === "svg").map((m) => m.v);
   const browser = media.filter((m) => m.medium !== "svg").map((m) => m.v);
@@ -69,21 +75,31 @@ export async function* renderTemplates(
   // Yield events from an async iterable over a concurrency pool.
   // We use a simple slot-based approach: start up to N jobs, replace each
   // finished slot with the next queued item.
-  const queue = [...browser];
   const engines: PlaywrightEngine[] = [];
-  const active = new Map<
-    Promise<void>,
-    { video: DiscoveredVideo; engine: PlaywrightEngine }
-  >();
 
   // Channel: events from concurrent renders arrive here in order.
   const eventQueue: RenderEvent[] = [];
   let resolve_: (() => void) | null = null;
   const signal_ = () => { resolve_?.(); resolve_ = null; };
-  const push = (e: RenderEvent) => { eventQueue.push(e); signal_(); };
+  const push = (e: RenderEvent) => {
+    // Keep only the newest pending progress event per template. Terminal and
+    // lifecycle events are never dropped.
+    if (e.event === "progress") {
+      const existing = eventQueue.findIndex(
+        (queued) => queued.event === "progress" && queued.name === e.name,
+      );
+      if (existing >= 0) eventQueue.splice(existing, 1);
+    }
+    eventQueue.push(e);
+    signal_();
+  };
   const next = (): Promise<void> => new Promise((r) => { resolve_ = r; });
 
-  async function runOne(video: DiscoveredVideo, engine: PlaywrightEngine): Promise<void> {
+  async function runOne(
+    video: DiscoveredVideo,
+    engine: PlaywrightEngine,
+    executionSignal: AbortSignal,
+  ): Promise<void> {
     const format: OutputFormat = options.format ?? "mp4";
     const startMs = Date.now();
 
@@ -97,6 +113,7 @@ export async function* renderTemplates(
         output: outputPath,
         encoding: { format },
         engine,
+        signal: executionSignal,
         onProgress: (frame, totalFrames) => {
           push({ v: RENDER_EVENT_VERSION, event: "progress", name: video.shortName, frame, totalFrames });
         },
@@ -133,6 +150,7 @@ export async function* renderTemplates(
       await renderVideo(video.entrypoint, {
         output: outputPath,
         encoding: { format },
+        ...(signal !== undefined ? { signal } : {}),
       });
       byFormat[format] = (byFormat[format] ?? 0) + 1;
       rendered++;
@@ -148,6 +166,9 @@ export async function* renderTemplates(
       });
       if (options.failOnError) break;
     }
+    while (eventQueue.length > 0) {
+      yield eventQueue.shift()!;
+    }
   }
 
   if (browser.length > 0 && !(signal?.aborted)) {
@@ -159,41 +180,37 @@ export async function* renderTemplates(
       engines.push(engine);
     }
 
-    // Fill initial slots.
-    for (let i = 0; i < poolSize && queue.length > 0; i++) {
-      const video = queue.shift()!;
-      const engine = engines[i];
-      if (!engine) continue;
-      const p = runOne(video, engine).then(() => {
-        active.delete(p);
-        // Refill from queue.
-        if (queue.length > 0 && !(signal?.aborted)) {
-          const next_ = queue.shift()!;
-          const p2: Promise<void> = runOne(next_, engine).then(() => {
-            active.delete(p2);
-            signal_();
-          }).catch(() => { active.delete(p2); signal_(); });
-          active.set(p2, { video: next_, engine });
-        }
-        signal_();
-      }).catch(() => { active.delete(p); signal_(); });
-      active.set(p, { video, engine });
-    }
+    let poolDone = false;
+    let poolError: unknown;
+    const pool = mapBounded(
+      browser,
+      {
+        concurrency: poolSize,
+        stopOnError: options.failOnError ?? false,
+        ...(signal !== undefined ? { signal } : {}),
+      },
+      async (video, _itemIndex, workerIndex, workerSignal) => {
+        const engine = engines[workerIndex];
+        if (!engine) throw new Error(`Missing render engine for worker ${workerIndex}`);
+        await runOne(video, engine, workerSignal);
+      },
+    ).catch((error) => {
+      poolError = error;
+    }).finally(() => {
+      poolDone = true;
+      signal_();
+    });
 
-    // Drain events until all slots are empty.
-    while (active.size > 0 || eventQueue.length > 0) {
-      while (eventQueue.length > 0) {
-        yield eventQueue.shift()!;
+    try {
+      while (!poolDone || eventQueue.length > 0) {
+        while (eventQueue.length > 0) yield eventQueue.shift()!;
+        if (!poolDone) await next();
       }
-      if (active.size > 0) await next();
+      await pool;
+      if (poolError !== undefined && options.failOnError) throw poolError;
+    } finally {
+      await Promise.allSettled(engines.map((e) => e.dispose()));
     }
-    // Flush any remaining events.
-    while (eventQueue.length > 0) {
-      yield eventQueue.shift()!;
-    }
-
-    // Dispose engines.
-    await Promise.allSettled(engines.map((e) => e.dispose()));
   } else {
     // Flush bypass events.
     while (eventQueue.length > 0) {

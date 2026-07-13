@@ -148,6 +148,20 @@ export type {
   SuperImgErrorJSON,
 } from "./results.js";
 
+export type {
+  RenderExecutionErrorCode,
+  RenderExecutionOptions,
+  RenderLimits,
+  LinkedExecutionSignal,
+} from "./execution.js";
+export {
+  RenderExecutionError,
+  executionErrorFromSignal,
+  throwIfExecutionCancelled,
+  createLinkedExecutionSignal,
+  raceWithExecution,
+} from "./execution.js";
+
 export {
   SuperImgError,
   TemplateCompilationError,

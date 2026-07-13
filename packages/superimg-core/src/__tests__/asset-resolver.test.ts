@@ -9,9 +9,9 @@ describe("ctx.asset()", () => {
 
   it("returns resolved URL when resolver is provided", () => {
     const resolver = (filename: string) =>
-      `http://localhost:3000/assets?path=/tmp/assets/${filename}`;
+      `http://localhost:3000/assets/opaque-${filename}`;
     const ctx = createRenderContext(0, 30, 60, 1920, 1080, {}, "default", {}, resolver);
-    expect(ctx.asset("logo.png")).toBe("http://localhost:3000/assets?path=/tmp/assets/logo.png");
+    expect(ctx.asset("logo.png")).toBe("http://localhost:3000/assets/opaque-logo.png");
   });
 
   it("is independent from ctx.assets", () => {

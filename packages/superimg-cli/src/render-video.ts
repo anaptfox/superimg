@@ -6,13 +6,19 @@ import { createRenderPlan, executeRenderPlan, resolveFrameIndex, renderTemplateF
 import { compileTemplate, ensureInit, rasterizeSvgSync, resolveFontBuffers } from "@superimg/core";
 import { PlaywrightEngine } from "@superimg/node/internal";
 import { parseTemplate } from "./cli/utils/template-config.js";
-import type { EncodingOptions, RenderEngine } from "@superimg/types";
+import type {
+  EncodingOptions,
+  RenderEngine,
+  RenderExecutionOptions,
+  RenderLimits,
+} from "@superimg/types";
+import { raceWithExecution, throwIfExecutionCancelled } from "@superimg/types";
 import { mergeEncoding } from "./cli/utils/merge-encoding.js";
 import { discoverTemplateAssets } from "./cli/utils/asset-discovery.js";
 import { buildRenderJob } from "./utils/build-render-job.js";
-import { writeFileRecursive } from "./utils/fs.js";
+import { writeFileAtomic } from "./utils/fs.js";
 
-export interface RenderVideoOptions {
+export interface RenderVideoOptions extends RenderExecutionOptions {
   /** Output file path (writes to disk when provided) */
   output?: string;
   /** Override width */
@@ -37,6 +43,8 @@ export interface RenderVideoOptions {
   onFrameRendered?: (frame: number, html: string, compositeHtml: string) => void;
   /** Pre-initialized engine to reuse (skips init/dispose). Caller owns lifecycle. */
   engine?: RenderEngine;
+  /** Limits applied to the resolved plan before browser allocation. */
+  limits?: RenderLimits;
 }
 
 /**
@@ -47,9 +55,10 @@ export async function renderVideo(
   templatePath: string,
   options: RenderVideoOptions = {}
 ): Promise<Uint8Array> {
+  throwIfExecutionCancelled(options);
   const resolvedPath = resolve(templatePath);
-  const templateData = await parseTemplate(resolvedPath);
-  const templateBundle = await bundleTemplateWithMap(resolvedPath);
+  const templateData = await raceWithExecution(parseTemplate(resolvedPath), options);
+  const templateBundle = await raceWithExecution(bundleTemplateWithMap(resolvedPath), options);
 
   // SVG medium renders browser-free (resvg-wasm) — no Playwright. Same renderer
   // at build time and at the edge.
@@ -60,19 +69,19 @@ export async function renderVideo(
   const ownsEngine = !options.engine;
   const engine = options.engine ?? new PlaywrightEngine();
   try {
-    if (ownsEngine) await engine.init();
+    if (ownsEngine) await raceWithExecution(engine.init(), options);
     const encoding = mergeEncoding(
       templateData.templateConfig?.encoding,
       options.encoding
     );
-    const assetBaseUrl = engine.getBaseUrl();
+    const assetUrlResolver = (filePath: string) => engine.registerAsset(filePath);
     const templateDir = dirname(resolvedPath);
 
     const { job, resolvedAssets, explicitOverrides } = buildRenderJob({
       parsed: templateData,
       templateBundle,
       templateDir,
-      assetBaseUrl,
+      assetUrlResolver,
       autoDiscovered: discoverTemplateAssets(templateDir),
       overrides: {
         ...(options.width !== undefined ? { width: options.width } : {}),
@@ -91,17 +100,25 @@ export async function renderVideo(
     });
 
     const planOpts: {
-      assetBaseUrl?: string;
+      assetUrlResolver?: (absolutePath: string) => string;
       resolvedAssets: typeof resolvedAssets;
       templateDir: string;
       startFrame?: number;
       endFrame?: number;
       explicitOverrides?: typeof explicitOverrides;
+      signal?: AbortSignal;
+      deadlineMs?: number;
+      cleanupTimeoutMs?: number;
+      limits?: RenderLimits;
     } = {
-      assetBaseUrl,
+      assetUrlResolver,
       resolvedAssets,
       templateDir,
       ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(options.deadlineMs !== undefined ? { deadlineMs: options.deadlineMs } : {}),
+      ...(options.cleanupTimeoutMs !== undefined ? { cleanupTimeoutMs: options.cleanupTimeoutMs } : {}),
+      ...(options.limits !== undefined ? { limits: options.limits } : {}),
     };
 
     if (options.frame !== undefined || options.progress !== undefined) {
@@ -122,10 +139,14 @@ export async function renderVideo(
         ? { onProgress: (p) => options.onProgress!(p.frame, p.totalFrames) }
         : {}),
       ...(options.onFrameRendered !== undefined ? { onFrameRendered: options.onFrameRendered } : {}),
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(options.deadlineMs !== undefined ? { deadlineMs: options.deadlineMs } : {}),
+      ...(options.cleanupTimeoutMs !== undefined ? { cleanupTimeoutMs: options.cleanupTimeoutMs } : {}),
     });
 
     if (options.output) {
-      writeFileRecursive(resolve(options.output), result);
+      throwIfExecutionCancelled(options);
+      writeFileAtomic(resolve(options.output), result);
     }
 
     return result;
@@ -141,6 +162,7 @@ async function renderSvgVideo(
   templateBundle: Awaited<ReturnType<typeof bundleTemplateWithMap>>,
   options: RenderVideoOptions,
 ): Promise<Uint8Array> {
+  throwIfExecutionCancelled(options);
   const compiled = compileTemplate(templateBundle.code);
   if (compiled.error || !compiled.template) {
     throw compiled.error ?? new Error("Template compilation failed");
@@ -161,14 +183,20 @@ async function renderSvgVideo(
     composite: false,
     ...(options.data !== undefined ? { data: options.data } : {}),
   });
+  throwIfExecutionCancelled(options);
 
   let bytes: Uint8Array;
   if (format === "svg" || format === "html") {
     bytes = Buffer.from(html, "utf-8");
   } else {
     const specs = config?.fonts ?? [];
-    const fontBuffers = specs.length ? await resolveFontBuffers(specs) : [];
-    await ensureInit();
+    const fontBuffers = specs.length
+      ? await raceWithExecution(
+          resolveFontBuffers(specs, { ...(options.signal ? { signal: options.signal } : {}) }),
+          options,
+        )
+      : [];
+    await raceWithExecution(ensureInit(), options);
     const png = rasterizeSvgSync(html, { width, height, fontBuffers });
     if (format === "webp" || format === "jpeg") {
       const sharpMod = await import("sharp");
@@ -176,13 +204,16 @@ async function renderSvgVideo(
         input: Buffer
       ) => import("sharp").Sharp;
       const img = sharp(Buffer.from(png));
-      bytes = format === "webp" ? await img.webp().toBuffer() : await img.jpeg({ quality: 95 }).toBuffer();
+      bytes = format === "webp"
+        ? await raceWithExecution(img.webp().toBuffer(), options)
+        : await raceWithExecution(img.jpeg({ quality: 95 }).toBuffer(), options);
     } else {
       bytes = png;
     }
   }
 
   options.onProgress?.(0, 1);
-  if (options.output) writeFileRecursive(resolve(options.output), bytes);
+  throwIfExecutionCancelled(options);
+  if (options.output) writeFileAtomic(resolve(options.output), bytes);
   return bytes;
 }

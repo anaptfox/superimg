@@ -11,9 +11,17 @@ import type {
   ComposedTemplate,
   TemplateBundle,
   Rasterizer,
+  RenderExecutionOptions,
+  RenderLimits,
 } from "@superimg/types";
 import type { ResolvedAssetDeclaration } from "../shared/assets.js";
-import { TemplateRuntimeError, RenderError } from "@superimg/types";
+import {
+  TemplateRuntimeError,
+  RenderError,
+  RenderExecutionError,
+  raceWithExecution,
+  throwIfExecutionCancelled,
+} from "@superimg/types";
 import { enrichError } from "../errors/enrich.js";
 import { resolve, isAbsolute } from "node:path";
 import { compileTemplate } from "./compiler.js";
@@ -27,6 +35,7 @@ import {
 } from "../shared/assets.js";
 import type { ResolvedAudioTimeline } from "@superimg/types";
 import { applyTemplateResolve } from "./resolve-template.js";
+import { prepareStdlibForTemplate } from "../shared/stdlib-capabilities.js";
 
 function resolveAudioSrcToLocal(src: string, templateDir: string): string {
   try {
@@ -110,7 +119,7 @@ function safeRender(
 
 export function resolveAssetUrls(
   declarations: ResolvedAssetDeclaration[],
-  baseUrl: string
+  assetUrlResolver: (absolutePath: string) => string,
 ): ResolvedAssetDeclaration[] {
   return declarations.map((decl) => {
     if (decl.src.startsWith("http") || decl.src.startsWith("data:")) return decl;
@@ -121,14 +130,85 @@ export function resolveAssetUrls(
 
     return {
       ...decl,
-      src: `${baseUrl}/assets?path=${encodeURIComponent(absolutePath)}`,
+      src: assetUrlResolver(absolutePath),
     };
   });
 }
 
-export interface ExecuteRenderPlanCallbacks {
+export interface ExecuteRenderPlanCallbacks extends RenderExecutionOptions {
   onProgress?: (progress: RenderProgress) => void;
   onFrameRendered?: (frame: number, html: string, compositeHtml: string) => void;
+  /** Maximum captured frames waiting for ordered encoding in parallel mode. */
+  maxBufferedFrames?: number;
+}
+
+export interface CreateRenderPlanOptions extends RenderExecutionOptions {
+  assetUrlResolver?: (absolutePath: string) => string;
+  resolvedAssets?: ResolvedAssetDeclaration[];
+  templateDir?: string;
+  startFrame?: number;
+  endFrame?: number;
+  limits?: RenderLimits;
+  /**
+   * Explicit operator overrides (CLI flags / API). Applied after resolve.
+   * Soft job defaults must NOT be passed here — only user-explicit values.
+   */
+  explicitOverrides?: Partial<
+    Pick<import("@superimg/types").TemplateConfig, "duration" | "width" | "height" | "fps">
+  >;
+}
+
+function assertWithinLimit(
+  field: string,
+  value: number,
+  maximum: number | undefined,
+): void {
+  if (maximum !== undefined && value > maximum) {
+    throw new RenderExecutionError(
+      "resource_limit",
+      `${field} ${value} exceeds configured maximum ${maximum}`,
+    );
+  }
+}
+
+function validatePlanBounds(
+  plan: Pick<RenderPlan, "width" | "height" | "fps" | "durationSeconds" | "totalFrames" | "resolvedAssets"> & {
+    startFrame?: number;
+    endFrame?: number;
+  },
+  limits?: RenderLimits,
+): void {
+  const numericFields = [
+    ["width", plan.width],
+    ["height", plan.height],
+    ["fps", plan.fps],
+    ["durationSeconds", plan.durationSeconds],
+    ["totalFrames", plan.totalFrames],
+  ] as const;
+  for (const [field, value] of numericFields) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new RenderExecutionError("resource_limit", `${field} must be a finite number greater than zero`);
+    }
+  }
+
+  const startFrame = plan.startFrame ?? 0;
+  const endFrame = plan.endFrame ?? plan.totalFrames;
+  if (!Number.isSafeInteger(startFrame) || startFrame < 0) {
+    throw new RenderExecutionError("resource_limit", "startFrame must be a non-negative integer");
+  }
+  if (!Number.isSafeInteger(endFrame) || endFrame <= startFrame || endFrame > plan.totalFrames) {
+    throw new RenderExecutionError(
+      "resource_limit",
+      `endFrame must be greater than startFrame and no greater than ${plan.totalFrames}`,
+    );
+  }
+
+  assertWithinLimit("width", plan.width, limits?.maxWidth);
+  assertWithinLimit("height", plan.height, limits?.maxHeight);
+  assertWithinLimit("fps", plan.fps, limits?.maxFps);
+  assertWithinLimit("durationSeconds", plan.durationSeconds, limits?.maxDurationSeconds);
+  assertWithinLimit("totalFrames", endFrame - startFrame, limits?.maxFrames);
+  assertWithinLimit("assets", plan.resolvedAssets.length, limits?.maxAssets);
 }
 
 /**
@@ -137,22 +217,9 @@ export interface ExecuteRenderPlanCallbacks {
  */
 export async function createRenderPlan(
   job: RenderJob,
-  options?: {
-    assetBaseUrl?: string;
-    resolvedAssets?: ResolvedAssetDeclaration[];
-    templateDir?: string;
-    startFrame?: number;
-    endFrame?: number;
-    /**
-     * Explicit operator overrides (CLI flags / API). Applied after resolve.
-     * Soft job defaults must NOT be passed here — only user-explicit values.
-     */
-    explicitOverrides?: Partial<
-      Pick<import("@superimg/types").TemplateConfig, "duration" | "width" | "height" | "fps">
-    >;
-    signal?: AbortSignal;
-  }
+  options?: CreateRenderPlanOptions,
 ): Promise<RenderPlan> {
+  throwIfExecutionCancelled(options);
   const {
     templateBundle,
     duration,
@@ -182,14 +249,15 @@ export async function createRenderPlan(
   // Pre-render resolve: template.config → resolve() → explicitOverrides (CLI/API).
   // Soft job defaults (width/duration filled from config) only fill gaps below —
   // they must not overwrite resolve results.
-  const applied = await applyTemplateResolve(result.template, {
+  const applied = await raceWithExecution(applyTemplateResolve(result.template, {
     ...(data !== undefined ? { data: data as Record<string, unknown> } : {}),
     ...(options?.explicitOverrides !== undefined
       ? { overrides: options.explicitOverrides }
       : {}),
     ...(options?.signal !== undefined ? { signal: options.signal } : {}),
-  });
+  }), options);
   const template = applied.template;
+  await raceWithExecution(prepareStdlibForTemplate(template), options);
   const resolveResult = applied.resolved;
   const planData = applied.data;
 
@@ -238,7 +306,10 @@ export async function createRenderPlan(
   const animated = template.animated ?? (!!template.config?.fps && template.config?.duration != null);
   let fontBuffers: Uint8Array[] | undefined = undefined;
   if (medium === "svg" && fonts.length > 0) {
-    const resolved = await fontsRegistry.resolve(fonts);
+    const resolved = await raceWithExecution(
+      fontsRegistry.resolve(fonts, { ...(options?.signal ? { signal: options.signal } : {}) }),
+      options,
+    );
     fontBuffers = resolved.map((f) => f.data);
   }
 
@@ -256,7 +327,7 @@ export async function createRenderPlan(
     resolvedAudio = resolveResolvedAudioPaths(resolvedAudio, options.templateDir);
   }
 
-  return {
+  const plan: RenderPlan = {
     template,
     bundle: templateBundle,
     durationSeconds,
@@ -278,7 +349,7 @@ export async function createRenderPlan(
     data: planData as import("@superimg/types").JsonObject,
     ...(finalBackground !== undefined ? { background: finalBackground } : {}),
     ...(finalWatermark !== undefined ? { watermark: finalWatermark } : {}),
-    ...(options?.assetBaseUrl !== undefined ? { assetBaseUrl: options.assetBaseUrl } : {}),
+    ...(options?.assetUrlResolver !== undefined ? { assetUrlResolver: options.assetUrlResolver } : {}),
     ...(options?.templateDir !== undefined ? { templateDir: options.templateDir } : {}),
     resolveResult,
     ...(template.config?.readiness !== undefined
@@ -289,6 +360,9 @@ export async function createRenderPlan(
     ...(options?.startFrame !== undefined ? { startFrame: options.startFrame } : {}),
     ...(options?.endFrame !== undefined ? { endFrame: options.endFrame } : {}),
   };
+  validatePlanBounds(plan, options?.limits);
+  throwIfExecutionCancelled(options);
+  return plan;
 }
 
 // Profiling support: set SUPERIMG_PROFILE=1 to print per-stage timing at end of render.
@@ -321,6 +395,32 @@ function hashString(s: string): number {
   return h;
 }
 
+function rethrowIfExecutionError(error: unknown): void {
+  if (error instanceof RenderExecutionError) throw error;
+}
+
+async function disposeExecutionResources(
+  resources: Array<{ dispose(): Promise<void> }>,
+  timeoutMs = 5_000,
+): Promise<void> {
+  const cleanup = Promise.allSettled(resources.map((resource) => resource.dispose())).then(() => undefined);
+  if (timeoutMs <= 0) {
+    await cleanup;
+    return;
+  }
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      cleanup,
+      new Promise<void>((resolve) => {
+        timeout = setTimeout(resolve, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
+}
+
 /**
  * Execute a render plan with the given renderer and encoder.
  * Frame loop: build context -> render -> capture -> encode.
@@ -332,6 +432,7 @@ export async function executeRenderPlan<TFrame>(
   encoder: VideoEncoder<TFrame>,
   callbacks?: ExecuteRenderPlanCallbacks
 ): Promise<Uint8Array> {
+  throwIfExecutionCancelled(callbacks);
   const {
     template,
     width,
@@ -356,14 +457,15 @@ export async function executeRenderPlan<TFrame>(
   const profile = process.env.SUPERIMG_PROFILE ? { renderMs: 0, captureMs: 0, encodeMs: 0, frames: frameEnd - frameStart, skippedFrames: 0 } as ProfileStats : null;
   const t0 = profile ? performance.now() : 0;
 
-  const assetResolver = plan.assetBaseUrl && plan.templateDir
+  const assetResolver = plan.assetUrlResolver && plan.templateDir
     ? (filename: string) => {
         const abs = resolve(plan.templateDir!, 'assets', filename);
-        return `${plan.assetBaseUrl}/assets?path=${encodeURIComponent(abs)}`;
+        return plan.assetUrlResolver!(abs);
       }
     : undefined;
 
-  await renderer.init({
+  try {
+  await raceWithExecution(renderer.init({
     width,
     height,
     fps,
@@ -374,21 +476,21 @@ export async function executeRenderPlan<TFrame>(
     mode,
     ...(plan.fontBuffers !== undefined ? { fontBuffers: plan.fontBuffers } : {}),
     ...(plan.readiness !== undefined ? { readiness: plan.readiness } : {}),
-  });
+  }), callbacks);
 
   let assetsMap: Record<string, import("@superimg/types").AssetMeta> = {};
   if (resolvedAssets.length > 0 && renderer.preloadAssets) {
-    assetsMap = await renderer.preloadAssets(resolvedAssets);
+    assetsMap = await raceWithExecution(renderer.preloadAssets(resolvedAssets), callbacks);
   }
 
-  await encoder.init({
+  await raceWithExecution(encoder.init({
     width,
     height,
     fps,
     ...(encoding !== undefined ? { encoding } : {}),
     ...(plan.audio !== undefined ? { audio: plan.audio } : {}),
     ...(plan.resolvedAudio !== undefined ? { resolvedAudio: plan.resolvedAudio } : {}),
-  });
+  }), callbacks);
 
   // Depth-1 pipeline: encode of frame N runs concurrently with capture of frame N+1.
   // At most one encode Promise is in-flight at any time, bounding memory to ~2 frame buffers.
@@ -399,8 +501,9 @@ export async function executeRenderPlan<TFrame>(
     const { frameIdx, promise } = pendingEncode;
     pendingEncode = null;
     try {
-      await promise;
+      await raceWithExecution(promise, callbacks);
     } catch (e) {
+      rethrowIfExecutionError(e);
       throw new RenderError({ frame: frameIdx, encoderError: (e as Error).message });
     }
   };
@@ -410,8 +513,8 @@ export async function executeRenderPlan<TFrame>(
   let prevHtmlHash: number | null = null;
   let prevCapturedFrame: TFrame | null = null;
 
-  try {
     for (let frame = frameStart; frame < frameEnd; frame++) {
+      throwIfExecutionCancelled(callbacks);
       const mergedData = { ...(template.sample ?? {}), ...(data ?? {}) };
       const ctx = createRenderContext(
         frame,
@@ -429,6 +532,7 @@ export async function executeRenderPlan<TFrame>(
       // template.render() — throws TemplateRuntimeError (mapped via sourcemap)
       const t1 = profile ? performance.now() : 0;
       const html = safeRender(template, ctx, outputName, plan.bundle);
+      throwIfExecutionCancelled(callbacks);
 
       // SVG medium: rasterize the markup string directly (no HTML shell).
       // HTML medium: wrap with background/watermark for Chromium capture.
@@ -446,15 +550,14 @@ export async function executeRenderPlan<TFrame>(
       if (profile) profile.renderMs += performance.now() - t1;
 
       callbacks?.onFrameRendered?.(frame, html, compositeHtml);
+      throwIfExecutionCancelled(callbacks);
 
       // In animation mode, advance fake clock one frame interval before capture
       // so CSS transitions/animations progress deterministically.
       if (mode === 'animation') {
-        await renderer.advanceClock?.(Math.round(1000 / fps));
+        const advance = renderer.advanceClock?.(Math.round(1000 / fps));
+        if (advance) await raceWithExecution(advance, callbacks);
       }
-
-      // Flush previous encode before starting the next capture (backpressure + ordering).
-      await flushPending();
 
       // Static frame dedup: if HTML hash matches last frame and we have a cached buffer, reuse it.
       const htmlHash = mode === 'frame' ? hashString(compositeHtml) : null;
@@ -468,12 +571,16 @@ export async function executeRenderPlan<TFrame>(
       } else {
         const t2 = profile ? performance.now() : 0;
         try {
-          const captureOpts = { alpha: encoding?.video?.alpha === "keep" };
+          const captureOpts = {
+            alpha: encoding?.video?.alpha === "keep",
+            ...(callbacks?.signal ? { signal: callbacks.signal } : {}),
+          };
           const captureInput = plan.medium === "svg" ? html : compositeHtml;
           capturedFrame = 'rasterize' in renderer
-            ? await (renderer as Rasterizer<TFrame>).rasterize(captureInput, captureOpts)
-            : await (renderer as FrameRenderer<TFrame>).captureFrame(captureInput, captureOpts);
+            ? await raceWithExecution((renderer as Rasterizer<TFrame>).rasterize(captureInput, captureOpts), callbacks)
+            : await raceWithExecution((renderer as FrameRenderer<TFrame>).captureFrame(captureInput, captureOpts), callbacks);
         } catch (e) {
+          rethrowIfExecutionError(e);
           const err = e as Error;
           throw new RenderError({ frame, browserError: err.message });
         }
@@ -482,7 +589,12 @@ export async function executeRenderPlan<TFrame>(
         prevCapturedFrame = capturedFrame;
       }
 
-      // encoder.addFrame — fire and don't await; next iteration will flush before next capture.
+      // Backpressure is applied only after capture. This lets encode N overlap
+      // capture N+1 while still allowing just one ordered encoder write at a time.
+      await flushPending();
+
+      // encoder.addFrame — fire and don't await; the next frame is captured
+      // before this promise is drained.
       const timestamp = frame / fps;
       const t3 = profile ? performance.now() : 0;
       const encodePromise = encoder.addFrame(capturedFrame, timestamp).then(() => {
@@ -491,6 +603,7 @@ export async function executeRenderPlan<TFrame>(
       pendingEncode = { frameIdx: frame, promise: encodePromise };
 
       callbacks?.onProgress?.({ frame, totalFrames, fps });
+      throwIfExecutionCancelled(callbacks);
     }
 
     // Drain the last pending encode before finalization.
@@ -498,10 +611,11 @@ export async function executeRenderPlan<TFrame>(
 
     // encoder.finalize — last write of muxed output.
     try {
-      const result = await encoder.finalize();
+      const result = await raceWithExecution(encoder.finalize(), callbacks);
       if (profile) printProfile(profile, performance.now() - t0);
       return result;
     } catch (e) {
+      rethrowIfExecutionError(e);
       const err = e as Error;
       throw new RenderError({
         frame: totalFrames - 1,
@@ -509,8 +623,10 @@ export async function executeRenderPlan<TFrame>(
       });
     }
   } finally {
-    await renderer.dispose();
-    await encoder.dispose();
+    await disposeExecutionResources(
+      [renderer, encoder],
+      callbacks?.cleanupTimeoutMs,
+    );
   }
 }
 
@@ -526,6 +642,7 @@ export async function executeRenderPlanParallel<TFrame>(
   encoder: VideoEncoder<TFrame>,
   callbacks?: ExecuteRenderPlanCallbacks
 ): Promise<Uint8Array> {
+  throwIfExecutionCancelled(callbacks);
   if (renderers.length === 0) throw new Error("executeRenderPlanParallel: renderers array is empty");
   if (renderers.length === 1) return executeRenderPlan(plan, renderers[0]!, encoder, callbacks);
 
@@ -556,15 +673,16 @@ export async function executeRenderPlanParallel<TFrame>(
     : null;
   const t0 = profile ? performance.now() : 0;
 
-  const assetResolver = plan.assetBaseUrl && plan.templateDir
+  const assetResolver = plan.assetUrlResolver && plan.templateDir
     ? (filename: string) => {
         const abs = resolve(plan.templateDir!, 'assets', filename);
-        return `${plan.assetBaseUrl}/assets?path=${encodeURIComponent(abs)}`;
+        return plan.assetUrlResolver!(abs);
       }
     : undefined;
 
+  try {
   // Initialize all renderers and the encoder in parallel.
-  await Promise.all(
+  await raceWithExecution(Promise.all(
     renderers.map((r) =>
       r.init({
         width,
@@ -578,36 +696,39 @@ export async function executeRenderPlanParallel<TFrame>(
         ...(plan.fontBuffers !== undefined ? { fontBuffers: plan.fontBuffers } : {}),
       }),
     ),
-  );
+  ), callbacks);
 
   let assetsMap: Record<string, import("@superimg/types").AssetMeta> = {};
   const primaryRenderer = renderers[0]!;
   if (resolvedAssets.length > 0 && primaryRenderer.preloadAssets) {
-    assetsMap = await primaryRenderer.preloadAssets(resolvedAssets);
+    assetsMap = await raceWithExecution(primaryRenderer.preloadAssets(resolvedAssets), callbacks);
   }
 
-  await encoder.init({
+  await raceWithExecution(encoder.init({
     width,
     height,
     fps,
     ...(encoding !== undefined ? { encoding } : {}),
     ...(plan.audio !== undefined ? { audio: plan.audio } : {}),
     ...(plan.resolvedAudio !== undefined ? { resolvedAudio: plan.resolvedAudio } : {}),
-  });
+  }), callbacks);
 
-  try {
     const capturedFrames = new Map<number, TFrame>();
+    const maxBufferedFrames = Math.max(
+      N,
+      Math.floor(callbacks?.maxBufferedFrames ?? N * 2),
+    );
+    let nextFrameToEncode = pFrameStart;
     let captureError: unknown = null;
     let activeRenderers = renderers.length;
-    let notifyReady: (() => void) | null = null;
+    const readyWaiters = new Set<() => void>();
     const notify = () => {
-      const resolve = notifyReady;
-      notifyReady = null;
-      resolve?.();
+      for (const resolve of readyWaiters) resolve();
+      readyWaiters.clear();
     };
     const waitForReadyFrame = () =>
       new Promise<void>((resolve) => {
-        notifyReady = resolve;
+        readyWaiters.add(resolve);
       });
 
     // Each renderer captures its assigned frames (round-robin) in frame order.
@@ -618,6 +739,11 @@ export async function executeRenderPlanParallel<TFrame>(
 
         try {
           for (let frame = pFrameStart + rendererIdx; frame < pFrameEnd; frame += N) {
+            while (frame >= nextFrameToEncode + maxBufferedFrames) {
+              throwIfExecutionCancelled(callbacks);
+              await raceWithExecution(waitForReadyFrame(), callbacks);
+            }
+            throwIfExecutionCancelled(callbacks);
             const mergedData = { ...(template.sample ?? {}), ...(data ?? {}) };
             const ctx = createRenderContext(
               frame, fps, totalFrames, width, height, mergedData, outputName, assetsMap, assetResolver, template.config?.width
@@ -625,6 +751,7 @@ export async function executeRenderPlanParallel<TFrame>(
 
             const t1 = profile ? performance.now() : 0;
             const html = safeRender(template, ctx, outputName, plan.bundle);
+            throwIfExecutionCancelled(callbacks);
             let compositeHtml: string;
             try {
               compositeHtml = buildCompositeHtml(html, background, watermark, width, height);
@@ -634,9 +761,11 @@ export async function executeRenderPlanParallel<TFrame>(
             if (profile) profile.renderMs += performance.now() - t1;
 
             callbacks?.onFrameRendered?.(frame, html, compositeHtml);
+            throwIfExecutionCancelled(callbacks);
 
             if (mode === 'animation') {
-              await renderer.advanceClock?.(Math.round(1000 / fps));
+              const advance = renderer.advanceClock?.(Math.round(1000 / fps));
+              if (advance) await raceWithExecution(advance, callbacks);
             }
 
             const htmlHash = mode === 'frame' ? hashString(compositeHtml) : null;
@@ -649,14 +778,18 @@ export async function executeRenderPlanParallel<TFrame>(
             } else {
               const t2 = profile ? performance.now() : 0;
               try {
-                const captureOpts = { alpha: encoding?.video?.alpha === "keep" };
+                const captureOpts = {
+                  alpha: encoding?.video?.alpha === "keep",
+                  ...(callbacks?.signal ? { signal: callbacks.signal } : {}),
+                };
                 const capturedFrame = 'rasterize' in renderer
-                  ? await (renderer as Rasterizer<TFrame>).rasterize(compositeHtml, captureOpts)
-                  : await (renderer as FrameRenderer<TFrame>).captureFrame(compositeHtml, captureOpts);
+                  ? await raceWithExecution((renderer as Rasterizer<TFrame>).rasterize(compositeHtml, captureOpts), callbacks)
+                  : await raceWithExecution((renderer as FrameRenderer<TFrame>).captureFrame(compositeHtml, captureOpts), callbacks);
                 capturedFrames.set(frame, capturedFrame);
                 prevCapturedFrame = capturedFrame;
                 notify();
               } catch (e) {
+                rethrowIfExecutionError(e);
                 throw new RenderError({ frame, browserError: (e as Error).message });
               }
               if (profile) profile.captureMs += performance.now() - t2;
@@ -687,15 +820,18 @@ export async function executeRenderPlanParallel<TFrame>(
 
     for (let frame = pFrameStart; frame < pFrameEnd; frame++) {
       while (!capturedFrames.has(frame)) {
+        throwIfExecutionCancelled(callbacks);
         if (captureError) throw captureError;
         if (activeRenderers === 0) {
           throw new RenderError({ frame, browserError: "Parallel renderer did not produce frame" });
         }
-        await waitForReadyFrame();
+        await raceWithExecution(waitForReadyFrame(), callbacks);
       }
       await flushPending();
       const capturedFrame = capturedFrames.get(frame)!;
       capturedFrames.delete(frame);
+      nextFrameToEncode = frame + 1;
+      notify();
       const timestamp = frame / fps;
       const t3 = profile ? performance.now() : 0;
       const encodePromise = encoder.addFrame(capturedFrame, timestamp).then(() => {
@@ -703,15 +839,18 @@ export async function executeRenderPlanParallel<TFrame>(
       });
       pendingEncode = { frameIdx: frame, promise: encodePromise };
       callbacks?.onProgress?.({ frame, totalFrames, fps });
+      throwIfExecutionCancelled(callbacks);
     }
     await flushPending();
     await captureAll;
 
-    const result = await encoder.finalize();
+    const result = await raceWithExecution(encoder.finalize(), callbacks);
     if (profile) printProfile(profile, performance.now() - t0);
     return result;
   } finally {
-    await Promise.all(renderers.map((r) => r.dispose()));
-    await encoder.dispose();
+    await disposeExecutionResources(
+      [...renderers, encoder],
+      callbacks?.cleanupTimeoutMs,
+    );
   }
 }

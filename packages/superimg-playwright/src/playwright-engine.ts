@@ -1,9 +1,10 @@
 //! Playwright render engine - browser lifecycle and adapter factory
 
 import type { Browser, Page } from "playwright-core";
+import { Readable } from "node:stream";
 import { Hono } from "hono";
 import { serve, type ServerType } from "@hono/node-server";
-import { serveAssetFile } from "./asset-server.js";
+import { AssetRegistry, openRegisteredAsset } from "./asset-server.js";
 import type { RenderEngine, EncodingOptions, VideoEncoder, AudioValue, FrameRenderer, FrameRendererConfig, ResolvedAssetDeclaration, AssetMeta } from "@superimg/types";
 import {
   checkBrowserStatus,
@@ -64,6 +65,8 @@ export interface PlaywrightEngineOptions {
    * Use this in the container to isolate clock/viewport/content state across concurrent renders.
    */
   perRenderContext?: boolean;
+  /** Maximum unique local assets registered during one engine lease. */
+  maxRegisteredAssets?: number;
 }
 
 /**
@@ -121,18 +124,30 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
   private server: ServerType | null = null;
   private serverPort: number = 0;
   private frameExtractor: FrameExtractor | null = null;
+  private readonly assetRegistry: AssetRegistry;
 
-  constructor(private readonly options: PlaywrightEngineOptions = {})  {}
+  constructor(private readonly options: PlaywrightEngineOptions = {})  {
+    this.assetRegistry = new AssetRegistry(options.maxRegisteredAssets);
+  }
 
   /**
    * Get the base URL for the internal server.
    * Can be used to construct URLs for assets that need to be fetched from the browser.
    */
-  getBaseUrl(): string {
+  private getAssetOrigin(): string {
     if (!this.serverPort) {
       throw new Error("PlaywrightEngine not initialized. Call init() first.");
     }
     return `http://localhost:${this.serverPort}`;
+  }
+
+  registerAsset(filePath: string): string {
+    return `${this.getAssetOrigin()}/assets/${this.assetRegistry.register(filePath)}`;
+  }
+
+  /** Release job-scoped asset registrations while keeping Chromium warm. */
+  clearRegisteredAssets(): void {
+    this.assetRegistry.clear();
   }
 
   /**
@@ -150,7 +165,11 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
   }
 
   async init(): Promise<void> {
-    this.frameExtractor = new FrameExtractor();
+    this.frameExtractor = new FrameExtractor(
+      undefined,
+      undefined,
+      (src) => this.assetRegistry.resolveUrl(src),
+    );
 
     try {
       const { chromium } = await import("playwright");
@@ -179,13 +198,17 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
 
     const app = new Hono();
 
-    // Serve local files for images and other assets referenced in templates
-    app.get("/assets", (c) => {
-      const result = serveAssetFile(c.req.query("path"), c.req.header("range"));
-      for (const [key, value] of Object.entries(result.headers)) {
-        c.header(key, value);
-      }
-      return c.body(new Uint8Array(result.body), result.status);
+    app.on(["GET", "HEAD"], "/assets/:id", (c) => {
+      const range = c.req.header("range");
+      const result = openRegisteredAsset(this.assetRegistry, c.req.param("id"), {
+        method: c.req.method as "GET" | "HEAD",
+        ...(range ? { range } : {}),
+        signal: c.req.raw.signal,
+      });
+      const body = result.body
+        ? Readable.toWeb(result.body) as ReadableStream<Uint8Array>
+        : null;
+      return new Response(body, { status: result.status, headers: result.headers });
     });
 
     this.server = serve({ fetch: app.fetch, port: 0 });
@@ -274,5 +297,6 @@ export class PlaywrightEngine implements RenderEngine<Buffer> {
     this.page = null;
     this.server?.close();
     this.server = null;
+    this.assetRegistry.clear();
   }
 }

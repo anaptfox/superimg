@@ -5,7 +5,6 @@ export {
   NodeVideoEncoder,
   PlaywrightEngine,
   PlaywrightFrameRenderer,
-  PlaywrightVideoEncoder,
   RenderSession,
   SharpStillEncoder,
   checkBrowserStatus,

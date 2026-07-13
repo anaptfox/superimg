@@ -1,7 +1,7 @@
 //! Pure library function for starting the SuperImg dev server without side-effects.
 
-import { createServer as createHttpServer, type ServerResponse, type Server } from "node:http";
-import { join, dirname } from "node:path";
+import { createServer as createHttpServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
+import { join, dirname, basename, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync, existsSync } from "node:fs";
 import chokidar from "chokidar";
@@ -9,6 +9,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { resolveTemplatePath } from "./cli/utils/resolve-template.js";
 import { findProjectRoot } from "./cli/utils/find-project-root.js";
 import { discoverVideos } from "./cli/utils/discover-videos.js";
+import { discoverTemplateAssets } from "./cli/utils/asset-discovery.js";
 import { loadCascadingConfig } from "./cli/utils/config-loader.js";
 import { parseTemplate } from "./cli/utils/template-config.js";
 import {
@@ -17,7 +18,8 @@ import {
   bundleTemplateESMWithMap,
 } from "@superimg/core/bundler";
 import { formatError } from "@superimg/core/errors";
-import type { TemplateBundle } from "@superimg/types";
+import type { AudioClip, AudioValue, TemplateBundle } from "@superimg/types";
+import { AssetRegistry, openRegisteredAsset } from "@superimg/playwright";
 
 export interface DevServerOptions {
   port?: number;
@@ -142,6 +144,7 @@ async function startSingleVideoMode(template: string, port: number, devRoot: str
   const templatePath = resolveTemplatePath(template);
   const projectRoot = findProjectRoot();
   const url = `http://localhost:${port}?template=/api/template`;
+  const assetRegistry = new AssetRegistry();
 
   let bundleCache: { iife: string; esm: TemplateBundle } | null = null;
 
@@ -160,13 +163,21 @@ async function startSingleVideoMode(template: string, port: number, devRoot: str
     const cascadingConfig = await loadCascadingConfig(templatePath, projectRoot);
     const parsed = await parseTemplate(templatePath, { cascadingConfig });
     const resolved = parsed.config;
+    const assetUrls: Record<string, string> = {};
+    for (const asset of discoverTemplateAssets(dirname(templatePath))) {
+      const absolutePath = isAbsolute(asset.src) ? asset.src : resolve(asset.sourceDir, asset.src);
+      const assetUrl = `/api/assets/${assetRegistry.register(absolutePath)}`;
+      assetUrls[basename(asset.src)] = assetUrl;
+      assetUrls[asset.key] = assetUrl;
+    }
     return {
       width: resolved.width,
       height: resolved.height,
       fps: resolved.fps,
       duration: resolved.duration,
       outputs: parsed.templateConfig?.outputs,
-      audio: parsed.templateConfig?.audio,
+      audio: resolveDevAudio(parsed.templateConfig?.audio, dirname(templatePath), assetRegistry),
+      assetUrls,
       templateDir: dirname(templatePath),
     };
   }
@@ -241,29 +252,9 @@ async function startSingleVideoMode(template: string, port: number, devRoot: str
       return;
     }
 
-    if (pathname === "/api/assets") {
-      const url = new URL(reqUrl, `http://localhost:${port}`);
-      const relativePath = url.searchParams.get("path");
-      if (!relativePath) {
-        res.statusCode = 400;
-        res.end("Missing path parameter");
-        return;
-      }
-      const assetPath = join(dirname(templatePath), relativePath);
-      if (!existsSync(assetPath)) {
-        res.statusCode = 404;
-        res.end("Asset not found");
-        return;
-      }
-      const ext = assetPath.split(".").pop()?.toLowerCase();
-      const mimeTypes: Record<string, string> = {
-        mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4",
-        aac: "audio/aac", flac: "audio/flac", png: "image/png", jpg: "image/jpeg",
-        jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",
-      };
-      res.setHeader("Content-Type", mimeTypes[ext ?? ""] ?? "application/octet-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.end(readFileSync(assetPath));
+    const assetMatch = pathname.match(/^\/api\/assets\/([0-9a-f-]{36})$/i);
+    if (assetMatch) {
+      serveRegisteredAsset(req, res, assetRegistry, assetMatch[1]);
       return;
     }
 
@@ -289,8 +280,52 @@ async function startSingleVideoMode(template: string, port: number, devRoot: str
       wss.close();
       server.closeAllConnections();
       await closeServer(server);
+      assetRegistry.clear();
     },
   };
+}
+
+function resolveDevAudio(
+  audio: AudioValue | undefined,
+  templateDir: string,
+  registry: AssetRegistry,
+): AudioValue | undefined {
+  if (!audio) return audio;
+  const resolveClip = (clip: AudioClip): AudioClip => {
+    if (/^(https?:|data:|blob:)/.test(clip.src)) return clip;
+    const absolutePath = isAbsolute(clip.src) ? clip.src : resolve(templateDir, clip.src);
+    return { ...clip, src: `/api/assets/${registry.register(absolutePath)}` };
+  };
+  if (Array.isArray(audio)) return audio.map(resolveClip);
+  if ("clips" in audio) return { ...audio, clips: audio.clips.map(resolveClip) };
+  return resolveClip(audio);
+}
+
+function serveRegisteredAsset(
+  req: IncomingMessage,
+  res: ServerResponse,
+  registry: AssetRegistry,
+  id: string | undefined,
+): void {
+  const controller = new AbortController();
+  res.once("close", () => {
+    if (!res.writableEnded) controller.abort();
+  });
+  const result = openRegisteredAsset(registry, id, {
+    method: req.method === "HEAD" ? "HEAD" : "GET",
+    ...(typeof req.headers.range === "string" ? { range: req.headers.range } : {}),
+    signal: controller.signal,
+  });
+  res.statusCode = result.status;
+  for (const [name, value] of Object.entries(result.headers)) res.setHeader(name, value);
+  if (!result.body) {
+    res.end();
+    return;
+  }
+  result.body.on("error", (error) => {
+    if (!controller.signal.aborted) res.destroy(error);
+  });
+  result.body.pipe(res);
 }
 
 function serveStaticFile(pathname: string, devRoot: string, res: ServerResponse): void {

@@ -5,7 +5,7 @@ import type { RenderEngine } from "@superimg/types";
 // that the factory needs must be declared via vi.hoisted().
 const defaultMockEngine = vi.hoisted(() => ({
   init: vi.fn().mockResolvedValue(undefined),
-  getBaseUrl: vi.fn().mockReturnValue("http://localhost:9999"),
+  registerAsset: vi.fn((filePath: string) => `http://localhost:9999/assets/${filePath}`),
   createAdapters: vi.fn().mockReturnValue({ renderer: {}, encoder: {} }),
   dispose: vi.fn().mockResolvedValue(undefined),
 }));
@@ -61,7 +61,7 @@ vi.mock("../utils/fs.js", () => ({
 function makeMockEngine(overrides?: Partial<RenderEngine>): RenderEngine {
   return {
     init: vi.fn().mockResolvedValue(undefined),
-    getBaseUrl: vi.fn().mockReturnValue("http://localhost:9999"),
+    registerAsset: vi.fn((filePath: string) => `http://localhost:9999/assets/${filePath}`),
     createAdapters: vi.fn().mockReturnValue({ renderer: {}, encoder: {} }),
     dispose: vi.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -92,13 +92,16 @@ describe("renderVideo — engine injection seam", () => {
     expect(engine.dispose).not.toHaveBeenCalled();
   });
 
-  it("calls getBaseUrl() on the injected engine", async () => {
+  it("passes the engine-owned asset registrar into the render job", async () => {
+    const { buildRenderJob } = await import("../utils/build-render-job.js");
     const { renderVideo } = await import("../render-video.js");
     const engine = makeMockEngine();
 
     await renderVideo("/fake/template.video.ts", { engine });
 
-    expect(engine.getBaseUrl).toHaveBeenCalled();
+    const input = vi.mocked(buildRenderJob).mock.calls[0]?.[0];
+    expect(input?.assetUrlResolver?.("/tmp/a.png")).toContain("/assets/");
+    expect(engine.registerAsset).toHaveBeenCalledWith("/tmp/a.png");
   });
 
   it("returns the bytes from executeRenderPlan", async () => {

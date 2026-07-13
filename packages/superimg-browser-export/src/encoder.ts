@@ -24,10 +24,14 @@ import {
 import type {
   EncodingOptions,
   QualityPreset,
+  RenderExecutionOptions,
   ResolvedAudioTimeline,
   VideoCodecPreference,
 } from "@superimg/types";
+import { raceWithExecution, throwIfExecutionCancelled } from "@superimg/types";
 import { get2DContext } from "./utils.js";
+
+const MAX_BROWSER_AUDIO_BYTES = 256 * 1024 * 1024;
 
 function resolveVideoBitrate(value: number | QualityPreset | undefined): number | Quality {
   if (value === undefined || typeof value === "string") {
@@ -87,23 +91,59 @@ export function validateFrameDimensions(
   }
 }
 
-async function decodeAudioUrl(url: string): Promise<DecodedAudioClip> {
-  const response = await fetch(url);
+async function decodeAudioUrl(
+  url: string,
+  options?: RenderExecutionOptions,
+): Promise<DecodedAudioClip> {
+  throwIfExecutionCancelled(options);
+  const response = await raceWithExecution(fetch(url, { signal: options?.signal }), options);
   if (!response.ok) {
     throw new Error(`Failed to fetch audio: ${url} (${response.status})`);
   }
-  const arrayBuffer = await response.arrayBuffer();
-  const audioContext = new AudioContext();
-  const buffer = await audioContext.decodeAudioData(arrayBuffer);
-  const channels: Float32Array[] = [];
-  for (let ch = 0; ch < buffer.numberOfChannels; ch += 1) {
-    channels.push(buffer.getChannelData(ch));
+  const declaredBytes = Number(response.headers.get("content-length") ?? 0);
+  if (declaredBytes > MAX_BROWSER_AUDIO_BYTES) {
+    throw new Error(`Audio source exceeds ${MAX_BROWSER_AUDIO_BYTES} bytes`);
   }
-  return {
-    channels,
-    sampleRate: buffer.sampleRate,
-    sourceDurationSeconds: buffer.duration,
-  };
+  if (!response.body) throw new Error(`Audio source returned an empty body: ${url}`);
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await raceWithExecution(reader.read(), options);
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_BROWSER_AUDIO_BYTES) {
+        await reader.cancel("audio_too_large");
+        throw new Error(`Audio source exceeds ${MAX_BROWSER_AUDIO_BYTES} bytes`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const arrayBuffer = bytes.buffer;
+  const audioContext = new AudioContext();
+  try {
+    const buffer = await raceWithExecution(audioContext.decodeAudioData(arrayBuffer), options);
+    const channels: Float32Array[] = [];
+    for (let ch = 0; ch < buffer.numberOfChannels; ch += 1) {
+      channels.push(buffer.getChannelData(ch).slice());
+    }
+    return {
+      channels,
+      sampleRate: buffer.sampleRate,
+      sourceDurationSeconds: buffer.duration,
+    };
+  } finally {
+    await audioContext.close();
+  }
 }
 
 export class BrowserEncoder {
@@ -131,19 +171,23 @@ export class BrowserEncoder {
     this.frameCtx = get2DContext(this.frameCanvas);
   }
 
-  async setResolvedAudio(timeline: ResolvedAudioTimeline): Promise<void> {
+  async setResolvedAudio(
+    timeline: ResolvedAudioTimeline,
+    options?: RenderExecutionOptions,
+  ): Promise<void> {
     if (this.output) {
       throw new Error("setResolvedAudio must be called before init()");
     }
     this.resolvedAudio = timeline;
     this.decodedClips = [];
     for (const clip of timeline.clips) {
-      const decoded = await decodeAudioUrl(clip.src);
+      const decoded = await decodeAudioUrl(clip.src, options);
       this.decodedClips.push({ decoded, resolved: clip });
     }
   }
 
-  async init(): Promise<void> {
+  async init(options?: RenderExecutionOptions): Promise<void> {
+    throwIfExecutionCancelled(options);
     const isWebM = this.encoding?.format === "webm";
     const defaultCodecs: VideoCodecPreference[] = isWebM
       ? ["vp9", "av1"]
@@ -205,19 +249,25 @@ export class BrowserEncoder {
       this.output.addAudioTrack(this.audioSource);
     }
 
-    await this.output.start();
+    await raceWithExecution(this.output.start(), options);
   }
 
-  async addFrame(imageData: ImageData, timestamp: number): Promise<void> {
+  async addFrame(
+    imageData: ImageData,
+    timestamp: number,
+    options?: RenderExecutionOptions,
+  ): Promise<void> {
+    throwIfExecutionCancelled(options);
     validateFrameDimensions(imageData, this.width, this.height);
     this.videoDuration = Math.max(this.videoDuration, timestamp + this.frameDuration);
-    if (!this.canvasSource) await this.init();
+    if (!this.canvasSource) await this.init(options);
     if (!this.canvasSource) throw new Error("Failed to initialize encoder");
     this.frameCtx.putImageData(imageData, 0, 0);
-    await this.canvasSource.add(timestamp, this.frameDuration);
+    await raceWithExecution(this.canvasSource.add(timestamp, this.frameDuration), options);
   }
 
-  async finalize(): Promise<Blob> {
+  async finalize(options?: RenderExecutionOptions): Promise<Blob> {
+    throwIfExecutionCancelled(options);
     if (!this.canvasSource || !this.output) {
       throw new Error("Encoder not initialized");
     }
@@ -230,18 +280,34 @@ export class BrowserEncoder {
         this.resolvedAudio.mix,
       );
       const audioContext = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE });
-      const buffer = audioContext.createBuffer(TARGET_CHANNELS, left.length, TARGET_SAMPLE_RATE);
-      buffer.copyToChannel(left, 0);
-      buffer.copyToChannel(right, 1);
-      await this.audioSource.add(buffer);
-      this.audioSource.close();
+      try {
+        const buffer = audioContext.createBuffer(TARGET_CHANNELS, left.length, TARGET_SAMPLE_RATE);
+        buffer.copyToChannel(left, 0);
+        buffer.copyToChannel(right, 1);
+        await raceWithExecution(this.audioSource.add(buffer), options);
+        this.audioSource.close();
+      } finally {
+        await audioContext.close();
+      }
     }
 
-    await this.output.finalize();
+    await raceWithExecution(this.output.finalize(), options);
     const buffer = (this.output.target as BufferTarget).buffer;
     if (!buffer) throw new Error("Failed to get encoded video buffer");
     return new Blob([buffer], {
       type: this.encoding?.format === "webm" ? "video/webm" : "video/mp4",
     });
+  }
+
+  async cancel(): Promise<void> {
+    try { this.canvasSource?.close(); } catch { /* already closed */ }
+    try { this.audioSource?.close(); } catch { /* already closed */ }
+    if (this.output) {
+      try { await this.output.cancel(); } catch { /* best-effort cleanup */ }
+    }
+    this.canvasSource = null;
+    this.audioSource = null;
+    this.output = null;
+    this.decodedClips = [];
   }
 }

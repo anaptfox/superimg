@@ -31,9 +31,10 @@ function templateRolldownInput() {
 async function generateTemplateIife(
   bundle: Awaited<ReturnType<typeof rolldown>>,
   ctx: BundlerDebugContext,
-  sourcemap: true | "inline",
+  sourcemap: boolean | "inline",
+  minify = false,
 ) {
-  const outputOptions = { ...TEMPLATE_IIFE_OUTPUT, sourcemap };
+  const outputOptions = { ...TEMPLATE_IIFE_OUTPUT, sourcemap, minify };
   const bundleMeta: Record<string, unknown> = {
     aliases: templateRolldownInput().resolve.alias,
     outputOptions,
@@ -105,7 +106,17 @@ export function extractInlineSourceMap(code: string): RawSourceMap | null {
  * mapped source locations, prefer {@link bundleTemplateWithMap}, which returns
  * `{ code, sourceMap, sourceFile }`.
  */
-export async function bundleTemplate(entryPoint: string): Promise<string> {
+export interface BundleTemplateOptions {
+  /** Minify the generated IIFE. Intended for distributable preview assets. */
+  minify?: boolean;
+  /** Defaults to inline so runtime errors retain source context. */
+  sourcemap?: boolean | "inline";
+}
+
+export async function bundleTemplate(
+  entryPoint: string,
+  options: BundleTemplateOptions = {},
+): Promise<string> {
   const ctx: BundlerDebugContext = {
     kind: "bundleTemplate",
     entry: entryPoint,
@@ -117,7 +128,12 @@ export async function bundleTemplate(entryPoint: string): Promise<string> {
     ...templateRolldownInput(),
   });
   try {
-    const { output } = await generateTemplateIife(bundle, ctx, "inline");
+    const { output } = await generateTemplateIife(
+      bundle,
+      ctx,
+      options.sourcemap ?? "inline",
+      options.minify ?? false,
+    );
     return output[0]!.code;
   } finally {
     await bundle.close();
@@ -199,6 +215,10 @@ export interface BundleTemplateCodeOptions {
    * the caller has a real path on disk for the code.
    */
   sourcefile?: string;
+  /** Minify the generated IIFE. Intended for distributable preview assets. */
+  minify?: boolean;
+  /** Defaults to inline so runtime errors retain source context. */
+  sourcemap?: boolean | "inline";
 }
 
 /**
@@ -262,7 +282,12 @@ export async function bundleTemplateCode(
     ...templateRolldownInput(),
   });
   try {
-    const { output } = await generateTemplateIife(bundle, ctx, "inline");
+    const { output } = await generateTemplateIife(
+      bundle,
+      ctx,
+      opts.sourcemap ?? "inline",
+      opts.minify ?? false,
+    );
     return output[0]!.code;
   } finally {
     await bundle.close();

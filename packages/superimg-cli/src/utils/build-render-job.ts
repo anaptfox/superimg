@@ -25,7 +25,7 @@ export interface BuildRenderJobInput {
   parsed: ParsedTemplate;
   templateBundle: TemplateBundle;
   templateDir: string;
-  assetBaseUrl: string;
+  assetUrlResolver?: (absolutePath: string) => string;
   /**
    * Pre-discovered assets from the template's `assets/` folder. Callers that
    * render repeatedly (e.g. `loadTemplate`) should discover once and reuse.
@@ -63,13 +63,12 @@ export function buildRenderJob(input: BuildRenderJobInput) {
   const resolvedAssets = prepareAssets({
     autoDiscovered: input.autoDiscovered,
     configAssets: input.parsed.resolvedAssets,
-    assetBaseUrl: input.assetBaseUrl,
+    assetUrlResolver: input.assetUrlResolver,
   });
 
   const resolvedAudio = resolveAudioUrl(
     input.parsed.templateConfig?.audio,
     input.templateDir,
-    input.assetBaseUrl
   );
 
   // Guard overrides: non-positive values fall back to resolvedConfig. This matches

@@ -220,7 +220,6 @@ export function installSuperimgReady(
   target: { __superimgReady?: SuperimgReadyRegistry } = {},
 ): SuperimgReadyRegistry {
   const body = SUPERIMG_READY_SCRIPT.replace(/^<script>/, "").replace(/<\/script>$/, "");
-  // eslint-disable-next-line no-new-func -- evaluate production shell script for tests
   const install = new Function(
     "window",
     `${body}\nreturn window.__superimgReady;`,

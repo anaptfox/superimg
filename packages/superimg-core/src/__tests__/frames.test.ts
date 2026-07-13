@@ -272,4 +272,38 @@ describe("executeRenderPlanParallel", () => {
       executeRenderPlanParallel(plan, [], encoder)
     ).rejects.toThrow(/renderers array is empty/);
   });
+
+  it("bounds out-of-order captured frames behind a slow frame", async () => {
+    const code = `
+      import { define } from 'superimg';
+      export default define({
+        render(ctx) { return '<div>' + ctx.globalFrame + '</div>'; }
+      });
+    `;
+    const job = await jobFromCode(code, { duration: 0.8, fps: 10 });
+    const plan = await createRenderPlan(job);
+    let releaseFirst!: () => void;
+    const firstFrameGate = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    let capturesStarted = 0;
+    const makeRenderer = () => ({
+      init: async () => {},
+      captureFrame: async (html: string) => {
+        capturesStarted += 1;
+        if (html.includes(">0</div>")) await firstFrameGate;
+        return html;
+      },
+      dispose: async () => {},
+    });
+    const rendering = executeRenderPlanParallel(
+      plan,
+      [makeRenderer(), makeRenderer()],
+      mockEncoder(),
+      { maxBufferedFrames: 2 },
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(capturesStarted).toBe(2);
+    releaseFirst();
+    await rendering;
+  });
 });

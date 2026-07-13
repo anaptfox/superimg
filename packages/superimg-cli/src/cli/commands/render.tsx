@@ -149,9 +149,19 @@ export async function renderCommand(template: string, options: RenderOptions) {
 /** Per-target progress + completion logging for non-TTY single-template runs. */
 async function runRenderTargetsPlain(resolved: ResolvedTargets, options: RenderOptions) {
   const total = resolved.targets.length;
-  await executeRenderTargets({
-    resolved,
-    options,
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  process.once("SIGINT", abort);
+  process.once("SIGTERM", abort);
+  const timeoutSeconds = Number(options.timeout);
+  try {
+    await executeRenderTargets({
+      resolved,
+      options,
+      signal: controller.signal,
+      ...(Number.isFinite(timeoutSeconds) && timeoutSeconds > 0
+        ? { deadlineMs: Date.now() + timeoutSeconds * 1_000 }
+        : {}),
     onTargetStart: (target, index) => {
       if (options.json) {
         console.log(JSON.stringify({ event: "start", target: target.name, outputPath: target.outputPath }));
@@ -181,7 +191,11 @@ async function runRenderTargetsPlain(resolved: ResolvedTargets, options: RenderO
       process.stdout.write("\n");
       console.log(`  Saved to ${target.outputPath}`);
     },
-  });
+    });
+  } finally {
+    process.removeListener("SIGINT", abort);
+    process.removeListener("SIGTERM", abort);
+  }
 }
 
 /**

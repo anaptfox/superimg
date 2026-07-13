@@ -14,12 +14,50 @@ function stableHash(s: string): string {
   return h.toString(16).padStart(8, "0");
 }
 
+async function readBoundedBody(request: Request, maximumBytes: number): Promise<string> {
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (declared > maximumBytes) throw new Error("request_too_large");
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maximumBytes) {
+        await reader.cancel("request_too_large");
+        throw new Error("request_too_large");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method === "POST" && url.pathname === "/render") {
-      const body = await request.clone().text();
+      let body: string;
+      try {
+        body = await readBoundedBody(request.clone(), 1_048_576);
+      } catch {
+        return Response.json(
+          { error: "resource_limit", message: "Render request exceeds 1048576 bytes." },
+          { status: 413 },
+        );
+      }
       const cacheKey = new Request(`${url.origin}/__render-cache/${stableHash(body)}`);
 
       const cached = await caches.default.match(cacheKey);

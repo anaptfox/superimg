@@ -151,10 +151,12 @@ export class WebRuntime {
     return !!this.info.tailwind || this.options.allowScripts === true;
   }
 
-  attach(container: HTMLElement): this {
+  attach(container: HTMLElement, options: { render?: boolean } = {}): this {
     this.presenter.attach(container);
     this.configurePresenter();
-    void this.render(0).catch((err) => logRenderError("attach", err));
+    if (options.render ?? true) {
+      void this.render(0).catch((err) => logRenderError("attach", err));
+    }
     if (!this.state.isReady) {
       this.state = this.createState(true, false, this.state.currentFrame);
       this.emitState();
@@ -164,7 +166,7 @@ export class WebRuntime {
     return this;
   }
 
-  update(update: RuntimeUpdate): void {
+  update(update: RuntimeUpdate, options: { render?: boolean } = {}): void {
     if (update.data) this.data = { ...this.data, ...update.data };
     if (update.assets) this.assets = update.assets;
     if (update.assetResolver) this.assetResolver = update.assetResolver;
@@ -172,7 +174,7 @@ export class WebRuntime {
     this.info = this.resolveInfo();
     this.configurePresenter();
     this.state = this.createState(this.state.isReady, this.state.isPlaying, this.state.currentFrame);
-    this.seekFrame(this.state.currentFrame);
+    if (options.render ?? true) this.seekFrame(this.state.currentFrame);
   }
 
   async render(frame: number = this.state.currentFrame): Promise<void> {
@@ -256,7 +258,11 @@ export class WebRuntime {
   }
 
   on<K extends keyof RuntimeEvents>(event: K, callback: RuntimeEvents[K]): () => void {
-    const set = (this.events[event] ??= new Set<RuntimeEvents[K]>());
+    let set = this.events[event] as Set<RuntimeEvents[K]> | undefined;
+    if (!set) {
+      set = new Set<RuntimeEvents[K]>();
+      Object.assign(this.events, { [event]: set });
+    }
     set.add(callback);
     return () => this.off(event, callback);
   }

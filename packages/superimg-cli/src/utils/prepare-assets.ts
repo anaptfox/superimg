@@ -5,7 +5,7 @@ import type { AudioClip, AudioValue, ResolvedAssetDeclaration } from "@superimg/
 interface PrepareAssetsOptions {
   autoDiscovered?: ResolvedAssetDeclaration[];
   configAssets?: ResolvedAssetDeclaration[];
-  assetBaseUrl?: string;
+  assetUrlResolver?: (absolutePath: string) => string;
 }
 
 export function prepareAssets(options: PrepareAssetsOptions): ResolvedAssetDeclaration[] {
@@ -20,51 +20,48 @@ export function prepareAssets(options: PrepareAssetsOptions): ResolvedAssetDecla
   }
 
   const resolved = Array.from(merged.values());
-  return options.assetBaseUrl
-    ? resolveAssetUrls(resolved, options.assetBaseUrl)
+  return options.assetUrlResolver
+    ? resolveAssetUrls(resolved, options.assetUrlResolver)
     : resolved;
 }
 
 function resolveClipSrc(
   src: string,
   templateDir: string,
-  assetBaseUrl: string,
 ): string {
   if (src.startsWith("http") || src.startsWith("data:")) {
     return src;
   }
   const absolutePath = isAbsolute(src) ? src : resolve(templateDir, src);
-  return `${assetBaseUrl}/assets?path=${encodeURIComponent(absolutePath)}`;
+  return absolutePath;
 }
 
 function resolveClipUrls(
   clip: AudioClip,
   templateDir: string,
-  assetBaseUrl: string,
 ): AudioClip {
   return {
     ...clip,
-    src: resolveClipSrc(clip.src, templateDir, assetBaseUrl),
+    src: resolveClipSrc(clip.src, templateDir),
   };
 }
 
 export function resolveAudioUrl(
   audio: AudioValue | undefined,
   templateDir: string,
-  assetBaseUrl?: string,
 ): AudioValue | undefined {
-  if (!audio || !assetBaseUrl) return audio;
+  if (!audio) return audio;
 
   if (Array.isArray(audio)) {
-    return audio.map((clip) => resolveClipUrls(clip, templateDir, assetBaseUrl));
+    return audio.map((clip) => resolveClipUrls(clip, templateDir));
   }
   if ("clips" in audio) {
     return {
       ...audio,
-      clips: audio.clips.map((clip) => resolveClipUrls(clip, templateDir, assetBaseUrl)),
+      clips: audio.clips.map((clip) => resolveClipUrls(clip, templateDir)),
     };
   }
-  return resolveClipUrls(audio, templateDir, assetBaseUrl);
+  return resolveClipUrls(audio, templateDir);
 }
 
 /** Collect unique audio src paths from config for asset validation */

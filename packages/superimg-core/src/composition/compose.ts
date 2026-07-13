@@ -17,7 +17,6 @@ import { parseDuration } from "../shared/utils.js";
 import { collectComposeAudio } from "../shared/assets.js";
 import { bindStdTiming } from "../shared/bind-std-timing.js";
 import { createTimeline } from "../shared/create-timeline.js";
-import { stdlib } from "../shared/stdlib.js";
 import { createDirector } from "@superimg/stdlib/director";
 import { createTrack } from "@superimg/stdlib/track";
 import { renderWithTransition, renderSvgWithTransition } from "./transitions.js";
@@ -183,7 +182,7 @@ export function compose(
         track: (source) => createTrack(sceneTimeline, source),
         data: { ...scene.data, ...ctx.data } as RenderContext["data"],
         std: bindStdTiming(
-          stdlib,
+          ctx.std,
           {
             fps: ctx.fps,
             frame: localFrame,

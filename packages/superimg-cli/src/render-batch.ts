@@ -8,11 +8,17 @@
 //! Composes with the template's `config.outputs` via `presets: true`, so a
 //! 10-entry dataset on a template with 2 presets produces 20 MP4s in one run.
 
-import type { EncodingOptions, RenderProgress, BatchEntry } from "@superimg/types";
+import type {
+  EncodingOptions,
+  RenderExecutionOptions,
+  RenderLimits,
+  RenderProgress,
+  BatchEntry,
+} from "@superimg/types";
 import { resolveRenderTargets, type RenderOptions, type RenderTarget } from "./cli/commands/render-targets.js";
 import { executeRenderTargets } from "./cli/commands/render-execute.js";
 
-export interface RenderBatchOptions<TData = Record<string, unknown>> {
+export interface RenderBatchOptions<TData = Record<string, unknown>> extends RenderExecutionOptions {
   /**
    * Array of data entries. Each entry produces one render per target preset.
    * Each entry's fields are passed to the template as `data`.
@@ -41,6 +47,7 @@ export interface RenderBatchOptions<TData = Record<string, unknown>> {
 
   /** Per-target progress callback. */
   onProgress?: (info: BatchProgressEvent) => void;
+  limits?: RenderLimits;
 }
 
 export interface BatchProgressEvent {
@@ -137,6 +144,10 @@ export async function renderBatch<TData>(
         result,
       });
     },
+    ...(options.signal !== undefined ? { signal: options.signal } : {}),
+    ...(options.deadlineMs !== undefined ? { deadlineMs: options.deadlineMs } : {}),
+    ...(options.cleanupTimeoutMs !== undefined ? { cleanupTimeoutMs: options.cleanupTimeoutMs } : {}),
+    ...(options.limits !== undefined ? { limits: options.limits } : {}),
   });
 
   return results;

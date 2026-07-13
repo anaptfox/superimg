@@ -109,6 +109,7 @@ program
   .option("--dry-run", "Resolve and print render targets without actually rendering.")
   .option("--json", "Output machine-readable JSON instead of human text")
   .option("--distributed <endpoints>", "Comma-separated container URLs for distributed chunk rendering (e.g. https://a.example.com,https://b.example.com).")
+  .option("--timeout <seconds>", "Cancel a render after this many seconds")
   .action(async (template: string | undefined, options) => {
     const mod = await import("./commands/render.js");
 
@@ -149,6 +150,7 @@ program
   .option("--png", "Also write PNG stills via Playwright")
   .option("-o, --output <dir>", "Artifact dir (default: <templateDir>/output/.superimg/inspect/)")
   .option("--pretty", "Human phase/sample table on stderr (JSON still on stdout)")
+  .option("--summary", "Emit config and phases without rendering HTML samples")
   .option("--critique", "Include motion craft critique (hold length, exit vs enter, text settle, …)")
   .option("--data <path-or-json>", "Data override (object only)")
   .option("--json", "Explicit JSON mode (default; no-op)")
@@ -161,7 +163,8 @@ program
   .command("list")
   .description("List all discovered videos in the project")
   .option("--json", "Output machine-readable JSON instead of human text")
-  .action(async (options: { json?: boolean }) => {
+  .option("--shallow", "List template paths without parsing template metadata")
+  .action(async (options: { json?: boolean; shallow?: boolean }) => {
     const { listCommand } = await import("./commands/list.js");
     await listCommand(options);
   });

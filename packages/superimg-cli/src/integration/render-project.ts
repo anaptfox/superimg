@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import type { RenderEvent } from "@superimg/types";
 import { RENDER_EVENT_VERSION } from "@superimg/types";
 import type { OutputFormat } from "@superimg/types";
+import { createLinkedExecutionSignal } from "@superimg/types";
 import { PlaywrightEngine } from "@superimg/node/internal";
 import { discoverVideos } from "../cli/utils/discover-videos.js";
 import { deriveVideoName } from "../cli/utils/resolve-output-path.js";
@@ -51,20 +52,6 @@ function errorEvent(name: string, err: unknown, format?: OutputFormat): RenderEv
     ...(format !== undefined ? { format } : {}),
     ...(stack !== undefined ? { stack } : {}),
   };
-}
-
-async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs?: number): Promise<T> {
-  if (!timeoutMs || timeoutMs <= 0) return promise;
-  let timer: ReturnType<typeof setTimeout>;
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`)),
-        timeoutMs,
-      );
-    }),
-  ]).finally(() => clearTimeout(timer!));
 }
 
 async function templateMeta(entrypoint: string, projectRoot: string) {
@@ -147,6 +134,12 @@ export async function* renderProject(
     resolveWait = null;
   };
   const push = (e: RenderEvent) => {
+    if (e.event === "progress") {
+      const existing = eventQueue.findIndex(
+        (queued) => queued.event === "progress" && queued.name === e.name,
+      );
+      if (existing >= 0) eventQueue.splice(existing, 1);
+    }
     eventQueue.push(e);
     signalWait();
   };
@@ -205,6 +198,10 @@ export async function* renderProject(
     });
 
     const startMs = Date.now();
+    const execution = createLinkedExecutionSignal({
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(timeoutMs && timeoutMs > 0 ? { deadlineMs: Date.now() + timeoutMs } : {}),
+    });
     try {
       if (hasOutputs) {
         const resolved = await resolveRenderTargets(
@@ -212,10 +209,11 @@ export async function* renderProject(
           { output: `${outDir}/`, presets: true },
           format,
         );
-        await withTimeout(
-          executeRenderTargets({
+        await executeRenderTargets({
             resolved,
             options: { output: `${outDir}/`, presets: true },
+            signal: execution.signal,
+            ...(execution.deadlineMs !== undefined ? { deadlineMs: execution.deadlineMs } : {}),
             onProgress: (target, p) => {
               push({
                 v: RENDER_EVENT_VERSION,
@@ -238,17 +236,15 @@ export async function* renderProject(
                 contentHash: contentHash(target.outputPath),
               } as RenderEvent);
             },
-          }),
-          shortName,
-          timeoutMs,
-        );
+          });
       } else {
         const output = outputPaths[0]!;
         const encoding = format === "gif" ? { format: "gif" as const } : { format };
-        await withTimeout(
-          renderVideo(entrypoint, {
+        await renderVideo(entrypoint, {
             output,
             encoding,
+            signal: execution.signal,
+            ...(execution.deadlineMs !== undefined ? { deadlineMs: execution.deadlineMs } : {}),
             ...(engine !== undefined ? { engine } : {}),
             onProgress: (frame, totalFrames) => {
               push({
@@ -259,10 +255,7 @@ export async function* renderProject(
                 totalFrames,
               });
             },
-          }),
-          shortName,
-          timeoutMs,
-        );
+          });
         byFormat[format] = (byFormat[format] ?? 0) + 1;
         rendered++;
         push({
@@ -279,6 +272,8 @@ export async function* renderProject(
     } catch (err) {
       failed++;
       push(errorEvent(shortName, err, format));
+    } finally {
+      execution.dispose();
     }
   }
 
@@ -395,12 +390,17 @@ export async function* renderProject(
     }
 
     const batchEvents: RenderEvent[] = [];
+    const execution = createLinkedExecutionSignal({
+      ...(options.signal !== undefined ? { signal: options.signal } : {}),
+      ...(timeoutMs && timeoutMs > 0 ? { deadlineMs: Date.now() + timeoutMs } : {}),
+    });
     try {
       const batchStartMs = Date.now();
-      const results = await withTimeout(
-        renderBatch(entrypoint, {
+      const results = await renderBatch(entrypoint, {
           dataset: entries,
           output: outDir,
+          signal: execution.signal,
+          ...(execution.deadlineMs !== undefined ? { deadlineMs: execution.deadlineMs } : {}),
           ...(hasOutputs ? { presets: true } : {}),
           encoding: format === "gif" ? { format: "gif" } : { format },
           onProgress: (ev) => {
@@ -413,10 +413,7 @@ export async function* renderProject(
               totalFrames: ev.progress.totalFrames,
             });
           },
-        }),
-        stem,
-        timeoutMs,
-      );
+        });
 
       for (const ev of batchEvents) yield ev;
 
@@ -440,6 +437,8 @@ export async function* renderProject(
     } catch (err) {
       failed += entries.length;
       yield errorEvent(stem, err, format);
+    } finally {
+      execution.dispose();
     }
   }
 

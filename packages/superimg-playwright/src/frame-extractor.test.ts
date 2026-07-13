@@ -68,10 +68,14 @@ describe("FrameExtractor", () => {
     await extractor.dispose();
   });
 
-  it("resolves localhost asset URLs to filesystem paths", async () => {
+  it("resolves opaque asset URLs through the owning registry", async () => {
     const backend = new CountingBackend();
-    const extractor = new FrameExtractor(backend);
-    const url = `http://localhost:3000/assets?path=${encodeURIComponent(countdownMp4)}`;
+    const url = "http://localhost:3000/assets/8e638ea0-d396-4d0d-995a-f24e3690c839";
+    const extractor = new FrameExtractor(
+      backend,
+      undefined,
+      (src) => src === url ? countdownMp4 : undefined,
+    );
 
     await extractor.extractFrame(url, 1, 30);
     expect(backend.calls).toBe(1);

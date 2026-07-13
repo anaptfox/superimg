@@ -4,9 +4,7 @@ import type { Page } from "playwright";
 import type {
   FrameRendererConfig,
   FrameReadinessPolicy,
-  VideoEncoderConfig,
   FrameRenderer,
-  VideoEncoder,
   ResolvedAssetDeclaration,
   AssetMeta,
 } from "@superimg/types";
@@ -105,8 +103,11 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
     await this.page.clock.runFor(ms);
   }
 
-  async captureFrame(html: string, options?: { alpha?: boolean }): Promise<Buffer> {
-    const injected = await this.injectClipFrames(html);
+  async captureFrame(
+    html: string,
+    options?: { alpha?: boolean; signal?: AbortSignal },
+  ): Promise<Buffer> {
+    const injected = await this.injectClipFrames(html, options?.signal);
 
     if (injected.includes("__SUPERIMG_THREE__")) {
       await preloadThreeModule(this.page);
@@ -197,7 +198,7 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
     return Buffer.isBuffer(png) ? png : Buffer.from(png);
   }
 
-  private async injectClipFrames(html: string): Promise<string> {
+  private async injectClipFrames(html: string, signal?: AbortSignal): Promise<string> {
     let nextHtml = this.injectExternalEmbedPlaceholders(html);
     if (!nextHtml.includes(CLIP_SYNC_ATTR)) return nextHtml;
 
@@ -221,7 +222,7 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
         void frameIndex;
 
         try {
-          const png = await this.frameExtractor.extractFrame(src, t, this.fps);
+          const png = await this.frameExtractor.extractFrame(src, t, this.fps, signal);
           const dataUri = `data:image/png;base64,${png.toString("base64")}`;
           return { tag, replacement: buildInjectedImgTag(tag, dataUri) };
         } catch (err) {
@@ -362,59 +363,5 @@ export class PlaywrightFrameRenderer implements FrameRenderer<Buffer> {
       },
       declarations
     );
-  }
-}
-
-/**
- * Playwright-based video encoder.
- * Uses browser harness (BrowserEncoder) to encode frames to video.
- */
-export class PlaywrightVideoEncoder implements VideoEncoder<Buffer> {
-  private width = 0;
-  private height = 0;
-
-  constructor(private readonly page: Page) {}
-
-  async init(config: VideoEncoderConfig): Promise<void> {
-    this.width = config.width;
-    this.height = config.height;
-
-    const encoderConfig: Record<string, unknown> = {
-      width: config.width,
-      height: config.height,
-      fps: config.fps,
-      encoding: config.encoding,
-    };
-    if (config.resolvedAudio) {
-      encoderConfig.resolvedAudio = config.resolvedAudio;
-    }
-
-    await this.page.evaluate(
-      async (cfg: Record<string, unknown>) => {
-        await (window as unknown as { __superimg: { initEncoder: (c: unknown) => Promise<void> } }).__superimg.initEncoder(cfg);
-      },
-      encoderConfig
-    );
-  }
-
-  async addFrame(frame: Buffer, timestamp: number): Promise<void> {
-    const b64 = frame.toString("base64");
-    await this.page.evaluate(
-      async (args: { b64: string; ts: number }) => {
-        await (window as unknown as { __superimg: { addFrame: (b64: string, ts: number) => Promise<void> } }).__superimg.addFrame(args.b64, args.ts);
-      },
-      { b64, ts: timestamp }
-    );
-  }
-
-  async finalize(): Promise<Uint8Array> {
-    const result = await this.page.evaluate(async () => {
-      return await (window as unknown as { __superimg: { finalize: () => Promise<Uint8Array> } }).__superimg.finalize();
-    });
-    return new Uint8Array(result);
-  }
-
-  async dispose(): Promise<void> {
-    // No-op
   }
 }
