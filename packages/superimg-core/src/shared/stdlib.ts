@@ -9,7 +9,7 @@ import { css, fill, center, column, row } from "@superimg/stdlib/css";
 import * as responsive from "@superimg/stdlib/responsive";
 import * as subtitle from "@superimg/stdlib/subtitle";
 import * as presets from "@superimg/stdlib/presets";
-import * as code from "@superimg/stdlib/code";
+import type * as code from "@superimg/stdlib/code";
 import { mergeMotion } from "@superimg/stdlib/director";
 import { carousel } from "@superimg/stdlib/carousel";
 import { stack } from "@superimg/stdlib/stack";
@@ -41,10 +41,11 @@ import {
   measureText,
   wrapText,
   fitText,
-  rough as svgRough,
-} from "@superimg/stdlib/svg";
+} from "@superimg/stdlib/svg/base";
+import type * as svgRough from "@superimg/stdlib/svg/rough";
 import * as layout from "@superimg/stdlib/layout";
-import * as viz from "@superimg/stdlib/viz";
+import * as vizBase from "@superimg/stdlib/viz/base";
+import type * as viz from "@superimg/stdlib/viz";
 import { ready } from "@superimg/stdlib/ready";
 
 const mathWithoutLerp = Object.fromEntries(
@@ -52,6 +53,46 @@ const mathWithoutLerp = Object.fromEntries(
 ) as Omit<typeof math, "lerp">;
 
 export type StaticStdlib = Omit<Stdlib, "video" | "media" | "px" | "scale">;
+
+function missingCapability(name: string): never {
+  throw new Error(
+    `SuperImg stdlib capability "${name}" was not prepared. Load templates through Player/createRenderPlan before rendering.`,
+  );
+}
+
+function missingNamespace(name: string): unknown {
+  const callable = () => missingCapability(name);
+  return new Proxy(callable, {
+    get: () => missingNamespace(name),
+    apply: () => missingCapability(name),
+  });
+}
+
+const missingCode = {
+  highlight: () => missingCapability("code"),
+  getThemes: () => [],
+  getLangs: () => [],
+} as unknown as typeof code;
+
+const missing = (name: string) => missingNamespace(name) as never;
+const lazyViz = {
+  ...vizBase,
+  three: missing("three"),
+  lottie: missing("lottie"),
+  lottieApi: missing("lottie"),
+  lottieDurationFrames: missing("lottie"),
+  lottieDurationSeconds: missing("lottie"),
+  LOTTIE_VERSION: "",
+  LOTTIE_MODULE_LIGHT: "",
+  LOTTIE_MODULE_FULL: "",
+  mermaid: missing("mermaid"),
+  equation: missing("katex"),
+  equationSteps: missing("katex"),
+  equationMatch: missing("katex"),
+  parseEquationSteps: missing("katex"),
+  katexCss: "",
+  katex: missing("katex"),
+} as unknown as typeof viz;
 
 export const stdlib: StaticStdlib = {
   math: mathWithoutLerp,
@@ -62,7 +103,7 @@ export const stdlib: StaticStdlib = {
   responsive,
   subtitle,
   presets,
-  code,
+  code: missingCode,
   carousel,
   stack,
   layoutTimeline,
@@ -93,7 +134,7 @@ export const stdlib: StaticStdlib = {
     measureText,
     wrapText,
     fitText,
-    rough: svgRough,
+    rough: missing("rough") as typeof svgRough,
   },
   layout,
   mergeMotion,
@@ -103,6 +144,6 @@ export const stdlib: StaticStdlib = {
   loop,
   pingpong,
   wiggle,
-  viz,
+  viz: lazyViz,
   ready,
 };

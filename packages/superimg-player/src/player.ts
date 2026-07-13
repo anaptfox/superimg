@@ -15,7 +15,7 @@ import {
   type RuntimeState,
   type RuntimeStore,
 } from "@superimg/media";
-import { getPreset } from "@superimg/stdlib";
+import { getPreset } from "@superimg/stdlib/presets";
 import { HoverController } from "./player-hover.js";
 import { createPlayerStore, type PlayerStore } from "./state.js";
 import { createRuntimeStoreAdapter } from "./runtime-store-adapter.js";
@@ -153,6 +153,7 @@ export class Player {
   private sessionEventDisposers: Array<() => void> = [];
   private template: PlayerInput | null = null;
   private checkpointResolverInstance: CheckpointResolver | null = null;
+  private checkpointCache: Checkpoint[] | null = null;
   private markerList: Marker[] = [];
   private format: FormatOption | undefined;
   private options: {
@@ -368,10 +369,15 @@ export class Player {
 
   set playbackMode(mode: PlaybackMode) {
     this.options.playbackMode = mode;
+    this.session?.update({ playbackMode: mode });
   }
 
   on<K extends keyof PlayerEvents>(event: K, callback: PlayerEvents[K]): () => void {
-    const set = (this.events[event] ??= new Set<PlayerEvents[K]>());
+    let set = this.events[event] as Set<PlayerEvents[K]> | undefined;
+    if (!set) {
+      set = new Set<PlayerEvents[K]>();
+      Object.assign(this.events, { [event]: set });
+    }
     set.add(callback);
     return () => this.off(event, callback);
   }
@@ -410,16 +416,22 @@ export class Player {
   }
 
   getCheckpoints(): Checkpoint[] {
+    return [...this.getCheckpointList()];
+  }
+
+  private getCheckpointList(): readonly Checkpoint[] {
+    if (this.checkpointCache) return this.checkpointCache;
     const checkpoints = this.checkpointResolverInstance?.getAll() ?? [];
     const sceneCheckpoints =
       this.template && isComposedTemplate(this.template) ? this.template.getCheckpoints() : [];
-    return [...sceneCheckpoints, ...checkpoints].sort((a, b) => a.frame - b.frame);
+    this.checkpointCache = [...sceneCheckpoints, ...checkpoints].sort((a, b) => a.frame - b.frame);
+    return this.checkpointCache;
   }
 
   getCurrentCheckpoint(): Checkpoint | undefined {
     const frame = this.currentFrame;
     let current: Checkpoint | undefined;
-    for (const checkpoint of this.getCheckpoints()) {
+    for (const checkpoint of this.getCheckpointList()) {
       if (checkpoint.frame <= frame) current = checkpoint;
       else break;
     }
@@ -427,18 +439,18 @@ export class Player {
   }
 
   goToCheckpoint(id: string): void {
-    const checkpoint = this.getCheckpoints().find((item) => item.id === id);
+    const checkpoint = this.getCheckpointList().find((item) => item.id === id);
     if (checkpoint) this.seekFrame(checkpoint.frame);
   }
 
   nextCheckpoint(): void {
-    const checkpoint = this.getCheckpoints().find((item) => item.frame > this.currentFrame);
+    const checkpoint = this.getCheckpointList().find((item) => item.frame > this.currentFrame);
     if (checkpoint) this.seekFrame(checkpoint.frame);
   }
 
   prevCheckpoint(): void {
     let previous: Checkpoint | undefined;
-    for (const checkpoint of this.getCheckpoints()) {
+    for (const checkpoint of this.getCheckpointList()) {
       if (checkpoint.frame >= this.currentFrame) break;
       previous = checkpoint;
     }
@@ -451,11 +463,15 @@ export class Player {
     options?: { label?: string; metadata?: Record<string, unknown> }
   ): Checkpoint {
     const resolver = this.requireCheckpointResolver("addCheckpoint");
-    return resolver.add(id, frame, options);
+    const checkpoint = resolver.add(id, frame, options);
+    this.checkpointCache = null;
+    return checkpoint;
   }
 
   removeCheckpoint(id: string): boolean {
-    return this.checkpointResolverInstance?.remove(id) ?? false;
+    const removed = this.checkpointResolverInstance?.remove(id) ?? false;
+    if (removed) this.checkpointCache = null;
+    return removed;
   }
 
   dispose(): void {
@@ -465,6 +481,7 @@ export class Player {
     this.session = null;
     this.template = null;
     this.checkpointResolverInstance = null;
+    this.checkpointCache = null;
     this.events = {};
   }
 
@@ -562,6 +579,7 @@ export class Player {
   }
 
   private rebuildCheckpointResolver(): void {
+    this.checkpointCache = null;
     const state = this.session?.getState();
     if (!state) {
       this.checkpointResolverInstance = null;
@@ -600,7 +618,7 @@ export class Player {
   }
 
   private emitCheckpoint(frame: number): void {
-    const checkpoint = this.getCheckpoints().find((item) => item.frame === frame);
+    const checkpoint = this.getCheckpointList().find((item) => item.frame === frame);
     if (!checkpoint || checkpoint.id === this.lastCheckpointId) return;
     this.lastCheckpointId = checkpoint.id;
     this.emit("checkpoint", checkpoint);

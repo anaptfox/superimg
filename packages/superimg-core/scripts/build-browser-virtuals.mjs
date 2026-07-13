@@ -2,7 +2,7 @@
 /**
  * Build browser virtual-module sources from real packages.
  *
- * Writes gitignored src/bundler/browser-virtuals.gen.ts — never hand-edit.
+ * Writes gitignored .generated/browser-virtuals.ts — never hand-edit.
  * Source of truth: template-runtime.ts, @superimg/types define, stdlib dist.
  *
  * Run: node scripts/build-browser-virtuals.mjs
@@ -24,7 +24,7 @@ import { rolldown } from "rolldown";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(__dirname, "..");
 const srcDir = join(pkgRoot, "src");
-const outPath = join(srcDir, "bundler", "browser-virtuals.gen.ts");
+const outPath = join(pkgRoot, ".generated", "browser-virtuals.ts");
 const hashPath = join(pkgRoot, "dist", "browser-virtuals.source-hash");
 
 const stdlibDist = join(pkgRoot, "..", "superimg-stdlib", "dist");

@@ -12,6 +12,6 @@ async function bundleWithBrowserCompiler(code: string): Promise<TemplateBundle> 
 }
 
 /** Queue-backed bundle using the app-provided @rolldown/browser peer. */
-export function bundleTemplateQueued(code: string): Promise<TemplateBundle> {
-  return enqueueTemplateCompile(() => bundleWithBrowserCompiler(code));
+export function bundleTemplateQueued(code: string, queueKey: object): Promise<TemplateBundle> {
+  return enqueueTemplateCompile(queueKey, () => bundleWithBrowserCompiler(code));
 }

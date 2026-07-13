@@ -143,6 +143,7 @@ export function useCompiledTemplate(
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const compilationIdRef = useRef(0);
+  const queueKeyRef = useRef<object>({});
 
   const code = inlineCode || fetchedCode || "";
   const bundled = inlineBundled ?? fetchedBundled ?? undefined;
@@ -218,7 +219,7 @@ export function useCompiledTemplate(
       if (compilationId !== compilationIdRef.current) return;
 
       const { bundleTemplateQueued } = await import("./bundler-worker-client.js");
-      const bundled = await bundleTemplateQueued(compileCode);
+      const bundled = await bundleTemplateQueued(compileCode, queueKeyRef.current);
 
       // Check if this compilation was superseded
       if (compilationId !== compilationIdRef.current) return;

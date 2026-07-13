@@ -1,5 +1,5 @@
 import { createRequire } from "module";
-import { readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { fileURLToPath, URL } from "url";
 
 const _require = createRequire(import.meta.url);
@@ -12,6 +12,15 @@ const katexCssText: string = ${JSON.stringify(css)};
 export default katexCssText;
 `;
 
-const destPath = new URL("../src/viz/katex-css.generated.ts", import.meta.url);
-writeFileSync(fileURLToPath(destPath), out);
-console.log("Generated katex-css.generated.ts (" + css.length + " chars)");
+const destPath = new URL("../.generated/katex-css.ts", import.meta.url);
+const dest = fileURLToPath(destPath);
+if (process.argv.includes("--check")) {
+  if (!existsSync(dest) || readFileSync(dest, "utf8") !== out) {
+    throw new Error("Generated KaTeX CSS is stale; run pnpm generate");
+  }
+  console.log("Generated KaTeX CSS is current");
+} else {
+  mkdirSync(new URL("../.generated/", import.meta.url), { recursive: true });
+  writeFileSync(dest, out);
+  console.log("Generated katex-css.ts (" + css.length + " chars)");
+}

@@ -2,14 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
 const mockExportToVideo = vi.hoisted(() => vi.fn());
-const mockDownloadBlob = vi.hoisted(() => vi.fn());
 
 vi.mock("@superimg/browser-export", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@superimg/browser-export")>();
   return {
     ...actual,
     exportToVideo: mockExportToVideo,
-    downloadBlob: mockDownloadBlob,
   };
 });
 
@@ -44,10 +42,15 @@ describe("useExport", () => {
     expect(mockExportToVideo).toHaveBeenCalled();
   });
 
-  it("download calls downloadBlob", () => {
+  it("download creates and releases an object URL", () => {
     const { result } = renderHook(() => useExport());
     const blob = new Blob();
+    const url = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:test");
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     act(() => result.current.download(blob, "test.mp4"));
-    expect(mockDownloadBlob).toHaveBeenCalledWith(blob, "test.mp4");
+    expect(url).toHaveBeenCalledWith(blob);
+    expect(click).toHaveBeenCalledOnce();
+    expect(revoke).toHaveBeenCalledWith("blob:test");
   });
 });

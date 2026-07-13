@@ -1,5 +1,5 @@
 import katex from "katex";
-import katexCssText from "./katex-css.generated.js";
+import katexCssText from "../../.generated/katex-css.js";
 import { clamp01 } from "../easing.js";
 import { lagProgress } from "./reveal.js";
 

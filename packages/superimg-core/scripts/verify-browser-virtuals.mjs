@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Verify browser-virtuals.gen.ts is present and matches current source hash.
+ * Verify .generated/browser-virtuals.ts is present and matches current source hash.
  *
  * Usage:
  *   node scripts/verify-browser-virtuals.mjs
@@ -12,17 +12,17 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(__dirname, "..");
-const genPath = join(pkgRoot, "src", "bundler", "browser-virtuals.gen.ts");
+const genPath = join(pkgRoot, ".generated", "browser-virtuals.ts");
 
 if (!existsSync(genPath)) {
-  console.error("Error: browser-virtuals.gen.ts missing. Run: pnpm run build");
+  console.error("Error: .generated/browser-virtuals.ts missing. Run: pnpm run generate");
   process.exit(1);
 }
 
 const gen = readFileSync(genPath, "utf8");
 const embeddedHash = gen.match(/source-hash:\s*([a-f0-9]+)/)?.[1];
 if (!embeddedHash) {
-  console.error("Error: browser-virtuals.gen.ts missing source-hash header");
+  console.error("Error: .generated/browser-virtuals.ts missing source-hash header");
   process.exit(1);
 }
 
@@ -35,7 +35,7 @@ if (embeddedHash !== currentHash) {
   console.error("Error: browser virtual modules are stale!");
   console.error(`  Embedded hash: ${embeddedHash}`);
   console.error(`  Current hash:  ${currentHash}`);
-  console.error("Run: pnpm run build");
+  console.error("Run: pnpm run generate");
   process.exit(1);
 }
 

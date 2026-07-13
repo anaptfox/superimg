@@ -35,6 +35,7 @@ export type {
 export * from "./shared/constants.js";
 export * from "./rendering/create-render-context.js";
 export * from "./rendering/runtime-info.js";
+export * from "./shared/stdlib-capabilities.js";
 export * from "./rendering/compiler.js";
 export * from "./rendering/resolve-template.js";
 export * from "./rendering/probe-phases.js";
