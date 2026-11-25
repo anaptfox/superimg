@@ -38,6 +38,27 @@ export {
 export { textMeasurerForDeclarations } from "./rendering/text-measurer-declarations.js";
 export { walkMediaTree } from "@superimg/stdlib/tree/walk";
 export type { TreeNodeSemantics } from "@superimg/stdlib/tree/walk";
+export {
+  checkNativePortability,
+  lowerDisplayList,
+  DISPLAY_LIST_KIND,
+  DISPLAY_LIST_SCHEMA_VERSION,
+} from "@superimg/stdlib/tree";
+export type {
+  BrowserReason,
+  NeedsBrowserConfig,
+  NativePortabilityResult,
+  LowerDisplayListOptions,
+  DisplayListFrame,
+  DisplayOp,
+  DisplayPaint,
+  DisplayStroke,
+  DisplayBlendMode,
+  DisplayClip,
+  DisplayAnchor,
+  DisplayListIssue,
+} from "@superimg/stdlib/tree";
+export { createNativeRuntime, installNativeRuntime, decodeBase64 } from "./native/jsc-runtime.js";
 export * from "./rendering/runtime-info.js";
 export * from "./shared/stdlib-capabilities.js";
 export * from "./rendering/compiler.js";

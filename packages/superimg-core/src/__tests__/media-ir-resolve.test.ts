@@ -39,7 +39,15 @@ describe("resolveMediaIR", () => {
     });
     expect(ir.motions.some((motion) => motion.localId === "title.enter")).toBe(true);
     expect(ir.capabilities).not.toHaveProperty("semantic");
-    expect(ir.extensions).toEqual({});
+    expect(ir.extensions).toEqual({
+      "superimg.native": {
+        schemaVersion: 0,
+        payload: {
+          portable: false,
+          reasons: [{ reason: "Html" }],
+        },
+      },
+    });
   });
 
   it("compiles static media as a timeless single frame", async () => {

@@ -1,4 +1,11 @@
-import { resolveSceneTree, collectSceneDescriptions } from "@superimg/stdlib/tree";
+import {
+  resolveSceneTree,
+  collectSceneDescriptions,
+  checkNativePortability,
+  type BrowserReason,
+  type NeedsBrowserConfig,
+} from "@superimg/stdlib/tree";
+import { stageBackground } from "../validation/tree-paint.js";
 //! resolveMediaIR — full-frame browser-free Media IR compiler.
 
 import type {
@@ -143,6 +150,7 @@ interface PassResult {
   spatialFrames: { frame: number; scenes: import("@superimg/types").SceneSnapshot[] }[];
   issues: MediaIRCapabilityIssue[];
   captures: Map<number, MediaIRFrameCapture>;
+  nativeReasons: BrowserReason[];
 }
 
 function containsOpaqueHtml(node: MediaElement): boolean {
@@ -382,12 +390,34 @@ export async function resolveMediaIR(
     return set.size > 0 ? set : null;
   })();
 
+  const backgroundStr = stageBackground(config?.background);
+  const nativeConfig: NeedsBrowserConfig = {
+    ...(config?.tailwind !== undefined ? { tailwind: config.tailwind } : {}),
+    ...(config?.stylesheets !== undefined ? { stylesheets: config.stylesheets } : {}),
+    ...(config?.inlineCss !== undefined ? { inlineCss: config.inlineCss } : {}),
+    ...(backgroundStr !== undefined ? { background: backgroundStr } : {}),
+  };
+
   const runPass = async (collectCaptures: boolean): Promise<PassResult> => {
     const collector = new IrCollector();
     const markupFrames: { frame: number; hash: string }[] = [];
     const sceneFrames: { frame: number; hash: string }[] = [];
     const spatialFrames: { frame: number; scenes: import("@superimg/types").SceneSnapshot[] }[] = [];
     const captures = new Map<number, MediaIRFrameCapture>();
+    const nativeReasons: BrowserReason[] = [];
+    const seenNativeReasons = new Set<string>();
+    const recordNativeReasons = (reasons: readonly BrowserReason[]): void => {
+      for (const item of reasons) {
+        const key = `${item.nodeId ?? ""}\0${item.reason}`;
+        if (seenNativeReasons.has(key)) continue;
+        seenNativeReasons.add(key);
+        nativeReasons.push(
+          item.nodeId !== undefined
+            ? { nodeId: item.nodeId, reason: item.reason }
+            : { reason: item.reason },
+        );
+      }
+    };
     let hasOpaqueVisualRegion = false;
     const yieldEvery = options.yieldEvery ?? 30;
     let segmentIndex = 0;
@@ -437,6 +467,13 @@ export async function resolveMediaIR(
           ...(measurer !== undefined ? { measurer } : {}),
         });
         if (containsOpaqueHtml(output)) hasOpaqueVisualRegion = true;
+        if (isMediaElement(output)) {
+          const portability = checkNativePortability(
+            output,
+            frame === 0 ? nativeConfig : undefined,
+          );
+          if (!portability.portable) recordNativeReasons(portability.reasons);
+        }
       } catch (e) {
         const err = e as Error;
         const msg = err.message ?? String(e);
@@ -602,6 +639,7 @@ export async function resolveMediaIR(
       spatialFrames,
       issues,
       captures,
+      nativeReasons,
     };
   };
 
@@ -903,6 +941,16 @@ export async function resolveMediaIR(
     }
     draft.extensions["superimg/scene"] = { schemaVersion: 0, payload: JSON.parse(JSON.stringify({ ranges })) };
   }
+  draft.extensions["superimg.native"] = {
+    schemaVersion: 0,
+    payload: {
+      portable: pass1.nativeReasons.length === 0,
+      reasons: pass1.nativeReasons.map((entry) => ({
+        ...(entry.nodeId !== undefined ? { nodeId: entry.nodeId } : {}),
+        reason: entry.reason,
+      })),
+    },
+  };
   const hashes = computeMediaIRHashes(draft as MediaIR, programHash);
   const ir = validateMediaIR({ ...draft, hashes });
 

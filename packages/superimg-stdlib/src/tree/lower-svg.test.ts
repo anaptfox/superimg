@@ -320,3 +320,14 @@ describe("needsBrowser", () => {
     expect(needsBrowser(frame, { background: "linear-gradient(#000,#fff)" }).reasons).toEqual([{ reason: "background" }]);
   });
 });
+
+describe("portable opacity and blend modes", () => {
+  it("lowers first-class paint and accepts supported style blend modes", () => {
+    const tree = Frame({ id: "blend", width: 10, height: 10, opacity: 0.5, blendMode: "multiply" });
+    expect(needsBrowser(tree).browser).toBe(false);
+    expect(lowerSvg(tree, { width: 10, height: 10 })).toContain('mix-blend-mode:multiply');
+    expect(needsBrowser(Frame({ style: { mixBlendMode: "screen" } })).browser).toBe(false);
+    expect(needsBrowser(Frame({ id: "bad", style: { mixBlendMode: "plus-lighter" } })).reasons).toContainEqual({ nodeId: "bad", reason: "style:mixBlendMode" });
+    expect(needsBrowser(Frame({ id: "bad", blendMode: "plus-lighter" as never })).reasons).toContainEqual({ nodeId: "bad", reason: "blendMode" });
+  });
+});

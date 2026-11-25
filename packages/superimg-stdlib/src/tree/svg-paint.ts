@@ -54,6 +54,7 @@ export interface ResolvedPaint {
   opacity?: number;
   opacityInvalid: boolean;
   blendMode?: string;
+  blendModeInvalid: boolean;
   motion?: SvgMotion;
   clip: boolean;
   /** Unsupported CSS style keys, without the `style:` prefix. */
@@ -265,6 +266,7 @@ interface StyleScan {
   opacity?: number;
   opacityInvalid: boolean;
   blendMode?: string;
+  blendModeInvalid: boolean;
   border?: ParsedBorder;
   borderInvalid: boolean;
   borderRadius?: number;
@@ -277,6 +279,7 @@ interface StyleScan {
 function emptyScan(): StyleScan {
   return {
     opacityInvalid: false,
+    blendModeInvalid: false,
     borderInvalid: false,
     borderRadiusInvalid: false,
     unsupportedStyle: [],
@@ -373,6 +376,16 @@ function absorbStyle(scan: StyleScan, style: MediaStyleValue | unknown): void {
 
 export function resolvePaint(el: MediaElement): ResolvedPaint {
   const scan = emptyScan();
+  if (el.props.opacity !== undefined) {
+    const opacity = parseOpacity(el.props.opacity);
+    if (opacity === undefined) scan.opacityInvalid = true;
+    else scan.opacity = opacity;
+  }
+  if (el.props.blendMode !== undefined) {
+    const mode = el.props.blendMode;
+    if (mode === "normal" || mode === "multiply" || mode === "screen" || mode === "overlay") scan.blendMode = mode;
+    else scan.blendModeInvalid = true;
+  }
   absorbStyle(scan, el.props.style);
   if (scan.motion && scan.opacity !== undefined) {
     scan.motion.opacity *= scan.opacity;
@@ -435,6 +448,7 @@ export function resolvePaint(el: MediaElement): ResolvedPaint {
     ...(opacity !== undefined ? { opacity } : {}),
     opacityInvalid: scan.opacityInvalid,
     ...(scan.blendMode !== undefined ? { blendMode: scan.blendMode } : {}),
+    blendModeInvalid: scan.blendModeInvalid,
     ...(motion !== undefined ? { motion } : {}),
     clip: el.props.overflow === "hidden",
     unsupportedStyle: scan.unsupportedStyle,

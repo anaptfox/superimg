@@ -64,12 +64,166 @@ import {
 } from "../utils/runtime-source.js";
 
 export { CHECK_SCHEMA_VERSION } from "@superimg/node/source-check";
-export type { CheckOptions } from "@foxworth/superimg-node/source/advanced";
 export type { CheckPhase, CheckSample, CheckIssue, CheckReport } from "@foxworth/superimg-node/source";
 // The CLI report schema constant is not part of the public operation facade.
+import { checkNativePortability, type BrowserReason, type NeedsBrowserConfig } from "@superimg/core";
 import { CHECK_SCHEMA_VERSION } from "@superimg/node/source-check";
-import { applyDestinationTarget, checkPreparedSource, runtimeAt, runtimeFindingToIssue, type CheckOptions, type CheckRuntimeContext } from "@foxworth/superimg-node/source/advanced";
+import { applyDestinationTarget, checkPreparedSource, evaluatePreparedSourceIR, runtimeAt, runtimeFindingToIssue, type CheckOptions as NodeCheckOptions, type CheckRuntimeContext } from "@foxworth/superimg-node/source/advanced";
 import type { CheckReport, CheckPhase, CheckSample, CheckIssue } from "@foxworth/superimg-node/source";
+
+export type CheckTarget = "web" | "native";
+export type CheckOptions = NodeCheckOptions & {
+  target?: CheckTarget;
+};
+
+function normalizeCheckTarget(target: string | undefined): CheckTarget {
+  if (target === undefined || target === "web") return "web";
+  if (target === "native") return "native";
+  throw Object.assign(
+    new Error(`Invalid --target ${JSON.stringify(target)}. Expected "web" or "native".`),
+    { code: "INVALID_TARGET" },
+  );
+}
+
+function nativeUnportableIssue(
+  entry: BrowserReason,
+  loc: { frame: number; progress: number },
+): CheckIssue {
+  const { nodeId, reason } = entry;
+  const nodeLabel = nodeId ? ` (#${nodeId})` : "";
+  let message: string;
+  let suggestion: string;
+
+  switch (reason) {
+    case "tailwind":
+      message = "Native target does not support Tailwind CSS (config.tailwind)";
+      suggestion = "Remove config.tailwind and express styling with typed Frame, Stack, Text, and Fill props.";
+      break;
+    case "stylesheets":
+      message = "Native target does not support external stylesheets (config.stylesheets)";
+      suggestion = "Remove config.stylesheets and express styling with typed Frame, Stack, Text, and Fill props.";
+      break;
+    case "inlineCss":
+      message = "Native target does not support inline CSS (config.inlineCss)";
+      suggestion = "Remove config.inlineCss and express styling with typed Frame, Stack, Text, and Fill props.";
+      break;
+    case "background":
+      message = "Native target only supports plain color config.background values";
+      suggestion = "Use a plain color string for config.background or paint backgrounds with Fill()/Image() nodes.";
+      break;
+    case "Html":
+    case "Video":
+    case "Plate":
+    case "foreignObject":
+      message = `Native target does not support browser-only node ${reason}${nodeLabel}`;
+      suggestion = `Replace ${reason} with native-portable Frame, Stack, Text, Fill, Image, or Vector primitives, or target --target web.`;
+      break;
+    case "className":
+      message = `Native target does not support CSS class/className${nodeId ? ` on #${nodeId}` : ""}`;
+      suggestion = "Remove class/className and express styling with typed Frame, Stack, Text, or Fill props.";
+      break;
+    case "style":
+      message = `Native target does not support raw style strings${nodeId ? ` on #${nodeId}` : ""}`;
+      suggestion = "Replace raw style strings with typed Frame, Stack, Text, or Fill props.";
+      break;
+    default:
+      if (reason.startsWith("style:")) {
+        message = `Native target does not support CSS ${reason}${nodeId ? ` on #${nodeId}` : ""}`;
+        suggestion = `Replace ${reason} with typed Frame, Stack, Text, or Fill props.`;
+      } else {
+        message = `Native target does not support ${reason}${nodeId ? ` on #${nodeId}` : ""}`;
+        suggestion = `Replace or remove unsupported ${reason}${nodeId ? ` on #${nodeId}` : ""} for native target portability.`;
+      }
+      break;
+  }
+
+  return {
+    severity: "error",
+    code: "NATIVE_UNPORTABLE",
+    message,
+    frame: loc.frame,
+    progress: loc.progress,
+    suggestion,
+    ...(nodeId !== undefined ? { nodeId } : {}),
+    details: { target: "native", reason },
+  };
+}
+
+async function applyNativeTargetCheck(
+  report: CheckReport,
+  options: CheckOptions,
+  loaded: CheckRuntimeContext["loaded"],
+  dataOverride?: Record<string, unknown>,
+  preparedReport?: PreparedRuntimeReport,
+): Promise<CheckReport> {
+  if (loaded.value.kind === "interactive") {
+    const issue: CheckIssue = {
+      severity: "error",
+      code: "NATIVE_UNPORTABLE",
+      message: "Interactive media is not portable to native targets",
+      frame: 0,
+      progress: 0,
+      suggestion: "Author a deterministic video(), image(), or svg() template without defineInteractive().",
+      details: { target: "native", reason: "interactive" },
+    };
+    return {
+      ...report,
+      ok: false,
+      issues: [...report.issues, issue],
+    };
+  }
+
+  const samplePairs = report.samples.length > 0
+    ? report.samples.map((sample) => ({ frame: sample.frame, progress: sample.progress }))
+    : [{ frame: 0, progress: 0 }];
+  const captureFrames = [...new Set(samplePairs.map((sample) => sample.frame))];
+
+  const evalResult = await evaluatePreparedSourceIR({
+    loaded,
+    ...(preparedReport !== undefined ? { preparedReport } : {}),
+    ...(dataOverride !== undefined ? { data: dataOverride } : {}),
+    ...(options.selectedEntry !== undefined ? { entry: options.selectedEntry } : {}),
+    ...(options.edition !== undefined ? { edition: options.edition } : {}),
+    ...(options.variant !== undefined ? { variant: options.variant } : {}),
+    captureFrames,
+  });
+
+  const cfg = evalResult.template.config;
+  const bg = stageBackground(cfg?.background);
+  const nativeConfig: NeedsBrowserConfig = {
+    ...(cfg?.tailwind !== undefined ? { tailwind: cfg.tailwind } : {}),
+    ...(cfg?.stylesheets !== undefined ? { stylesheets: cfg.stylesheets } : {}),
+    ...(cfg?.inlineCss !== undefined ? { inlineCss: cfg.inlineCss } : {}),
+    ...(bg !== undefined ? { background: bg } : {}),
+  };
+
+  const nativeIssues: CheckIssue[] = [];
+  const seenReasons = new Set<string>();
+  let checkedConfig = false;
+
+  for (const sample of samplePairs) {
+    const capture = evalResult.captures?.get(sample.frame);
+    if (!capture?.tree) continue;
+    const result = checkNativePortability(
+      capture.tree,
+      checkedConfig ? undefined : nativeConfig,
+    );
+    checkedConfig = true;
+    for (const reason of result.reasons) {
+      const key = `${reason.nodeId ?? ""}\0${reason.reason}`;
+      if (seenReasons.has(key)) continue;
+      seenReasons.add(key);
+      nativeIssues.push(nativeUnportableIssue(reason, sample));
+    }
+  }
+
+  if (nativeIssues.length === 0) return report;
+  return {
+    ...report,
+    ok: false,
+    issues: [...report.issues, ...nativeIssues],
+  };
+}
 
 function printPretty(report: CheckReport): void {
   const { config, phases, issues, samples } = report;
@@ -125,7 +279,18 @@ function printPretty(report: CheckReport): void {
  * Build a CheckReport for a resolved template path (testable without process.exit).
  */
 export async function runCheck(resolvedPath: string, options: CheckOptions = {}, context?: CheckRuntimeContext): Promise<CheckReport> {
-  if (context) return checkPreparedSource(resolvedPath, options, context);
+  const target = normalizeCheckTarget(options.target);
+  if (context) {
+    const report = await checkPreparedSource(resolvedPath, options, context);
+    if (target !== "native") return report;
+    return applyNativeTargetCheck(
+      report,
+      options,
+      context.loaded,
+      context.dataOverride,
+      context.preparedReport,
+    );
+  }
   const runtime = createCliValueRuntime();
   try {
     const loaded = await loadCliMediaValue(resolvedPath);
@@ -135,7 +300,25 @@ export async function runCheck(resolvedPath: string, options: CheckOptions = {},
       if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("--data for check must be a single object (not an array)");
       dataOverride = value as Record<string, unknown>;
     }
-    return await checkPreparedSource(resolvedPath, options, { runtime, loaded, dataOverride });
+    const applied = applyDestinationTarget(loaded, options.for, options.edition);
+    const effectiveOptions = applied.edition === undefined ? options : { ...options, edition: applied.edition };
+    const preparedReport = target === "native" && applied.loaded.value.kind !== "interactive"
+      ? await prepareRuntimeReport(runtime, applied.loaded.value, {
+          ...(dataOverride === undefined ? {} : { data: dataOverride as JsonObject }),
+          ...(effectiveOptions.selectedEntry === undefined ? {} : { entryId: effectiveOptions.selectedEntry }),
+          ...(effectiveOptions.variant === undefined ? {} : { variantId: effectiveOptions.variant }),
+          ...(effectiveOptions.edition === undefined ? {} : { editionId: effectiveOptions.edition }),
+          providers: "skip",
+        })
+      : undefined;
+    const report = await checkPreparedSource(resolvedPath, effectiveOptions, {
+      runtime,
+      loaded: applied.loaded,
+      ...(preparedReport !== undefined ? { preparedReport } : {}),
+      dataOverride,
+    });
+    if (target !== "native") return report;
+    return await applyNativeTargetCheck(report, effectiveOptions, applied.loaded, dataOverride, preparedReport);
   } finally { await runtime.dispose(); }
 }
 
@@ -143,6 +326,7 @@ export async function checkCommand(
   templateArg: string | undefined,
   options: CheckOptions = {},
 ): Promise<void> {
+  normalizeCheckTarget(options.target);
   const resolvedPath = resolveTemplatePathOrSole(templateArg);
 
   const projectRoot = findProjectRoot(dirname(resolvedPath));

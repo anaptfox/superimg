@@ -2,7 +2,26 @@ export { h, isMediaElement, MEDIA_ELEMENT } from "./h.js";
 export type { MediaChild, MediaElement } from "./node-types.js";
 export { lower, type LowerOptions } from "./lower.js";
 export { lowerSvg, type LowerSvgOptions } from "./lower-svg.js";
-export { needsBrowser, type BrowserReason, type NeedsBrowserConfig, type NeedsBrowserResult } from "./classify.js";
+export {
+  lowerDisplayList,
+  DISPLAY_LIST_KIND,
+  DISPLAY_LIST_SCHEMA_VERSION,
+  type LowerDisplayListOptions,
+  type DisplayListFrame,
+  type DisplayOp,
+  type DisplayOpBase,
+  type DisplayMatrix,
+  type DisplayRect,
+  type DisplayPaint,
+  type DisplayGradientStop,
+  type DisplayStroke,
+  type DisplayBlendMode,
+  type DisplayClip,
+  type DisplayTextLine,
+  type DisplayAnchor,
+  type DisplayListIssue,
+} from "./display-list.js";
+export { needsBrowser, checkNativePortability, type NativePortabilityResult, type BrowserReason, type NeedsBrowserConfig, type NeedsBrowserResult } from "./classify.js";
 export { layoutTree, layoutElement, PRIMITIVE_TYPES } from "./layout.js";
 export {
   Frame,

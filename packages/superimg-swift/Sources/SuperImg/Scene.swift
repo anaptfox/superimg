@@ -49,7 +49,35 @@ public actor SuperImgScene<State: Encodable & Sendable> {
         try sample(at: seconds, viewport: viewport, state: state, inputID: nil)
     }
 
+    /// Samples a scene returning either DisplayList v1 (`installSuperImgDisplayListSampler`)
+    /// or legacy `SuperImgFrame` (`installSuperImgSampler`), normalized to `DisplayListFrame`.
+    public func sampleDisplayList(at seconds: Double, viewport: SuperImgViewport, state: State) throws -> DisplayListFrame {
+        try sampleDisplayList(at: seconds, viewport: viewport, state: state, inputID: nil)
+    }
+
     func sample(at seconds: Double, viewport: SuperImgViewport, state: State, inputID: UUID?) throws -> SuperImgFrame {
+        let data = try evaluateSampleJSON(at: seconds, viewport: viewport, state: state, inputID: inputID)
+        let frame = try decoder.decode(SuperImgFrame.self, from: data)
+        try frame.validate()
+        try Task.checkCancellation()
+        return frame
+    }
+
+    func sampleDisplayList(at seconds: Double, viewport: SuperImgViewport, state: State, inputID: UUID?) throws -> DisplayListFrame {
+        let data = try evaluateSampleJSON(at: seconds, viewport: viewport, state: state, inputID: inputID)
+        if let displayFrame = try? decoder.decode(DisplayListFrame.self, from: data) {
+            try displayFrame.validate()
+            try Task.checkCancellation()
+            return displayFrame
+        }
+        let legacy = try decoder.decode(SuperImgFrame.self, from: data)
+        try legacy.validate()
+        let converted = try legacy.asDisplayListFrame()
+        try Task.checkCancellation()
+        return converted
+    }
+
+    private func evaluateSampleJSON(at seconds: Double, viewport: SuperImgViewport, state: State, inputID: UUID?) throws -> Data {
         try Task.checkCancellation()
         guard seconds.isFinite, seconds >= 0, viewport.width.isFinite, viewport.height.isFinite,
               viewport.width > 0, viewport.height > 0, viewport.scale.isFinite, viewport.scale > 0 else {
@@ -77,10 +105,7 @@ public actor SuperImgScene<State: Encodable & Sendable> {
         guard let json = stringify.call(withArguments: [result]), json.isString,
               let string = json.toString() else { throw failure() }
         if context.exception != nil { throw failure() }
-        let frame = try decoder.decode(SuperImgFrame.self, from: Data(string.utf8))
-        try frame.validate()
-        try Task.checkCancellation()
-        return frame
+        return Data(string.utf8)
     }
 
     private func jsValue<Value: Encodable>(_ value: Value) throws -> JSValue {

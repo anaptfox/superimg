@@ -1,3 +1,5 @@
+import { lowerDisplayList } from "../superimg-stdlib/src/tree/display-list.js";
+
 import type { ResolvedVisualPart, SceneBounds, SceneMatrix } from "../superimg-stdlib/src/scene-types.js";
 import type { MediaNode } from "../superimg-stdlib/src/tree/node-types.js";
 import { resolveSceneTree } from "../superimg-stdlib/src/tree/scene.js";
@@ -107,5 +109,15 @@ export function installSuperImgSampler<State>(
   Object.assign(globalThis, {
     superimgSample: (seconds: number, viewport: NativeSceneViewport, state: State) =>
       projectNativeScene(render(seconds, viewport, state)),
+  });
+}
+
+/** Install the canonical display-list sampler for native hosts. */
+export function installSuperImgDisplayListSampler<State>(
+  render: (seconds: number, viewport: NativeSceneViewport, state: State) => MediaNode,
+): void {
+  Object.assign(globalThis, {
+    superimgSample: (seconds: number, viewport: NativeSceneViewport, state: State) =>
+      lowerDisplayList(render(seconds, viewport, state), { width: viewport.width, height: viewport.height }),
   });
 }

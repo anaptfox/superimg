@@ -44,6 +44,8 @@ export interface MediaProps {
   className?: string;
   style?: MediaStyleValue;
   motion?: MediaMotionValue;
+  opacity?: number;
+  blendMode?: "normal" | "multiply" | "screen" | "overlay";
 }
 
 /** Open attribute bag used only by the low-level `h()` escape hatch. */

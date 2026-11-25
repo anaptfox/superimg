@@ -95,7 +95,7 @@ export default video({
             width: Math.max(2, Math.round(barSpan * warm)),
             height: barHeight,
             color: accent,
-            style: { opacity: inkOpacity },
+            opacity: inkOpacity,
           }),
           Fill({
             id: "ink-cool",
@@ -104,7 +104,8 @@ export default video({
             width: Math.max(2, Math.round(barSpan * 0.62 * cool)),
             height: barHeight,
             color: COOL,
-            style: { mixBlendMode: "multiply", opacity: inkOpacity },
+            opacity: inkOpacity,
+            blendMode: "multiply",
           }),
         ),
         Text(

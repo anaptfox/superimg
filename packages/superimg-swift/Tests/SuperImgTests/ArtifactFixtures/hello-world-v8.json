@@ -1,0 +1,477 @@
+{
+  "enter": {
+    "kind": "@foxworth/superimg/display-list",
+    "schemaVersion": 1,
+    "width": 1920,
+    "height": 1080,
+    "ops": [
+      {
+        "id": "fill-1",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "opacity": 1,
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#f1ebe1"
+        }
+      },
+      {
+        "id": "fill-2",
+        "bounds": {
+          "x": 165,
+          "y": 0,
+          "width": 2,
+          "height": 1080
+        },
+        "opacity": 1,
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#17140f1a"
+        }
+      },
+      {
+        "id": "slug",
+        "bounds": {
+          "x": 221,
+          "y": 382.74,
+          "width": 299,
+          "height": 26.4
+        },
+        "opacity": 1,
+        "kind": "text",
+        "lines": [
+          {
+            "text": "hello-world.media.ts",
+            "x": 221,
+            "y": 382.74,
+            "baselineY": 402.54,
+            "width": 299
+          }
+        ],
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 22,
+        "fontWeight": 500,
+        "fontStyle": "normal",
+        "letterSpacing": 3,
+        "lineHeight": 1.2,
+        "align": "left",
+        "color": "#17140f80",
+        "metricsExact": false
+      },
+      {
+        "id": "title",
+        "bounds": {
+          "x": 221,
+          "y": 419.14,
+          "width": 1203,
+          "height": 159.12
+        },
+        "matrix": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "e": 0,
+          "f": 3.1285
+        },
+        "opacity": 0.908,
+        "kind": "text",
+        "lines": [
+          {
+            "text": "Cross-OS Parity",
+            "x": 221,
+            "y": 419.14,
+            "baselineY": 545.5,
+            "width": 1203
+          }
+        ],
+        "fontFamily": "'Archivo', 'Helvetica Neue', system-ui, sans-serif",
+        "fontSize": 156,
+        "fontWeight": 800,
+        "fontStyle": "normal",
+        "letterSpacing": -6,
+        "lineHeight": 1.02,
+        "align": "left",
+        "color": "#17140f",
+        "metricsExact": false
+      },
+      {
+        "id": "ink-warm",
+        "bounds": {
+          "x": 221,
+          "y": 603.26,
+          "width": 768,
+          "height": 15
+        },
+        "opacity": 1,
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#e2452b"
+        }
+      },
+      {
+        "id": "ink-cool",
+        "bounds": {
+          "x": 405,
+          "y": 617.26,
+          "width": 474,
+          "height": 15
+        },
+        "opacity": 1,
+        "blendMode": "multiply",
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#1b4a9b"
+        }
+      }
+    ],
+    "anchors": [],
+    "issues": []
+  },
+  "hold": {
+    "kind": "@foxworth/superimg/display-list",
+    "schemaVersion": 1,
+    "width": 1920,
+    "height": 1080,
+    "ops": [
+      {
+        "id": "fill-1",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "opacity": 1,
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#f1ebe1"
+        }
+      },
+      {
+        "id": "fill-2",
+        "bounds": {
+          "x": 165,
+          "y": 0,
+          "width": 2,
+          "height": 1080
+        },
+        "opacity": 1,
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#17140f1a"
+        }
+      },
+      {
+        "id": "slug",
+        "bounds": {
+          "x": 221,
+          "y": 382.74,
+          "width": 299,
+          "height": 26.4
+        },
+        "opacity": 1,
+        "kind": "text",
+        "lines": [
+          {
+            "text": "hello-world.media.ts",
+            "x": 221,
+            "y": 382.74,
+            "baselineY": 402.54,
+            "width": 299
+          }
+        ],
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 22,
+        "fontWeight": 500,
+        "fontStyle": "normal",
+        "letterSpacing": 3,
+        "lineHeight": 1.2,
+        "align": "left",
+        "color": "#17140f80",
+        "metricsExact": false
+      },
+      {
+        "id": "title",
+        "bounds": {
+          "x": 221,
+          "y": 419.14,
+          "width": 1203,
+          "height": 159.12
+        },
+        "opacity": 1,
+        "kind": "text",
+        "lines": [
+          {
+            "text": "Cross-OS Parity",
+            "x": 221,
+            "y": 419.14,
+            "baselineY": 545.5,
+            "width": 1203
+          }
+        ],
+        "fontFamily": "'Archivo', 'Helvetica Neue', system-ui, sans-serif",
+        "fontSize": 156,
+        "fontWeight": 800,
+        "fontStyle": "normal",
+        "letterSpacing": -6,
+        "lineHeight": 1.02,
+        "align": "left",
+        "color": "#17140f",
+        "metricsExact": false
+      },
+      {
+        "id": "ink-warm",
+        "bounds": {
+          "x": 221,
+          "y": 603.26,
+          "width": 768,
+          "height": 15
+        },
+        "opacity": 1,
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#e2452b"
+        }
+      },
+      {
+        "id": "ink-cool",
+        "bounds": {
+          "x": 405,
+          "y": 617.26,
+          "width": 476,
+          "height": 15
+        },
+        "opacity": 1,
+        "blendMode": "multiply",
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#1b4a9b"
+        }
+      },
+      {
+        "id": "note",
+        "bounds": {
+          "x": 221,
+          "y": 661.26,
+          "width": 775.5,
+          "height": 36
+        },
+        "opacity": 1,
+        "kind": "text",
+        "lines": [
+          {
+            "text": "one file · a function of time · any destination",
+            "x": 221,
+            "y": 661.26,
+            "baselineY": 688.26,
+            "width": 775.5
+          }
+        ],
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 30,
+        "fontWeight": 400,
+        "fontStyle": "normal",
+        "lineHeight": 1.2,
+        "align": "left",
+        "color": "#17140f9e",
+        "metricsExact": false
+      }
+    ],
+    "anchors": [],
+    "issues": []
+  },
+  "exit": {
+    "kind": "@foxworth/superimg/display-list",
+    "schemaVersion": 1,
+    "width": 1920,
+    "height": 1080,
+    "ops": [
+      {
+        "id": "fill-1",
+        "bounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "opacity": 1,
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#f1ebe1"
+        }
+      },
+      {
+        "id": "fill-2",
+        "bounds": {
+          "x": 165,
+          "y": 0,
+          "width": 2,
+          "height": 1080
+        },
+        "opacity": 1,
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#17140f1a"
+        }
+      },
+      {
+        "id": "slug",
+        "bounds": {
+          "x": 221,
+          "y": 382.74,
+          "width": 299,
+          "height": 26.4
+        },
+        "matrix": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "e": 0,
+          "f": 9.5539
+        },
+        "opacity": 0.2038,
+        "kind": "text",
+        "lines": [
+          {
+            "text": "hello-world.media.ts",
+            "x": 221,
+            "y": 382.74,
+            "baselineY": 402.54,
+            "width": 299
+          }
+        ],
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 22,
+        "fontWeight": 500,
+        "fontStyle": "normal",
+        "letterSpacing": 3,
+        "lineHeight": 1.2,
+        "align": "left",
+        "color": "#17140f80",
+        "metricsExact": false
+      },
+      {
+        "id": "title",
+        "bounds": {
+          "x": 221,
+          "y": 419.14,
+          "width": 1203,
+          "height": 159.12
+        },
+        "matrix": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "e": 0,
+          "f": -27.0694
+        },
+        "opacity": 0.2038,
+        "kind": "text",
+        "lines": [
+          {
+            "text": "Cross-OS Parity",
+            "x": 221,
+            "y": 419.14,
+            "baselineY": 545.5,
+            "width": 1203
+          }
+        ],
+        "fontFamily": "'Archivo', 'Helvetica Neue', system-ui, sans-serif",
+        "fontSize": 156,
+        "fontWeight": 800,
+        "fontStyle": "normal",
+        "letterSpacing": -6,
+        "lineHeight": 1.02,
+        "align": "left",
+        "color": "#17140f",
+        "metricsExact": false
+      },
+      {
+        "id": "ink-warm",
+        "bounds": {
+          "x": 192.1354,
+          "y": 603.26,
+          "width": 768,
+          "height": 15
+        },
+        "opacity": 0.8202,
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#e2452b"
+        }
+      },
+      {
+        "id": "ink-cool",
+        "bounds": {
+          "x": 433.8646,
+          "y": 617.26,
+          "width": 476,
+          "height": 15
+        },
+        "opacity": 0.8202,
+        "blendMode": "multiply",
+        "kind": "rect",
+        "fill": {
+          "kind": "solid",
+          "color": "#1b4a9b"
+        }
+      },
+      {
+        "id": "note",
+        "bounds": {
+          "x": 221,
+          "y": 661.26,
+          "width": 775.5,
+          "height": 36
+        },
+        "matrix": {
+          "a": 1,
+          "b": 0,
+          "c": 0,
+          "d": 1,
+          "e": 0,
+          "f": -12.7385
+        },
+        "opacity": 0.2038,
+        "kind": "text",
+        "lines": [
+          {
+            "text": "one file · a function of time · any destination",
+            "x": 221,
+            "y": 661.26,
+            "baselineY": 688.26,
+            "width": 775.5
+          }
+        ],
+        "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+        "fontSize": 30,
+        "fontWeight": 400,
+        "fontStyle": "normal",
+        "lineHeight": 1.2,
+        "align": "left",
+        "color": "#17140f9e",
+        "metricsExact": false
+      }
+    ],
+    "anchors": [],
+    "issues": []
+  }
+}

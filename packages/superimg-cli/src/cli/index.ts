@@ -358,6 +358,7 @@ program
   .option("--data <path-or-json>", "Data override")
   .option("--verify", "Double-pass determinism verification")
   .option("--strict", "Reject anonymous, sampled, non-portable, or non-deterministic IR")
+  .option("--target <target>", "Target runtime: web | native", "web")
   .option("--artifact-version <version>", "Artifact schema version (0 or 1; 1 retains native modules)")
   .option("-o, --output <dir>", "Artifact output directory")
   .option("--json", "Machine-readable JSON on stdout")
@@ -458,6 +459,7 @@ program
   )
   .option("--pretty", "Human summary on stderr (JSON still on stdout)")
   .option("--summary", "Config + phases + source footguns only (no multi-frame HTML samples)")
+  .option("--target <target>", "Target runtime: web | native", "web")
   .option("--json", "Explicit JSON mode (default; no-op)")
   .action(async (template: string | undefined, options) => {
     if (options.at !== undefined) {
@@ -468,7 +470,7 @@ program
       const { checkArrangement, classifyArrangement, ArrangementFailure } = await import("./utils/arrangement-input.js");
       const input = await classifyArrangement(template);
       if (input) {
-        const unsupported = options.renderedLayout || options.at || options.data || options.entry?.length || options.variant || options.for || options.craft || options.craftStrict || options.craftIgnore || options.ir || options.seamVisual || options.seamVisualThreshold || options.trace || options.profile || options.pretty || options.summary;
+        const unsupported = options.renderedLayout || options.at || options.data || options.entry?.length || options.variant || options.for || options.craft || options.craftStrict || options.craftIgnore || options.ir || options.seamVisual || options.seamVisualThreshold || options.trace || options.profile || options.pretty || options.summary || (options.target !== undefined && options.target !== "web");
         if (unsupported) throw Object.assign(new Error("Arrangement check supports admission only; remove inspection and selection options"), { code: "UNSUPPORTED_SELECTION" });
         const result = await checkArrangement(template, input, options.edition ? [options.edition] : []);
         if (!result.ok) throw new ArrangementFailure(result.failures);

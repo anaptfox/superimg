@@ -6,7 +6,11 @@ let package = Package(
     platforms: [.iOS(.v18), .macOS(.v13)],
     products: [.library(name: "SuperImg", targets: ["SuperImg"])],
     targets: [
-        .target(name: "SuperImg"),
-        .testTarget(name: "SuperImgTests", dependencies: ["SuperImg"], resources: [.process("Fixtures")]),
+        .target(name: "SuperImg", resources: [.process("Resources")]),
+        .testTarget(
+            name: "SuperImgTests",
+            dependencies: ["SuperImg"],
+            resources: [.process("Fixtures"), .copy("ArtifactFixtures")]
+        ),
     ]
 )

@@ -1,9 +1,10 @@
 //! superimg compile — direct CLI adapter over media.artifact.compile.
 
-import { basename, dirname, relative, resolve, sep } from "node:path";
+import { readFile, rm } from "node:fs/promises";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { formatError } from "@superimg/core/errors";
 import { MEDIA_INTERACTION_IDS, type MediaArtifactTarget } from "@foxworth/superimg-interactions";
-import type { JsonObject } from "@superimg/types";
+import { SuperImgError, type JsonObject } from "@superimg/types";
 import { resolveTemplatePath } from "../utils/resolve-template.js";
 import { loadDataInput } from "../utils/data-loader.js";
 import { findProjectRoot } from "../utils/find-project-root.js";
@@ -12,14 +13,22 @@ import {
   type CliMediaInteractionContext,
 } from "../utils/media-interactions.js";
 
+export type CompileTarget = "web" | "native";
+
 export interface CompileCommandOptions {
   data?: string;
   verify?: boolean;
   strict?: boolean;
+  target?: CompileTarget;
   artifactVersion?: string;
   output?: string;
   json?: boolean;
   pretty?: boolean;
+}
+
+export interface NativePortabilityReason {
+  nodeId?: string;
+  reason: string;
 }
 
 const REPORT_SCHEMA = 0 as const;
@@ -41,18 +50,50 @@ function emitError(err: unknown, options: CompileCommandOptions): never {
   process.exit(1);
 }
 
+export interface CompileReport {
+  schemaVersion: typeof REPORT_SCHEMA;
+  ok: true;
+  path: string;
+  targetId: string;
+  artifactId: string;
+  identity: unknown;
+  hashes: {
+    programHash: string;
+    intentHash: string;
+    markupHash: string;
+  };
+  artifactHash: string;
+  manifest: unknown;
+  target?: "native";
+  nativePortable?: true;
+}
+
+function normalizeCompileTarget(target: string | undefined): CompileTarget {
+  if (target === undefined || target === "web") return "web";
+  if (target === "native") return "native";
+  throw Object.assign(new TypeError(`--target must be web or native (received ${JSON.stringify(target)})`), {
+    code: "INVALID_TARGET",
+  });
+}
+
+function formatBlockingReasons(reasons: readonly NativePortabilityReason[]): string {
+  if (reasons.length === 0) return "unknown native portability error";
+  return reasons
+    .map((entry) => (entry.nodeId ? `#${entry.nodeId} (${entry.reason})` : entry.reason))
+    .join(", ");
+}
+
 /** Compile only the browser-safe media projection. Collection providers are never executed here. */
-export async function compileCommand(
+export async function runCompile(
   templateArg: string,
   options: CompileCommandOptions = {},
-): Promise<void> {
-  let session: ReturnType<typeof createCliMediaInteractionSession> | undefined;
+): Promise<CompileReport> {
+  const target = normalizeCompileTarget(options.target);
+  const templatePath = resolveTemplatePath(templateArg);
+  const projectRoot = findProjectRoot(dirname(templatePath));
+  const source = relative(projectRoot, templatePath).split(sep).join("/");
+  const session = createCliMediaInteractionSession(projectRoot);
   try {
-    const templatePath = resolveTemplatePath(templateArg);
-    const projectRoot = findProjectRoot(dirname(templatePath));
-    const source = relative(projectRoot, templatePath).split(sep).join("/");
-    session = createCliMediaInteractionSession(projectRoot);
-
     let data: JsonObject | undefined;
     if (options.artifactVersion !== undefined && options.artifactVersion !== "0" && options.artifactVersion !== "1") throw new TypeError("--artifact-version must be 0 or 1");
     if (options.data !== undefined) {
@@ -87,7 +128,31 @@ export async function compileCommand(
       },
     }, context);
 
-    const report = {
+    if (target === "native") {
+      const mediaRaw = await readFile(join(destination.path, "media.json"), "utf8");
+      const mediaIr = JSON.parse(mediaRaw) as {
+        extensions?: Record<string, { schemaVersion?: number; payload?: unknown }>;
+      };
+      const payload = mediaIr.extensions?.["superimg.native"]?.payload as
+        | { portable?: boolean; reasons?: NativePortabilityReason[] }
+        | undefined;
+      if (!payload || payload.portable !== true) {
+        const reasons = Array.isArray(payload?.reasons) ? payload.reasons : [];
+        await rm(destination.path, { recursive: true, force: true });
+        throw new SuperImgError(
+          `Artifact is not portable to native targets: ${formatBlockingReasons(reasons)}`,
+          "NATIVE_UNPORTABLE",
+          {
+            target: "native",
+            portable: false,
+            reasons,
+          },
+          "Run `superimg check <template> --target native` to inspect and replace browser-only nodes or config.",
+        );
+      }
+    }
+
+    return {
       schemaVersion: REPORT_SCHEMA,
       ok: true as const,
       path: destination.path,
@@ -101,21 +166,35 @@ export async function compileCommand(
       },
       artifactHash: receipt.artifactHash,
       manifest: receipt.manifest,
+      ...(target === "native" ? { target: "native" as const, nativePortable: true as const } : {}),
     };
+  } finally {
+    await session.dispose();
+  }
+}
+
+/** Compile only the browser-safe media projection. Collection providers are never executed here. */
+export async function compileCommand(
+  templateArg: string,
+  options: CompileCommandOptions = {},
+): Promise<void> {
+  try {
+    const report = await runCompile(templateArg, options);
 
     if (options.json || !process.stdout.isTTY) {
       process.stdout.write(
         `${options.pretty ? JSON.stringify(report, null, 2) : JSON.stringify(report)}\n`,
       );
     } else {
-      console.log(`Compiled ${destination.path}`);
-      console.log(`  intent: ${receipt.intentHash.slice(0, 12)}…`);
-      console.log(`  artifact: ${receipt.artifactHash.slice(0, 12)}…`);
+      console.log(`Compiled ${report.path}`);
+      console.log(`  intent: ${report.hashes.intentHash.slice(0, 12)}…`);
+      console.log(`  artifact: ${report.hashes.artifactHash.slice(0, 12)}…`);
+      if (report.target === "native") {
+        console.log("  target: native (portable)");
+      }
     }
   } catch (error) {
     emitError(error, options);
-  } finally {
-    await session?.dispose();
   }
 }
 

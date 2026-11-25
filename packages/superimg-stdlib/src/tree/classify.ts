@@ -57,6 +57,7 @@ function walk(el: MediaElement, reasons: BrowserReason[]): void {
   const paint = resolvePaint(el);
   if (paint.rawStyle) reasons.push(reason(el, "style"));
   for (const key of paint.unsupportedStyle) reasons.push(reason(el, `style:${key}`));
+  if (paint.blendModeInvalid) reasons.push(reason(el, "blendMode"));
   if (paint.opacityInvalid) reasons.push(reason(el, "style:opacity"));
   if (paint.gradientInvalid) reasons.push(reason(el, "gradient"));
   if (paint.borderInvalid) reasons.push(reason(el, "border"));
@@ -88,4 +89,31 @@ export function needsBrowser(tree: MediaNode, config?: NeedsBrowserConfig): Need
   }
   walk(tree, reasons);
   return { browser: reasons.length > 0, reasons };
+}
+
+const NATIVE_BLEND_MODES = new Set(["normal", "multiply", "screen", "overlay"]);
+
+function walkNative(el: MediaElement, reasons: BrowserReason[]): void {
+  const paint = resolvePaint(el);
+  if (!paint.blendModeInvalid && paint.blendMode !== undefined && !NATIVE_BLEND_MODES.has(paint.blendMode)) {
+    reasons.push(reason(el, "blendMode"));
+  }
+  for (const child of el.children) {
+    if (Array.isArray(child)) {
+      for (const entry of child) {
+        if (isMediaElement(entry)) walkNative(entry, reasons);
+      }
+    } else if (isMediaElement(child)) {
+      walkNative(child, reasons);
+    }
+  }
+}
+
+export interface NativePortabilityResult { portable: boolean; reasons: BrowserReason[] }
+
+export function checkNativePortability(tree: MediaNode, config?: NeedsBrowserConfig): NativePortabilityResult {
+  const result = needsBrowser(tree, config);
+  const reasons = [...result.reasons];
+  walkNative(tree, reasons);
+  return { portable: reasons.length === 0, reasons };
 }

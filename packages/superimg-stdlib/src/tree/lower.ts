@@ -78,7 +78,7 @@ const SVG_ATTR: Record<string, string> = {
 };
 
 const SKIP_ATTR = new Set([
-  "key", "children", "style", "html", "motion", "className", "class",
+  "key", "children", "style", "html", "motion", "className", "class", "opacity", "blendMode",
   "semantic", "pad", "gap", "align", "justify", "direction", "variant", "size", "weight",
   "maxWidth", "preset", "radius", "border", "lang", "theme", "code", "lineNumbers",
   "x", "y", "width", "height", "fill", "overflow",
@@ -88,7 +88,7 @@ const SKIP_ATTR = new Set([
 ]);
 
 const VECTOR_SKIP_ATTR = new Set([
-  "key", "children", "style", "html", "motion", "className", "class",
+  "key", "children", "style", "html", "motion", "className", "class", "opacity", "blendMode",
   "semantic", "viewBox", "fit", "overflow", "mask", "clip", "filter", "transform",
   "mode", "family", "size", "weight", "anchor", "styleName", "preserveAspectRatio", "reveal",
 ]);
@@ -676,7 +676,11 @@ function serializeAttrs(
   }
 
   const motion = isMotionResult(el.props.motion) ? el.props.motion : undefined;
-  const authored = serializeStyle(el.props.style);
+  const authored = [
+    el.props.opacity !== undefined ? `opacity:${el.props.opacity}` : "",
+    el.props.blendMode !== undefined ? `mix-blend-mode:${el.props.blendMode}` : "",
+    serializeStyle(el.props.style),
+  ].filter(Boolean).join(";");
   const styleParts = [
     namespace === "html" || (el.type === "Vector" && !isRoot)
       ? layoutStyle(el.layout, parentLayout)

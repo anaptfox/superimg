@@ -1,3 +1,56 @@
+import CoreGraphics
+import Foundation
+
+public struct SuperImgAppliedFrame: Sendable {
+    public let seconds: Double
+    public let revision: UInt64
+    public let viewport: CGRect
+    private let anchors: [DisplayAnchor]
+    private let transform: CGAffineTransform
+    private let artworkBounds: CGRect
+
+    internal init(
+        seconds: Double,
+        revision: UInt64,
+        viewport: CGRect,
+        anchors: [SuperImgFrame.Anchor],
+        transform: CGAffineTransform,
+        artworkBounds: CGRect
+    ) {
+        self.seconds = seconds
+        self.revision = revision
+        self.viewport = viewport
+        self.anchors = anchors.map { DisplayAnchor(entity: $0.entity, name: $0.name, x: $0.x, y: $0.y) }
+        self.transform = transform
+        self.artworkBounds = artworkBounds
+    }
+
+    internal init(
+        seconds: Double,
+        revision: UInt64,
+        viewport: CGRect,
+        displayAnchors: [DisplayAnchor],
+        transform: CGAffineTransform,
+        artworkBounds: CGRect
+    ) {
+        self.seconds = seconds
+        self.revision = revision
+        self.viewport = viewport
+        self.anchors = displayAnchors
+        self.transform = transform
+        self.artworkBounds = artworkBounds
+    }
+
+    /// Coordinates are local to the canvas. Off-canvas anchors are omitted.
+    public func anchor(entity: String, named name: String) -> CGPoint? {
+        guard let anchor = anchors.first(where: { $0.entity == entity && $0.name == name }) else { return nil }
+        let local = CGPoint(x: anchor.x, y: anchor.y)
+        guard artworkBounds.contains(local) else { return nil }
+        let point = local.applying(transform)
+        return viewport.contains(point) ? point : nil
+    }
+}
+
 #if canImport(UIKit)
 import UIKit
 
@@ -24,26 +77,8 @@ public final class SuperImgPlayer<State: Encodable & Sendable> {
     fileprivate func sampler() -> SuperImgCanvas.Sample {
         let scene = scene, state = state, inputID = inputID
         return { seconds, viewport in
-            try await scene.sample(at: seconds, viewport: viewport, state: state, inputID: inputID)
+            .frame(try await scene.sample(at: seconds, viewport: viewport, state: state, inputID: inputID))
         }
-    }
-}
-
-public struct SuperImgAppliedFrame {
-    public let seconds: Double
-    public let revision: UInt64
-    public let viewport: CGRect
-    fileprivate let anchors: [SuperImgFrame.Anchor]
-    fileprivate let transform: CGAffineTransform
-    fileprivate let artworkBounds: CGRect
-
-    /// Coordinates are local to the canvas. Off-canvas anchors are omitted.
-    public func anchor(entity: String, named name: String) -> CGPoint? {
-        guard let anchor = anchors.first(where: { $0.entity == entity && $0.name == name }) else { return nil }
-        let local = CGPoint(x: anchor.x, y: anchor.y)
-        guard artworkBounds.contains(local) else { return nil }
-        let point = local.applying(transform)
-        return viewport.contains(point) ? point : nil
     }
 }
 
@@ -78,17 +113,28 @@ public final class SuperImgCanvas: UIView {
 
     public var seconds: Double {
         switch playback {
-        case .onDemand: requestedTime
-        case .automatic: CACurrentMediaTime() - clockOrigin
+        case .onDemand:
+            if timelineIsPlaying() {
+                return CACurrentMediaTime() - clockOrigin
+            }
+            return requestedTime
+        case .automatic:
+            return CACurrentMediaTime() - clockOrigin
         }
     }
 
-    fileprivate typealias Sample = @Sendable (Double, SuperImgViewport) async throws -> SuperImgFrame
+    fileprivate enum SampleResult: Sendable {
+        case frame(SuperImgFrame)
+        case displayList(DisplayListFrame, [String: SuperImgImageAsset])
+    }
+
+    fileprivate typealias Sample = @Sendable (Double, SuperImgViewport) async throws -> SampleResult
 
     private struct Mount {
         let identity: ObjectIdentifier
         let revision: () -> UInt64
         let sampler: () -> Sample
+        let isPlaying: () -> Bool
         let unbind: () -> Void
     }
 
@@ -110,6 +156,7 @@ public final class SuperImgCanvas: UIView {
     private var nodes: [String: AppliedLayer] = [:]
     private var sprites: [String: Sprite] = [:]
     private var mounted: Mount?
+    private weak var timelinePlayer: SuperImgTimelinePlayer?
     private var generation: UInt64 = 0
     private var requestedTime: Double = 0
     private var clockOrigin = CACurrentMediaTime()
@@ -153,8 +200,35 @@ public final class SuperImgCanvas: UIView {
             identity: ObjectIdentifier(player),
             revision: { player.revision },
             sampler: { player.sampler() },
+            isPlaying: { false },
             unbind: { [weak self] in
                 if player.canvas === self { player.canvas = nil }
+            }
+        )
+        updateDisplayLink()
+        invalidateFrame()
+    }
+
+    public func mount(_ player: SuperImgTimelinePlayer) {
+        unmount()
+        timelinePlayer = player
+        player.addObserver(self)
+        requestedTime = player.currentSeconds
+        clockOrigin = CACurrentMediaTime() - player.currentSeconds
+        let assets = player.artifact.assets
+        mounted = Mount(
+            identity: ObjectIdentifier(player),
+            revision: { player.revision },
+            sampler: {
+                { seconds, viewport in
+                    let frame = try await player.sampleFrame(at: seconds, viewport: viewport)
+                    return .displayList(frame, assets)
+                }
+            },
+            isPlaying: { player.isPlaying },
+            unbind: { [weak self] in
+                guard let self else { return }
+                player.removeObserver(self)
             }
         )
         updateDisplayLink()
@@ -166,7 +240,9 @@ public final class SuperImgCanvas: UIView {
         pending = nil
         mounted?.unbind()
         mounted = nil
+        timelinePlayer = nil
         updateDisplayLink()
+        art.contents = nil
         nodes.values.forEach { $0.layer.removeFromSuperlayer() }
         nodes.removeAll()
         sprites.removeAll()
@@ -176,6 +252,10 @@ public final class SuperImgCanvas: UIView {
     }
 
     func contains<State>(_ player: SuperImgPlayer<State>) -> Bool {
+        mounted?.identity == ObjectIdentifier(player)
+    }
+
+    public func contains(_ player: SuperImgTimelinePlayer) -> Bool {
         mounted?.identity == ObjectIdentifier(player)
     }
 
@@ -215,6 +295,10 @@ public final class SuperImgCanvas: UIView {
 
     @objc private func accessibilityMotionChanged() { invalidateGeometry() }
 
+    private func timelineIsPlaying() -> Bool {
+        mounted?.isPlaying() ?? false
+    }
+
     private func invalidateGeometry() {
         generation += 1
         pending = nil
@@ -237,10 +321,29 @@ public final class SuperImgCanvas: UIView {
     private func updateDisplayLink() {
         displayLink?.invalidate()
         displayLink = nil
-        guard case let .automatic(fps) = playback, window != nil, !isHidden, mounted != nil else { return }
+        let targetFPS: Int?
+        switch playback {
+        case .automatic(let fps):
+            targetFPS = fps
+        case .onDemand:
+            if timelineIsPlaying(), let player = timelinePlayer {
+                targetFPS = max(1, Int(player.info.fps.rounded()))
+            } else {
+                targetFPS = nil
+            }
+        }
+        guard let fps = targetFPS, window != nil, !isHidden, mounted != nil else { return }
         let target = SuperImgDisplayTarget { [weak self] link in
             guard let self else { link.invalidate(); return }
-            self.enqueue(max(0, link.targetTimestamp - self.clockOrigin))
+            let elapsed = max(0, link.targetTimestamp - self.clockOrigin)
+            let sampleTime: Double
+            if let player = self.timelinePlayer, player.info.animated, player.info.durationSeconds > 0 {
+                sampleTime = elapsed.truncatingRemainder(dividingBy: player.info.durationSeconds)
+                player.updatePlaybackClock(sampleTime)
+            } else {
+                sampleTime = elapsed
+            }
+            self.enqueue(sampleTime)
         }
         let link = CADisplayLink(target: target, selector: #selector(SuperImgDisplayTarget.tick(_:)))
         link.preferredFramesPerSecond = max(1, fps)
@@ -263,19 +366,24 @@ public final class SuperImgCanvas: UIView {
         busy = true
 
         Task { [weak self] in
-            let result: Result<SuperImgFrame, Error>
+            let result: Result<SampleResult, Error>
             do { result = .success(try await request.sample(request.seconds, request.viewport)) }
             catch { result = .failure(error) }
             self?.complete(result, for: request)
         }
     }
 
-    private func complete(_ result: Result<SuperImgFrame, Error>, for request: Request) {
+    private func complete(_ result: Result<SampleResult, Error>, for request: Request) {
         defer { busy = false; startPending() }
         guard request.generation == generation, request.revision == mounted?.revision(),
               request.viewport == currentViewport, request.bounds == bounds else { return }
         do {
-            try apply(result.get(), for: request)
+            switch try result.get() {
+            case .frame(let frame):
+                try apply(frame, for: request)
+            case .displayList(let frame, let assets):
+                try apply(frame, assets: assets, for: request)
+            }
             lastError = nil
         } catch {
             let message = String(describing: error)
@@ -299,6 +407,7 @@ public final class SuperImgCanvas: UIView {
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
+        art.contents = nil
         art.bounds = CGRect(x: 0, y: 0, width: frame.width, height: frame.height)
         art.position = CGPoint(x: x, y: y)
         art.setAffineTransform(CGAffineTransform(scaleX: scale, y: scale))
@@ -318,6 +427,34 @@ public final class SuperImgCanvas: UIView {
         onFrameApplied?(SuperImgAppliedFrame(
             seconds: request.seconds, revision: request.revision, viewport: request.bounds,
             anchors: frame.anchors, transform: transform, artworkBounds: art.bounds
+        ))
+        CATransaction.commit()
+    }
+
+    private func apply(_ frame: DisplayListFrame, assets: [String: SuperImgImageAsset], for request: Request) throws {
+        let cgImage = try SuperImgGraphicsRenderer.render(
+            frame,
+            assets: assets,
+            scale: CGFloat(request.viewport.scale)
+        )
+        let scale = min(request.bounds.width / frame.width, request.bounds.height / frame.height)
+        let x = request.bounds.minX + (request.bounds.width - frame.width * scale) / 2
+        let y = request.bounds.minY + (request.bounds.height - frame.height * scale) / 2
+        let transform = CGAffineTransform(a: scale, b: 0, c: 0, d: scale, tx: x, ty: y)
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        nodes.values.forEach { $0.layer.removeFromSuperlayer() }
+        nodes.removeAll()
+        art.bounds = CGRect(x: 0, y: 0, width: frame.width, height: frame.height)
+        art.position = CGPoint(x: x, y: y)
+        art.setAffineTransform(CGAffineTransform(scaleX: scale, y: scale))
+        art.contentsScale = CGFloat(request.viewport.scale)
+        art.contents = cgImage
+
+        onFrameApplied?(SuperImgAppliedFrame(
+            seconds: request.seconds, revision: request.revision, viewport: request.bounds,
+            displayAnchors: frame.anchors, transform: transform, artworkBounds: art.bounds
         ))
         CATransaction.commit()
     }
@@ -364,6 +501,25 @@ public final class SuperImgCanvas: UIView {
                 node.backgroundColor = ink
             }
         }
+    }
+}
+
+extension SuperImgCanvas: SuperImgTimelineObserver {
+    func timelinePlayerDidUpdate(didSeek: Bool, playbackChanged: Bool) {
+        if let player = timelinePlayer {
+            if didSeek {
+                generation += 1
+                requestedTime = player.currentSeconds
+                clockOrigin = CACurrentMediaTime() - player.currentSeconds
+            } else if playbackChanged {
+                clockOrigin = CACurrentMediaTime() - player.currentSeconds
+                requestedTime = player.currentSeconds
+            }
+        }
+        if playbackChanged {
+            updateDisplayLink()
+        }
+        invalidateFrame()
     }
 }
 
