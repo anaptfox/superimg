@@ -1,67 +1,92 @@
 {
-  "name": "@superimg/cli",
-  "version": "0.0.16",
-  "private": true,
-  "description": "Private CLI and server implementation for the public superimg package",
+  "name": "@foxworth/superimg-cli",
+  "version": "0.1.1-media-library.20261022.1",
+  "description": "CLI and interactions host for SuperImg",
   "type": "module",
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "bin": {
+    "superimg": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/cli.js",
       "types": "./dist/cli.d.ts"
     },
-    "./server": {
-      "import": "./dist/server.js",
-      "types": "./dist/server.d.ts"
+    "./dev-server": {
+      "import": "./dist/dev-server.js",
+      "types": "./dist/dev-server.d.ts"
     },
-    "./integration": {
-      "import": "./dist/integration.js",
-      "types": "./dist/integration.d.ts"
-    }
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build": "tsdown && node scripts/assemble-dev-ui.mjs",
     "assemble:dev-ui": "node scripts/assemble-dev-ui.mjs",
     "dev": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
-    "check-externals": "superimg-check-externals --profile cli",
-    "verify": "pnpm run check-externals",
+    "typecheck": "tsc --noEmit",
+    "smoke:oci": "node scripts/oci-docker-smoke.mjs",
+    "check-externals": "node ../../tooling/build-config/dist/check-externals.mjs --profile cli",
+    "verify": "pnpm run check-externals && node ../../scripts/verify-library-consumers.mjs",
     "clean": "rm -rf dist"
   },
   "files": [
-    "dist"
+    "dist",
+    "scaffold-examples",
+    "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": true,
   "dependencies": {
-    "@clack/prompts": "^1.6.0",
-    "@hono/node-server": "^2.0.6",
-    "@mediabunny/server": "^1.49.0",
-    "@resvg/resvg-wasm": "2.6.2",
+    "@clack/prompts": "^1.9.0",
+    "@foxworth/boundary": "^0.2.0",
+    "@foxworth/superimg-interactions": "workspace:*",
+    "@foxworth/superimg-node": "workspace:*",
+    "@hono/node-server": "catalog:",
+    "@mediabunny/dts": "catalog:",
+    "@mediabunny/server": "catalog:",
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@resvg/resvg-wasm": "catalog:",
+    "ajv": "^8.20.0",
+    "chokidar": "^6.0.0",
+    "commander": "^15.1.0",
+    "execa": "^10.2.1",
+    "hono": "catalog:",
+    "ink": "^8.0.0",
+    "mediabunny": "catalog:",
+    "oxc-parser": "catalog:",
+    "picocolors": "^1.1.1",
+    "playwright": "catalog:",
+    "react": "catalog:",
+    "rolldown": "catalog:",
+    "sharp": "catalog:",
+    "three": "0.184.0",
+    "ws": "^8.22.2"
+  },
+  "optionalDependencies": {
+    "@babel/code-frame": "^8.0.6"
+  },
+  "peerDependencies": {
+    "@foxworth/superimg": "workspace:*"
+  },
+  "devDependencies": {
+    "@foxworth/superimg-script": "workspace:*",
+    "@superimg/adapters": "workspace:*",
+    "@superimg/blitz": "workspace:*",
+    "@superimg/build-config": "workspace:*",
     "@superimg/core": "workspace:*",
+    "@superimg/dev-ui": "workspace:*",
+    "@superimg/interactions": "workspace:*",
+    "@superimg/interactive": "workspace:*",
     "@superimg/node": "workspace:*",
     "@superimg/playwright": "workspace:*",
     "@superimg/skill": "workspace:*",
     "@superimg/types": "workspace:*",
-    "chokidar": "^5.0.0",
-    "commander": "^15.0.0",
-    "execa": "^9.6.1",
-    "hono": "^4.12.27",
-    "ink": "^7.1.0",
-    "mediabunny": "^1.49.0",
-    "oxc-parser": "^0.137.0",
-    "picocolors": "^1.1.1",
-    "playwright": "^1.61.1",
-    "react": "catalog:",
-    "rolldown": "1.1.3",
-    "sharp": "^0.35.2",
-    "ws": "^8.21.0"
-  },
-  "optionalDependencies": {
-    "@babel/code-frame": "^8.0.0"
-  },
-  "devDependencies": {
-    "@superimg/build-config": "workspace:*",
-    "@superimg/dev-ui": "workspace:*",
     "@types/react": "catalog:",
-    "@types/ws": "^8.18.1"
+    "@types/ws": "^8.18.2"
   }
 }

@@ -5,16 +5,16 @@ import {
   getPlayerRefStateSnapshot,
 } from "./subscribeToPlayerRef.js";
 import type { PlayerRef } from "../components/Player.js";
-import type { RuntimeStore } from "../../index.browser.js";
+import type { RuntimeStore } from "@superimg/media";
 
 describe("subscribeToPlayerRef", () => {
   it("returns empty state when ref has no store", () => {
-    const ref = createRef<PlayerRef | null>(null);
+    const ref = createRef<PlayerRef | null>();
     expect(getPlayerRefStateSnapshot(ref)).toEqual(getEmptyPlayerState());
   });
 
   it("reads state from a populated ref", () => {
-    const ref = createRef<PlayerRef | null>(null);
+    const ref = createRef<PlayerRef | null>();
     const store = {
       getState: () => ({
         ...getEmptyPlayerState(),
@@ -32,10 +32,8 @@ describe("subscribeToPlayerRef", () => {
       totalFrames: 90,
       play: () => {},
       pause: () => {},
-      seekFrame: () => {},
-      seekProgress: () => {},
-      seekTimeSeconds: () => {},
-      update: () => {},
+      seek: async () => {},
+      update: async () => {},
       player: null,
     };
 

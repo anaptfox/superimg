@@ -1,3 +1,4 @@
+import { runInNewContext } from "node:vm";
 import { describe, it, expect } from "vitest";
 import {
   TemplateRuntimeError,
@@ -86,4 +87,35 @@ describe("formatError", () => {
     expect(out.json.name).toMatch(/TemplateRuntimeError|SuperImgError/);
     expect(out.json.message).toContain("raw");
   });
+});
+
+
+it("preserves structured diagnostics from a separate Error realm without toJSON", () => {
+  const foreign = runInNewContext(`Object.assign(new Error("Choose a media source"), {
+    name: "ValidationError", code: "VALIDATION_ERROR",
+    details: { field: "template", receivedValue: "old.video.ts" },
+    suggestion: "Rename the file to .media.ts", docsUrl: "https://superimg.dev/docs/templates",
+    location: { file: "launch.media.ts", line: 4, column: 2 }, codeFrame: "4 | old.video.ts"
+  })`);
+  expect(foreign).not.toBeInstanceOf(Error);
+  const result = formatError(foreign);
+  expect(result.json).toMatchObject({
+    name: "ValidationError", code: "VALIDATION_ERROR", message: "Choose a media source",
+    details: { field: "template", receivedValue: "old.video.ts" },
+    suggestion: "Rename the file to .media.ts", docsUrl: "https://superimg.dev/docs/templates",
+    location: { file: "launch.media.ts", line: 4, column: 2 }, codeFrame: "4 | old.video.ts",
+  });
+  expect(result.plain).toContain("VALIDATION_ERROR");
+  expect(result.html).toContain("Rename the file to .media.ts");
+});
+
+it("retains frame diagnostics for serialized runtime errors", () => {
+  const serialized = new TemplateRuntimeError({ frame: 30, originalError: "foreign failure",
+    timeContext: { timelineFrame: 30, timelineSeconds: 1, timelineProgress: 0.5, globalTimeSeconds: 1 },
+  }).toJSON();
+  const result = formatError(serialized);
+  expect(result.json).toEqual(serialized);
+  expect(result.plain).toContain("Frame 30");
+  expect(result.html).toContain("Frame 30");
+  expect(stripAnsi(result.ansi)).toContain("Frame 30");
 });

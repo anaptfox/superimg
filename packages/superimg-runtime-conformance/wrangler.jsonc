@@ -1,0 +1,12 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "superimg-runtime-conformance",
+  "main": "src/workerd.ts",
+  "compatibility_date": "2026-08-28",
+  // This proof deliberately omits nodejs_compat. The assembled edge graph must
+  // run on native isolate APIs and is separately rejected if it imports node:*.
+  "compatibility_flags": [],
+  "rules": [
+    { "type": "Data", "globs": ["**/*.ttf"], "fallthrough": true }
+  ]
+}

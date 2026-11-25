@@ -1,4 +1,4 @@
-import { define } from "superimg";
+import { define, Html, googleFont } from "@foxworth/superimg";
 
 /**
  * Fourier Series — a chain of rotating circles (epicycles) whose tip traces
@@ -33,12 +33,13 @@ function harmonics() {
 }
 
 export default define({
+  poster: "10s",
   config: {
     width: 1920,
     height: 1080,
     fps: 30,
     duration: "11s",
-    fonts: ["Inter:wght@400;600;800"],
+    fonts: [googleFont("Inter:wght@400;600;800")],
     inlineCss: [
       "* { margin: 0; box-sizing: border-box; }",
       "body { background: #0a0a0f; font-family: Inter, system-ui, sans-serif; overflow: hidden; }",
@@ -61,8 +62,8 @@ export default define({
     // --- Layout: epicycle drawing on the left, wave trace on the right ---
     // Circles are anchored around (cx, cy) in pixel space.
     const cx = width * 0.27;
-    const cy = height * 0.52;
-    const unit = 150; // pixels per amplitude unit
+    const cy = height / 2;
+    const unit = height * (150 / 1080); // pixels per amplitude unit
 
     // Coordinate system for the wave on the right half.
     const coords = viz.createCoords({
@@ -70,7 +71,9 @@ export default define({
       height,
       xRange: [0, 4 * Math.PI],
       yRange: [-1.6, 1.6],
-      padding: { top: 220, bottom: 220, left: width * 0.45, right: 90 },
+      // Share the circles' pixels-per-unit: equal amplitudes must land on the
+      // same horizontal line at both ends of the tracing connector.
+      padding: { top: cy - unit * 1.6, bottom: cy - unit * 1.6, left: width * 0.45, right: width * 0.047 },
     });
 
     const hs = harmonics();
@@ -85,14 +88,12 @@ export default define({
     const radiusEls: string[] = [];
 
     // Stagger circle appearance so the chain "grows" outward.
-    const grow = t.circles;
+    const growth = std.stagger(hs.length, t.circles, { duration: 0.4, easing: "easeOutCubic" });
 
     hs.forEach((h, i) => {
       const r = h.amp * unit;
       // Each circle fades/scales in slightly after the previous one.
-      const localStart = i / hs.length;
-      const localProg = std.math.clamp((grow - localStart * 0.6) / 0.4, 0, 1);
-      const eased = std.interpolate(localProg, [0, 1], [0, 1], "easeOutCubic");
+      const eased = growth[i] ?? 0;
 
       const nextX = px + Math.cos(h.n * theta) * r * eased;
       const nextY = py - Math.sin(h.n * theta) * r * eased;
@@ -134,7 +135,7 @@ export default define({
       // Partial Fourier square wave as a function of phase a (radians).
       const fourier = (a: number) => {
         let s = 0;
-        for (const h of hs) s += h.amp * Math.sin(h.n * a);
+        for (const [i, h] of hs.entries()) s += h.amp * (growth[i] ?? 0) * Math.sin(h.n * a);
         return s;
       };
       // Build path from x=0 to current tMax. The wave is drawn at the
@@ -149,7 +150,7 @@ export default define({
       }
       waveEl = `<path d="${parts.join(" ")}" fill="none" stroke="${waveColor}" stroke-width="3.5" stroke-linecap="round" opacity="0.95"/>`;
 
-      // Connector line from the spinning tip to where the wave begins (x=0 edge).
+      // Connector line from the spinning tip to the current end of the wave.
       const { px: startX, py: startY } = coords.toPixel(tMax, tipMathY);
       connectorEl =
         `<line x1="${tipX.toFixed(2)}" y1="${tipY.toFixed(2)}" x2="${startX.toFixed(2)}" y2="${startY.toFixed(2)}" ` +
@@ -206,7 +207,7 @@ export default define({
     // Subtle vignette glow that intensifies on hold.
     const glow = 0.15 + 0.25 * t.hold;
 
-    return `
+    return Html({ id: "fourier-epicycles", width: "fill", height: "fill", html: `
       <div style="position:relative;width:${width}px;height:${height}px;background:radial-gradient(circle at 50% 45%, #12182a 0%, #0a0a0f 70%);overflow:hidden;">
         <div style="position:absolute;inset:0;background:radial-gradient(circle at 27% 52%, ${std.color.alpha(
           ACCENT,
@@ -241,6 +242,6 @@ export default define({
           ${HARMONICS} rotating terms &middot; tip traces the partial sum
         </div>
       </div>
-    `;
+    ` });
   },
 });

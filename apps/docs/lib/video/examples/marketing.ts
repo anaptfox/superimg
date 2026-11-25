@@ -9,7 +9,7 @@ const PRODUCT = {
   rank: 1,
 };
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -25,7 +25,7 @@ export default define({
   // Upvote button pulse
   const pulseScale = 1 + Math.sin(timeline.progress * Math.PI * 4) * 0.05;
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -112,7 +112,7 @@ export default define({
         #\${PRODUCT.rank} Product of the Day
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
@@ -128,7 +128,7 @@ const STATS = [
 
 const YEAR = "2025";
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -136,7 +136,7 @@ export default define({
   // Gradient rotation
   const gradientAngle = timeline.progress * 45;
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -221,7 +221,7 @@ export default define({
         opacity: \${ timeline };
       "></div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
@@ -236,7 +236,7 @@ const EVENT = {
 // For demo, we'll show a fixed countdown that animates
 const COUNTDOWN_VALUES = { days: 14, hours: 8, mins: 32, secs: 45 };
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -251,7 +251,7 @@ export default define({
     { label: "SECS", value: Math.abs(animatedSecs) },
   ];
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -337,7 +337,7 @@ export default define({
         border-radius: 2px;
       "></div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
@@ -350,7 +350,7 @@ const BRAND = {
   tagline: "Building the future",
 };
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -376,7 +376,7 @@ export default define({
     };
   });
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -441,7 +441,7 @@ export default define({
         margin-top: 32px;
       "></div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
@@ -455,7 +455,7 @@ const USER = {
   plan: "Pro",
 };
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -465,7 +465,7 @@ export default define({
   const namePhase = Math.max(0, Math.min(1, (timeline.progress - 0.2) * 2.5));
   const detailsPhase = Math.max(0, Math.min(1, (timeline.progress - 0.5) * 2));
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -543,6 +543,6 @@ export default define({
         font-family: monospace;
       ">Variables: {name}, {company}</div>
     </div>
-  \`;
+  \` });
   },
 });`;

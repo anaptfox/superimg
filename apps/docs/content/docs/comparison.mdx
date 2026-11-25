@@ -1,0 +1,66 @@
+# Comparison
+
+**Write once. Play live. Export anywhere.** SuperImg is one media program for product embeds and platform-ready files: pure `render(ctx)` of time → typed layout/vector tree, with a browser `Player` and Chromium export. MIT-licensed.
+
+This page is an honest map of nearby tools — not a dunk sheet.
+
+## Quick matrix
+
+| | SuperImg | Remotion | HyperFrames | Helios | Motion Canvas |
+|--|----------|----------|-------------|--------|---------------|
+| Authoring | typed layout/vector tree | React components | HTML + `data-*` + adapters | Live DOM + virtual clock | Generators + canvas graph |
+| Time model | Pure f(t) | `useCurrentFrame()` | Seek into compositions | Seek into CSS/WAAPI/GSAP | `yield*` sequences |
+| Embed player | React-free `@foxworth/superimg/player` | `@remotion/player` (React) | Web component | Web component | Web component |
+| Agent debug | **`check` / `inspect` JSON** without browser | Studio / render-oriented | `check` / lint ladder | Diagnose / player | Editor-oriented |
+| Multi-medium | video, gif, image, svg | Strong video; stills | Video-centric (+ slideshow) | Video | Animation export |
+| License | **MIT** | Free for individuals / small teams; **company license** for larger orgs (not classic BUSL) | Apache 2.0 | Elastic License 2.0 | MIT |
+
+## Remotion
+
+**Best when:** you already ship React product UI and want components-as-video, Studio, and Lambda-scale cloud render.
+
+**Tradeoffs:** React peer dependency; commercial use at team scale needs a [company license](https://www.remotion.dev/) (free tiers cover individuals and small orgs — check current terms). Frame-first mental model; async readiness (`delayRender`) is powerful and a common support topic.
+
+**SuperImg instead when:** you want React-free templates, MIT for SaaS embedders, director/stdlib phases, and an inspect/check agent loop without a React composition tree.
+
+## HyperFrames (HeyGen)
+
+**Best when:** agents write plain HTML compositions, you want GSAP/Lottie/Three adapters, catalog blocks, and a large skill pack.
+
+**Tradeoffs:** Determinism depends on seekable adapters and media ownership rules; larger surface area (data attributes + multi-runtime seek).
+
+**SuperImg instead when:** you prefer a typed pure-time contract (`define` + director) so frames are correct by construction, with multi-medium outputs from one model.
+
+## Helios
+
+**Best when:** marketing engineers want “CSS / WAAPI / Framer just work” and a native browser clock.
+
+**Tradeoffs:** Mutable live animations + virtual time sync; library integrations (e.g. GSAP) need glue. Elastic License 2.0 restricts offering the engine as a hosted service.
+
+**SuperImg instead when:** you need inspectable pure functions, MIT-friendly product embeds, and no dual-clock footguns.
+
+## Motion Canvas / Revideo
+
+**Best when:** hand-crafted pedagogical canvas explainers (code morph, generator narrative). Revideo adds headless `renderVideo`-style APIs.
+
+**Tradeoffs:** Canvas scene graph ≠ design-system CSS; seek can require replaying generators (O(n)).
+
+**SuperImg instead when:** real HTML/CSS layout, O(1) re-render scrub, and agent-friendly pure templates.
+
+## Editly / cloud NLEs
+
+**Best when:** declarative clip montage (images, titles, transitions, audio) without custom motion graphics.
+
+**SuperImg instead when:** you need designed motion, director phases, and the same template in a product Player.
+
+## Positioning one-liners
+
+- **vs HyperFrames:** Time is the composition; HTML is a projection of `t`.
+- **vs Helios:** Motion is data — inspectable without virtualizing the browser clock.
+- **vs Remotion:** MIT, React-free templates, director instead of re-deriving every opacity from frame index.
+- **vs Motion Canvas:** Real CSS and O(1) scrub; generators excel for human explainers, not agent loops.
+
+## More
+
+- [Determinism and non-goals](/docs/determinism)
+- [Runtime and Interactions](/docs/node-api)

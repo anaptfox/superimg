@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { crossfade, curtain, handoffLocal, iris, split, wipe } from "./reveal.js";
+import { isMediaElement } from "./tree/h.js";
 
 describe("reveal.wipe (cover overlay)", () => {
   it("is fully covering at progress 0", () => {
@@ -8,6 +9,7 @@ describe("reveal.wipe (cover overlay)", () => {
     expect(result.html).not.toContain("polygon(100% 0, 100% 0");
     expect(result.active).toBe(true);
     expect(result.progress).toBe(0);
+    expect(isMediaElement(result)).toBe(true);
   });
 
   it("is fully revealed at progress 1", () => {

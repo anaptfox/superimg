@@ -1,17 +1,17 @@
 "use client";
 
-import { Player } from "superimg/react/player";
+import { Player } from "@foxworth/superimg/react/player";
 import { introTemplate } from "@/content/templates/intro-demo";
 import { getExampleById } from "@/lib/video/examples";
 import { usePlaygroundExample } from "@/lib/playground/example";
 
 interface PlayerDemoInteractiveProps {
-  templateId?: string;
+  exampleId?: string;
   duration?: number;
 }
 
-export function PlayerDemoInteractive({ templateId, duration = 5 }: PlayerDemoInteractiveProps) {
-  if (!templateId) {
+export function PlayerDemoInteractive({ exampleId, duration = 5 }: PlayerDemoInteractiveProps) {
+  if (!exampleId) {
     return (
       <div className="not-prose my-8 flex flex-col items-center">
         <div
@@ -19,8 +19,8 @@ export function PlayerDemoInteractive({ templateId, duration = 5 }: PlayerDemoIn
           style={{ maxWidth: 640, aspectRatio: "16/9" }}
         >
           <Player
-            template={introTemplate}
-            format="horizontal"
+            media={introTemplate}
+            size={{ width: 1920, height: 1080 }}
             playbackMode="loop"
             loadMode="eager"
             controls
@@ -31,17 +31,17 @@ export function PlayerDemoInteractive({ templateId, duration = 5 }: PlayerDemoIn
     );
   }
 
-  return <CompiledPlayerDemo templateId={templateId} duration={duration} />;
+  return <CompiledPlayerDemo exampleId={exampleId} duration={duration} />;
 }
 
-function CompiledPlayerDemo({ templateId, duration }: { templateId: string; duration: number }) {
-  const example = getExampleById(templateId);
-  const { template, assets, assetResolver } = usePlaygroundExample(example);
+function CompiledPlayerDemo({ exampleId, duration }: { exampleId: string; duration: number }) {
+  const example = getExampleById(exampleId);
+  const { media, assets, assetResolver } = usePlaygroundExample(example);
 
   if (!example) {
     return (
       <div className="not-prose my-8 flex items-center justify-center rounded-xl bg-muted p-8 text-muted-foreground">
-        Template &quot;{templateId}&quot; not found
+        Example &quot;{exampleId}&quot; not found
       </div>
     );
   }
@@ -53,10 +53,10 @@ function CompiledPlayerDemo({ templateId, duration }: { templateId: string; dura
         style={{ maxWidth: 640 }}
       >
         <Player
-          template={template ?? undefined}
+          media={media ?? undefined}
           assets={assets}
           assetResolver={assetResolver}
-          format="horizontal"
+          size={{ width: 1920, height: 1080 }}
           duration={duration}
           playbackMode="loop"
           loadMode="eager"

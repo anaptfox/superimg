@@ -262,7 +262,7 @@ describe("charts.contour", () => {
   it("density renders paths from points", () => {
     const pts = Array.from({ length: 30 }, (_, i) => ({
       x: (i % 6) * 0.6,
-      y: Math.floor(i / 6) * 12 + Math.random() * 4,
+      y: Math.floor(i / 6) * 12 + ((i * 17) % 11) / 3,
     }));
     const svg = density(coords, pts, { progress: 1 });
     expect(svg).toContain("<path");
@@ -440,5 +440,65 @@ describe("charts.stack", () => {
   it("expand mode stacks to unit height", () => {
     const svg = stack(chartCoords(), series, { mode: "bar", expand: true, progress: 1 });
     expect(svg).toContain("<rect");
+  });
+});
+
+describe("legacy chart regressions", () => {
+  const rects = (svg: string) => [...svg.matchAll(/<rect ([^>]+)/g)].map(m => Object.fromEntries([...m[1]!.matchAll(/\b(x|y|width|height)="([^"]+)"/g)].map(a => [a[1], Number(a[2])])));
+  it("uses zero baselines for signed bars and preserves cropped positive domains", () => {
+    const plot = plotArea(chartCoords(), 8);
+    const data = [{ label: "negative", value: -5 }, { label: "positive", value: 5 }];
+    const v = rects(bar(chartCoords(), data, { yDomain: [-10, 10] }));
+    expect(v[0]!.y).toBeCloseTo(plot.top + plot.height / 2, 2);
+    expect(v[1]!.y).toBeCloseTo(plot.top + plot.height / 4, 2);
+    v.forEach(r => expect(r.height).toBeCloseTo(plot.height / 4, 2));
+    const h = rects(barHorizontal(chartCoords(), data, { xDomain: [-10, 10] }));
+    expect(h[0]!.x).toBeCloseTo(plot.left + plot.width / 4, 2);
+    h.forEach(r => expect(r.width).toBeCloseTo(plot.width / 4, 2));
+    expect(rects(bar(chartCoords(), [{ label: "crop", value: 15 }], { yDomain: [10, 20] }))[0]!.height).toBeCloseTo(plot.height / 2, 2);
+    expect(rects(bar(chartCoords(), data, { yDomain: [-10, 10], animate: "grow", progress: 0 })).map(r => r.height)).toEqual([0, 0]);
+  });
+  it("retains later-only categories with distinct default line colors", () => {
+    const series = [{ id: "one", data: [{ label: "A", value: 10 }] }, { id: "two", data: [{ label: "B", value: 20 }] }];
+    const grouped = rects(bars(chartCoords(), series));
+    expect(grouped).toHaveLength(2);
+    expect(grouped[1]!.x).toBeGreaterThan(grouped[0]!.x!);
+    const stacked = rects(stack(chartCoords(), series));
+    expect(stacked).toHaveLength(4);
+    expect(stacked.filter(r => r.height! > 0)).toHaveLength(2);
+    const multi = lines(chartCoords(), series);
+    expect(multi).toContain(`stroke="${DEFAULT_CHART_COLORS[0]}"`);
+    expect(multi).toContain(`stroke="${DEFAULT_CHART_COLORS[1]}"`);
+  });
+  it("omits invalid geometry and missing markers while centering singleton time points", () => {
+    const svg = line(chartCoords(), [{ label: "A", value: 10 }, { label: "B", value: NaN }, { label: "C", value: 30 }], { showPoints: true });
+    expect(svg).not.toMatch(/NaN|Infinity/);
+    expect(svg.match(/<circle/g)).toHaveLength(2);
+    expect(line(chartCoords(), SAMPLE, { showPoints: true, defined: d => d.label !== "B" }).match(/<circle/g)).toHaveLength(3);
+    const single = lineTime(chartCoords(), [{ date: "2024-01-01", value: 30 }], { showPoints: true });
+    const plot = plotArea(chartCoords(), 8);
+    expect(Number(single.match(/cx="([^"]+)/)?.[1])).toBeCloseTo(plot.left + plot.width / 2, 2);
+    expect(sparkline({ x: 0, y: 0, width: 100, height: 50 }, [1, NaN, 3])).not.toMatch(/NaN|Infinity/);
+  });
+  it("scopes draw clips by full geometry without render-order state", () => {
+    const a = area(chartCoords(), SAMPLE, { animate: "draw", progress: .25 });
+    const b = area(chartCoords(), SAMPLE, { animate: "draw", progress: .75 });
+    expect(a.match(/id="([^"]+)/)?.[1]).not.toBe(b.match(/id="([^"]+)/)?.[1]);
+    expect(area(chartCoords(), SAMPLE, { animate: "draw", progress: .25 })).toBe(a);
+  });
+  it("recomputes force state when inputs change and retains zero-coordinate edges", () => {
+    const box = { x: 0, y: 0, width: 100, height: 100 };
+    const nodes = [{ id: "a", fx: 0, fy: 20 }, { id: "b", fx: 50, fy: 20 }];
+    const edges = [{ source: "a", target: "b" }];
+    const svg = force(box, nodes, edges, 0);
+    expect(svg).toContain('x1="0.00"');
+    expect(svg).toContain('x2="50.00"');
+    expect(force(box, nodes.map(n => ({ ...n, label: "updated" })), edges, 0, { showLabels: true })).toContain(">updated<");
+    const free = [{ id: "a" }, { id: "b" }];
+    const close = force(box, free, edges, 0, { linkDistance: 20 });
+    const far = force(box, free, edges, 0, { linkDistance: 150 });
+    const x = (s: string) => Number(s.match(/x1="([^"]+)/)?.[1]);
+    expect(Math.abs(x(close) - x(far))).toBeGreaterThan(20);
+    expect(force(box, free, edges, 0, { linkDistance: 20 })).toBe(close);
   });
 });

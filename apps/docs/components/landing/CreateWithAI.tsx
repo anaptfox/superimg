@@ -4,18 +4,17 @@ import { Sparkles, ArrowRight } from "lucide-react";
 
 export function CreateWithAI() {
   return (
-    <section className="border-t border-border/50 px-6 py-20">
+    <section className="border-t border-border/50 px-6 py-16">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Create and edit with AI
+        <div className="mb-10 text-center">
+          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Create and edit with agents
           </h2>
-          <p className="mt-3 text-lg text-muted-foreground">
-            Use your favorite AI coding assistant to generate and modify templates
+          <p className="mt-3 text-muted-foreground">
+            Install the SuperImg skill, then let Cursor, Claude Code, Codex, or similar own the loop.
           </p>
         </div>
 
-        {/* Prompt to Code Flow */}
         <div className="mb-10 flex flex-col items-center gap-4 md:flex-row md:justify-center md:gap-6">
           <div className="w-full max-w-sm rounded-lg border border-border/50 bg-muted/30 p-4">
             <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -23,7 +22,8 @@ export function CreateWithAI() {
               Your prompt
             </div>
             <p className="text-sm italic text-foreground/80">
-              "Make a countdown timer that goes from 5 to 1, then shows GO!"
+              &ldquo;Make a 5s product intro that plays in our app and exports to MP4 — title from
+              data, soft fade-in.&rdquo;
             </p>
           </div>
 
@@ -32,34 +32,35 @@ export function CreateWithAI() {
 
           <div className="w-full max-w-sm rounded-lg border border-border/50 bg-[var(--code-bg)] p-4">
             <div className="mb-2 text-xs font-medium text-muted-foreground">
-              AI generates code
+              Agent writes + checks
             </div>
-            <pre className="text-xs text-[var(--code-foreground)]">
+            <pre className="overflow-x-auto text-xs text-[var(--code-foreground)]">
               <code>{`define({
-  render(ctx) {
-    const count = 5 - Math.floor(ctx.timeline.frame / ctx.fps);
-    return \`<div>\${count}</div>\`;
-  }
-})`}</code>
+  sample: { title: "Ship it" },
+  config: { fps: 30, duration: 5, width: 1280, height: 720 },
+  render(ctx) { /* pure HTML */ }
+})
+// superimg check · inspect · export`}</code>
             </pre>
           </div>
         </div>
 
-        {/* Works With Badges */}
         <div className="text-center text-sm text-muted-foreground">
           <span className="mr-3">Works with:</span>
-          <span className="inline-flex items-center gap-4">
-            <span className="rounded-md bg-muted/50 px-3 py-1 font-medium text-foreground">
-              Cursor
-            </span>
-            <span className="rounded-md bg-muted/50 px-3 py-1 font-medium text-foreground">
-              Claude Code
-            </span>
-            <span className="rounded-md bg-muted/50 px-3 py-1 font-medium text-foreground">
-              Windsurf
-            </span>
+          <span className="inline-flex flex-wrap items-center justify-center gap-2">
+            {["Cursor", "Claude Code", "Codex", "Windsurf"].map((name) => (
+              <span
+                key={name}
+                className="rounded-md bg-muted/50 px-3 py-1 font-medium text-foreground"
+              >
+                {name}
+              </span>
+            ))}
           </span>
         </div>
+        <p className="mt-6 text-center font-mono text-xs text-muted-foreground">
+          $ npx superimg skill install
+        </p>
       </div>
     </section>
   );

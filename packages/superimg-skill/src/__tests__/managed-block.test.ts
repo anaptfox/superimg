@@ -6,6 +6,8 @@ import {
   stripManagedBlock,
   getSkillContent,
   getSkillVersion,
+  listReferences,
+  getReference,
   BLOCK_END,
 } from "../index.js";
 
@@ -14,7 +16,7 @@ describe("managed-block API", () => {
     const block = buildManagedBlock();
     expect(block).toMatch(/^<!-- BEGIN superimg-skill v\d/);
     expect(block).toContain(BLOCK_END);
-    expect(block).toContain("# SuperImg Skill");
+    expect(block).toContain("# SuperImg");
   });
 
   it("getSkillContent({ format: 'managed-block' }) matches buildManagedBlock", () => {
@@ -25,7 +27,23 @@ describe("managed-block API", () => {
     const raw = getSkillContent();
     expect(raw).not.toContain("<!-- BEGIN superimg-skill");
     expect(raw).not.toContain(BLOCK_END);
-    expect(raw).toContain("# SuperImg Skill");
+    expect(raw).toContain("# SuperImg");
+  });
+
+  it("bundles consolidated workflow sections and motion-and-review reference", () => {
+    const raw = getSkillContent();
+    expect(raw).toContain("Director & Multi-Beat Narrative Timing");
+    expect(raw).toContain("Stdlib Essentials (`@foxworth/superimg/stdlib`)");
+    expect(raw).toContain("Vector & Typography");
+    expect(raw).toContain("Zero-FFmpeg Visual Review");
+    expect(raw).toContain("references/motion-and-review.md");
+
+    expect(listReferences()).toContain("motion-and-review");
+    const motionRef = getReference("motion-and-review");
+    expect(motionRef).toContain("Timing Table");
+    expect(motionRef).toContain("Easing Table");
+    expect(motionRef).toContain("Safe-Area & Framing Rules");
+    expect(motionRef).toContain("Final Critique Checklist");
   });
 
   it("findManagedBlockVersion returns the stamped version", () => {

@@ -1,4 +1,7 @@
-import { define, layoutTimeline, type RenderContext } from "superimg";
+// FAQ — myth busting, one claim at a time. The myth is set large, a coral rule strikes
+// through it at real glyph width, and the truth rises underneath.
+
+import { video, layoutTimeline, Frame, Stack, Text, Fill, Html, googleFont } from "@foxworth/superimg";
 
 export interface FaqItem {
   question: string;
@@ -12,111 +15,233 @@ export interface FaqVideoData extends Record<string, unknown> {
   accentColor: string;
 }
 
-const THEMES: Record<string, { bg: string; cardBg: string; text: string; muted: string; border: string }> = {
-  dark: { bg: "#0f0f0f", cardBg: "#18181b", text: "#ffffff", muted: "#a1a1aa", border: "#27272a" },
-  light: { bg: "#f4f4f5", cardBg: "#ffffff", text: "#18181b", muted: "#71717a", border: "#e4e4e7" },
-  neon: { bg: "#0a0014", cardBg: "#150025", text: "#ffffff", muted: "#c4b5fd", border: "#581c87" },
+const DISPLAY = "'Archivo', 'Inter', system-ui, sans-serif";
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+
+const THEMES: Record<string, { bg: string; wash: string; ink: string; faint: string }> = {
+  dark: { bg: "#1B0E1E", wash: "#3A1730", ink: "#F2E9E4", faint: "rgba(242,233,228,0.42)" },
+  light: { bg: "#F6F0EA", wash: "#E4D3C8", ink: "#1B0E1E", faint: "rgba(27,14,30,0.46)" },
+  neon: { bg: "#0C0018", wash: "#2B0A55", ink: "#F4ECFF", faint: "rgba(244,236,255,0.46)" },
 };
 
+
+
 function itemWeight(item: FaqItem): number {
-  return Math.max(1.4, (item.question.length + item.answer.length) / 55);
+  return Math.max(1, (item.question.length + item.answer.length) / 48);
 }
 
 function estimateFaqTimeline(data: FaqVideoData) {
   const weights = data.items.map(itemWeight);
-  const itemsS = Math.max(2.5, weights.reduce((a, w) => a + w, 0) * 1.35);
-  const introS = 0.85;
-  const outroS = 0.85;
-  return layoutTimeline({ intro: introS, items: itemsS, outro: outroS });
+  const itemsS = Math.max(3, weights.reduce((a, w) => a + w, 0) * 3.6);
+  return layoutTimeline({ intro: 0.9, items: itemsS, outro: 0.8 });
 }
 
-export default define<FaqVideoData>({
+export default video<FaqVideoData>({
+  duration: "12.5s", // AST fallback; resolve() owns the real clock
+  fonts: [googleFont("Archivo:wght@500;700;800"), googleFont("Inter:wght@400;500"), googleFont("IBM+Plex+Mono:wght@500;600")],
+  inlineCss: ["* { margin: 0; padding: 0; box-sizing: border-box; }", "body { overflow: hidden; }"],
+
   sample: {
-    topic: "TypeScript Myths Busted",
+    topic: "TypeScript Myths",
     items: [
-      { question: "TypeScript is slow?", answer: "Types are removed at compile time. Zero runtime cost." },
-      { question: "It's just for big teams?", answer: "Solo devs benefit most from autocomplete and error catching." },
-      { question: "Hard to learn?", answer: "Start with any, then gradually add types. It's incremental." },
+      { question: "TypeScript is slow?", answer: "Types vanish at compile time." },
+      { question: "Only for big teams?", answer: "Solo devs gain the most." },
+      { question: "Too hard to learn?", answer: "Start loose, add types later." },
     ],
     theme: "dark",
-    accentColor: "#3b82f6",
+    accentColor: "#FF6B5A",
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "8.5s", // AST fallback; resolve() overrides
-  },
+
   resolve({ data }) {
     const { totalSeconds, phases } = estimateFaqTimeline(data);
     return { duration: `${totalSeconds}s`, phases };
   },
-  render(ctx: RenderContext<FaqVideoData>) {
-    const { std, width, height, timeline, data } = ctx;
+
+  render(ctx) {
+    const { std, width, height, data } = ctx;
     const { topic, items, theme, accentColor } = data;
 
-    const themeStyle = (THEMES[theme] ?? THEMES.dark) as (typeof THEMES)["dark"];
-    const isNeon = theme === "neon";
+    const skin = THEMES[theme] ?? THEMES.dark!;
 
+    if (items.length === 0) {
+      return Frame(
+        { id: "empty-state", width, height, fill: skin.bg },
+        Stack(
+          { width: "fill", height: "fill", align: "center", justify: "center", gap: 24, pad: 96 },
+          Text({ variant: "title", size: 52, color: skin.ink }, topic),
+          Text({ variant: "body", size: 30, color: skin.ink }, "No questions yet"),
+        ),
+      );
+    }
     const { phases } = estimateFaqTimeline(data);
     const t = ctx.director(phases);
-    const topicProgress = std.interpolate(t.in("intro"), [0, 1], [0, 1], "easeOutCubic");
-    const fadeOut = std.interpolate(t.in("outro"), [0, 1], [0, 1], "easeInCubic");
-    const globalOpacity = 1 - fadeOut;
 
-    const weights = items.map(itemWeight);
-    const stk = std.stack(items, { during: t.in("items"), lead: 0.02, trail: 0.02, weights });
-
-    let itemsHtml = "";
-    stk.each((item, state) => {
-      if (state.state === "hidden") return;
-
-      const qProgress = std.interpolate(state.enter, [0, 1], [0, 1], "easeOutBack");
-
-      const aProgress = state.state === "revealed"
-        ? std.interpolate(state.slot, [0.4, 0.7], [0, 1], "easeOutCubic")
-        : state.state === "entering" && state.slot > 0.4
-          ? std.interpolate(state.slot, [0.4, 0.7], [0, 1], "easeOutCubic")
-          : 0;
-
-      const breathe = state.state === "revealed" ? 1 + Math.sin(timeline.progress * Math.PI * 8) * 0.02 : 1;
-      const qGlow = isNeon ? `0 0 20px ${accentColor}80` : `0 0 15px ${accentColor}30`;
-
-      if (qProgress <= 0) return;
-
-      itemsHtml += `
-        <div style="margin-bottom: 32px; opacity: ${qProgress * globalOpacity}; transform: translateY(${(1 - qProgress) * 20}px);">
-          <div style="display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px;">
-            <div style="background: ${accentColor}20; color: ${accentColor}; font-weight: 800; font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; flex-shrink: 0; transform: scale(${breathe}); box-shadow: ${qGlow}; text-shadow: ${isNeon ? "0 0 10px " + accentColor : "none"};">Q</div>
-            <div style="font-size: 28px; font-weight: 600; color: ${themeStyle.text}; line-height: 1.4; padding-top: 2px;">${item.question}</div>
-          </div>
-          ${aProgress > 0 ? `
-            <div style="display: flex; gap: 16px; align-items: flex-start; opacity: ${aProgress * globalOpacity}; transform: translateY(${(1 - aProgress) * 10}px);">
-              <div style="background: ${themeStyle.border}; color: ${themeStyle.muted}; font-weight: 800; font-size: 24px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 8px; flex-shrink: 0; transform: scale(${breathe});">A</div>
-              <div style="font-size: 24px; color: ${themeStyle.muted}; line-height: 1.5; padding-top: 4px;">${item.answer}</div>
-            </div>
-          ` : ""}
-        </div>
-      `;
+    // ── Which myth is on screen, and how far into its beat are we ───────────
+    const slots = std.stack(items, {
+      id: "myths",
+      itemIds: items.map((_item, i) => `myth-${i}`),
+      during: t.in("items"),
+      weights: items.map(itemWeight),
+      lead: 0,
+      trail: 0,
     });
+    const pending = items.findIndex((_item, i) => slots.state(i).slot < 1);
+    const index = pending < 0 ? items.length - 1 : pending;
+    const local = slots.state(index).slot;
+    const item = items[index]!;
 
-    const gradientOverlay = isNeon
-      ? `radial-gradient(ellipse at 20% 30%, ${accentColor}25 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, ${accentColor}15 0%, transparent 50%)`
-      : `radial-gradient(ellipse at 30% 20%, ${accentColor}10 0%, transparent 50%)`;
+    // ── Beat choreography (fractions of one myth's slot) ────────────────────
+    const seg = (a: number, b: number, easing: Parameters<typeof std.interpolate>[3] = "easeOutCubic") =>
+      std.interpolate(local, [a, b], [0, 1], easing);
 
-    return `
-    <div style="width: ${width}px; height: ${height}px; background: ${themeStyle.bg}; padding: 80px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; flex-direction: column; position: relative; opacity: ${globalOpacity};">
-      <div style="position: absolute; inset: 0; background: ${gradientOverlay}; pointer-events: none;"></div>
+    const labelIn = seg(0.0, 0.1);
+    const mythIn = seg(0.04, 0.18, "easeOutQuint");
+    const strike = seg(0.26, 0.4, "easeInOutCubic");
+    const truthIn = seg(0.34, 0.46, "easeOutQuint");
+    const leave = seg(0.9, 1.0, "easeInCubic");
 
-      <div style="opacity: ${topicProgress}; transform: translateY(${(1 - topicProgress) * -20}px); margin-bottom: 60px; text-align: center; position: relative;">
-        <div style="display: inline-block; background: ${accentColor}; color: white; font-weight: 700; font-size: 20px; padding: 8px 24px; border-radius: 99px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 24px; box-shadow: ${isNeon ? "0 0 25px " + accentColor + "80" : "none"};">FAQ / Myth Busting</div>
-        <div style="font-size: 48px; font-weight: 800; color: ${themeStyle.text}; text-shadow: ${isNeon ? "0 0 20px " + accentColor + "40" : "none"};">${topic}</div>
-      </div>
+    const beatOp = (1 - leave) * std.clamp01(t.in("items") > 0 ? 1 : 0);
+    const beatY = -leave * 26;
 
-      <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 900px; margin: 0 auto; width: 100%; position: relative;">
-        ${itemsHtml}
-      </div>
-    </div>
-    `;
+    // ── Page geometry ───────────────────────────────────────────────────────
+    const colW = 1240;
+    const colX = Math.round((width - colW) / 2);
+    const mythSize = 68;
+    const mythBoxH = 188;
+
+    const intro = t.in("intro");
+    const chromeOp = std.interpolate(intro, [0, 0.6], [0, 1], "easeOutCubic");
+    const outro = t.in("outro");
+    const pageOp = 1 - std.interpolate(outro, [0, 1], [0, 1], "easeInCubic");
+
+    // Real glyph width for the strike: the browser sizes the inline box, the
+    // gradient rides it. No measurement heuristic, no overshoot.
+    const mythHtml = `<div style="font-family:${DISPLAY};font-weight:800;font-size:${mythSize}px;line-height:1.16;letter-spacing:-2.2px;color:${skin.ink};opacity:${(1 - strike * 0.56).toFixed(3)}">
+  <span style="background-image:linear-gradient(${accentColor},${accentColor});background-repeat:no-repeat;background-position:0 58%;background-size:${(strike * 100).toFixed(2)}% 8px;-webkit-box-decoration-break:clone;box-decoration-break:clone;">${std.text.escapeHtml(item.question)}</span>
+</div>`;
+
+    // ── Beat ticks along the bottom ─────────────────────────────────────────
+    const tickW = 46;
+    const tickGap = 12;
+    const ticksW = items.length * tickW + (items.length - 1) * tickGap;
+    const ticksSvg = `<svg width="${ticksW}" height="6" viewBox="0 0 ${ticksW} 6" xmlns="http://www.w3.org/2000/svg">
+${items
+  .map((_it, i) => {
+    const x = i * (tickW + tickGap);
+    const done = i < index ? 1 : i === index ? local : 0;
+    return `<rect x="${x}" y="2" width="${tickW}" height="2" rx="1" fill="${skin.faint}" opacity="0.4"/>` +
+      `<rect x="${x}" y="1" width="${(tickW * done).toFixed(2)}" height="4" rx="2" fill="${accentColor}"/>`;
+  })
+  .join("\n")}
+</svg>`;
+
+    return Frame(
+      { id: "stage", width, height },
+      Fill({ color: skin.bg }),
+      Fill({
+        gradient: { kind: "radial", at: "18% 8%", size: "70% 62%", stops: [std.color.alpha(skin.wash, 0.85), "transparent"] },
+      }),
+      Fill({
+        gradient: { kind: "radial", at: "86% 92%", size: "58% 52%", stops: [std.color.alpha(accentColor, 0.14), "transparent"] },
+      }),
+
+      Frame(
+        { x: 0, y: 0, width, height, style: { opacity: pageOp } },
+
+        // ── Persistent chrome ───────────────────────────────────────────
+        Frame(
+          { x: colX, y: 108, width: colW, height: 82, style: { opacity: chromeOp } },
+          Stack(
+            { width: colW, gap: 16 },
+            Stack(
+              { direction: "row", height: 26, gap: 14, align: "center" },
+              Frame({ width: 30, height: 3, fill: accentColor }),
+              Text({ variant: "label", color: accentColor, size: 14, weight: 600, fontFamily: MONO, letterSpacing: 4.5 }, "MYTH BUSTING"),
+            ),
+            Text({ variant: "title", color: skin.faint, size: 27, weight: 500, fontFamily: DISPLAY }, topic),
+          ),
+        ),
+
+        // ── The beat ────────────────────────────────────────────────────
+        Frame(
+          {
+            id: "beat",
+            x: colX,
+            y: 322,
+            width: colW,
+            height: 460,
+            style: { opacity: beatOp, transform: `translateY(${beatY.toFixed(2)}px)` },
+          },
+
+          // Index counter
+          Frame(
+            { x: 0, y: 0, width: colW, height: 26, style: { opacity: labelIn } },
+            Stack(
+              { direction: "row", height: 26, gap: 14, align: "center" },
+              Text({ variant: "label", color: accentColor, size: 15, weight: 600, fontFamily: MONO, letterSpacing: 3 }, String(index + 1).padStart(2, "0")),
+              Frame({ width: 18, height: 1, fill: skin.faint }),
+              Text({ variant: "label", color: skin.faint, size: 15, weight: 500, fontFamily: MONO, letterSpacing: 3 }, "CLAIM"),
+            ),
+          ),
+
+          // The myth, struck at real width
+          Frame(
+            {
+              x: 0,
+              y: 58,
+              width: colW,
+              height: mythBoxH,
+              style: { opacity: mythIn, transform: `translateY(${((1 - mythIn) * 20).toFixed(2)}px)` },
+            },
+            Html({ id: "myth", width: colW, height: mythBoxH, html: mythHtml }),
+          ),
+
+          // The truth rises underneath
+          Frame(
+            {
+              x: 0,
+              y: 268,
+              width: colW,
+              height: 130,
+              style: { opacity: truthIn, transform: `translateY(${((1 - truthIn) * 26).toFixed(2)}px)` },
+            },
+            Frame({
+              x: 0,
+              y: 4,
+              width: 5,
+              height: 96,
+              radius: 3,
+              fill: accentColor,
+              style: { transform: `scaleY(${truthIn.toFixed(3)})`, transformOrigin: "center top" },
+            }),
+            Frame(
+              { x: 34, y: 0, width: colW - 34, height: 130 },
+              Stack(
+                { width: colW - 34, gap: 12 },
+                Text({ variant: "label", color: accentColor, size: 14, weight: 600, fontFamily: MONO, letterSpacing: 4 }, "ACTUALLY"),
+                Text(
+                  {
+                    variant: "title",
+                    color: skin.ink,
+                    size: 42,
+                    weight: 500,
+                    fontFamily: DISPLAY,
+                    maxWidth: colW - 60,
+                    lineHeight: 1.28,
+                  },
+                  item.answer,
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // ── Beat ticks ──────────────────────────────────────────────────
+        Frame(
+          { x: colX, y: 902, width: ticksW, height: 6, style: { opacity: chromeOp } },
+          Html({ id: "ticks", width: ticksW, height: 6, html: ticksSvg }),
+        ),
+      ),
+    );
   },
 });

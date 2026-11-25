@@ -1,0 +1,64 @@
+{
+  "name": "@superimg/adapters",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portable SuperImg adapter core: schema-0 media project contracts, stages, Vite integration, and OCI providers.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./poster": {
+      "types": "./dist/poster.d.ts",
+      "import": "./dist/poster.js"
+    },
+    "./stage": {
+      "types": "./dist/stage.d.ts",
+      "import": "./dist/stage.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js"
+    },
+    "./providers": {
+      "types": "./dist/providers.d.ts",
+      "import": "./dist/providers.js"
+    },
+    "./media-project": {
+      "types": "./dist/media-project.d.ts",
+      "import": "./dist/media-project.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown",
+    "test": "vitest --run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@superimg/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@superimg/build-config": "workspace:*",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "license": "MIT"
+}

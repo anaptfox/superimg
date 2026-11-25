@@ -1,1 +1,0 @@
-export { karaokeTemplate as default } from "./template";

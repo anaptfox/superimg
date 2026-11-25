@@ -22,4 +22,5 @@ export {
   type RawSourceMap,
 } from "./source-map.js";
 export { getCodeFrame, type CodeFrameOptions } from "./code-frame.js";
+export { compilerDiagnostics, normalizeCompilerError } from "./compiler-diagnostics.js";
 export { didYouMean, levenshtein } from "./suggest.js";

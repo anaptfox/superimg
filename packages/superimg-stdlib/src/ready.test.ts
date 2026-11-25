@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ready, token, done, fail, WAIT_ATTR } from "./ready.js";
-import { scene } from "./viz/three.js";
+import { scene } from "./compat/three.js";
 import { canvas } from "./viz/canvas.js";
 
 describe("std.ready", () => {

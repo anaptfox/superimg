@@ -1,0 +1,114 @@
+# Browser Inspection
+
+Inspect a running preview, hold an exact frame, and capture what the browser
+presented. Mount the optional inspection entry around an existing Player:
+
+```ts
+import { createPreviewInspection } from "@foxworth/superimg/inspection";
+
+const inspection = createPreviewInspection({ readinessTimeoutMs: 5_000 });
+const attached = inspection.attach({
+  surfaceId: "preview", player,
+  controls: ["set-mode", "seek-frame"],
+});
+
+const before = await inspection.inspect({ surfaceId: "preview" });
+const owned = await inspection.setMode({
+  surfaceId: "preview", expectedGeneration: before.generation, mode: "inspection",
+});
+const shown = await inspection.seek({
+  surfaceId: "preview", expectedGeneration: owned.generation, frame: 6,
+});
+```
+
+Wait for a successful Player load before selecting a frame. Frames are integer
+indices in `0..totalFrames - 1`. The selection waits for the accepted DOM render
+and its font/image/native video readiness barrier. A failed resource or a
+superseded presentation rejects the selection.
+
+## Capture while the clock is held
+
+Inspection mode pauses playback and suspends the Player's scroll/pointer drive.
+It stays active across separate browser screenshot calls. Save `shown`, capture
+the screenshot, then inspect again. Confirm the generation, accepted revision,
+resource readiness, and inspection clock owner still match before returning to
+live:
+
+```ts
+const after = await inspection.inspect({ surfaceId: "preview" });
+if (after.generation !== shown.generation ||
+    after.presented?.revision !== shown.presented?.revision ||
+    after.readiness.status !== "ready" || after.clock.owner !== "inspection") {
+  throw new Error("Presentation changed during capture");
+}
+await inspection.setMode({
+  surfaceId: "preview", expectedGeneration: after.generation, mode: "live",
+});
+```
+
+Returning to live restores the previous driver and playback state. Custom host
+clocks supply `suspendInput: () => resumeInput` on the attachment. Reloads change
+the generation, so use fresh snapshots for controls.
+
+## Keep a live inspection browser
+
+In the SuperImg repository, keep a named agent-browser session open across edits
+and capture the accepted presentation with:
+
+```sh
+just browser-inspect --session my-inspection --surface story --frame 6
+```
+
+The browser and preview must already be running. The command holds the frame,
+checks the target, source, resources and accepted revision around one screenshot,
+and saves the pixels with a JSON report. It leaves inspection mode active.
+Pass the same configuration used to start the session, or use
+`--session-file /absolute/evidence/session.json` from the shared browser workflow.
+
+After the normal source build or HMR update, repeat with
+`--compare /absolute/previous/capture.json` to compare the same view. The report
+rejects mismatched captures and retains their diagnostics. See
+`docs/browser-workflow.md` in the repository for startup, comparison and recovery.
+
+## Understand the snapshot
+
+The snapshot separates `requestedFrame` from `presented.frame` and its accepted
+`revision`. It includes clock ownership, named parts, committed routes, guide
+steps, active composition occurrences, semantic state, and DOM node bounds.
+Bounds use CSS pixels in the host viewport; repeated child IDs are distinguished
+by occurrence path.
+
+`inspect()` observes state without starting a resource barrier. Canvas and nested
+iframe interiors are reported as opaque. A host can extend readiness and attach
+semantic node sidecars for canvas content. Semantic state and retained IR
+describe structure; screenshots supply browser pixel evidence.
+
+Attach a `ProgramSession` from `present()` for `selectPart` and `selectRoute`;
+use manual mode for a deck or timeline mode for a continuous composition. Attach
+an `InteractivePlayer` as `interactive` for `selectStep`. Enable each desired
+control explicitly. A route can prepare a new composition and change its
+generation. Actual browser clicks test interactive hit targets.
+
+## Optional agent tools
+
+Ordinary `@foxworth/superimg/inspection` has no Boundary requirement. Hosts that want page
+tools opt into `@foxworth/superimg/inspection/boundary`, choose exposed methods and allowed
+surfaces, and provide admission. Register that binding with
+`registerWebMcpBinding` from `@foxworth/boundary/webmcp` after
+`isWebMcpAvailable()` succeeds.
+
+If WebMCP is unavailable, the host can expose a trusted JavaScript inspection
+object or its own policy-aware wrapper. The repository's
+`examples/apps/agent-inspection` demonstrates both paths, explicit admission,
+route selection, and tool withdrawal. The full host wiring and agent-browser
+capture recipe are in `docs/inspection.md`.
+
+On teardown, dispose the WebMCP registration, revoke the optional interaction
+mount, detach the inspection surface, and dispose the inspection registry.
+
+## Development inspector
+
+`superimg dev` provides a Preview inspector with an exact frame input, snapshot,
+resource status, and accepted HTML. Closing its panel keeps inspection mode
+active; choose **Return to live** to resume the preview. Its trusted development
+JavaScript surface is `window.superimgInspection` (`dev-preview` surface).

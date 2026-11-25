@@ -10,7 +10,7 @@
       "name": "superimg",
       "source": {
         "source": "local",
-        "path": "./packages/superimg-codex-plugin/plugin"
+        "path": "./packages/superimg-agent-plugins/codex"
       },
       "policy": {
         "installation": "AVAILABLE",

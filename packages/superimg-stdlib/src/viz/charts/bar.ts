@@ -1,7 +1,7 @@
 import type { CoordSystem } from "../coords.js";
 import { bandScale } from "../scale.js";
 import type { ChartDataPoint, ChartOpts } from "./shared.js";
-import { animOpacity, chartColors, chartScales, plotArea } from "./shared.js";
+import { baselineValue, animOpacity, chartColors, chartScales, plotArea } from "./shared.js";
 
 export interface BarChartOpts extends ChartOpts {
   barRadius?: number;
@@ -32,11 +32,13 @@ export function bar(
   const parts: string[] = [];
 
   data.forEach((d, i) => {
+    if (!Number.isFinite(d.value)) return;
     const bx = x(d.label) ?? area.left;
     const grow = opts.animate === "grow" ? progress : 1;
-    const animatedVal = scales.yMin + (d.value - scales.yMin) * grow;
-    const yTop = scales.y(animatedVal)!;
-    const h = scales.baseline - yTop;
+    const animatedVal = baselineValue(scales.yMin, scales.yMax) + (d.value - baselineValue(scales.yMin, scales.yMax)) * grow;
+    const yEnd = scales.y(animatedVal)!;
+    const yTop = Math.min(scales.baseline, yEnd);
+    const h = Math.abs(scales.baseline - yEnd);
     const color = colors[i % colors.length]!;
     const r = opts.barRadius ?? 4;
     parts.push(

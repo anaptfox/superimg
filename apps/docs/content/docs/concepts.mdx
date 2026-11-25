@@ -1,0 +1,52 @@
+# Concepts
+
+## One canonical media definition
+
+`video()`, `image()`, `svg()`, `ogImage()`, `compose()`, and bare `define()` all lower to `MediaDefinition`. Render functions receive content coordinates such as `data`, `width`, `height`, and time. They never receive destination ids, codecs, or output paths.
+
+## Responsive editions
+
+The root render reflows through `ctx.width` and `ctx.height`. Add an edition only when an exact aspect ratio needs different art direction:
+
+```ts
+video({
+  duration: "12s",
+  render: renderResponsive,
+  editions: {
+    square: {
+      size: { width: 1080, height: 1080 },
+      render: renderSquare,
+    },
+  },
+});
+```
+
+An exact aspect match uses the edition; every other requested canvas uses the root render.
+
+## Data variants
+
+Variants are root-level shallow data patches:
+
+```ts
+variants: {
+  light: { theme: "light" },
+  dark: { theme: "dark" },
+}
+```
+
+They change content, not delivery or clocks. Arrays and nested values replace.
+
+## Collections
+
+`collection({ entries, media, id? })` materializes one deterministic program for every entry. Entries keep their original object shape in `ctx.data`; they never control dimensions, formats, paths, or filenames.
+
+## Destinations
+
+Choose organic destinations or custom canvases at export time:
+
+```bash
+superimg export launch --for youtube --for instagram-square
+superimg export launch --for 1080x1920.mp4
+```
+
+The schema-0 destination catalog exposes recommendations and provenance through `@foxworth/superimg/destinations`.

@@ -1,475 +1,96 @@
-//! New command - scaffold a new video inside an existing SuperImg project
+//! `superimg new` — copy a monorepo example into the current project's media library.
 
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
+import { join, relative } from "node:path";
 import * as p from "@clack/prompts";
 import { findProjectRoot } from "../utils/find-project-root.js";
-
-// ── Template strings ──
-
-function singleSceneTS(name: string, tailwind: boolean): string {
-  if (tailwind) {
-    return `import { define } from "superimg";
-
-export default define({
-  sample: {
-    title: "${titleCase(name)}",
-    subtitle: "Built with SuperImg",
-  },
-
-  config: {
-    duration: 5,
-    tailwind: true,
-  },
-
-  render(ctx) {
-    const { std, data } = ctx;
-
-    const t = ctx.director(std.phases.recipe("card"));
-    const titleAnim = t.motion({ scale: 0.9, exit: false });
-    const subtitleAnim = t.motion({ at: "30%", y: 16, exit: false });
-
-    return \`
-      <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <h1 class="text-8xl font-bold text-white tracking-tight" style="\${titleAnim.style}">
-          \${data.title}
-        </h1>
-        <p class="mt-6 text-2xl text-white/70 font-medium" style="opacity: \${0.7 * subtitleAnim.opacity}">
-          \${data.subtitle}
-        </p>
-      </div>
-    \`;
-  },
-});
-`;
-  }
-
-  return `import { define } from "superimg";
-
-export default define({
-  sample: {
-    title: "${titleCase(name)}",
-    subtitle: "Built with SuperImg",
-  },
-
-  config: {
-    duration: 5,
-    fonts: ["Inter:wght@400;700"],
-    inlineCss: [\`
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #0f0f23; font-family: 'Inter', sans-serif; overflow: hidden; }
-      .title { font-size: 88px; font-weight: 700; color: #667eea; }
-      .subtitle { font-size: 28px; color: white; opacity: 0.7; margin-top: 16px; }
-    \`],
-  },
-
-  render(ctx) {
-    const { std, width, height, data } = ctx;
-
-    const t = ctx.director(std.phases.recipe("card"));
-    const titleAnim = t.motion({ y: 28 });
-    const subtitleAnim = t.motion({ at: "20%", y: 16 });
-
-    return \`
-      <div style="\${std.css({ width, height }, std.css.center())}; flex-direction: column;">
-        <h1 class="title" style="\${titleAnim.style}">
-          \${data.title}
-        </h1>
-        <p class="subtitle" style="\${subtitleAnim.style}">
-          \${data.subtitle}
-        </p>
-      </div>
-    \`;
-  },
-});
-`;
-}
-
-function singleSceneJS(name: string, tailwind: boolean): string {
-  // Same as TS but without type annotations (templates have none anyway)
-  return singleSceneTS(name, tailwind);
-}
-
-// ── Compose templates ──
-
-function composeEntryTS(name: string, ext: string): string {
-  return `import { compose } from "superimg";
-import intro from "./intro.media.${ext}";
-import content from "./content.media.${ext}";
-import outro from "./outro.media.${ext}";
-
-export default compose([intro, content, outro]);
-`;
-}
-
-function composeIntroTS(tailwind: boolean): string {
-  if (tailwind) {
-    return `import { define } from "superimg";
-
-export default define({
-  config: { duration: "5s", tailwind: true },
-  sample: { title: "Welcome" },
-  render(ctx) {
-    const { std } = ctx;
-    const t = ctx.director(std.phases.recipe("hook"));
-    const anim = t.motion({ scale: 0.92, easing: "playful" });
-    return \`
-      <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
-        <h1 class="text-9xl font-black text-white tracking-tight drop-shadow-2xl"
-            style="\${anim.style}">
-          \${ctx.data.title}
-        </h1>
-      </div>
-    \`;
-  },
-});
-`;
-  }
-
-  return `import { define } from "superimg";
-
-export default define({
-  config: {
-    duration: "2s",
-    fonts: ["Inter:wght@400;700"],
-    inlineCss: [\`
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Inter', sans-serif; color: white; overflow: hidden; }
-      .title { font-size: 96px; font-weight: 700; text-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-    \`],
-  },
-  sample: { title: "Welcome" },
-  render(ctx) {
-    const { std } = ctx;
-    const t = ctx.director(std.phases.recipe("hook"));
-    const anim = t.motion({ scale: 0.92, easing: "playful" });
-    return \`
-      <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <h1 class="title" style="\${anim.style}">
-          \${ctx.data.title}
-        </h1>
-      </div>
-    \`;
-  },
-});
-`;
-}
-
-function composeContentTS(tailwind: boolean): string {
-  if (tailwind) {
-    return `import { define } from "superimg";
-
-export default define({
-  config: { duration: "3s", tailwind: true },
-  sample: {
-    heading: "Main Content",
-    body: "Add your content here.",
-  },
-  render(ctx) {
-    const { std } = ctx;
-    const t = ctx.director(std.phases.recipe("establish"));
-    const anim = t.motion();
-    return \`
-      <div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <h2 class="text-6xl font-bold text-white mb-6" style="\${anim.style}">
-          \${ctx.data.heading}
-        </h2>
-        <p class="text-2xl text-white/70" style="\${anim.style}">
-          \${ctx.data.body}
-        </p>
-      </div>
-    \`;
-  },
-});
-`;
-  }
-
-  return `import { define } from "superimg";
-
-export default define({
-  config: {
-    duration: "3s",
-    fonts: ["Inter:wght@400;700"],
-    inlineCss: [\`
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Inter', sans-serif; color: white; overflow: hidden; }
-      .heading { font-size: 64px; font-weight: 700; margin-bottom: 16px; }
-      .body { font-size: 28px; opacity: 0.7; }
-    \`],
-  },
-  sample: {
-    heading: "Main Content",
-    body: "Add your content here.",
-  },
-  render(ctx) {
-    const { std } = ctx;
-    const t = ctx.director(std.phases.recipe("establish"));
-    const anim = t.motion();
-    return \`
-      <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())}; flex-direction: column;
-        background: #0f0f23;">
-        <h2 class="heading" style="\${anim.style}">\${ctx.data.heading}</h2>
-        <p class="body" style="\${anim.style}">\${ctx.data.body}</p>
-      </div>
-    \`;
-  },
-});
-`;
-}
-
-function composeOutroTS(tailwind: boolean): string {
-  if (tailwind) {
-    return `import { define } from "superimg";
-
-export default define({
-  config: { duration: "2s", tailwind: true },
-  sample: { cta: "Call to Action" },
-  render(ctx) {
-    const { std } = ctx;
-    const t = ctx.director(std.phases.recipe("punchy"));
-    const anim = t.motion({ y: 20 });
-    return \`
-      <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-600 to-cyan-600">
-        <h1 class="text-7xl font-bold text-white" style="\${anim.style}">
-          \${ctx.data.cta}
-        </h1>
-      </div>
-    \`;
-  },
-});
-`;
-  }
-
-  return `import { define } from "superimg";
-
-export default define({
-  config: {
-    duration: "2s",
-    fonts: ["Inter:wght@400;700"],
-    inlineCss: [\`
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Inter', sans-serif; color: white; overflow: hidden; }
-      .cta { font-size: 64px; font-weight: 700; }
-    \`],
-  },
-  sample: { cta: "Call to Action" },
-  render(ctx) {
-    const { std } = ctx;
-    const t = ctx.director(std.phases.recipe("punchy"));
-    const anim = t.motion({ y: 20 });
-    return \`
-      <div style="\${ctx.std.css(ctx.std.css.fill(), ctx.std.css.center())};
-        background: linear-gradient(135deg, #059669 0%, #0891b2 100%);">
-        <h1 class="cta" style="\${anim.style}">\${ctx.data.cta}</h1>
-      </div>
-    \`;
-  },
-});
-`;
-}
-
-function configTS(tailwind: boolean, isCompose: boolean): string {
-  const duration = isCompose ? 7 : 5;
-  const comment = isCompose ? " // intro 2s + content 3s + outro 2s" : "";
-  const tailwindLine = tailwind ? "\n  tailwind: true," : "";
-
-  return `import { defineConfig } from "superimg";
-
-export default defineConfig({
-  width: 1920,
-  height: 1080,
-  fps: 30,
-  duration: ${duration},${comment}${tailwindLine}
-});
-`;
-}
-
-// ── Helpers ──
-
-function titleCase(kebab: string): string {
-  return kebab
-    .split("-")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-function toKebabCase(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
-
-// ── Command ──
+import {
+  copyExampleIntoProject,
+  findExamplesRoot,
+  listScaffoldExamples,
+} from "../../scaffold-project.js";
 
 export async function newCommand(
   name: string | undefined,
-  options: { yes?: boolean; js?: boolean; compose?: boolean; tailwind?: boolean }
+  options: { yes?: boolean; example?: string; dir?: string },
 ) {
-  let projectRoot: string;
-  try {
-    projectRoot = findProjectRoot();
-  } catch (err) {
-    console.error(`\n  Error: ${err instanceof Error ? err.message : String(err)}`);
-    console.error("  Run this inside a SuperImg project, or use 'superimg init' first.\n");
+  const examplesRoot = findExamplesRoot();
+  if (!examplesRoot) {
+    console.error(
+      "\n`superimg new` only copies monorepo examples (no generated starters).\n" +
+        "Could not find examples/. Run from a SuperImg checkout or set SUPERIMG_EXAMPLES_ROOT.\n",
+    );
     process.exit(1);
   }
 
-  let videoName: string;
-  let isCompose: boolean;
-  let useTailwind: boolean;
-  let useJs: boolean;
-
-  if (options.yes) {
-    // Non-interactive: use args + defaults
-    if (!name?.trim()) {
-      console.error("\n  Error: Video name is required with -y flag.");
-      console.error("  Usage: superimg new <name> -y\n");
-      process.exit(1);
-    }
-    videoName = toKebabCase(name);
-    isCompose = options.compose ?? false;
-    useTailwind = options.tailwind ?? false;
-    useJs = options.js ?? !existsSync(join(projectRoot, "tsconfig.json"));
-  } else {
-    // Interactive mode
-    p.intro("SuperImg — New Video");
-
-    // 1. Video name
-    if (name?.trim()) {
-      videoName = toKebabCase(name);
-    } else {
-      const nameResult = await p.text({
-        message: "Video name?",
-        placeholder: "my-promo",
-        validate(value: string | undefined) {
-          const kebab = toKebabCase(value ?? "");
-          if (!kebab) return "Name cannot be empty";
-          if (kebab.length < 2) return "Name must be at least 2 characters";
-          return undefined;
-        },
-      });
-      if (p.isCancel(nameResult)) {
-        p.cancel("Cancelled.");
-        process.exit(1);
-      }
-      videoName = toKebabCase(nameResult as string);
-    }
-
-    // 2. Video type
-    if (options.compose != null) {
-      isCompose = options.compose;
-    } else {
-      const typeResult = await p.select({
-        message: "What kind of video?",
-        options: [
-          { value: "single", label: "Single scene", hint: "one define file" },
-          { value: "compose", label: "Composition", hint: "intro + content + outro with compose()" },
-        ],
-        initialValue: "single",
-      });
-      if (p.isCancel(typeResult)) {
-        p.cancel("Cancelled.");
-        process.exit(1);
-      }
-      isCompose = typeResult === "compose";
-    }
-
-    // 3. Tailwind
-    if (options.tailwind != null) {
-      useTailwind = options.tailwind;
-    } else {
-      const tailwindResult = await p.confirm({
-        message: "Enable Tailwind CSS?",
-        initialValue: false,
-      });
-      if (p.isCancel(tailwindResult)) {
-        p.cancel("Cancelled.");
-        process.exit(1);
-      }
-      useTailwind = tailwindResult;
-    }
-
-    // 4. Language (auto-detect default from tsconfig)
-    if (options.js != null) {
-      useJs = options.js;
-    } else {
-      const hasTs = existsSync(join(projectRoot, "tsconfig.json"));
-      const langResult = await p.select({
-        message: "TypeScript or JavaScript?",
-        options: [
-          { value: "ts", label: "TypeScript" },
-          { value: "js", label: "JavaScript" },
-        ],
-        initialValue: hasTs ? "ts" : "js",
-      });
-      if (p.isCancel(langResult)) {
-        p.cancel("Cancelled.");
-        process.exit(1);
-      }
-      useJs = langResult === "js";
-    }
+  let projectRoot: string;
+  try {
+    projectRoot = findProjectRoot();
+  } catch {
+    console.error("\nNot inside a SuperImg project (no package.json walk found).\n");
+    process.exit(1);
   }
 
-  const ext = useJs ? "js" : "ts";
-  const videoDir = join(projectRoot, "videos", videoName);
-
-  // Check for existing video
-  if (existsSync(videoDir)) {
-    const mainFile = join(videoDir, `${videoName}.media.${ext}`);
-    if (existsSync(mainFile)) {
-      console.error(`\n  Error: videos/${videoName}/${videoName}.media.${ext} already exists.`);
-      console.error("  Delete it first, or choose a different name.\n");
-      process.exit(1);
-    }
+  if (!existsSync(join(projectRoot, "package.json"))) {
+    console.error("\nNo package.json in project root. Use `superimg init` first.\n");
+    process.exit(1);
   }
 
-  // Create directory
-  mkdirSync(videoDir, { recursive: true });
+  let example = options.example;
+  let destName = name;
 
-  // Generate files
-  const createdFiles: string[] = [];
-
-  if (isCompose) {
-    // Compose entry
-    writeFileSync(join(videoDir, `${videoName}.media.${ext}`), composeEntryTS(videoName, ext));
-    createdFiles.push(`videos/${videoName}/${videoName}.media.${ext}`);
-
-    // Scene files
-    writeFileSync(join(videoDir, `intro.media.${ext}`), composeIntroTS(useTailwind));
-    createdFiles.push(`videos/${videoName}/intro.media.${ext}`);
-
-    writeFileSync(join(videoDir, `content.media.${ext}`), composeContentTS(useTailwind));
-    createdFiles.push(`videos/${videoName}/content.media.${ext}`);
-
-    writeFileSync(join(videoDir, `outro.media.${ext}`), composeOutroTS(useTailwind));
-    createdFiles.push(`videos/${videoName}/outro.media.${ext}`);
-  } else {
-    // Single scene
-    const template = useJs ? singleSceneJS(videoName, useTailwind) : singleSceneTS(videoName, useTailwind);
-    writeFileSync(join(videoDir, `${videoName}.media.${ext}`), template);
-    createdFiles.push(`videos/${videoName}/${videoName}.media.${ext}`);
-  }
-
-  // Config file (always TS — defineConfig needs types)
-  writeFileSync(join(videoDir, "_config.ts"), configTS(useTailwind, isCompose));
-  createdFiles.push(`videos/${videoName}/_config.ts`);
-
-  // Output summary
   if (!options.yes) {
-    p.log.step(`Created ${createdFiles.length} files:`);
-    for (const f of createdFiles) {
-      p.log.message(f);
+    p.intro("Copy a monorepo example into the media library");
+    if (!example) {
+      const picked = await p.select({
+        message: "Which example?",
+        options: [
+          { value: "hello-world", label: "hello-world" },
+          { value: "request-journey", label: "request-journey (interactive)" },
+          { value: "og-card", label: "og-card" },
+        ],
+        initialValue: "hello-world",
+      });
+      if (p.isCancel(picked)) {
+        p.cancel("Cancelled.");
+        process.exit(1);
+      }
+      example = picked as string;
     }
-    p.outro(`Run "superimg dev ${videoName}" to preview`);
-  } else {
-    console.log(`\n  Created ${createdFiles.length} files:`);
-    for (const f of createdFiles) {
-      console.log(`  ${f}`);
+    if (!destName) {
+      const t = await p.text({
+        message: "Output name? Leave empty to keep example name.",
+        placeholder: example,
+      });
+      if (p.isCancel(t)) {
+        p.cancel("Cancelled.");
+        process.exit(1);
+      }
+      destName = (t as string).trim() || undefined;
     }
-    console.log(`\n  Run "superimg dev ${videoName}" to preview\n`);
+  }
+
+  example = example ?? "hello-world";
+
+  try {
+    const { templatePath, exampleKey, filesWritten } = copyExampleIntoProject(
+      projectRoot,
+      example,
+      destName,
+      options.dir === undefined ? {} : { contentDir: options.dir },
+    );
+    if (!options.yes) {
+      p.outro(`${filesWritten.length > 0 ? "Copied" : "Already present"} \`${exampleKey}\` → ${templatePath}`);
+    } else {
+      console.log(`${filesWritten.length > 0 ? "Copied" : "Already present"} ${exampleKey} → ${templatePath}`);
+    }
+    const sourcePath = relative(projectRoot, templatePath).split(/[/\\]/).join("/");
+    console.log(`  superimg dev ${sourcePath}`);
+    console.log(`  superimg check ${sourcePath}\n`);
+  } catch (err) {
+    console.error(`\n${err instanceof Error ? err.message : String(err)}\n`);
+    console.error("Aliases:");
+    for (const line of listScaffoldExamples()) console.error(`  ${line}`);
+    process.exit(1);
   }
 }

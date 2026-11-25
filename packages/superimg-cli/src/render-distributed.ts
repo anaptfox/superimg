@@ -120,8 +120,8 @@ async function renderChunkToFile(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       template: opts.templateName,
-      data: opts.data,
-      encoding: opts.encoding,
+      ...(opts.data !== undefined ? { data: opts.data } : {}),
+      ...(opts.encoding !== undefined ? { encoding: opts.encoding } : {}),
       startFrame: opts.startFrame,
       endFrame: opts.endFrame,
     }),
@@ -325,7 +325,10 @@ export async function renderDistributed(opts: DistributedRenderOptions): Promise
       ], { cancelSignal: execution.signal, forceKillAfterDelay: 2_000 });
     }
 
-    throwIfExecutionCancelled({ signal: execution.signal, deadlineMs: opts.deadlineMs });
+    throwIfExecutionCancelled({
+      signal: execution.signal,
+      ...(opts.deadlineMs !== undefined ? { deadlineMs: opts.deadlineMs } : {}),
+    });
     renameSync(finalTempPath, outputPath);
     console.log(`[renderDistributed] done → ${outputPath}`);
   } finally {

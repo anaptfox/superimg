@@ -7,9 +7,26 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./inspection": {
+      "types": "./dist/inspection.d.ts",
+      "import": "./dist/inspection.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./timeline": {
+      "types": "./dist/timeline-lanes.d.ts",
+      "import": "./dist/timeline-lanes.js"
+    },
+    "./program": {
+      "types": "./dist/program.d.ts",
+      "import": "./dist/program.js"
+    },
+    "./dom": {
+      "types": "./dist/dom.d.ts",
+      "import": "./dist/dom.js",
+      "default": "./dist/dom.js"
     }
   },
   "scripts": {
@@ -32,13 +49,13 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@superimg/build-config": "workspace:*"
+    "@superimg/build-config": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "happy-dom": "catalog:"
   },
   "dependencies": {
     "@superimg/core": "workspace:*",
     "@superimg/media": "workspace:*",
-    "@superimg/stdlib": "workspace:*",
-    "@superimg/types": "workspace:*",
-    "zustand": "^5.0.14"
+    "@superimg/types": "workspace:*"
   }
 }

@@ -15,6 +15,7 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown",
+    "test": "vitest --run",
     "clean": "rm -rf dist"
   },
   "files": [
@@ -28,6 +29,7 @@
   "license": "MIT",
   "devDependencies": {
     "@superimg/build-config": "workspace:*",
-    "@superimg/stdlib": "workspace:*"
+    "@superimg/stdlib": "workspace:*",
+    "vitest": "catalog:"
   }
 }

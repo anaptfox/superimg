@@ -1,6 +1,6 @@
 //! Testing helpers — thin wrappers over renderTemplateFrame / renderToHtml.
 
-import type { AnyTemplateModule, ComposedTemplate } from "@superimg/types";
+import type { AnyTemplateModule } from "@superimg/types";
 import {
   renderTemplateFrame,
   type RenderTemplateFrameOptions,
@@ -18,7 +18,7 @@ export type RenderHtmlAtFrameOptions = Omit<
  * Merges `template.sample` with `data` and binds timing at the requested frame.
  */
 export function renderHtmlAtFrame(
-  template: AnyTemplateModule | ComposedTemplate,
+  template: AnyTemplateModule,
   options: RenderHtmlAtFrameOptions = {},
 ): string {
   const { compositeHtml } = renderTemplateFrame({
@@ -53,3 +53,8 @@ export {
   type CritiqueReport,
   type CritiqueOptions,
 } from "../critique/motion-critique.js";
+
+import { installStillLaneKit } from "../rendering/still-lane-kit.js";
+import { defaultStillLaneKit } from "../rendering/still-lane-install.js";
+
+installStillLaneKit(defaultStillLaneKit);

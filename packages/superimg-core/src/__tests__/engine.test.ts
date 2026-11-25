@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createRenderPlan, executeRenderPlan, executeRenderPlanParallel } from "../rendering/engine.js";
 import { bundleTemplateCodeWithMap } from "../bundler/bundler.js";
-import { RenderExecutionError, TemplateRuntimeError } from "@superimg/types";
+import { googleFont, RenderExecutionError, TemplateRuntimeError } from "@superimg/types";
 import type { RenderJob } from "@superimg/types";
 
 async function jobFromCode(code: string): Promise<RenderJob> {
@@ -19,10 +19,10 @@ async function jobFromCode(code: string): Promise<RenderJob> {
 describe("createRenderPlan", () => {
   it("creates plan from valid template", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
         config: { fps: 30 },
-        render(ctx) { return '<div>Hello</div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>Hello</div>' }); }
       });
     `;
     const job = await jobFromCode(code);
@@ -39,10 +39,10 @@ describe("createRenderPlan", () => {
 
   it("collects fonts from template config", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, googleFont, Html } from '@foxworth/superimg';
       export default define({
-        config: { fonts: ['Roboto:wght@400'] },
-        render(ctx) { return '<div></div>'; }
+        config: { fonts: [googleFont('Roboto:wght@400')] },
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div></div>' }); }
       });
     `;
     const job = await jobFromCode(code);
@@ -52,14 +52,14 @@ describe("createRenderPlan", () => {
 
   it("merges global fonts with template fonts", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, googleFont, Html } from '@foxworth/superimg';
       export default define({
-        config: { fonts: ['TemplateFont'] },
-        render(ctx) { return '<div></div>'; }
+        config: { fonts: [googleFont('TemplateFont')] },
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div></div>' }); }
       });
     `;
     const job = await jobFromCode(code);
-    job.fonts = ["GlobalFont"];
+    job.fonts = [googleFont("GlobalFont")];
     const plan = await createRenderPlan(job);
     expect(plan.fonts).toContain("GlobalFont");
     expect(plan.fonts).toContain("TemplateFont");
@@ -67,9 +67,9 @@ describe("createRenderPlan", () => {
 
   it("passes through resolvedAssets from caller", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
-        render(ctx) { return '<div></div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div></div>' }); }
       });
     `;
     const job = await jobFromCode(code);
@@ -93,9 +93,9 @@ describe("createRenderPlan", () => {
 
   it("defaults to empty assets when none provided", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
-        render(ctx) { return '<div></div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div></div>' }); }
       });
     `;
     const job = await jobFromCode(code);
@@ -105,13 +105,13 @@ describe("createRenderPlan", () => {
 
   it("collects inlineCss and stylesheets from template config", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
         config: {
           inlineCss: ['.foo { color: red; }'],
           stylesheets: ['https://example.com/style.css'],
         },
-        render(ctx) { return '<div></div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div></div>' }); }
       });
     `;
     const job = await jobFromCode(code);
@@ -122,20 +122,21 @@ describe("createRenderPlan", () => {
 
   it("merges global inlineCss and stylesheets with template config", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
         config: {
           inlineCss: ['.template { }'],
           stylesheets: ['https://template.css'],
         },
-        render(ctx) { return '<div></div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div></div>' }); }
       });
     `;
     const job = await jobFromCode(code);
     job.inlineCss = [".global { }"];
     job.stylesheets = ["https://global.css"];
     const plan = await createRenderPlan(job);
-    expect(plan.inlineCss).toEqual([".global { }", ".template { }"]);
+    expect(plan.inlineCss.slice(0, 2)).toEqual([".global { }", ".template { }"]);
+    expect(plan.inlineCss.slice(2).every((css) => css.includes('@font-face') && css.includes("Inter"))).toBe(true);
     expect(plan.stylesheets).toEqual(["https://global.css", "https://template.css"]);
   });
 
@@ -146,8 +147,8 @@ describe("createRenderPlan", () => {
 
   it("rejects resolved plans that exceed configured limits", async () => {
     const job = await jobFromCode(`
-      import { define } from 'superimg';
-      export default define({ render() { return '<div />'; } });
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ render() { return Html({ width: 'fill', height: 'fill', html: '<div />' }); } });
     `);
     await expect(
       createRenderPlan(job, { limits: { maxFrames: 10 } }),
@@ -156,8 +157,8 @@ describe("createRenderPlan", () => {
 
   it("validates partial frame ranges before renderer allocation", async () => {
     const job = await jobFromCode(`
-      import { define } from 'superimg';
-      export default define({ render() { return '<div />'; } });
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ render() { return Html({ width: 'fill', height: 'fill', html: '<div />' }); } });
     `);
     await expect(
       createRenderPlan(job, { startFrame: 10, endFrame: 1000 }),
@@ -168,9 +169,9 @@ describe("createRenderPlan", () => {
 describe("executeRenderPlan", () => {
   it("calls renderer and encoder in order", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
-        render(ctx) { return '<div>' + ctx.timeline.progress + '</div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>' + ctx.timeline.progress + '</div>' }); }
       });
     `;
     const job = await jobFromCode(code);
@@ -179,7 +180,7 @@ describe("executeRenderPlan", () => {
     const capturedFrames: string[] = [];
     const renderer = {
       init: async () => {},
-      captureFrame: async (html: string) => {
+      rasterize: async (html: string) => {
         capturedFrames.push(html);
         return html;
       },
@@ -203,10 +204,73 @@ describe("executeRenderPlan", () => {
     expect(encodedFrames).toHaveLength(60);
   });
 
+  it("lowers a media tree to HTML before encoding", async () => {
+    const code = `
+      import { define, Frame, Text } from '@foxworth/superimg';
+      export default define({
+        render(ctx) {
+          return Frame({ width: ctx.width, height: ctx.height, id: "root" }, Text("Hello tree"));
+        }
+      });
+    `;
+    const job = await jobFromCode(code);
+    job.duration = 0.1;
+    job.fps = 10;
+    const plan = await createRenderPlan(job);
+    const capturedFrames: string[] = [];
+    const renderer = {
+      init: async () => {},
+      rasterize: async (html: string) => {
+        capturedFrames.push(html);
+        return html;
+      },
+      dispose: async () => {},
+    };
+    const encoder = {
+      init: async () => {},
+      addFrame: async () => {},
+      finalize: async () => new Uint8Array(0),
+      dispose: async () => {},
+    };
+    await executeRenderPlan(plan, renderer, encoder);
+    expect(capturedFrames[0]).toContain("Hello tree");
+    expect(capturedFrames[0]).toContain("data-si-primitive");
+  });
+
+  it("skips rasterize when frame-mode HTML is unchanged", async () => {
+    const code = `
+      import { define, Html } from '@foxworth/superimg';
+      export default define({
+        render() { return Html({ width: 'fill', height: 'fill', html: '<div>static</div>' }); }
+      });
+    `;
+    const job = await jobFromCode(code);
+    const plan = await createRenderPlan(job);
+    expect(plan.mode).toBe("frame");
+    let captures = 0;
+    const renderer = {
+      init: async () => {},
+      rasterize: async (html: string) => {
+        captures += 1;
+        return html;
+      },
+      dispose: async () => {},
+    };
+    const encoder = {
+      init: async () => {},
+      addFrame: async () => {},
+      finalize: async () => new Uint8Array(0),
+      dispose: async () => {},
+    };
+    await executeRenderPlan(plan, renderer, encoder);
+    expect(captures).toBeLessThan(60);
+    expect(captures).toBe(1);
+  });
+
   it("captures the next frame while the previous frame is encoding", async () => {
     const job = await jobFromCode(`
-      import { define } from 'superimg';
-      export default define({ render(ctx) { return '<div>' + ctx.globalFrame + '</div>'; } });
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>' + ctx.globalFrame + '</div>' }); } });
     `);
     job.duration = 0.2;
     job.fps = 10;
@@ -224,7 +288,7 @@ describe("executeRenderPlan", () => {
       plan,
       {
         init: async () => {},
-        captureFrame: async (html: string) => {
+        rasterize: async (html: string) => {
           captures += 1;
           if (captures === 2) secondCaptureStarted();
           return html;
@@ -257,9 +321,9 @@ describe("executeRenderPlan", () => {
 
   it("calls onProgress callback", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
-        render(ctx) { return '<div></div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div></div>' }); }
       });
     `;
     const job = await jobFromCode(code);
@@ -270,7 +334,7 @@ describe("executeRenderPlan", () => {
     const progressUpdates: Array<{ frame: number; totalFrames: number }> = [];
     const renderer = {
       init: async () => {},
-      captureFrame: async () => "",
+      rasterize: async () => "",
       dispose: async () => {},
     };
     const encoder = {
@@ -290,13 +354,13 @@ describe("executeRenderPlan", () => {
 
   it("wraps render errors with TemplateRuntimeError containing frame context", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
         render(ctx) {
           if (ctx.timeline.progress > 0.5) {
             throw new Error('Intentional fail at 50%');
           }
-          return '<div>ok</div>';
+          return Html({ width: 'fill', height: 'fill', html: '<div>ok</div>' });
         }
       });
     `;
@@ -307,7 +371,7 @@ describe("executeRenderPlan", () => {
 
     const renderer = {
       init: async () => {},
-      captureFrame: async (html: string) => html,
+      rasterize: async (html: string) => html,
       dispose: async () => {},
     };
     const encoder = {
@@ -341,8 +405,8 @@ describe("executeRenderPlan", () => {
 
   it("cancels an in-flight capture and still disposes adapters", async () => {
     const job = await jobFromCode(`
-      import { define } from 'superimg';
-      export default define({ render() { return '<div />'; } });
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ render() { return Html({ width: 'fill', height: 'fill', html: '<div />' }); } });
     `);
     job.duration = 0.1;
     job.fps = 10;
@@ -352,7 +416,7 @@ describe("executeRenderPlan", () => {
     let encoderDisposed = false;
     const renderer = {
       init: async () => {},
-      captureFrame: async () => new Promise<string>(() => {}),
+      rasterize: async () => new Promise<string>(() => {}),
       dispose: async () => { rendererDisposed = true; },
     };
     const encoder = {
@@ -375,8 +439,8 @@ describe("executeRenderPlan", () => {
 
   it("keeps a 300-frame render bounded to one encoder write", async () => {
     const job = await jobFromCode(`
-      import { define } from 'superimg';
-      export default define({ render(ctx) { return '<div>' + ctx.globalFrame + '</div>'; } });
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>' + ctx.globalFrame + '</div>' }); } });
     `);
     job.duration = 10;
     job.fps = 30;
@@ -386,7 +450,7 @@ describe("executeRenderPlan", () => {
     let maxActiveEncodes = 0;
     await executeRenderPlan(
       plan,
-      { init: async () => {}, captureFrame: async (html: string) => { captures += 1; return html; }, dispose: async () => {} },
+      { init: async () => {}, rasterize: async (html: string) => { captures += 1; return html; }, dispose: async () => {} },
       {
         init: async () => {},
         addFrame: async () => {
@@ -405,8 +469,8 @@ describe("executeRenderPlan", () => {
 
   it("distributes capture across four renderers and encodes in order", async () => {
     const job = await jobFromCode(`
-      import { define } from 'superimg';
-      export default define({ render(ctx) { return '<div>' + ctx.globalFrame + '</div>'; } });
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>' + ctx.globalFrame + '</div>' }); } });
     `);
     job.duration = 0.8;
     job.fps = 10;
@@ -414,7 +478,7 @@ describe("executeRenderPlan", () => {
     const counts = [0, 0, 0, 0];
     const renderers = counts.map((_count, index) => ({
       init: async () => {},
-      captureFrame: async (html: string) => { counts[index]! += 1; return html; },
+      rasterize: async (html: string) => { counts[index]! += 1; return html; },
       dispose: async () => {},
     }));
     const timestamps: number[] = [];
@@ -430,15 +494,15 @@ describe("executeRenderPlan", () => {
 
   it("attributes an encoder failure to the frame being encoded", async () => {
     const job = await jobFromCode(`
-      import { define } from 'superimg';
-      export default define({ render(ctx) { return '<div>' + ctx.globalFrame + '</div>'; } });
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>' + ctx.globalFrame + '</div>' }); } });
     `);
     job.duration = 0.2;
     job.fps = 10;
     const plan = await createRenderPlan(job);
     await expect(executeRenderPlan(
       plan,
-      { init: async () => {}, captureFrame: async (html: string) => html, dispose: async () => {} },
+      { init: async () => {}, rasterize: async (html: string) => html, dispose: async () => {} },
       {
         init: async () => {},
         addFrame: async (_frame: string, timestamp: number) => { if (timestamp === 0) throw new Error("encode failed"); },

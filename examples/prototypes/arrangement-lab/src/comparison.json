@@ -1,0 +1,41 @@
+{
+  "pattern": "registered-comparison",
+  "spec": {
+    "question": "What changed?",
+    "workRemoved": "Matching corresponding elements across screenshots",
+    "evidence": "observation",
+    "states": [
+      {
+        "id": "before",
+        "label": "Before",
+        "view": {
+          "src": "shots/before.svg"
+        },
+        "provenance": "Synthetic fixture; not real capture evidence"
+      },
+      {
+        "id": "after",
+        "label": "After",
+        "view": {
+          "src": "shots/after.svg"
+        },
+        "provenance": "Synthetic fixture; not real capture evidence"
+      }
+    ],
+    "frame": {
+      "scale": "shared",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    "correspondence": [
+      "header",
+      "navigation"
+    ],
+    "size": {
+      "width": 1080,
+      "height": 720
+    }
+  }
+}

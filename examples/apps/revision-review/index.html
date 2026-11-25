@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Fieldnote · Revision review</title></head>
+<body>
+  <main>
+    <header><a class="wordmark" href="#">SUPERIMG <span>/ LAB</span></a><span class="pill">Revision review</span></header>
+    <section class="intro"><p class="eyebrow">ONE INTENTIONAL CHANGE</p><h1>See what your<br>revision changes.</h1><p>Select a part. Preview the difference. Keep the source in charge.</p></section>
+    <div class="workspace">
+      <section class="preview-panel" aria-label="Media preview"><div class="panel-heading"><h2>Fieldnote launch</h2><label>Edition <select id="edition"><option value="">Landscape</option><option value="square">Square</option></select></label></div><iframe id="current" title="Current launch" sandbox=""></iframe><p id="revision" class="caption">Waiting for source…</p></section>
+      <aside class="inspector"><p class="eyebrow">SELECTED PART</p><label class="select-label">Part <select id="part"></select></label><p id="explanation">Inspecting supported source edits…</p><form id="edit"><div class="coordinates"><label>X <input id="x" type="number" required step="1"></label><label>Y <input id="y" type="number" required step="1"></label></div><button id="preview" type="submit" disabled>Preview change <span>↗</span></button></form><p class="caption">Preview does not write source. Apply rechecks the exact command.</p><button id="apply" class="secondary" disabled>Apply exact change</button><div class="recovery"><button id="undo" class="secondary" disabled>Undo edit</button><button id="reconcile" class="secondary">Reconcile source</button></div><div id="status" role="status" aria-live="polite">Loading…</div></aside>
+    </div>
+    <section id="comparison" hidden><div class="section-heading"><h2>Before / after</h2><span class="caption">Rendered from identified inputs</span></div><div class="comparison"><div><p class="eyebrow">BEFORE</p><iframe id="before" title="Before revision" sandbox=""></iframe></div><div><p class="eyebrow">PROPOSED</p><iframe id="after" title="Proposed revision" sandbox=""></iframe></div></div><pre id="changes"></pre></section>
+    <section class="bottom-grid"><div><p class="eyebrow">AUTHORED OBSERVATIONS</p><h2>Checks have limits.</h2><p class="caption">Box containment is structural evidence. Pixel readability remains unverified until reviewed.</p><pre id="checks">Waiting for observations…</pre></div><div><p class="eyebrow">BATCH REHEARSAL</p><h2>Try the difficult cases.</h2><p class="caption">Rehearse a normal title, long title, and missing product before exporting the same prepared inputs.</p><div class="actions"><button id="rehearse" class="secondary">Rehearse batch</button><button id="correct-batch" class="secondary">Prepare corrected batch</button><button id="export" class="secondary" disabled>Export prepared batch</button></div><pre id="batch">No batch prepared.</pre></div></section>
+    <footer>Native source. Explicit edits. Evidence you can inspect.</footer>
+  </main><script type="module" src="/src/main.ts"></script>
+</body></html>

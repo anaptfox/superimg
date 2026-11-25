@@ -7,14 +7,14 @@ const TESTIMONIALS = [
   { name: "Alex Kim", handle: "@alexk", text: "Finally, programmatic video that doesn't suck.", avatar: "🧑‍🚀" },
 ];
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
 
   const cardWidth = (width - 100) / 3;
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -57,7 +57,7 @@ export default define({
         }).join('')}
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
@@ -67,7 +67,7 @@ export const MILESTONE = `// Follower Milestone
 const MILESTONE = 100000;
 const PLATFORM = "Twitter";
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -82,7 +82,7 @@ export default define({
     opacity: Math.max(0, 1 - timeline.progress * 1.5 + 0.5),
   }));
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -122,7 +122,7 @@ export default define({
         followers
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
@@ -132,7 +132,7 @@ export const MRR = `// MRR Counter
 const TARGET_MRR = 50000;
 const CURRENCY = "$";
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -144,7 +144,7 @@ export default define({
   // Glow intensity based on progress
   const glowIntensity = 20 + timeline.progress * 40;
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -174,7 +174,7 @@ export default define({
         🚀 We hit \${CURRENCY}\${(TARGET_MRR / 1000)}K MRR!
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
@@ -198,7 +198,7 @@ const SCHEDULE = {
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 const HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -216,7 +216,7 @@ export default define({
     meeting: { bg: "#f59e0b", border: "#d97706" },
   };
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -350,7 +350,7 @@ export default define({
         </div>
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
@@ -370,7 +370,7 @@ const TWEET = {
   views: 42800,
 };
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -392,7 +392,7 @@ export default define({
   // Stats animation
   const statsOpacity = Math.min(1, Math.max(0, (timeline.progress - 0.3) * 2));
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -483,6 +483,6 @@ export default define({
         </div>
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;

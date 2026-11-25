@@ -1,0 +1,304 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://superimg.dev/schema/media-ir.json",
+  "title": "MediaIR schema 0",
+  "type": "object",
+  "required": [
+    "kind",
+    "schemaVersion",
+    "identity",
+    "medium",
+    "animated",
+    "canvas",
+    "renderConfig",
+    "clock",
+    "capabilities",
+    "provenance",
+    "scenes",
+    "tracks",
+    "motions",
+    "assets",
+    "observations",
+    "hashes",
+    "extensions"
+  ],
+  "properties": {
+    "kind": { "const": "@foxworth/superimg/media-ir" },
+    "schemaVersion": { "const": 0 },
+    "identity": {
+      "type": "object",
+      "required": ["sourceId", "variantId", "editionId"],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 1 },
+        "entryId": { "type": "string", "minLength": 1 },
+        "variantId": { "type": "string", "minLength": 1 },
+        "editionId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "medium": { "enum": ["html", "svg"] },
+    "animated": { "type": "boolean" },
+    "canvas": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "renderConfig": {
+      "type": "object",
+      "required": [
+        "fonts",
+        "inlineCss",
+        "stylesheets",
+        "tailwind",
+        "background",
+        "watermark",
+        "readiness",
+        "mode"
+      ],
+      "properties": {
+        "fonts": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "inlineCss": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "stylesheets": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "tailwind": {},
+        "background": {},
+        "watermark": {},
+        "readiness": {},
+        "mode": { "enum": ["frame", "animation"] }
+      },
+      "additionalProperties": false
+    },
+    "clock": {
+      "type": "object",
+      "required": ["fps", "durationSeconds", "totalFrames"],
+      "properties": {
+        "fps": { "type": "number", "exclusiveMinimum": 0 },
+        "durationSeconds": { "type": "number", "minimum": 0 },
+        "totalFrames": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["temporal", "motion", "visual", "portability", "determinism", "issues"],
+      "properties": {
+        "temporal": { "enum": ["canonical", "sampled", "opaque"] },
+        "motion": { "enum": ["declarative", "sampled", "none"] },
+        "visual": { "enum": ["opaque-html", "opaque-svg", "tree"] },
+        "portability": { "enum": ["self-contained", "network-required", "incomplete"] },
+        "determinism": { "enum": ["verified", "unverified"] },
+        "issues": { "type": "array", "items": { "$ref": "#/$defs/capabilityIssue" } }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["programHash", "sourceId", "compiler", "compilerVersion"],
+      "properties": {
+        "programHash": { "$ref": "#/$defs/hash" },
+        "sourceId": { "type": "string", "minLength": 1 },
+        "compiler": { "const": "superimg" },
+        "compilerVersion": { "const": 0 }
+      },
+      "additionalProperties": false
+    },
+    "scenes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/scene" } },
+    "tracks": { "type": "array", "items": { "$ref": "#/$defs/track" } },
+    "motions": { "type": "array", "items": { "$ref": "#/$defs/motion" } },
+    "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } },
+    "observations": {
+      "type": "object",
+      "required": ["markupRuns", "sceneRuns"],
+      "properties": {
+        "markupRuns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/hashRun" } },
+        "sceneRuns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/hashRun" } }
+      },
+      "additionalProperties": false
+    },
+    "hashes": {
+      "type": "object",
+      "required": ["intentHash", "markupHash", "programHash"],
+      "properties": {
+        "intentHash": { "$ref": "#/$defs/hash" },
+        "markupHash": { "$ref": "#/$defs/hash" },
+        "programHash": { "$ref": "#/$defs/hash" }
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "propertyNames": { "type": "string", "minLength": 1 },
+      "additionalProperties": { "$ref": "#/$defs/extension" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+    "range": {
+      "type": "object",
+      "required": ["startFrame", "endFrame"],
+      "properties": {
+        "startFrame": { "type": "integer", "minimum": 0 },
+        "endFrame": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "hashRun": {
+      "type": "object",
+      "required": ["range", "hash"],
+      "properties": {
+        "range": { "$ref": "#/$defs/range" },
+        "hash": { "$ref": "#/$defs/hash" }
+      },
+      "additionalProperties": false
+    },
+    "capabilityIssue": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "sceneId": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "frame": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "phase": {
+      "type": "object",
+      "required": ["name", "start", "end"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "start": { "type": "number", "minimum": 0, "maximum": 1 },
+        "end": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "marker": {
+      "type": "object",
+      "required": ["id", "frame"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "frame": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "transition": {
+      "type": "object",
+      "required": ["id", "type", "range", "fromSceneId", "toSceneId"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "range": { "$ref": "#/$defs/range" },
+        "fromSceneId": { "type": "string", "minLength": 1 },
+        "toSceneId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "scene": {
+      "type": "object",
+      "required": ["id", "index", "range", "phases", "markers", "transitions"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "index": { "type": "integer", "minimum": 0 },
+        "range": { "$ref": "#/$defs/range" },
+        "phases": { "type": "array", "items": { "$ref": "#/$defs/phase" } },
+        "markers": { "type": "array", "items": { "$ref": "#/$defs/marker" } },
+        "transitions": { "type": "array", "items": { "$ref": "#/$defs/transition" } },
+        "sourceId": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "track": {
+      "type": "object",
+      "required": ["id", "kind", "sceneId", "range"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["audio", "transcript", "video-sync", "markers", "author-track"] },
+        "sceneId": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "range": { "$ref": "#/$defs/range" },
+        "role": { "type": "string", "minLength": 1 },
+        "src": { "type": "string", "minLength": 1 },
+        "meta": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "easing": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "name"],
+          "properties": {
+            "kind": { "const": "named" },
+            "name": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "stiffness", "damping"],
+          "properties": {
+            "kind": { "const": "spring" },
+            "stiffness": { "type": "number" },
+            "damping": { "type": "number" },
+            "mass": { "type": "number" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "motion": {
+      "type": "object",
+      "required": ["id", "localId", "sceneId", "kind", "enter"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "localId": { "type": "string", "minLength": 1 },
+        "sceneId": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "property": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["motion", "tween", "value", "sampled"] },
+        "enter": { "$ref": "#/$defs/range" },
+        "exit": { "$ref": "#/$defs/range" },
+        "from": { "type": "object" },
+        "to": { "type": "object" },
+        "exitTo": { "type": "object" },
+        "easing": { "$ref": "#/$defs/easing" },
+        "exitEasing": { "$ref": "#/$defs/easing" },
+        "pattern": { "enum": ["linear", "sine", "pulse", "bounce"] }
+      },
+      "additionalProperties": false
+    },
+    "asset": {
+      "type": "object",
+      "required": ["id", "kind", "src", "remote"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["image", "video", "audio", "font", "other"] },
+        "src": { "type": "string", "minLength": 1 },
+        "remote": { "type": "boolean" },
+        "contentHash": { "$ref": "#/$defs/hash" }
+      },
+      "additionalProperties": false
+    },
+    "extension": {
+      "type": "object",
+      "required": ["schemaVersion", "payload"],
+      "properties": {
+        "schemaVersion": { "const": 0 },
+        "payload": { "type": "object" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

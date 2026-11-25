@@ -5,6 +5,10 @@ import { parseTemplate, resolveRenderConfig } from "./template-config.js";
 import { withTempDir } from "../__test-utils__/fs.js";
 
 describe("resolveRenderConfig", () => {
+  it("resolves authored duration units using the selected frame rate", () => {
+    expect(resolveRenderConfig({ templateConfig: { duration: "28s" } }).duration).toBe(28);
+    expect(resolveRenderConfig({ templateConfig: { duration: "48f", fps: 24 } }).duration).toBe(2);
+  });
   it("applies precedence: cli > template > defaults", () => {
     const resolved = resolveRenderConfig({
       cli: { width: "3840", fps: "60" },
@@ -28,11 +32,11 @@ describe("parseTemplate", () => {
       writeFileSync(
         templatePath,
         `
-          import { define } from 'superimg';
+          import { define, Html } from '@foxworth/superimg';
           const sideEffect = (() => { throw new Error("should not execute"); })();
           export default define({
             config: { fps: 48 },
-            render(ctx) { return "<div>safe</div>"; }
+            render(ctx) { return Html({ width: "fill", height: "fill", html: "<div>safe</div>" }); }
           });
         `
       );
@@ -49,10 +53,10 @@ describe("parseTemplate", () => {
       writeFileSync(
         templatePath,
         `
-          import { define } from 'superimg';
+          import { define, Html } from '@foxworth/superimg';
           export default define({
             config: { duration: 9 },
-            render(ctx) { return "<div>ok</div>"; }
+            render(ctx) { return Html({ width: "fill", height: "fill", html: "<div>ok</div>" }); }
           });
         `
       );

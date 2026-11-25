@@ -1,0 +1,140 @@
+name: "SuperImg Export"
+description: "Export a SuperImg media program for a destination or custom size"
+branding:
+  icon: "video"
+  color: "purple"
+
+inputs:
+  media:
+    description: "Path to a .media.ts or .media.js source"
+    required: true
+  for:
+    description: "Destination ID or WIDTHxHEIGHT[.format]"
+    required: false
+    default: "youtube"
+  output:
+    description: "Final .export bundle directory"
+    required: false
+    default: "output/media.export"
+  superimg-version:
+    description: "SuperImg npm version to install (ignored if superimg is in package.json)"
+    required: false
+    default: "latest"
+  upload-artifact:
+    description: "Upload the export bundle as a GitHub artifact"
+    required: false
+    default: "true"
+  artifact-name:
+    description: "Artifact name when uploading"
+    required: false
+    default: "superimg-export"
+  commit-back:
+    description: |
+      Commit the export bundle back to the repo instead of (or in addition to) uploading it as an artifact.
+      Requires: actions/checkout@v4 before calling this action, and permissions: contents: write in your workflow job.
+    required: false
+    default: "false"
+
+outputs:
+  bundle-path:
+    description: "Path to the published export bundle"
+    value: ${{ steps.export.outputs.bundle-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "26"
+
+    - name: Install SuperImg
+      shell: bash
+      run: |
+        # Use local install if available, otherwise install globally
+        if [ -f "package.json" ] && grep -q '"superimg"' package.json 2>/dev/null; then
+          echo "Found superimg in package.json, using local install"
+          if [ -f "pnpm-lock.yaml" ]; then
+            npm install -g pnpm@12.18.0
+            pnpm install --frozen-lockfile
+          elif [ -f "yarn.lock" ]; then
+            yarn install --frozen-lockfile
+          else
+            npm ci
+          fi
+        else
+          echo "Installing superimg@${{ inputs.superimg-version }} globally"
+          npm install -g superimg@${{ inputs.superimg-version }}
+        fi
+
+    - name: Get Playwright version
+      id: playwright-version
+      shell: bash
+      run: |
+        VERSION=$(node -e "
+          try { console.log(require('playwright/package.json').version); }
+          catch(e) { console.log('unknown'); }
+        ")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Cache Playwright browsers
+      id: playwright-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+        restore-keys: playwright-${{ runner.os }}-
+
+    - name: Install Playwright system deps
+      shell: bash
+      run: |
+        if [ -f "pnpm-lock.yaml" ]; then
+          pnpm --filter @superimg/playwright exec playwright install-deps chromium
+        elif [ -f "yarn.lock" ]; then
+          yarn exec playwright install-deps chromium
+        else
+          npx --yes playwright install-deps chromium
+        fi
+
+    - name: Install Playwright browser
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        if [ -f "pnpm-lock.yaml" ]; then
+          pnpm --filter @superimg/playwright exec playwright install chromium
+        elif [ -f "yarn.lock" ]; then
+          yarn exec playwright install chromium
+        else
+          npx --yes playwright install chromium
+        fi
+
+    - name: Setup ffmpeg
+      uses: FedericoCarboni/setup-ffmpeg@v3
+
+    - name: Export media
+      id: export
+      shell: bash
+      run: |
+        # Use npx to find the right binary (local or global)
+        npx superimg export "${{ inputs.media }}" --for "${{ inputs.for }}" --output "${{ inputs.output }}"
+
+        echo "bundle-path=${{ inputs.output }}" >> "$GITHUB_OUTPUT"
+
+    - name: Commit output back to repo
+      if: inputs.commit-back == 'true'
+      shell: bash
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add "${{ inputs.output }}"
+        git diff --staged --quiet || (
+          git commit -m "chore: update exported media [skip ci]"
+          git push
+        )
+
+    - name: Upload artifact
+      if: inputs.upload-artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ inputs.output }}

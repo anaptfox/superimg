@@ -6,18 +6,18 @@
     "episodeTitle": "Why we ditched microservices",
     "speakerName": "Jane Doe",
     "speakerTitle": "Principal Engineer @ TechCo",
-    "speakerPhoto": "https://i.pravatar.cc/600?img=47",
+    "speakerPhoto": "",
     "brandColor": "#FF4D6D",
     "accentColor": "#FFD166"
   },
   {
-    "slug": "ada-lovelace",
+    "slug": "ada-park",
     "podcastName": "The Build Log",
     "episodeNumber": "043",
-    "episodeTitle": "On the analytical engine",
-    "speakerName": "Ada Lovelace",
-    "speakerTitle": "Mathematician · First Programmer",
-    "speakerPhoto": "https://i.pravatar.cc/600?img=32",
+    "episodeTitle": "Making background jobs reliable",
+    "speakerName": "Ada Park",
+    "speakerTitle": "Software Engineer",
+    "speakerPhoto": "",
     "brandColor": "#7C3AED",
     "accentColor": "#22D3EE"
   }

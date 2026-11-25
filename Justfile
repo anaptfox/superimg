@@ -29,6 +29,10 @@ dev:
 generate-examples:
     cd "{{root}}" && npx tsx scripts/generate-examples.ts
 
+# Scaffold a Scene Studio artwork under apps/scene-studio/src/artworks/<name>/
+new-artwork name:
+    cd "{{root}}" && npx tsx scripts/new-artwork.ts {{name}}
+
 # Start the docs site (port 3001) with Turbo-managed dependencies
 docs:
     cd "{{root}}" && pnpm run build:docs
@@ -50,23 +54,78 @@ dev-pkg name:
 test-pkg name:
     cd "{{root}}/packages/{{name}}" && pnpm run test
 
+# === Media stack (CLI / check / inspect / export) ===
+# Dependency order (turbo --filter=@foxworth/superimg-cli... walks deps):
+#   types → stdlib → core → playwright → node → cli
+#   (+ superimg umbrella when assembling public bin)
+#
+# Agents: after editing ANY of those packages, run `just build-render` before
+# `node packages/superimg-cli/dist/cli.js …`. Do NOT build only one package —
+# stale dist is the usual "my flag/encoder change did nothing" failure.
+
+# Build render stack in dependency order (turbo filter)
+build-render:
+    cd "{{root}}" && pnpm run build:render
+
+# Inspect an already-mounted live browser (does not build, launch, or reload).
+browser-inspect *args:
+    cd "{{root}}" && node --import tsx scripts/browser-inspection/cli.ts {{args}}
+
+# Run the shared value-runtime contract in Node, Chromium, and workerd.
+test-runtime: build-render
+    cd "{{root}}" && pnpm --filter @superimg/core test -- runtime/runtime.test.ts
+    cd "{{root}}" && pnpm --filter @superimg/runtime-conformance test
+    cd "{{root}}" && pnpm --filter @superimg/runtime-conformance test:browser
+    cd "{{root}}" && pnpm --filter @superimg/runtime-conformance test:edge-resolution
+    cd "{{root}}" && pnpm --filter @superimg/runtime-conformance test:edge
+
+# Run Boundary-native project interaction and publication proofs.
+test-interactions: build-render
+    cd "{{root}}" && pnpm --filter @superimg/interactions test
+
+# Pull, pack, vendor, and verify `@foxworth/boundary` directly from GitHub (`anaptfox/boundary`).
+vendor-boundary ref="main" repo="anaptfox/boundary":
+    cd "{{root}}" && node scripts/vendor-boundary.mjs --ref "{{ref}}" --repo "{{repo}}"
+
+# Clean + rebuild render stack only
+rebuild-render:
+    cd "{{root}}" && pnpm run rebuild:render
+
+# Ensure render stack is built, then print the monorepo CLI path
+cli-path: build-render
+    @echo "{{root}}/packages/superimg-cli/dist/cli.js"
+
+# Example: just cli list
+#          just cli export path/to/foo.media.ts --for youtube
+cli *args: build-render
+    cd "{{root}}" && node packages/superimg-cli/dist/cli.js {{args}}
+
+# Validate a retained composition end to end: focused schedule/player tests,
+# compiled inspection, and one encoded export. Example is a canonical .media.ts path.
+verify-composition example destination="youtube":
+    cd "{{root}}" && pnpm run build:render
+    cd "{{root}}" && pnpm --filter @superimg/player build
+    cd "{{root}}" && pnpm --filter @superimg/core test -- composition/plan.test.ts
+    cd "{{root}}" && pnpm --filter @superimg/player test -- src/dom-player.test.ts
+    cd "{{root}}" && pnpm --filter @foxworth/superimg-cli test -- composition.e2e.test.ts
+    cd "{{root}}" && pnpm --filter @superimg/integration-tests test -- composition-host.e2e.test.ts
+    cd "{{root}}" && node packages/superimg-cli/dist/cli.js check "{{example}}"
+    cd "{{root}}" && node packages/superimg-cli/dist/cli.js inspect "{{example}}" --pretty
+    cd "{{root}}" && node packages/superimg-cli/dist/cli.js export "{{example}}" --for "{{destination}}"
+
+# Compile a short clip to a seekable plate atlas
+plate *args: build-render
+    cd "{{root}}" && node packages/superimg-cli/dist/cli.js plate {{args}}
+
 # === Quality ===
 
 # Build all packages
 build:
     cd "{{root}}" && pnpm run build
 
-# Build the render stack in dependency order
-build-render:
-    cd "{{root}}" && pnpm run build:render
-
 # Clean all dist/ artifacts and rebuild everything from scratch
 rebuild:
     cd "{{root}}" && pnpm run rebuild
-
-# Clean and rebuild only the render stack in dependency order
-rebuild-render:
-    cd "{{root}}" && pnpm run rebuild:render
 
 # Run all tests
 test:
@@ -107,15 +166,11 @@ _spin title task:
         exit 1
     fi
 
-# Verify harness bundle integrity (source hash matches)
-verify-harness:
-    cd "{{root}}/packages/superimg-playwright" && pnpm run verify:generated
-
 # Verify browser virtual modules are built from current sources
 verify-browser-virtuals:
     cd "{{root}}/packages/superimg-core" && pnpm run verify:generated
 
-# Gate script for greenfield timing redesign (zero backward compat)
+# Gate script for the timing model
 verify-timing-redesign scratch="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -124,6 +179,8 @@ verify-timing-redesign scratch="":
     "{{root}}/scripts/verify-timing-redesign.sh"
 
 # === Release ===
+# Publishing is manual-only: run these from a maintainer machine.
+# CI never publishes to npm — GitHub Actions are for testing/rendering only.
 
 # Interactive version bump for the public package
 bump:
@@ -153,15 +210,25 @@ bump:
         exit 1
     fi
 
-# Publish the public package to npm
+# Publish the public package to npm (manual-only; runs full check first)
 publish:
     #!/usr/bin/env bash
     set -euo pipefail
     ROOT="{{root}}"
 
-    # Verify harness integrity before publishing
-    echo "Verifying harness integrity..."
-    cd "$ROOT/packages/superimg-playwright" && pnpm run verify:generated
+    # Fail fast on auth before anything expensive.
+    # npm login sessions last only 2 hours (since Dec 2025).
+    if ! npm whoami >/dev/null 2>&1; then
+        gum style --foreground 196 "✗ Not authenticated to npm"
+        gum style --foreground 99 "Run 'npm login' (sessions expire after 2 hours), then re-run just publish"
+        exit 1
+    fi
+    gum style --foreground 212 "✓ Authenticated as $(npm whoami)"
+    echo ""
+
+    # Full check so a standalone `just publish` can never ship a stale dist/
+    # (includes package verify scripts such as browser virtual modules)
+    just check
     echo ""
 
     just versions
@@ -181,15 +248,17 @@ publish-dry:
     #!/usr/bin/env bash
     set -euo pipefail
     ROOT="{{root}}"
+    CACHE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/superimg-publish-dry.XXXXXX")"
+    trap 'rm -rf "$CACHE_DIR"' EXIT
     echo ""
     just versions
     echo ""
     gum style --foreground 99 "Dry-run: showing what would be published"
     echo ""
     echo "=== superimg ==="
-    cd "$ROOT/packages/superimg" && pnpm publish --dry-run
+    cd "$ROOT/packages/superimg" && NPM_CONFIG_CACHE="$CACHE_DIR" pnpm publish --dry-run --no-git-checks
 
-# Full release: optionally bump -> check -> publish
+# Full release: optionally bump -> publish (publish runs the full check)
 release:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -211,9 +280,7 @@ release:
         gum style --foreground 99 "Skipping version bump (using existing versions)"
         echo ""
     fi
-    
-    just check
-    echo ""
+
     just publish
 
 # === Skills ===
@@ -240,13 +307,13 @@ codex-plugin-install:
     fi
 
     gum spin --spinner dot --title "Building superimg CLI..." -- \
-        pnpm --filter superimg run build
+        pnpm --filter @foxworth/superimg run build
 
     gum spin --spinner dot --title "Generating plugin..." -- \
         pnpm --filter @superimg/codex-plugin run build
 
     gum style --foreground 212 "→ Installing skill into ~/.codex/AGENTS.md..."
-    node "{{root}}/packages/superimg/dist/cli.js" skill install --host codex --global -y
+    node "{{root}}/packages/superimg-cli/dist/cli.js" skill install --host codex --global -y
 
     gum style --foreground 212 "→ Registering marketplace..."
     if codex plugin marketplace remove anaptfox >/dev/null 2>&1; then :; fi
@@ -269,8 +336,20 @@ codex-plugin-uninstall:
         gum style --foreground 212 "✓ Removed marketplace"
     fi
     if [ -f ~/.codex/AGENTS.md ]; then
-        node "{{root}}/packages/superimg/dist/cli.js" skill remove --host codex --global -y || true
+        node "{{root}}/packages/superimg-cli/dist/cli.js" skill remove --host codex --global -y || true
     fi
+
+# === Blitz wasm rasterizer (HTML, no Playwright) ===
+
+# Build @superimg/blitz wasm (crates.io Blitz, no NAPI)
+blitz-wasm:
+    cd "{{root}}/packages/superimg-blitz" && pnpm run build:wasm
+
+# Rasterize a sample HTML frame via Blitz wasm (writes packages/superimg-blitz/output/*.png)
+blitz-spike: blitz-wasm
+    cd "{{root}}/packages/superimg-blitz" && pnpm run spike
+
+# HTML video/still without Chromium: just cli export <media> --for youtube --rasterizer blitz
 
 # === Info ===
 

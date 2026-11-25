@@ -1,129 +1,27 @@
 # Project Configuration
 
-This guide covers how SuperImg discovers videos, loads configuration, and resolves settings across your project. No central manifest is required—configuration cascades from folder to folder.
+SuperImg discovers `*.media.ts` and `*.media.js` programs. Media owns content, assets, styling, timing, and default canvas. Delivery destinations and file paths are command/host inputs.
 
-## Table of Contents
+Use root editions for exact-aspect art direction:
 
-- [Template Discovery](#template-discovery)
-- [Cascading Config (_config.ts)](#cascading-config-_configts)
-- [Configuration Precedence](#configuration-precedence)
-- [Output Presets](#output-presets)
-- [Example Layout](#example-layout)
-
----
-
-## Template Discovery
-
-SuperImg automatically discovers all templates in your project. No registration or manifest file is needed.
-
-| Output | Pattern | Factory | Config signal |
-|--------|---------|---------|---------------|
-| MP4/WebM | `*.media.ts`, `*.media.js` | `define()` | `fps` + `duration` |
-| GIF | `*.media.ts`, `*.media.js` | `define()` | `fps` + `duration` + `--format gif` |
-| Image | `*.media.ts`, `*.media.js` | `define()` | no `fps`/`duration` |
-| SVG | `*.media.ts`, `*.media.js` | `define({ medium: "svg" })` | `medium: "svg"` |
-
-- **Excluded directories:** `node_modules`, `.next`, `.vercel`, `dist`, `out`, `.git`, `build`, `.turbo`
-- **Template name:** Relative path without extension (e.g. `src/social/promo.media.ts` → `src/social/promo`)
-
-Use `superimg list` to see all discovered templates and their resolved dimensions.
-
----
-
-## Cascading Config (_config.ts)
-
-Instead of one global config file, SuperImg uses **cascading configuration**. Place a `_config.ts` file in any directory. When you render a template, SuperImg walks **up** the directory tree from the template file to the project root, collecting and merging every `_config.ts` it finds.
-
-### Merge Strategy
-
-| Field type | Behavior |
-|------------|----------|
-| **Scalars** (width, height, fps, duration) | Nearest to the video wins |
-| **Arrays** (fonts, inlineCss, stylesheets) | Concatenated: root first, then child folders |
-| **outputs** (named presets) | Nearest wins (overwrites parent) |
-
-### Config Schema
-
-```typescript
-import { defineConfig } from "superimg";
-
-export default defineConfig({
-  width: 1920,
-  height: 1080,
-  fps: 30,
-  duration: 5,
-  fonts: ["Roboto:wght@400;700"],           // Google Fonts
-  inlineCss: ["* { box-sizing: border-box; }"],
-  stylesheets: ["https://cdn.example.com/styles.css"],
-  outputs: {
-    vertical: { width: 1080, height: 1920 },
-    draft: { fps: 15 },
-  },
-});
-```
-
----
-
-## Configuration Precedence
-
-When multiple sources define the same setting, SuperImg resolves them in this order (highest wins):
-
-1. **CLI flags** — `superimg render --width 1280 --fps 60`
-2. **Template config** — The `config: { ... }` block inside `define({ config: { ... } })`
-3. **Folder _config.ts** — The config file in the same directory as the video
-4. **Parent _config.ts** — Config files in ancestor directories up to the project root
-5. **Built-in defaults** — 1920×1080, 30 fps, 5 seconds
-
----
-
-## Output Presets
-
-Define named output presets in `config.outputs` or `_config.ts` to render multiple resolutions from one template:
-
-```typescript
-outputs: {
-  youtube: { width: 1920, height: 1080 },
-  tiktok: { width: 1080, height: 1920 },
-  thumbnail: { width: 1280, height: 720 },
+```ts
+editions: {
+  square: { size: { width: 1080, height: 1080 } },
 }
 ```
 
-Render a specific preset:
+Use root variants for shallow data changes:
+
+```ts
+variants: {
+  light: { theme: "light" },
+  dark: { theme: "dark" },
+}
+```
+
+Select delivery independently:
 
 ```bash
-superimg render intro -o intro.mp4 --preset tiktok
+superimg export launch --for youtube --for instagram-square
+superimg export launch --for 1440x1440.mp4
 ```
-
-Render all presets at once:
-
-```bash
-superimg render intro -o intro.mp4 --all
-```
-
-Output files are named with the preset suffix: `intro-tiktok.mp4`, `intro-youtube.mp4`, etc.
-
----
-
-## Example Layout
-
-```
-my-project/
-├── _config.ts                    # Global: 1920×1080, 30fps, Inter font
-├── videos/
-│   ├── intro.media.ts            # Inherits global config
-│   └── outro.media.ts
-├── social/
-│   ├── _config.ts                # Override: 1080×1920 (vertical)
-│   ├── tiktok.media.ts           # Uses 1080×1920, inherits Inter
-│   └── reels.media.ts
-└── youtube/
-    └── trailer.media.ts          # Uses root 1920×1080
-```
-
----
-
-## Next Steps
-
-- [Templates & Data](./templates-and-data.md) - How to write templates
-- [API Reference](./api.md) - RenderContext and stdlib
-- [Rendering Architecture](./rendering-architecture.md) - How rendering works

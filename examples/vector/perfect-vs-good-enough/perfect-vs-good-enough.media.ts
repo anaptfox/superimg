@@ -2,7 +2,7 @@
 // Demonstrates: std.svg.draw + std.stagger for multi-group line-art reveals
 // Based on the classic "perfect (coming soon) vs good enough (selling)" sketch
 
-import { define } from "superimg";
+import { define, Vector, vector, googleFont } from "@foxworth/superimg";
 
 export default define({
   sample: {
@@ -14,11 +14,14 @@ export default define({
     money: "#b9ac3f",
   },
 
+  medium: "svg",
+  poster: "8s",
   config: {
     width: 1920,
     height: 1080,
     fps: 30,
     duration: "9s",
+    fonts: [googleFont("Inter:wght@400;600;700;800"), googleFont("Fraunces:wght@600"), googleFont("Kalam:wght@400")],
     inlineCss: [`
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: #ffffff; overflow: hidden; font-family: system-ui, sans-serif; }
@@ -122,26 +125,21 @@ export default define({
 
     // --- Animation ------------------------------------------------------
 
-    const drawGroup = (paths: Stroke[], progress: number, fillOpacity: number) =>
+    const drawGroup = (id: string, paths: Stroke[], progress: number, fillOpacity: number) =>
       std.stagger.ms(paths, progress, {
-        windowSeconds: 2,
+        windowSeconds: 2.4,
         eachMs: 45,
         capMs: 500,
       })
         // Skip un-started paths: dash-length estimates differ slightly from the
         // browser's, which otherwise leaks a sliver of stroke at progress 0
         .filter(({ progress: p }) => p > 0)
-        .map(({ item, progress: p }) => {
-          const draw = std.svg.draw(item.d, p);
-          const fill = item.fill
-            ? `fill="${item.fill}" fill-opacity="${(fillOpacity * p).toFixed(3)}"`
-            : `fill="none"`;
-          return `<path d="${item.d}" ${fill}
-            stroke="${ink}" stroke-width="${item.w ?? 3}"
-            stroke-linecap="round" stroke-linejoin="round"
-            stroke-dasharray="${draw.strokeDasharray}"
-            stroke-dashoffset="${draw.strokeDashoffset}" />`;
-        }).join("\n");
+        .map(({ item, index, progress: p }) => vector.path({
+          id: `${id}-stroke-${index}`, d: item.d,
+          fill: item.fill ?? "none", fillOpacity: fillOpacity * p,
+          stroke: ink, strokeWidth: item.w ?? 3, strokeLinecap: "round", strokeLinejoin: "round",
+          ...std.svg.draw(item.d, p),
+        }));
 
     const leftP = t.in("left");
     const rightP = t.in("right");
@@ -165,31 +163,20 @@ export default define({
     const d1 = std.interpolate(payoffP, [0.15, 0.75], [0, 1], "easeOutBack");
     const d2 = std.interpolate(payoffP, [0.3, 0.9], [0, 1], "easeOutBack");
 
-    const lemonadeFill = `
-      <clipPath id="pour"><rect x="828" y="${476 - 32 * pourP}" width="40" height="36" /></clipPath>
-      <path d="M 840 472 Q 834 458 838 448 L 858 448 Q 862 458 856 472 Q 848 475 840 472 Z"
-            fill="${lemonade}" clip-path="url(#pour)" />
-      <g transform="translate(759 570) scale(${Math.max(0, d1)})" opacity="${std.clamp01(d1)}">
-        <text y="8" font-size="24" font-weight="700" fill="${money}" text-anchor="middle">$</text>
-      </g>
-      <g transform="translate(798 575) scale(${Math.max(0, d2)})" opacity="${std.clamp01(d2) * 0.85}">
-        <text y="7" font-size="20" font-weight="700" fill="${money}" text-anchor="middle">$</text>
-      </g>
-    `;
+    const lemonadeFill = vector.group({ id: "payoff" },
+      vector.defs(vector.clip({ id: "pour" }, vector.path({ d: std.svg.shape.roundedRect(828, 476 - 32 * pourP, 40, 36, 0), fill: "#fff" }))),
+      vector.path({ id: "lemonade", d: "M840,472Q834,458 838,448L858,448Q862,458 856,472Q848,475 840,472Z", fill: lemonade, clip: "pour" }),
+      d1 > 0 ? vector.group({ id: "earnings-first", transform: { x: 759, y: 570, scale: Math.max(0, d1) }, opacity: std.clamp01(d1) },
+        vector.text({ family: "Inter", x: 0, y: 8, size: 24, weight: 700, fill: money, anchor: "middle" }, "$")) : null,
+      d2 > 0 ? vector.group({ id: "earnings-second", transform: { x: 798, y: 575, scale: Math.max(0, d2) }, opacity: std.clamp01(d2) * 0.85 },
+        vector.text({ family: "Inter", x: 0, y: 7, size: 20, weight: 700, fill: money, anchor: "middle" }, "$")) : null,
+    );
 
-    const lettering = `
-      <text x="409" y="309" transform="rotate(-2 409 303)" text-anchor="middle"
-            font-size="15" font-weight="800" letter-spacing="1.5" fill="${ink}"
-            opacity="${bestLemOp}">BEST LEMONADE</text>
-      <text x="408" y="514" text-anchor="middle"
-            transform="rotate(-14 408 505) translate(408 505) scale(${stampScale}) translate(-408 -505)"
-            font-size="28" font-weight="600" letter-spacing="4" fill="${ink}"
-            font-family="Georgia, serif" opacity="${stampOp}">COMING SOON</text>
-      <text x="858" y="389" transform="rotate(-2 858 380)" text-anchor="middle"
-            font-size="24" letter-spacing="2" fill="${ink}"
-            font-family="'Comic Sans MS', 'Segoe Print', cursive"
-            opacity="${lemonadeOp}">LEMONADE</text>
-    `;
+    const lettering = vector.group({ id: "lettering" },
+      vector.text({ family: "Inter", x: 409, y: 309, transform: { rotate: -2, originX: 409, originY: 303 }, anchor: "middle", size: 12, weight: 800, letterSpacing: 1.5, fill: ink, opacity: bestLemOp }, "BEST LEMONADE"),
+      vector.text({ x: 408, y: 514, transform: { rotate: -14, scale: stampScale, originX: 408, originY: 505 }, anchor: "middle", size: 28, weight: 600, letterSpacing: 4, fill: ink, family: "Fraunces", opacity: stampOp }, "COMING SOON"),
+      vector.text({ x: 858, y: 389, transform: { rotate: -2, originX: 858, originY: 380 }, anchor: "middle", size: 24, letterSpacing: 2, fill: ink, family: "Kalam", opacity: lemonadeOp }, "LEMONADE"),
+    );
 
     // Header labels drop in with a short stagger — left leads, right follows
     const labelPs = std.stagger.ms(2, t.in("labels"), {
@@ -199,27 +186,19 @@ export default define({
     });
     const label = (x: number, w: number, text: string, p: number) => {
       const y = std.interpolate(p, [0, 1], [16, 0]);
-      return `
-        <g opacity="${p}" transform="translate(0 ${y})">
-          <rect x="${x}" y="96" width="${w}" height="64" fill="${panel}" />
-          <text x="${x + w / 2}" y="139" text-anchor="middle" font-size="30"
-                font-weight="800" letter-spacing="7" fill="${paper}">${text}</text>
-        </g>
-      `;
+      return vector.group({ id: `label-${x}`, opacity: p, transform: { y } },
+        vector.path({ d: std.svg.shape.roundedRect(x, 96, w, 64, 0), fill: panel }),
+        vector.text({ family: "Inter", x: x + w / 2, y: 139, anchor: "middle", size: 30, weight: 800, letterSpacing: 7, fill: paper }, text),
+      );
     };
 
-    return `
-      <div style="${std.css({ width, height, background: paper })}; ${std.css.center()}">
-        <svg width="${width}" height="${height}" viewBox="0 0 1200 675"
-             xmlns="http://www.w3.org/2000/svg">
-          ${label(258, 268, "PERFECT", labelPs[0] ?? 0)}
-          ${label(688, 324, "GOOD ENOUGH", labelPs[1] ?? 0)}
-          ${drawGroup(LEFT, leftP, leftFill)}
-          ${drawGroup(RIGHT, rightP, rightFill)}
-          ${lemonadeFill}
-          ${lettering}
-        </svg>
-      </div>
-    `;
+    return Vector({ id: "lemonade-comparison", width, height, viewBox: { x: 0, y: 0, width: 1200, height: 675 } },
+      vector.path({ id: "paper", d: "M0,0H1200V675H0Z", fill: paper }),
+      label(258, 268, "PERFECT", labelPs[0] ?? 0),
+      label(688, 324, "GOOD ENOUGH", labelPs[1] ?? 0),
+      ...drawGroup("perfect", LEFT, leftP, leftFill),
+      ...drawGroup("open", RIGHT, rightP, rightFill),
+      lemonadeFill, lettering,
+    );
   },
 });

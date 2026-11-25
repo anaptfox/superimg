@@ -1,0 +1,10 @@
+{
+  "name": "superimg",
+  "version": "0.1.0",
+  "description": "Programmatic video generation (HTML/CSS → MP4). Full lifecycle: brief, design, build, review, variants, ship.",
+  "author": {
+    "name": "anaptfox",
+    "url": "https://github.com/anaptfox"
+  },
+  "homepage": "https://superimg.app"
+}

@@ -2,9 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const features = [
   {
-    title: "Code-First Videos",
+    title: "Author media programs",
     description:
-      "Write video templates in JavaScript or TypeScript. Full control over every frame with access to time, progress, and dimensions.",
+      "Write TypeScript media with video(), image(), and the layout tree. Full control over every frame via render(ctx).",
     icon: (
       <svg
         className="h-6 w-6"
@@ -22,9 +22,9 @@ const features = [
     ),
   },
   {
-    title: "Live Preview",
+    title: "Play live",
     description:
-      "See your changes instantly as you code. Scrub through frames, play, pause, and iterate on your design in real-time.",
+      "Embed the same program with the Player. Scrub, play, and iterate in your app without a second toolchain.",
     icon: (
       <svg
         className="h-6 w-6"
@@ -48,9 +48,9 @@ const features = [
     ),
   },
   {
-    title: "Export Anywhere",
+    title: "Export anywhere",
     description:
-      "Export to MP4, GIF, PNG, or SVG from the same template system. One command, any platform.",
+      "Check, then export to MP4, GIF, PNG, or SVG for destinations — same media program as the Player.",
     icon: (
       <svg
         className="h-6 w-6"
@@ -74,11 +74,10 @@ export function Features() {
     <section className="px-6 py-24">
       <div className="mx-auto max-w-6xl">
         <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
-          Everything you need to create media from code
+          Write once. Play live. Export anywhere.
         </h2>
         <p className="mt-4 text-center text-muted-foreground">
-          A complete toolkit for developers who want to generate video, images,
-          and graphics programmatically
+          One media program for product embeds and platform-ready files.
         </p>
 
         <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

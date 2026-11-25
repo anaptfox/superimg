@@ -7,7 +7,7 @@
 import { clamp01 } from "./easing";
 import * as easing from "./easing";
 import { EASING_NAMES, type EasingName, type EasingFn } from "./easing";
-import { lerp } from "./math";
+import { lerp } from "./math-basic.js";
 
 const EASING_MAP: Record<EasingName, EasingFn> = {
   linear: easing.linear,

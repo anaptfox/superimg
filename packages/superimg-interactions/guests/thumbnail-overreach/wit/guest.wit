@@ -1,0 +1,12 @@
+package boundary:guest@1.0.0;
+
+interface footprints {
+  media-artifacts: func(request: string) -> result<string, string>;
+  media-thumbnails: func(request: string) -> result<string, string>;
+  media-publications: func(request: string) -> result<string, string>;
+}
+
+world guest {
+  import footprints;
+  export media-artifact-thumbnail: func(input: string) -> result<string, string>;
+}

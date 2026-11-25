@@ -5,11 +5,20 @@
   "type": "module",
   "scripts": {
     "test": "vitest --run",
+    "test:browser-inspection": "vitest --run --config vitest.browser-inspection.config.ts",
     "clean": "rm -rf coverage"
   },
   "devDependencies": {
+    "@foxworth/boundary": "^0.2.0",
+    "@foxworth/superimg": "workspace:*",
+    "@foxworth/superimg-cli": "workspace:*",
+    "@foxworth/superimg-interactions": "workspace:*",
+    "@mediabunny/server": "catalog:",
     "@superimg/core": "workspace:*",
-    "superimg": "workspace:*",
-    "vitest": "^4.1.9"
+    "agent-browser": "0.42.0",
+    "mediabunny": "catalog:",
+    "rolldown": "catalog:",
+    "sharp": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-460 -420 500 480">
+  <title>Right hand in a linen sleeve — origin at the grip on the handle bar. #hand-back paints behind the handle, #hand-fingers in front.</title>
+  <defs>
+    <linearGradient id="skin" x1="-110" y1="-80" x2="20" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a86d4c"/>
+      <stop offset="0.5" stop-color="#c98f6a"/>
+      <stop offset="1" stop-color="#e2b08c"/>
+    </linearGradient>
+    <linearGradient id="finger" x1="0" y1="-12" x2="0" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e6b693"/>
+      <stop offset="0.6" stop-color="#c98f6a"/>
+      <stop offset="1" stop-color="#9a6346"/>
+    </linearGradient>
+    <linearGradient id="linen" x1="-420" y1="-380" x2="-90" y2="-40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b9aa8c"/>
+      <stop offset="0.7" stop-color="#ddd0b4"/>
+      <stop offset="1" stop-color="#efe4cb"/>
+    </linearGradient>
+    <linearGradient id="linen-shade" x1="-380" y1="-400" x2="-430" y2="-330" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8f8068" stop-opacity="0"/>
+      <stop offset="1" stop-color="#8f8068" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+
+  <g id="hand-back">
+    <path id="sleeve" d="M-452 -312 L-372 -414 L-108 -122 C-96 -104 -116 -70 -134 -62 Z" fill="url(#linen)"/>
+    <path id="sleeve-underside" d="M-452 -312 L-420 -350 L-150 -90 C-142 -76 -138 -68 -134 -62 Z" fill="url(#linen-shade)"/>
+    <path id="sleeve-fold-a" d="M-300 -300 C-270 -284 -250 -262 -236 -236" fill="none" stroke="#a7977a" stroke-width="3" stroke-linecap="round" stroke-opacity="0.7"/>
+    <path id="sleeve-fold-b" d="M-226 -214 C-206 -206 -190 -190 -182 -170" fill="none" stroke="#a7977a" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.6"/>
+    <path id="wrist" d="M-118 -104 C-104 -96 -92 -84 -84 -70 L-108 -40 C-114 -52 -124 -60 -138 -66 Z" fill="#b57a57"/>
+    <path id="palm" d="M-112 -96 C-90 -80 -66 -62 -40 -56 C-14 -52 4 -48 8 -32 L8 42 C6 56 -16 60 -40 56 C-62 52 -74 34 -80 10 C-86 -16 -100 -40 -122 -58 Z" fill="url(#skin)"/>
+    <path id="palm-shadow" d="M-80 10 C-74 34 -62 52 -40 56 C-16 60 6 56 8 42 L8 30 C-10 40 -40 40 -60 26 Z" fill="#8a5538" opacity="0.45"/>
+    <path id="tendon" d="M-96 -72 C-80 -60 -64 -52 -46 -48" fill="none" stroke="#e8bc9c" stroke-width="2" stroke-linecap="round" stroke-opacity="0.6"/>
+    <path id="cuff" d="M-152 -100 L-108 -132 C-96 -118 -88 -100 -96 -86 L-138 -58 C-150 -70 -156 -86 -152 -100 Z" fill="#e9dcc0"/>
+    <path id="cuff-edge" d="M-108 -132 C-96 -118 -88 -100 -96 -86 L-138 -58" fill="none" stroke="#b3a383" stroke-width="2.5" stroke-linejoin="round"/>
+  </g>
+
+  <g id="hand-fingers">
+    <path id="thumb" d="M-56 -50 C-40 -62 -14 -60 8 -52 C22 -47 26 -40 18 -36 C2 -38 -22 -38 -44 -32 Z" fill="url(#skin)"/>
+    <path id="thumb-nail" d="M8 -50 C16 -47 21 -43 20 -39 C14 -40 9 -42 5 -45 Z" fill="#efcdb2"/>
+    <g id="finger-index" transform="translate(0 -30)">
+      <path id="finger-index-shape" d="M-28 -10 C-10 -13 4 -13 12 -11 C22 -8 24 6 14 11 C2 13 -12 12 -28 10 Z" fill="url(#finger)"/>
+      <path id="finger-index-crease" d="M-4 -9 L-4 9" fill="none" stroke="#9a6346" stroke-width="1.4" stroke-opacity="0.6" stroke-linecap="round"/>
+    </g>
+    <g id="finger-middle" transform="translate(-2 -6)">
+      <path id="finger-middle-shape" d="M-28 -10 C-10 -13 6 -13 14 -11 C24 -8 26 6 16 11 C4 13 -12 12 -28 10 Z" fill="url(#finger)"/>
+      <path id="finger-middle-crease" d="M-4 -9 L-4 9" fill="none" stroke="#9a6346" stroke-width="1.4" stroke-opacity="0.6" stroke-linecap="round"/>
+    </g>
+    <g id="finger-ring" transform="translate(-4 17)">
+      <path id="finger-ring-shape" d="M-26 -9 C-10 -12 4 -12 11 -10 C20 -7 22 5 13 10 C2 12 -12 11 -26 9 Z" fill="url(#finger)"/>
+      <path id="finger-ring-crease" d="M-5 -8 L-5 8" fill="none" stroke="#9a6346" stroke-width="1.4" stroke-opacity="0.6" stroke-linecap="round"/>
+    </g>
+    <g id="finger-little" transform="translate(-8 37)">
+      <path id="finger-little-shape" d="M-22 -8 C-8 -10 2 -10 8 -8 C15 -5 16 4 9 8 C0 10 -10 9 -22 7 Z" fill="url(#finger)"/>
+    </g>
+  </g>
+</svg>

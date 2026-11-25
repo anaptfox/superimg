@@ -1,0 +1,21 @@
+{
+  "pattern": "aligned-intervals",
+  "spec": {
+    "question": "Does the error spike overlap the deploy?",
+    "workRemoved": "Computing overlap across separate deployment and error logs",
+    "evidence": "derived",
+    "size": { "width": 1920, "height": 1080 },
+    "timeRef": { "unit": "s", "origin": 0 },
+    "tracks": [
+      { "id": "deploy", "label": "Deploy", "intervals": [{ "id": "deploy-bar", "start": 0, "end": 40 }] },
+      { "id": "errors", "label": "Error spike", "intervals": [{ "id": "error-bar", "start": 20, "end": 70 }] }
+    ],
+    "compare": { "kind": "overlap", "tracks": ["deploy", "errors"] },
+    "motion": { "phase": "reveal", "revealIds": ["errors"], "predict": "tick" },
+    "source": "Illustrative timings; overlap does not establish causality"
+  },
+  "editions": {
+    "square": { "size": { "width": 1080, "height": 1080 } },
+    "portrait": { "size": { "width": 1080, "height": 1920 } }
+  }
+}

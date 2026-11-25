@@ -1,10 +1,12 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { execa } from "execa";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { FrameExtractor, type FrameExtractorBackend } from "./frame-extractor.js";
 
-const repoRoot = join(fileURLToPath(new URL(".", import.meta.url)), "../../..");
-const countdownMp4 = join(repoRoot, "examples/marketing/countdown/output.mp4");
+const fixtureDir = mkdtempSync(join(tmpdir(), "superimg-frame-extractor-"));
+const fixtureMp4 = join(fixtureDir, "fixture.mp4");
 
 function pngDimensions(buf: Buffer): { width: number; height: number } {
   return {
@@ -25,13 +27,29 @@ class CountingBackend implements FrameExtractorBackend {
 }
 
 describe("FrameExtractor", () => {
+  beforeAll(async () => {
+    await execa("ffmpeg", [
+      "-y",
+      "-f", "lavfi",
+      "-i", "color=c=blue:s=120x200:r=30",
+      "-t", "3",
+      "-c:v", "mpeg4",
+      "-q:v", "5",
+      fixtureMp4,
+    ]);
+  });
+
+  afterAll(() => {
+    rmSync(fixtureDir, { recursive: true, force: true });
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("extracts a non-empty PNG from countdown mp4 at t=2s", async () => {
+  it("extracts a non-empty PNG from a fixture mp4 at t=2s", async () => {
     const extractor = new FrameExtractor();
-    const png = await extractor.extractFrame(countdownMp4, 2, 30);
+    const png = await extractor.extractFrame(fixtureMp4, 2, 30);
     expect(png.length).toBeGreaterThan(100);
     expect(png[0]).toBe(0x89);
     expect(png[1]).toBe(0x50);
@@ -41,7 +59,7 @@ describe("FrameExtractor", () => {
   it("returns cached buffer on second identical extraction", async () => {
     const backend = new CountingBackend();
     const extractor = new FrameExtractor(backend);
-    const src = countdownMp4;
+    const src = fixtureMp4;
 
     await extractor.extractFrame(src, 2, 30);
     await extractor.extractFrame(src, 2, 30);
@@ -56,13 +74,13 @@ describe("FrameExtractor", () => {
     const backend = new CountingBackend();
     const extractor = new FrameExtractor(backend, 2);
 
-    await extractor.extractFrame(countdownMp4, 0, 30);
-    await extractor.extractFrame(countdownMp4, 1, 30);
-    await extractor.extractFrame(countdownMp4, 2, 30);
+    await extractor.extractFrame(fixtureMp4, 0, 30);
+    await extractor.extractFrame(fixtureMp4, 1, 30);
+    await extractor.extractFrame(fixtureMp4, 2, 30);
 
     expect(backend.calls).toBe(3);
 
-    await extractor.extractFrame(countdownMp4, 0, 30);
+    await extractor.extractFrame(fixtureMp4, 0, 30);
     expect(backend.calls).toBe(4);
 
     await extractor.dispose();
@@ -74,7 +92,7 @@ describe("FrameExtractor", () => {
     const extractor = new FrameExtractor(
       backend,
       undefined,
-      (src) => src === url ? countdownMp4 : undefined,
+      (src) => src === url ? fixtureMp4 : undefined,
     );
 
     await extractor.extractFrame(url, 1, 30);
@@ -82,23 +100,23 @@ describe("FrameExtractor", () => {
     await extractor.dispose();
   });
 
-  it("shares cache for times that round to the same frame index", async () => {
+  it("shares cache for times that round to the same microsecond", async () => {
     const backend = new CountingBackend();
     const extractor = new FrameExtractor(backend);
 
-    await extractor.extractFrame(countdownMp4, 1, 30);
-    await extractor.extractFrame(countdownMp4, 1.0000001, 30);
+    await extractor.extractFrame(fixtureMp4, 1, 30);
+    await extractor.extractFrame(fixtureMp4, 1.0000001, 30);
 
     expect(backend.calls).toBe(1);
     await extractor.dispose();
   });
 
-  it("extracts different frames for adjacent quantized times", async () => {
+  it("extracts different frames for adjacent source times", async () => {
     const backend = new CountingBackend();
     const extractor = new FrameExtractor(backend);
 
-    await extractor.extractFrame(countdownMp4, 1, 30);
-    await extractor.extractFrame(countdownMp4, 1 + 1 / 30, 30);
+    await extractor.extractFrame(fixtureMp4, 1, 30);
+    await extractor.extractFrame(fixtureMp4, 1 + 1 / 30, 30);
 
     expect(backend.calls).toBe(2);
     await extractor.dispose();
@@ -106,10 +124,10 @@ describe("FrameExtractor", () => {
 
   it("extracts PNG at native source dimensions", async () => {
     const extractor = new FrameExtractor();
-    const png = await extractor.extractFrame(countdownMp4, 2, 30);
+    const png = await extractor.extractFrame(fixtureMp4, 2, 30);
     const { width, height } = pngDimensions(png);
-    expect(width).toBe(1080);
-    expect(height).toBe(1920);
+    expect(width).toBe(120);
+    expect(height).toBe(200);
     await extractor.dispose();
   });
 });

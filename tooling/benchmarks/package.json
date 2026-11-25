@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test scripts/run-support.test.mjs scripts/hmr-acceptance.test.mjs",
     "measure": "node scripts/measure-build-cache.mjs",
     "bench:quick": "node scripts/measure-quick.mjs --check",
     "bench:catalog": "node scripts/measure-performance.mjs --check",
@@ -12,9 +13,11 @@
     "clean": "rm -rf .results"
   },
   "dependencies": {
-    "@zumer/snapdom": "^2.15.0",
-    "playwright": "^1.61.1",
-    "rolldown": "1.1.3",
-    "sharp": "^0.35.2"
+    "@foxworth/superimg-cli": "workspace:*",
+    "@foxworth/superimg-interactions": "workspace:*",
+    "@zumer/snapdom": "catalog:",
+    "playwright": "catalog:",
+    "rolldown": "catalog:",
+    "sharp": "catalog:"
   }
 }

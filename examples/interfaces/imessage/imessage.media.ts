@@ -1,4 +1,4 @@
-import { define, layoutTimeline, type RenderContext } from "superimg";
+import { define, Html, layoutTimeline, type RenderContext } from "@foxworth/superimg";
 
 export interface Reaction {
   emoji: string;
@@ -33,7 +33,7 @@ function estimateIMessageTimeline(data: iMessageData) {
     data.timingPreset === "rapid" ? 0.85 : data.timingPreset === "dramatic" ? 1.25 : 1;
   const weights = data.messages.map(messageWeight);
   const messagesS = Math.max(3, weights.reduce((a, w) => a + w, 0) * 1.7 * pace);
-  const holdS = Math.max(0.7, messagesS * (1 / 9));
+  const holdS = Math.max(1.6, messagesS / 9);
   return layoutTimeline({ messages: messagesS, hold: holdS });
 }
 
@@ -178,7 +178,7 @@ export default define<iMessageData>({
           font-size:${reactionSize * 0.8}px;
           box-shadow:0 1px 3px rgba(0,0,0,0.2);
           transform:translateX(${i * reactionSize * 0.6}px);
-        ">${r.emoji}</div>
+        ">${std.text.escapeHtml(r.emoji)}</div>
       `).join("");
     }
 
@@ -193,7 +193,7 @@ export default define<iMessageData>({
 
       const isUser = msg.sender === "user";
 
-      if (!isUser && showTypingIndicator && item.state === "entering" && item.slot < 0.5) {
+      if (!isUser && showTypingIndicator && item.slot < 0.5) {
         const typingProgress = item.slot * 2;
         if (msg.typingHesitation) {
           const showTyping = typingProgress < 0.30 || typingProgress > 0.55;
@@ -209,13 +209,10 @@ export default define<iMessageData>({
         continue;
       }
 
+      // A revealed stack item still has sub-beats left in its slot.
       const bubbleP = isUser || !showTypingIndicator
         ? item.enter
-        : item.state === "entering"
-          ? std.interpolate(item.slot, [0.5, 1], [0, 1])
-          : item.state === "revealed"
-            ? 1
-            : 0;
+        : std.interpolate(item.slot, [0.5, 0.75], [0, 1]);
       if (bubbleP <= 0) continue;
 
       const { transform, opacity } = getBubbleTransform(bubbleP);
@@ -229,6 +226,7 @@ export default define<iMessageData>({
       messagesHtml += `
         <div style="
           position:relative;
+          width:fit-content;
           max-width:${bubbleMaxWidth}px;
           padding:${baseFontSize * 0.7}px ${baseFontSize}px;
           ${bubbleStyle}
@@ -240,7 +238,7 @@ export default define<iMessageData>({
           margin-bottom:${messageGap}px;
           word-wrap:break-word;
         ">
-          ${msg.text}
+          ${std.text.escapeHtml(msg.text)}
           ${renderReactions(msg.reactions, isUser)}
         </div>
       `;
@@ -257,7 +255,7 @@ export default define<iMessageData>({
         gap:${baseFontSize * 0.5}px;
       ">
         ${contactAvatar ? `
-          <img src="${contactAvatar}" style="
+          <img src="${std.text.escapeHtml(contactAvatar)}" style="
             width:${baseFontSize * 2}px;
             height:${baseFontSize * 2}px;
             border-radius:50%;
@@ -275,13 +273,13 @@ export default define<iMessageData>({
             color:white;
             font-size:${baseFontSize * 0.9}px;
             font-weight:600;
-          ">${contactName.charAt(0).toUpperCase()}</div>
+          ">${std.text.escapeHtml(contactName.charAt(0).toUpperCase())}</div>
         `}
         <span style="
           font-size:${baseFontSize * 0.95}px;
           font-weight:600;
           color:${THEME.headerText};
-        ">${contactName}</span>
+        ">${std.text.escapeHtml(contactName)}</span>
       </div>
     ` : "";
 
@@ -335,7 +333,7 @@ export default define<iMessageData>({
       </div>
     `;
 
-    return `
+    return Html({ id: "imessage-conversation", width: "fill", height: "fill", html: `
       <div style="
         width:${width}px;
         height:${height}px;
@@ -364,6 +362,6 @@ export default define<iMessageData>({
 
         ${footerHtml}
       </div>
-    `;
+    ` });
   },
 });

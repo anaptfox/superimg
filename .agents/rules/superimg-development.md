@@ -26,10 +26,10 @@ Please always refer to these files for detailed information before making struct
 
 ## Code Structure (from @/CLAUDE.md)
 - Workspaces: Ensure you are modifying the correct workspaces inside `packages/` or `apps/`.
-- Templates: Video examples are located in `examples/templates/<name>/<name>.video.ts`.
+- Media programs live under `examples/` and use the `*.media.ts` suffix.
 
-## Render Commands
-Never run `pnpm render`. The CLI should be accessed via the node output script:
+## Export Commands
+Use destination-first export through the built CLI:
 ```bash
-node ./packages/superimg/dist/cli.js render <path>
+node ./packages/superimg-cli/dist/cli.js export <path.media.ts> --for youtube
 ```

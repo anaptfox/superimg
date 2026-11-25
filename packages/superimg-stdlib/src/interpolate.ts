@@ -15,9 +15,10 @@
  */
 
 import { clamp01 } from "./easing";
-import { lerp, inverseLerp } from "./math";
+import { inverseLerp } from "./math";
 import { tween } from "./tween";
 import type { EasingName, EasingFn } from "./easing";
+export { interpolate } from "./interpolate-number.js";
 import { colord, extend } from "colord";
 import mixPlugin from "colord/plugins/mix";
 
@@ -42,37 +43,6 @@ extend([mixPlugin]);
  * std.interpolate(0.5, [0, 1], [0, 100], "easeOutCubic")
  * ```
  */
-export function interpolate(
-  progress: number,
-  inputRange: number[],
-  outputRange: number[],
-  easing?: EasingName | EasingFn,
-): number {
-  if (inputRange.length < 2) throw new Error("interpolate: inputRange must have at least 2 values");
-  if (inputRange.length !== outputRange.length) {
-    throw new Error("interpolate: inputRange and outputRange must have the same length");
-  }
-
-  const last = inputRange.length - 1;
-  const firstInput = inputRange[0]!;
-  const lastInput = inputRange[last]!;
-  const firstOutput = outputRange[0]!;
-  const lastOutput = outputRange[last]!;
-  if (progress <= firstInput) return firstOutput;
-  if (progress >= lastInput) return lastOutput;
-
-  let i = 1;
-  while (i < last && progress > (inputRange[i] ?? lastInput)) i++;
-
-  const inLo = inputRange[i - 1] ?? firstInput;
-  const inHi = inputRange[i] ?? lastInput;
-  const outLo = outputRange[i - 1] ?? firstOutput;
-  const outHi = outputRange[i] ?? lastOutput;
-  const segT = clamp01(inverseLerp(inLo, inHi, progress));
-  if (!easing) return lerp(outLo, outHi, segT);
-  return tween(outLo, outHi, segT, easing);
-}
-
 /**
  * Multi-segment color interpolation.
  *

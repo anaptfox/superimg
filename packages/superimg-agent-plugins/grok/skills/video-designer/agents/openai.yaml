@@ -1,0 +1,7 @@
+interface:
+  display_name: '/video-designer'
+  short_description: 'Design, animate, or create visual content for SuperImg video generation — scenes, techn...'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$video-designer: Redesign this scene as a technical diagram'

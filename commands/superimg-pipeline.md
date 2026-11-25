@@ -1,0 +1,10 @@
+---
+name: superimg-pipeline
+description: Full idea-to-shipped-video SuperImg pipeline
+---
+
+# /superimg-pipeline
+
+Load and follow the **superimg-pipeline** skill. Execute its staged workflow
+(brief → design → build → polish → review → variants → ship) for the current
+user request.

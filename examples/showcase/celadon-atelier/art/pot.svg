@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-200 -200 400 220">
+  <title>Celadon teapot — local origin at the foot's contact centre, light from upper right</title>
+  <defs>
+    <linearGradient id="glaze-body" x1="-118" y1="0" x2="118" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3f6656"/>
+      <stop offset="0.22" stop-color="#5e8a76"/>
+      <stop offset="0.55" stop-color="#8fb9a2"/>
+      <stop offset="0.8" stop-color="#b4d3c0"/>
+      <stop offset="0.93" stop-color="#cfe4d6"/>
+      <stop offset="1" stop-color="#7fa892"/>
+    </linearGradient>
+    <linearGradient id="glaze-fall" x1="0" y1="-150" x2="0" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e6f2ea" stop-opacity="0.35"/>
+      <stop offset="0.45" stop-color="#8fb9a2" stop-opacity="0"/>
+      <stop offset="1" stop-color="#2c4a3e" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="bounce" x1="0" y1="-40" x2="0" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c9814a" stop-opacity="0"/>
+      <stop offset="1" stop-color="#c9814a" stop-opacity="0.35"/>
+    </linearGradient>
+    <linearGradient id="glaze-lid" x1="-62" y1="0" x2="62" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#557f6d"/>
+      <stop offset="0.6" stop-color="#9cc4ad"/>
+      <stop offset="0.88" stop-color="#d4e8db"/>
+      <stop offset="1" stop-color="#86ae98"/>
+    </linearGradient>
+    <linearGradient id="glaze-handle" x1="-180" y1="0" x2="-100" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3a5f50"/>
+      <stop offset="0.6" stop-color="#6f9c86"/>
+      <stop offset="1" stop-color="#4c7563"/>
+    </linearGradient>
+    <linearGradient id="glaze-spout" x1="0" y1="-160" x2="0" y2="-30" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#cfe4d6"/>
+      <stop offset="0.5" stop-color="#93bca5"/>
+      <stop offset="1" stop-color="#5d8874"/>
+    </linearGradient>
+    <linearGradient id="foot-clay" x1="-62" y1="0" x2="62" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7a5a43"/>
+      <stop offset="0.7" stop-color="#b48a66"/>
+      <stop offset="1" stop-color="#8c6a50"/>
+    </linearGradient>
+    <pattern id="crackle" x="0" y="0" width="97" height="71" patternUnits="userSpaceOnUse">
+      <path d="M0 18 L17 23 L33 9 L52 16 L71 6 L97 13 M17 23 L21 44 L8 60 L0 71 M21 44 L46 41 L52 16 M46 41 L57 63 L52 71 M46 41 L72 47 L71 6 M72 47 L83 66 M72 47 L97 40 M33 9 L36 0 M83 66 L97 71" fill="none" stroke="#2f5144" stroke-width="0.5" stroke-opacity="0.13"/>
+    </pattern>
+    <clipPath id="body-clip">
+      <path d="M-58 -4 C-98 -10 -118 -42 -116 -78 C-114 -114 -92 -134 -58 -141 L58 -141 C92 -134 114 -114 116 -78 C118 -42 98 -10 58 -4 C36 2 -36 2 -58 -4 Z"/>
+    </clipPath>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <filter id="softer" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+
+  <g id="handle">
+    <path id="handle-loop" d="M-100 -118 C-164 -132 -190 -56 -104 -42" fill="none" stroke="url(#glaze-handle)" stroke-width="17" stroke-linecap="round"/>
+    <path id="handle-light" d="M-112 -122 C-158 -126 -176 -84 -158 -62" fill="none" stroke="#b9d7c4" stroke-width="3" stroke-linecap="round" stroke-opacity="0.55"/>
+  </g>
+
+  <g id="spout">
+    <path id="spout-body" d="M106 -28 C140 -36 158 -70 170 -110 C174 -124 178 -134 186 -142 L176 -153 C170 -144 164 -132 158 -118 C146 -94 132 -98 112 -106 Z" fill="url(#glaze-spout)"/>
+    <path id="spout-under" d="M106 -28 C140 -36 158 -70 170 -110 C174 -124 178 -134 186 -142 L182 -138 C170 -124 162 -100 150 -76 C138 -54 124 -40 110 -38 Z" fill="#3f6656" opacity="0.55"/>
+    <path id="spout-root" d="M100 -102 C120 -96 132 -78 128 -44 L104 -34 Z" fill="url(#glaze-spout)"/>
+    <ellipse id="spout-lip" cx="181" cy="-147.5" rx="8" ry="3.6" transform="rotate(-48 181 -147.5)" fill="#2c4a3e"/>
+    <path id="spout-shine" d="M146 -100 C156 -114 164 -128 174 -142" fill="none" stroke="#eef7f1" stroke-width="2.5" stroke-linecap="round" stroke-opacity="0.7"/>
+  </g>
+
+  <g id="body">
+    <path id="body-glaze" d="M-58 -4 C-98 -10 -118 -42 -116 -78 C-114 -114 -92 -134 -58 -141 L58 -141 C92 -134 114 -114 116 -78 C118 -42 98 -10 58 -4 C36 2 -36 2 -58 -4 Z" fill="url(#glaze-body)"/>
+    <g id="body-surface" clip-path="url(#body-clip)">
+      <rect id="body-fall" x="-120" y="-150" width="240" height="152" fill="url(#glaze-fall)"/>
+      <rect id="body-crackle" x="-120" y="-150" width="240" height="152" fill="url(#crackle)"/>
+      <rect id="body-bounce" x="-120" y="-40" width="240" height="42" fill="url(#bounce)"/>
+      <path id="body-core-shadow" d="M-104 -30 C-118 -70 -106 -116 -70 -134" fill="none" stroke="#2c4a3e" stroke-width="16" stroke-opacity="0.35" filter="url(#soft)"/>
+      <path id="body-rim-light" d="M98 -124 C116 -104 120 -60 104 -26" fill="none" stroke="#f3e6c6" stroke-width="5" stroke-opacity="0.75" filter="url(#soft)"/>
+      <ellipse id="body-specular" cx="62" cy="-104" rx="22" ry="11" transform="rotate(-28 62 -104)" fill="#fbfdf9" opacity="0.8" filter="url(#soft)"/>
+      <ellipse id="body-window" cx="72" cy="-86" rx="5" ry="9" transform="rotate(-20 72 -86)" fill="#ffffff" opacity="0.65"/>
+      <path id="shoulder-groove" d="M-108 -96 C-60 -84 60 -84 108 -96" fill="none" stroke="#3d6152" stroke-width="2" stroke-opacity="0.45"/>
+      <path id="shoulder-groove-light" d="M-106 -93 C-60 -81 60 -81 106 -93" fill="none" stroke="#e1efe5" stroke-width="1.2" stroke-opacity="0.4"/>
+    </g>
+    <path id="foot" d="M-60 -6 C-58 2 -48 6 0 6 C48 6 58 2 60 -6 C40 0 -40 0 -60 -6 Z" fill="url(#foot-clay)"/>
+  </g>
+
+  <g id="pot-lid">
+    <ellipse id="opening" cx="0" cy="-141" rx="58" ry="14" fill="#33564a"/>
+    <path id="lid-dome" d="M-56 -143 C-52 -170 -24 -176 0 -176 C24 -176 52 -170 56 -143 C40 -134 -40 -134 -56 -143 Z" fill="url(#glaze-lid)"/>
+    <path id="lid-flange" d="M-56 -143 C-40 -134 40 -134 56 -143 C56 -139 40 -130 0 -130 C-40 -130 -56 -139 -56 -143 Z" fill="#4c7563"/>
+    <path id="lid-shine" d="M18 -172 C34 -170 46 -162 50 -152" fill="none" stroke="#f5faf6" stroke-width="3" stroke-linecap="round" stroke-opacity="0.75"/>
+    <path id="knob" d="M-9 -175 C-12 -184 -8 -192 0 -194 C8 -192 12 -184 9 -175 Z" fill="url(#glaze-lid)"/>
+    <ellipse id="knob-shine" cx="4" cy="-188" rx="2.2" ry="3" fill="#ffffff" opacity="0.7"/>
+  </g>
+</svg>

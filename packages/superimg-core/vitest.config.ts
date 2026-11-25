@@ -7,7 +7,7 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
     pool: 'forks',
-    singleFork: true,
+    maxWorkers: 1,
     resolve: {
       conditions: ['import', 'module', 'browser', 'default'],
     },
@@ -25,6 +25,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@superimg/stdlib/media': resolve(__dirname, '../superimg-stdlib/src/media.ts'),
+      '@superimg/stdlib/svg/woff': resolve(__dirname, '../superimg-stdlib/src/svg/woff.ts'),
     },
     conditions: ['import', 'module', 'browser', 'default'],
   },

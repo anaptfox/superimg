@@ -1,4 +1,8 @@
-import { define, type RenderContext } from "superimg";
+// URL card — a link rendered as a paper filing slip, not a browser screenshot.
+// Four structures share one art direction: slip, minimal, wireframe, social.
+// Sample data is fully offline: no image, no favicon, no network at render time.
+
+import { video, Frame, Fill, Image, Stack, Text, type TextProps, type RenderContext, googleFont } from "@foxworth/superimg";
 
 export type UrlCardStyle = "card" | "minimal" | "browser" | "social";
 
@@ -12,129 +16,547 @@ export interface UrlVideoData extends Record<string, unknown> {
   domain: string;
   style: UrlCardStyle;
   theme: "light" | "dark";
-  showQr: boolean;
+  /** Decorative scan strip derived from the URL; it is not a machine-readable code. */
+  showScanStrip: boolean;
 }
 
-export default define<UrlVideoData>({
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+const SANS = "'Fraunces', Georgia, serif";
+
+interface Tokens {
+  field: string;
+  surface: string;
+  ink: string;
+  muted: string;
+  line: string;
+  accent: string;
+  stamp: string;
+}
+
+function slipTokens(theme: "light" | "dark"): Tokens {
+  return theme === "dark"
+    ? {
+        field: "#0E1513",
+        surface: "#16201C",
+        ink: "#E8EEE6",
+        muted: "#8DA096",
+        line: "rgba(232,238,230,0.18)",
+        accent: "#5BC08C",
+        stamp: "#E4705F",
+      }
+    : {
+        field: "#DDE4DC",
+        surface: "#F4F7F1",
+        ink: "#16211C",
+        muted: "#5E6B63",
+        line: "rgba(22,33,28,0.16)",
+        accent: "#1F6F4A",
+        stamp: "#B23A2E",
+      };
+}
+
+/** Deterministic bar widths from the link itself — a scan strip, not a QR code. */
+function scanBars(seed: string, count: number): number[] {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  const out: number[] = [];
+  for (let i = 0; i < count; i++) {
+    h = (Math.imul(h, 1664525) + 1013904223) >>> 0;
+    out.push(1 + ((h >>> 17) % 3));
+  }
+  return out;
+}
+
+export default video<UrlVideoData>({
+  duration: "8s",
+  fonts: [googleFont("Fraunces:opsz,wght@9..144,600;9..144,700"), googleFont("IBM+Plex+Mono:wght@400;500;600")],
   sample: {
-    url: "https://producthunt.com/posts/superimg",
-    title: "SuperImg — Create stunning videos from templates",
-    description: "Generate beautiful videos using HTML/CSS templates. Perfect for social media, marketing, and more.",
-    image: "https://ph-static.imgix.net/ph-logo-1.png",
-    siteName: "Product Hunt",
-    favicon: "https://ph-static.imgix.net/ph-ios-icon.png",
-    domain: "producthunt.com",
+    url: "https://superimg.dev/docs/getting-started",
+    title: "Write the frame, not the timeline",
+    description:
+      "A pure function of time — same input, same file.",
+    image: null,
+    siteName: "SuperImg Docs",
+    favicon: null,
+    domain: "superimg.dev",
     style: "card",
-    theme: "dark",
-    showQr: false,
+    theme: "light",
+    showScanStrip: true,
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "6s",
+
+  variants: {
+    minimal: { style: "minimal" },
+    browser: { style: "browser" },
+    social: { style: "social", theme: "dark" },
   },
+
   render(ctx: RenderContext<UrlVideoData>) {
     const { std, width, height, data } = ctx;
-    const { url, title, description, image, siteName, favicon, domain, style, theme } = data;
+    const { url, title, description, image, siteName, favicon, domain, style, theme, showScanStrip } =
+      data;
 
-    const t = ctx.director({ enter: "62%", hold: "26%", exit: "12%" });
+    const t = ctx.director({
+      enter: "12%",
+      type: "22%",
+      seal: "10%",
+      hold: "46%",
+      exit: "10%",
+    });
 
-    const cardMotion = t.motion({ during: "enter", at: "0%", for: "22%", y: 36, scale: 0.94, easing: "easeOutBack" });
-    const imageP = t.tween(0, 1, { during: "enter", at: "12%", for: "20%", easing: "easeOutCubic" });
-    const titleMotion = t.motion({ during: "enter", at: "22%", for: "20%", x: 24, easing: "easeOutCubic" });
-    const descP = t.tween(0, 1, { during: "enter", at: "34%", for: "18%", easing: "easeOutCubic" });
-    const domainP = t.tween(0, 1, { during: "enter", at: "44%", for: "16%", easing: "easeOutCubic" });
-    const exitP = t.tween(1, 0, { during: "exit", easing: "easeOutCubic" });
-    const holdPulse = t.in("hold") > 0 && t.in("hold") < 1
-      ? 1 + Math.sin(t.in("hold") * Math.PI * 3) * 0.008
-      : 1;
+    const tk = slipTokens(theme);
+    const inverted = style === "social";
+    const surface = inverted ? tk.ink : tk.surface;
+    const onSurface = inverted ? tk.surface : tk.ink;
+    const onSurfaceMuted = inverted ? std.color.alpha(tk.surface, 0.62) : tk.muted;
+    const onSurfaceLine = inverted ? std.color.alpha(tk.surface, 0.22) : tk.line;
 
-    const bgColor = theme === "dark" ? "#0a0a0a" : "#f5f5f5";
-    const cardBg = theme === "dark" ? "#18181b" : "#ffffff";
-    const textColor = theme === "dark" ? "#ffffff" : "#0a0a0a";
-    const mutedColor = theme === "dark" ? "#71717a" : "#a1a1aa";
-    const borderColor = theme === "dark" ? "#27272a" : "#e4e4e7";
-    const accentColor = "#3b82f6";
-
-    const fontSize = Math.min(width, height) * 0.04;
+    const s = Math.min(width, height) / 1080;
     const isVertical = height > width;
-    const cardWidth = isVertical ? width * 0.88 : width * 0.7;
-    const cardMaxHeight = isVertical ? height * 0.75 : height * 0.8;
-    const imageHeight = image ? cardMaxHeight * 0.45 : 0;
-    const contentPad = fontSize * 1.2;
-    const borderRadius = fontSize * 0.6;
+    const cardWidth = Math.round(width * (isVertical ? 0.88 : 0.62));
+    const pad = Math.round(56 * s);
+    const gap = Math.round(26 * s);
+    const copyWidth = cardWidth - pad * 2;
 
-    const THEME = { bg: bgColor, cardBg, text: textColor, muted: mutedColor, border: borderColor, accent: accentColor };
+    // ---- beats: the slip lands, the copy reads, the stamp seals, the page lifts ----
+    const slip = t.motion({
+      id: "slip",
+      during: "enter",
+      at: "0%",
+      for: "58%",
+      y: Math.round(46 * s),
+      scale: 0.965,
+      easing: "easeOutBack",
+      exit: false,
+    });
+    const head = t.motion({
+      id: "head",
+      during: "enter",
+      at: "26%",
+      for: "42%",
+      y: -Math.round(14 * s),
+      exit: false,
+    });
+    const heading = t.motion({
+      id: "title",
+      during: "type",
+      at: "0%",
+      for: "38%",
+      y: Math.round(22 * s),
+      exit: false,
+    });
+    const blurb = t.motion({
+      id: "blurb",
+      during: "type",
+      at: "18%",
+      for: "38%",
+      y: Math.round(14 * s),
+      exit: false,
+    });
+    const address = t.motion({
+      id: "address",
+      during: "type",
+      at: "36%",
+      for: "36%",
+      x: -Math.round(20 * s),
+      exit: false,
+    });
+    const plateP = std.interpolate(t.in("enter"), [0.2, 0.8], [0, 1], "easeOutCubic");
+    const sealP = t.in("seal");
+    const sealScale = std.spring(1.42, 1, std.interpolate(sealP, [0, 0.6], [0, 1]), "snappy");
+    const sealOpacity = std.interpolate(sealP, [0, 0.25], [0, 1], "easeOutCubic");
+    const stripP = std.interpolate(sealP, [0.15, 0.9], [0, 1], "easeOutQuart");
+    const typed = std.text.type(url, std.interpolate(t.in("type"), [0.1, 0.9], [0, 1]), {
+      by: "char",
+    });
 
-    let cardHtml = "";
+    const leave = std.interpolate(t.in("exit"), [0, 1], [0, 1], "easeInCubic");
+    const pageStyle = {
+      opacity: 1 - leave,
+      transform: `translateY(${-Math.round(26 * s) * leave}px)`,
+    };
 
-    if (style === "browser") {
-      const browserBarHeight = fontSize * 1.5;
-      cardHtml = `
-      <div style="
-        width:${cardWidth}px;
-        max-height:${cardMaxHeight}px;
-        background:${THEME.cardBg};
-        border-radius:${borderRadius}px;
-        overflow:hidden;
-        box-shadow:0 25px 80px rgba(0,0,0,0.4);
-        ${cardMotion.style};
-        transform:scale(${holdPulse});
-        opacity:${exitP};
-      ">
-        <div style="height:${browserBarHeight}px;background:${THEME.border};display:flex;align-items:center;padding:0 ${fontSize * 0.5}px;gap:${fontSize * 0.3}px;">
-          <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57;"></div>
-          <div style="width:10px;height:10px;border-radius:50%;background:#febc2e;"></div>
-          <div style="width:10px;height:10px;border-radius:50%;background:#28c840;"></div>
-          <div style="flex:1;margin-left:${fontSize * 0.5}px;background:${THEME.bg};border-radius:${fontSize * 0.3}px;padding:${fontSize * 0.2}px ${fontSize * 0.5}px;font-size:${fontSize * 0.35}px;color:${THEME.muted};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${url}</div>
-        </div>
-        ${image ? `<div style="width:100%;height:${imageHeight}px;overflow:hidden;clip-path:inset(0 0 ${(1 - imageP) * 100}% 0);"><img src="${image}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ""}
-        <div style="padding:${contentPad}px;">
-          <div style="font-size:${fontSize * 1.1}px;font-weight:700;color:${THEME.text};line-height:1.3;margin-bottom:${fontSize * 0.5}px;${titleMotion.style}">${title}</div>
-          ${description ? `<div style="font-size:${fontSize * 0.55}px;color:${THEME.muted};line-height:1.5;opacity:${descP};display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${description}</div>` : ""}
-        </div>
-      </div>`;
-    } else if (style === "minimal") {
-      cardHtml = `
-      <div style="width:${cardWidth}px;text-align:center;${cardMotion.style};transform:scale(${holdPulse});opacity:${exitP};">
-        <div style="display:flex;align-items:center;justify-content:center;gap:${fontSize * 0.4}px;margin-bottom:${fontSize * 1}px;opacity:${domainP};">
-          ${favicon ? `<img src="${favicon}" style="width:${fontSize * 0.8}px;height:${fontSize * 0.8}px;border-radius:4px;" />` : ""}
-          <span style="font-size:${fontSize * 0.5}px;color:${THEME.accent};font-weight:500;">${domain}</span>
-        </div>
-        <div style="font-size:${fontSize * 1.5}px;font-weight:800;color:${THEME.text};line-height:1.2;margin-bottom:${fontSize * 0.6}px;${titleMotion.style}">${title}</div>
-        ${description ? `<div style="font-size:${fontSize * 0.6}px;color:${THEME.muted};line-height:1.5;opacity:${descP};max-width:80%;margin:0 auto;">${description}</div>` : ""}
-      </div>`;
-    } else if (style === "social") {
-      cardHtml = `
-      <div style="width:${cardWidth}px;background:${THEME.cardBg};border:1px solid ${THEME.border};border-radius:${borderRadius}px;overflow:hidden;${cardMotion.style};transform:scale(${holdPulse});opacity:${exitP};">
-        ${image ? `<div style="width:100%;height:${cardMaxHeight * 0.55}px;overflow:hidden;clip-path:inset(0 0 ${(1 - imageP) * 100}% 0);"><img src="${image}" style="width:100%;height:100%;object-fit:cover;" /></div>` : ""}
-        <div style="padding:${contentPad}px;">
-          <div style="font-size:${fontSize * 0.4}px;color:${THEME.muted};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:${fontSize * 0.4}px;opacity:${domainP};">${domain}</div>
-          <div style="font-size:${fontSize * 1}px;font-weight:700;color:${THEME.text};line-height:1.3;margin-bottom:${fontSize * 0.3}px;${titleMotion.style}">${title}</div>
-          ${description ? `<div style="font-size:${fontSize * 0.5}px;color:${THEME.muted};line-height:1.4;opacity:${descP};display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${description}</div>` : ""}
-        </div>
-      </div>`;
-    } else {
-      cardHtml = `
-      <div style="width:${cardWidth}px;background:${THEME.cardBg};border-radius:${borderRadius}px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);${cardMotion.style};transform:scale(${holdPulse});opacity:${exitP};">
-        ${image ? `<div style="width:100%;height:${imageHeight}px;overflow:hidden;position:relative;"><div style="position:absolute;inset:0;background:url('${image}') center/cover;transform:scale(${1 + (1 - imageP) * 0.1});opacity:${imageP};"></div></div>` : ""}
-        <div style="padding:${contentPad}px;">
-          <div style="display:flex;align-items:center;gap:${fontSize * 0.3}px;margin-bottom:${fontSize * 0.6}px;opacity:${domainP};">
-            ${favicon ? `<img src="${favicon}" style="width:${fontSize * 0.6}px;height:${fontSize * 0.6}px;border-radius:3px;" />` : ""}
-            <span style="font-size:${fontSize * 0.4}px;color:${THEME.muted};">${siteName}</span>
-          </div>
-          <div style="font-size:${fontSize * 1.1}px;font-weight:700;color:${THEME.text};line-height:1.3;margin-bottom:${fontSize * 0.4}px;${titleMotion.style}">${title}</div>
-          ${description ? `<div style="font-size:${fontSize * 0.5}px;color:${THEME.muted};line-height:1.5;opacity:${descP};display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${description}</div>` : ""}
-          <div style="margin-top:${fontSize * 0.6}px;padding-top:${fontSize * 0.5}px;border-top:1px solid ${THEME.border};font-size:${fontSize * 0.35}px;color:${THEME.accent};opacity:${domainP};">${domain}</div>
-        </div>
-      </div>`;
+    // ---- shared pieces ----
+    const unit = Math.max(2, Math.round(3 * s));
+    const stripHeight = Math.round(44 * s);
+    const bars = scanBars(url, 34);
+    const stripWidth = bars.reduce((sum, w) => sum + w * unit, 0) + bars.length * unit;
+    const scanStrip = (tint: string) =>
+      Frame(
+        {
+          width: Math.max(2, Math.round(stripWidth * stripP)),
+          height: stripHeight,
+          overflow: "hidden",
+        },
+        Stack(
+          { direction: "row", gap: unit, height: stripHeight },
+          ...bars.map((w, i) =>
+            Fill({
+              width: w * unit,
+              height: stripHeight,
+              color: i % 2 === 0 ? tint : "transparent",
+            }),
+          ),
+        ),
+      );
+
+    const perforation = (tint: string) =>
+      Stack(
+        { direction: "row", width: "fill", gap: Math.round(10 * s), height: 2 },
+        ...Array.from({ length: 28 }, () =>
+          Fill({ width: Math.round(14 * s), height: 2, color: tint }),
+        ),
+      );
+
+    const eyebrow = (text: string, color: string, motion?: TextProps["motion"]) =>
+      Text(
+        {
+          variant: "label",
+          size: Math.round(22 * s),
+          weight: 500,
+          letterSpacing: Math.round(3 * s),
+          color,
+          fontFamily: MONO,
+          ...(motion ? { motion } : {}),
+        },
+        text.toUpperCase(),
+      );
+
+    const headline = (size: number, color: string, align?: "left" | "center") =>
+      Text(
+        {
+          id: "headline",
+          variant: "display",
+          size: Math.round(size * s),
+          weight: 700,
+          lineHeight: 1.08,
+          letterSpacing: Math.round(-1.5 * s),
+          maxWidth: align === "center" ? Math.round(width * 0.66) : copyWidth,
+          ...(align ? { align } : {}),
+          color,
+          fontFamily: SANS,
+          motion: heading,
+        },
+        title,
+      );
+
+    const body = (size: number, color: string, maxWidth: number, align?: "left" | "center") =>
+      Text(
+        {
+          id: "blurb",
+          variant: "body",
+          size: Math.round(size * s),
+          weight: 400,
+          lineHeight: 1.5,
+          maxWidth,
+          ...(align ? { align } : {}),
+          color,
+          fontFamily: MONO,
+          motion: blurb,
+        },
+        description,
+      );
+
+    // Optional attachment — clipped open from the top edge, never a stretched thumb.
+    const plate = (boxHeight: number) =>
+      image
+        ? Frame(
+            { width: "fill", height: boxHeight, radius: Math.round(4 * s), overflow: "hidden" },
+            Frame(
+              {
+                width: "fill",
+                height: Math.max(2, Math.round(boxHeight * plateP)),
+                overflow: "hidden",
+              },
+              Image({ src: image, width: "fill", height: boxHeight, fit: "cover" }),
+            ),
+          )
+        : null;
+
+    // ---- style: card (the filing slip) ----
+    function cardSlip() {
+      return Frame(
+        { id: "slip", width: cardWidth, height: "fill", motion: slip },
+        Frame({ width: "fill", height: "fill", fill: surface, style: { border: `2px solid ${tk.line}` } }),
+        Stack(
+          { width: "fill", height: "fill", pad, gap, justify: "center" },
+          Stack(
+            {
+              direction: "row",
+              width: "fill",
+              height: Math.round(30 * s),
+              align: "center",
+              justify: "space-between",
+            },
+            eyebrow(siteName, onSurfaceMuted, head),
+            eyebrow("filed", tk.accent, head),
+          ),
+          Fill({ width: "fill", height: 1, color: onSurfaceLine }),
+          plate(Math.round(220 * s)),
+          headline(64, onSurface),
+          Frame({ width: "fill", height: Math.round(84 * s) }, body(26, onSurfaceMuted, copyWidth)),
+          perforation(onSurfaceLine),
+          Stack(
+            {
+              direction: "row",
+              width: "fill",
+              height: stripHeight,
+              align: "center",
+              justify: "space-between",
+              gap: Math.round(24 * s),
+            },
+            Text(
+              {
+                id: "address",
+                variant: "body",
+                size: Math.round(24 * s),
+                weight: 500,
+                color: tk.accent,
+                fontFamily: MONO,
+                motion: address,
+              },
+              url,
+            ),
+            showScanStrip ? scanStrip(onSurface) : eyebrow(domain, onSurfaceMuted),
+          ),
+        ),
+        Frame(
+          {
+            x: cardWidth - Math.round(250 * s),
+            y: Math.round(46 * s),
+            width: Math.round(200 * s),
+            height: Math.round(86 * s),
+            style: { opacity: sealOpacity, transform: `scale(${sealScale.toFixed(4)})` },
+          },
+          Frame(
+            {
+              width: Math.round(200 * s),
+              height: Math.round(86 * s),
+              radius: Math.round(6 * s),
+              style: { border: `${Math.round(4 * s)}px solid ${tk.stamp}`, transform: "rotate(-7deg)" },
+            },
+            Stack(
+              { width: "fill", height: "fill", align: "center", justify: "center" },
+              Text(
+                {
+                  variant: "label",
+                  size: Math.round(24 * s),
+                  weight: 600,
+                  letterSpacing: Math.round(2 * s),
+                  color: tk.stamp,
+                  align: "center",
+                  fontFamily: MONO,
+                },
+                domain.toUpperCase(),
+              ),
+            ),
+          ),
+        ),
+      );
     }
 
-    return `
-    <div style="${std.css({ width, height, background: THEME.bg, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif", position: "relative", overflow: "hidden" }, std.css.center())};opacity:${exitP};">
-      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%, ${THEME.accent}08 0%, transparent 50%);"></div>
-      ${cardHtml}
-    </div>`;
+    // ---- style: minimal (no card at all) ----
+    function minimalSlip() {
+      return Stack(
+        {
+          id: "slip",
+          width: "fill",
+          height: "fill",
+          align: "center",
+          justify: "center",
+          gap: Math.round(30 * s),
+          pad: { x: Math.round(width * 0.12) },
+          motion: slip,
+        },
+        Stack(
+          { direction: "row", align: "center", gap: Math.round(14 * s), height: Math.round(30 * s) },
+          Fill({ width: Math.round(12 * s), height: Math.round(12 * s), radius: 999, color: tk.accent }),
+          eyebrow(domain, tk.muted, head),
+        ),
+        headline(96, tk.ink, "center"),
+        body(28, tk.muted, Math.round(width * 0.52), "center"),
+        Fill({
+          width: Math.max(2, Math.round(width * 0.3 * stripP)),
+          height: Math.round(5 * s),
+          color: tk.accent,
+        }),
+        showScanStrip ? scanStrip(std.color.alpha(tk.ink, 0.72)) : eyebrow(siteName, tk.muted),
+      );
+    }
+
+    // ---- style: browser (wireframe chrome, never a fake screenshot) ----
+    function browserSlip() {
+      const barHeight = Math.round(74 * s);
+      return Frame(
+        { id: "slip", width: cardWidth, height: "fill", motion: slip },
+        Frame({
+          width: "fill",
+          height: "fill",
+          fill: surface,
+          style: { border: `2px solid ${tk.line}` },
+          radius: Math.round(12 * s),
+        }),
+        Stack(
+          { width: "fill", height: "fill" },
+          Stack(
+            {
+              direction: "row",
+              width: "fill",
+              height: barHeight,
+              align: "center",
+              gap: Math.round(12 * s),
+              pad: { x: Math.round(24 * s) },
+            },
+            ...Array.from({ length: 3 }, () =>
+              Frame(
+                {
+                  width: Math.round(16 * s),
+                  height: Math.round(16 * s),
+                  radius: 999,
+                  style: { border: `1px solid ${tk.line}` },
+                },
+                Fill({ width: Math.round(4 * s), height: Math.round(4 * s), color: "transparent" }),
+              ),
+            ),
+            Frame(
+              {
+                width: cardWidth - Math.round(160 * s),
+                height: Math.round(42 * s),
+                radius: 999,
+                style: { border: `1px solid ${tk.line}` },
+                pad: { x: Math.round(18 * s) },
+              },
+              Stack(
+                { width: "fill", height: "fill", justify: "center" },
+                Text(
+                  {
+                    id: "address",
+                    variant: "body",
+                    size: Math.round(21 * s),
+                    weight: 500,
+                    color: tk.accent,
+                    fontFamily: MONO,
+                  },
+                  typed.visible || " ",
+                ),
+              ),
+            ),
+          ),
+          Fill({ width: "fill", height: 1, color: tk.line }),
+          Stack(
+            {
+              width: "fill",
+              height: "fill",
+              pad,
+              gap,
+              justify: "center",
+            },
+            eyebrow(siteName, tk.muted, head),
+            plate(Math.round(200 * s)),
+            headline(58, tk.ink),
+            body(25, tk.muted, copyWidth),
+            Stack(
+              {
+                direction: "row",
+                width: "fill",
+                height: stripHeight,
+                align: "center",
+                justify: "space-between",
+              },
+              eyebrow(domain, tk.muted, address),
+              showScanStrip ? scanStrip(std.color.alpha(tk.ink, 0.7)) : eyebrow("link", tk.accent),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ---- style: social (inverted slip with an accent spine) ----
+    function socialSlip() {
+      return Frame(
+        { id: "slip", width: cardWidth, height: "fill", motion: slip },
+        Frame({ width: "fill", height: "fill", fill: surface, radius: Math.round(6 * s) }),
+        Frame(
+          { width: Math.round(10 * s), height: "fill" },
+          Fill({ color: tk.accent }),
+        ),
+        Stack(
+          {
+            width: "fill",
+            height: "fill",
+            pad: { left: pad + Math.round(20 * s), right: pad, top: pad, bottom: pad },
+            gap,
+            justify: "center",
+          },
+          Stack(
+            {
+              direction: "row",
+              width: "fill",
+              height: Math.round(30 * s),
+              align: "center",
+              justify: "space-between",
+            },
+            eyebrow(siteName, onSurfaceMuted, head),
+            eyebrow(domain, tk.accent, head),
+          ),
+          plate(Math.round(240 * s)),
+          headline(68, onSurface),
+          body(26, onSurfaceMuted, copyWidth - Math.round(20 * s)),
+          Fill({ width: "fill", height: 1, color: onSurfaceLine }),
+          Stack(
+            {
+              direction: "row",
+              width: "fill",
+              height: stripHeight,
+              align: "center",
+              justify: "space-between",
+              gap: Math.round(24 * s),
+            },
+            Text(
+              {
+                id: "address",
+                variant: "body",
+                size: Math.round(23 * s),
+                weight: 500,
+                color: onSurfaceMuted,
+                fontFamily: MONO,
+                motion: address,
+              },
+              favicon ? `${domain} · shared` : url,
+            ),
+            showScanStrip ? scanStrip(std.color.alpha(tk.surface, 0.8)) : eyebrow("share", tk.accent),
+          ),
+        ),
+      );
+    }
+
+    const slipTree =
+      style === "minimal"
+        ? minimalSlip()
+        : style === "browser"
+          ? browserSlip()
+          : style === "social"
+            ? socialSlip()
+            : cardSlip();
+
+    return Frame(
+      { id: "stage", width, height },
+      Fill({ color: tk.field }),
+      Frame(
+        { id: "sheet", x: 0, y: 0, width, height, style: pageStyle },
+        Stack(
+          {
+            width: "fill",
+            height: "fill",
+            align: "center",
+            justify: "center",
+            pad: { y: Math.round(height * (style === "minimal" ? 0.06 : 0.16)) },
+          },
+          slipTree,
+        ),
+      ),
+    );
   },
 });

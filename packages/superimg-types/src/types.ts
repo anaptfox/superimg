@@ -1,12 +1,13 @@
 //! SuperImg Types - Core type definitions
 //! Explicit, typed, self-documenting interfaces for templates, rendering, and playback
 
+import type { FontInput } from "./fonts.js";
 import type { Stdlib } from "./stdlib.js";
 import type { DirectorOf, DirectorOpts, PhaseConfig } from "@superimg/stdlib/director";
 import type { Track } from "@superimg/stdlib/track";
-import type { Checkpoint } from "./checkpoint.js";
-import type { EncodingOptions, OutputFormat } from "./encoding-types.js";
+import type { EncodingOptions } from "./encoding-types.js";
 import type { JsonObject } from "./json.js";
+import type { RenderOutput } from "./media-node.js";
 import type { AudioClip, AudioValue } from "./audio.js";
 
 export type { AudioClip, AudioValue } from "./audio.js";
@@ -37,6 +38,8 @@ export interface Timeline {
 
 /** Input for `ctx.track()` — transcript / marker sources. */
 export interface TrackSource {
+  /** Stable track id — required for Media IR compile. */
+  id?: string;
   words?: Array<{ text: string; start: number; end: number; type?: string }>;
   markers?: Record<string, number>;
 }
@@ -57,7 +60,7 @@ export interface RenderContext<TData = JsonObject> {
   timeline: Timeline;
 
   /**
-   * Phase choreography factory. Replaces the former `ctx.score()`.
+   * Phase choreography factory for named timing regions.
    * @example const t = ctx.director({ intro: "10%", main: "75%", hold: "15%" });
    * @example const t = ctx.director(std.phases.recipe("punchy"), { tone: "social" });
    */
@@ -118,10 +121,6 @@ export interface RenderContext<TData = JsonObject> {
   /** Get URL for a file in the template's co-located assets/ folder */
   asset: (filename: string) => string;
 
-  // === Output Info ===
-  /** Output configuration */
-  output: OutputInfo;
-
   // === CSS Viewport (for responsive templates) ===
   cssViewport?: CssViewport;
 }
@@ -129,13 +128,6 @@ export interface RenderContext<TData = JsonObject> {
 // =============================================================================
 // SUPPORTING TYPES
 // =============================================================================
-
-export interface OutputInfo {
-  name: string;
-  width: number;
-  height: number;
-  fit: FitMode;
-}
 
 export type FitMode = "stretch" | "contain" | "cover";
 
@@ -155,7 +147,7 @@ export interface CssViewport {
 /**
  * A template module — the unified result of `define()`.
  *
- * The two axes that used to be separate factories are now fields:
+ * Rendering behavior is described by two fields:
  *  - `medium`   — "html" | "svg" (which rasterizer renders it).
  *  - `animated` — true when the config declares both `fps` and `duration`.
  *
@@ -173,8 +165,8 @@ export interface TemplateModule<
    * Animated when config has `fps` and (`duration` or a `resolve` hook that supplies duration).
    */
   readonly animated: boolean;
-  /** Render function that returns HTML or SVG markup. */
-  render: (ctx: RenderContext<TData>) => string;
+  /** Render function that returns a media tree or opaque HTML/SVG markup. */
+  render: (ctx: RenderContext<TData>) => RenderOutput;
   /** Optional configuration */
   config?: TemplateConfig;
   /** Sample/preview data — the template renders from this when no external data is provided. */
@@ -185,22 +177,16 @@ export interface TemplateModule<
    * @see ResolveInput / ResolveResult in resolve.ts
    */
   resolve?: import("./resolve.js").ResolveFn<TData>;
+  /** Compiler-owned runtime preparation hints; never an authoring requirement. */
+  readonly mediaCapabilities?: import("./render-capabilities.js").MediaCapabilities;
 }
 
-export interface OutputPreset {
-  /** Width in pixels */
-  width?: number;
-  /** Height in pixels */
-  height?: number;
-  /** FPS override for this output */
-  fps?: number;
-  /** Output format override for this preset */
-  format?: OutputFormat;
-  /** Directory relative to project root to save the file */
-  outDir?: string;
-  /** Exact filename or path override to save the file (e.g. "final.mp4") */
-  outFile?: string;
-}
+/**
+ * Playback intent for an animated template (fps + duration).
+ * - `"once"` — story/explainer; end may differ from start (default)
+ * - `"loop"` — ambient cycle; check requires frame 0 ≈ last (seam)
+ */
+export type TemporalMode = "once" | "loop";
 
 /**
  * Frame readiness policy for headless capture (Playwright).
@@ -240,10 +226,12 @@ export interface BaseConfig {
    */
   readiness?: FrameReadinessPolicy;
   /**
-   * List of Google Fonts to load.
-   * Format: "Font+Name" or "Font+Name:wght@400;700"
+   * Faces to load. Use `googleFont("Font+Name:wght@400;700")` or
+   * `{ family, src }` with a file path, URL, or SFNT bytes.
+   * Bundled Inter (400/500/700) is always available and is replaced when an
+   * author face uses the same family.
    */
-  fonts?: string[];
+  fonts?: readonly FontInput[];
   /**
    * Raw CSS strings to inject into the page (e.g. utility classes, Tailwind precompiled output).
    * Injected once per render session, not per frame.
@@ -254,13 +242,6 @@ export interface BaseConfig {
    * Injected once per render session, not per frame.
    */
   stylesheets?: string[];
-  /** Named output presets */
-  outputs?: Record<string, OutputPreset>;
-  /**
-   * Automatically generate responsive `@1x` and `@2x` variations
-   * (only applies to image formats like webp/png).
-   */
-  responsive?: boolean;
   /**
    * Logical type or tag for this template (e.g. "og" for Open Graph images).
    */
@@ -277,8 +258,8 @@ export interface BaseConfig {
    */
   watermark?: WatermarkValue;
   /**
-   * Background rendered into the video (solid color or image).
-   * Composed behind template content via buildCompositeHtml.
+   * Optional full-frame layer under template HTML (solid or image).
+   * When omitted, no underlayer is painted — the template root owns fill.
    */
   background?: BackgroundValue;
   /**
@@ -288,11 +269,30 @@ export interface BaseConfig {
   audio?: AudioValue;
 }
 
+/**
+ * Provider-neutral OCI container deployment configuration.
+ * Provider platforms (Fly, Railway, Cloud Run, ECS, Kubernetes, Cloudflare Containers, …)
+ * consume the same image + runtime-manifest outside the core CLI.
+ * @experimental Draft deploy contract.
+ */
+export type DeployRuntimeProfile = "edge" | "node" | "node-media";
+
 export interface DeployConfig {
-  /** Deployment target. Defaults to "cloudflare-container". */
-  target?: "cloudflare-container";
-  /** CF Worker name. Defaults to the project directory name. */
-  workerName?: string;
+  /**
+   * Runtime capability profile for the deployed image.
+   * @default "node"
+   */
+  profile?: DeployRuntimeProfile;
+  /** Image name (registry/path without required tag). */
+  image?: string;
+  /** Optional image tag or digest. */
+  tag?: string;
+  /** Synchronous render concurrency. */
+  concurrency?: number;
+  /** Maximum queued synchronous render requests. */
+  maxQueue?: number;
+  /** OCI labels / annotations for the runtime manifest. */
+  labels?: Record<string, string>;
 }
 
 /**
@@ -302,7 +302,7 @@ export interface DeployConfig {
 export interface ProjectConfig extends BaseConfig {
   /** Default output directory for all templates relative to project root */
   outDir?: string;
-  /** Cloudflare deployment configuration. */
+  /** Provider-neutral deployment configuration (OCI package + optional provider adapter). */
   deploy?: DeployConfig;
 }
 
@@ -319,18 +319,19 @@ export function defineConfig(config: ProjectConfig): ProjectConfig {
  * Extends BaseConfig with render-time concerns that only make sense per-template.
  */
 export interface TemplateConfig extends BaseConfig {
+  /** Host-prepared browser modules used by trusted native graphics. */
+  nativeModuleSets?: readonly import("./engine.js").PreparedNativeModuleSet[];
   /**
-   * Frame to use for thumbnail/preview image.
-   * - Integer >= 1: specific frame number
-   * - Decimal 0-1: progress through video (e.g., 0.25 = 25%)
-   * - Omit: auto-select (scene boundary or 25% fallback)
+   * Playback intent when the template is animated (`fps` + `duration`).
+   * Ignored on static templates. Default `"once"`.
+   * `"loop"` enables seam gates in `check` and looping preview in the player.
    */
-  thumbnailAt?: number;
+  temporal?: TemporalMode;
   /**
    * Static assets to preload before rendering.
    * Keys become accessible via ctx.assets.{key}
    */
-  assets?: Record<string, string | AssetDeclaration>;
+  assets?: Record<string, AssetDeclaration>;
   /**
    * Default encoding options for this template.
    * CLI flags and programmatic API options override these.
@@ -339,7 +340,7 @@ export interface TemplateConfig extends BaseConfig {
   /**
    * Rendering mode for this template.
    * - 'frame' (default): render() is called per frame; CSS transitions don't animate naturally
-   * - 'animation': Playwright fake clock advances per frame so CSS transitions/animations work deterministically
+   * - 'animation': capture seeks CSS/Web Animations to each frame's absolute time
    */
   mode?: 'frame' | 'animation';
   /**
@@ -354,7 +355,7 @@ export interface TemplateConfig extends BaseConfig {
 }
 
 // =============================================================================
-// SCENE COMPOSITION TYPES
+// SCENE COMPOSITION INPUTS
 // =============================================================================
 
 /** Duration: number (seconds), string ('5s', '500ms', '30f'), or undefined */
@@ -409,48 +410,6 @@ export interface ResolvedTransition {
   easing?: EasingName;
 }
 
-/** Resolved scene with frame boundaries (internal) */
-export interface ResolvedScene {
-  id: string;
-  label?: string;
-  index: number;
-  template: TemplateModule;
-  startFrame: number;
-  endFrame: number;
-  totalFrames: number;
-  duration: number;
-  data: JsonObject;
-  enterTransition?: ResolvedTransition;
-  exitTransition?: ResolvedTransition;
-}
-
-/** Shared scene API for composed templates (HTML and SVG). */
-export interface ComposedTemplateBase {
-  readonly scenes: readonly ResolvedScene[];
-  readonly totalFrames: number;
-  readonly duration: number;
-  readonly fps: number;
-  readonly config: TemplateConfig;
-
-  /** Get scene by index */
-  getScene(index: number): ResolvedScene | undefined;
-  /** Get scene by id */
-  getSceneById(id: string): ResolvedScene | undefined;
-  /** Get scene at given frame */
-  getSceneAtFrame(frame: number): ResolvedScene;
-  /** Render markup for given frame */
-  render(ctx: RenderContext): string;
-  /** Get checkpoints from scene boundaries */
-  getCheckpoints(): Checkpoint[];
-}
-
-/** Output of compose() - multi-scene animated reel (HTML or SVG). */
-export interface ComposedTemplate extends ComposedTemplateBase {
-  readonly medium: Medium;
-  readonly animated: true;
-  readonly type: "composed";
-}
-
 // =============================================================================
 // MODE TYPES - Replace booleans with explicit named modes
 // =============================================================================
@@ -464,17 +423,34 @@ export type LoadMode = "eager" | "lazy";
 /** What happens on hover */
 export type HoverBehavior = "none" | "play" | "preview-scrub";
 
+/** Host input that seeks the Player timeline. Springs and mapping are fixed. */
+export type DriveSource = "scroll" | "pointer";
+
 // =============================================================================
 // ASSET TYPES
 // =============================================================================
 
 
-/** Declaration for a static asset in config.assets */
-export interface AssetDeclaration {
-  src: string;
-  /** Auto-detected from extension if omitted */
-  type?: "image" | "video" | "audio";
-}
+export type AssetKind = "image" | "video" | "audio";
+
+/**
+ * Explicit declaration for a static asset in config.assets.
+ *
+ * Relative path strings are intentionally not accepted. URL declarations and
+ * caller-owned bytes have portable, unambiguous ownership at runtime.
+ */
+export type AssetDeclaration =
+  | {
+      readonly url: string | URL;
+      /** Auto-detected from the URL or MIME type when omitted. */
+      readonly type?: AssetKind;
+    }
+  | {
+      readonly bytes: Uint8Array;
+      readonly mimeType: string;
+      /** Auto-detected from the MIME type when omitted. */
+      readonly type?: AssetKind;
+    };
 
 /** Base metadata for all assets */
 export interface AssetMetaBase {
@@ -580,8 +556,8 @@ export interface RenderOptions {
   width: number;
   height: number;
   backgroundColor?: string;
-  /** List of Google Fonts to load */
-  fonts?: string[];
+  /** Faces to load. See {@link FontInput}. */
+  fonts?: readonly FontInput[];
   /** Raw CSS strings to inject (e.g. utility classes, Tailwind precompiled) */
   inlineCss?: string[];
   /** Stylesheet URLs to load */

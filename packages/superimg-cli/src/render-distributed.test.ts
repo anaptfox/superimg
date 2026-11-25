@@ -69,6 +69,33 @@ describe("renderDistributed", () => {
     expect(execaMock).toHaveBeenCalledOnce();
   });
 
+  it("sends shared data to every chunk", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", vi.fn(async (
+      input: string | URL | Request,
+      init?: RequestInit,
+    ) => {
+      const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+      if (url.pathname.startsWith("/info/")) return infoResponse(2);
+      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return new Response(new Uint8Array([1, 2, 3]));
+    }));
+
+    await renderDistributed({
+      endpoints: ["https://one.test"],
+      templateName: "demo",
+      outputPath: join(directory, "data.mp4"),
+      chunkSeconds: 1,
+      data: { title: "Shared" },
+    });
+
+    expect(bodies).toHaveLength(2);
+    expect(bodies).toEqual([
+      expect.objectContaining({ data: { title: "Shared" } }),
+      expect.objectContaining({ data: { title: "Shared" } }),
+    ]);
+  });
+
   it("cancels sibling endpoint work after a terminal chunk failure", async () => {
     let slowRequestAborted = false;
     const fetchMock = vi.fn(

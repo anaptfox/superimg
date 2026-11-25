@@ -1,7 +1,7 @@
 //! Helpers for subscribing to PlayerRef-backed runtime stores (React useSyncExternalStore)
 
 import type { RefObject } from "react";
-import type { RuntimeState } from "../../index.browser.js";
+import type { RuntimeState } from "@superimg/media";
 import type { PlayerRef } from "../components/Player.js";
 
 const EMPTY_STATE: RuntimeState = {

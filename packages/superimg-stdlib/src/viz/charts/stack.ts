@@ -1,6 +1,6 @@
 import {
   stack as d3Stack,
-  stackOffsetNone,
+  stackOffsetDiverging,
   stackOffsetExpand,
   stackOrderNone,
   area as d3Area,
@@ -9,7 +9,7 @@ import type { CoordSystem } from "../coords.js";
 import { bandScale, linearScale } from "../scale.js";
 import { resolveCurve, type CurveName } from "../d3-helpers.js";
 import type { ChartSeries, ChartOpts } from "./shared.js";
-import { animOpacity, chartColors, plotArea } from "./shared.js";
+import { animOpacity, chartColors, seriesCategories, plotArea } from "./shared.js";
 
 export type StackOffset = "none" | "expand";
 
@@ -41,7 +41,7 @@ export function stack(
   const areaBox = plotArea(coords, opts.padding ?? 8);
   const colors = chartColors(opts);
   const opacity = animOpacity(progress, opts.animate);
-  const categories = series[0]!.data.map((d) => d.label);
+  const categories = seriesCategories(series);
   const keys = series.map((s) => s.id);
 
   // Wide table for d3.stack: { label, [key]: value }
@@ -49,7 +49,7 @@ export function stack(
     const row: Record<string, string | number> = { label: cat };
     for (const s of series) {
       const pt = s.data.find((d) => d.label === cat);
-      row[s.id] = pt?.value ?? 0;
+      row[s.id] = pt && Number.isFinite(pt.value) ? pt.value : 0;
     }
     return row;
   });
@@ -58,7 +58,7 @@ export function stack(
     .keys(keys)
     .value((d, key) => Number(d[key] ?? 0))
     .order(stackOrderNone)
-    .offset(opts.expand ? stackOffsetExpand : stackOffsetNone);
+    .offset(opts.expand ? stackOffsetExpand : stackOffsetDiverging);
 
   const stacked = stackGen(rows);
 
@@ -67,8 +67,8 @@ export function stack(
   let yMin = 0;
   for (const layer of stacked) {
     for (const pt of layer) {
-      yMax = Math.max(yMax, pt[1]);
-      yMin = Math.min(yMin, pt[0]);
+      yMax = Math.max(yMax, pt[0], pt[1]);
+      yMin = Math.min(yMin, pt[0], pt[1]);
     }
   }
   if (opts.expand) {
@@ -123,9 +123,8 @@ function renderStackedBars(
           : ctx.grow;
       const y0 = pt[0] * staggered;
       const y1 = pt[1] * staggered;
-      const yTop = y(y1)!;
-      const yBot = y(y0)!;
-      const h = Math.max(0, yBot - yTop);
+      const yTop = Math.min(y(y1)!, y(y0)!);
+      const h = Math.abs(y(y0)! - y(y1)!);
       parts.push(
         `<rect x="${bx.toFixed(2)}" y="${yTop.toFixed(2)}" width="${bw.toFixed(2)}" height="${h.toFixed(2)}" rx="${r}" fill="${color}" opacity="${ctx.opacity.toFixed(3)}"/>`,
       );

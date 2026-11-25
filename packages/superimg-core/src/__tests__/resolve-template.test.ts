@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { define, ValidationError } from "@superimg/types";
+import { define, ValidationError, type JsonObject } from "@superimg/types";
 import {
   applyTemplateResolve,
   normalizeResolveResult,
@@ -9,6 +9,7 @@ import {
 import { compileTemplate } from "../rendering/compiler.js";
 import { createRenderPlan } from "../rendering/engine.js";
 import { bundleTemplateCodeWithMap } from "../bundler/bundler.js";
+import { boxedHtml } from "./__test-utils__/index.js";
 
 describe("normalizeResolveResult", () => {
   it("accepts a valid result", () => {
@@ -66,10 +67,10 @@ describe("raceAbort", () => {
 
 describe("applyTemplateResolve", () => {
   it("passthrough when no resolve hook", async () => {
-    const template = define({
+    const template = define<JsonObject>({
       config: { width: 1280, height: 720, fps: 30, duration: 3 },
       sample: { title: "Hi" },
-      render: () => "<div/>",
+      render: () => boxedHtml("<div/>"),
     });
 
     const result = await applyTemplateResolve(template, {
@@ -82,14 +83,14 @@ describe("applyTemplateResolve", () => {
   });
 
   it("applies duration and data from resolve", async () => {
-    const template = define({
+    const template = define<JsonObject>({
       config: { width: 1920, height: 1080, fps: 30, duration: 5 },
       sample: { items: ["a"] },
       resolve: ({ data }) => ({
         duration: (data.items as string[]).length * 2,
         data: { resolved: true },
       }),
-      render: () => "<div/>",
+      render: () => boxedHtml("<div/>"),
     });
 
     const result = await applyTemplateResolve(template, {
@@ -105,10 +106,10 @@ describe("applyTemplateResolve", () => {
   });
 
   it("allows animated define with resolve and no static duration", async () => {
-    const template = define({
+    const template = define<JsonObject>({
       config: { fps: 24, width: 800, height: 600 },
       resolve: async () => ({ duration: "2s" }),
-      render: () => "<div/>",
+      render: () => boxedHtml("<div/>"),
     });
 
     expect(template.animated).toBe(true);
@@ -117,20 +118,20 @@ describe("applyTemplateResolve", () => {
   });
 
   it("throws when animated template still has no duration after resolve", async () => {
-    const template = define({
+    const template = define<JsonObject>({
       config: { fps: 30 },
       resolve: async () => ({}),
-      render: () => "<div/>",
+      render: () => boxedHtml("<div/>"),
     });
 
     await expect(applyTemplateResolve(template)).rejects.toBeInstanceOf(ValidationError);
   });
 
   it("job overrides win over resolve", async () => {
-    const template = define({
+    const template = define<JsonObject>({
       config: { fps: 30, duration: 5 },
       resolve: () => ({ duration: 10, width: 640 }),
-      render: () => "<div/>",
+      render: () => boxedHtml("<div/>"),
     });
 
     const result = await applyTemplateResolve(template, {
@@ -142,10 +143,10 @@ describe("applyTemplateResolve", () => {
   });
 
   it("throws when signal is already aborted", async () => {
-    const template = define({
+    const template = define<JsonObject>({
       config: { fps: 30, duration: 1 },
       resolve: () => ({ duration: 2 }),
-      render: () => "<div/>",
+      render: () => boxedHtml("<div/>"),
     });
     const ac = new AbortController();
     ac.abort();
@@ -156,46 +157,49 @@ describe("applyTemplateResolve", () => {
   });
 
   it("throws when resolve returns invalid width", async () => {
-    const template = define({
+    const template = define<JsonObject>({
       config: { fps: 30, duration: 1 },
       resolve: () => ({ width: -5 }),
-      render: () => "<div/>",
+      render: () => boxedHtml("<div/>"),
     });
     await expect(applyTemplateResolve(template)).rejects.toBeInstanceOf(ValidationError);
   });
 
   it("compileTemplate preserves resolve from define() module", () => {
-    const mod = define({
+    const mod = define<JsonObject>({
       config: { fps: 30, duration: 1 },
       resolve: () => ({ duration: 4 }),
-      render: () => "<div/>",
+      render: () => boxedHtml("<div/>"),
     });
 
     const code = `
       var __template = { default: {
+        kind: "media",
+        media: "video",
+        fallbackFormat: "mp4",
         medium: ${JSON.stringify(mod.medium)},
         animated: ${JSON.stringify(mod.animated)},
         config: ${JSON.stringify(mod.config)},
-        render: function() { return "<div/>"; },
+        render: function() { return { $$typeof: "@foxworth/superimg/element", type: "Html", props: { width: "fill", height: "fill", html: "<div/>" }, children: [] }; },
         resolve: function() { return { duration: 4 }; }
       }};
     `;
     const result = compileTemplate(code);
     expect(result.error).toBeUndefined();
-    expect(result.template?.resolve).toBeTypeOf("function");
+    expect(result.media?.resolve).toBeTypeOf("function");
   });
 });
 
 describe("sessionOptionsFromResolve", () => {
   it("converts markers and prefers formatDims", async () => {
-    const template = define({
+    const template = define<JsonObject>({
       config: { fps: 30, duration: 5, width: 640, height: 360 },
       resolve: () => ({
         duration: 4,
         width: 800,
         markers: [{ id: "m1", at: "1s", label: "One" }],
       }),
-      render: () => "<div/>",
+      render: () => boxedHtml("<div/>"),
     });
     const applied = await applyTemplateResolve(template);
     const session = sessionOptionsFromResolve(applied, {
@@ -212,19 +216,19 @@ describe("sessionOptionsFromResolve", () => {
 
 describe("define resolve animated flag", () => {
   it("marks animated when fps + resolve without duration", () => {
-    const t = define({
+    const t = define<JsonObject>({
       config: { fps: 30 },
       resolve: () => ({ duration: 1 }),
-      render: () => "x",
+      render: () => boxedHtml("x"),
     });
     expect(t.animated).toBe(true);
   });
 
   it("stays static without fps", () => {
-    const t = define({
+    const t = define<JsonObject>({
       config: { width: 100, height: 100 },
       resolve: () => ({ width: 200 }),
-      render: () => "x",
+      render: () => boxedHtml("x"),
     });
     expect(t.animated).toBe(false);
   });
@@ -233,14 +237,14 @@ describe("define resolve animated flag", () => {
 describe("createRenderPlan + resolve", () => {
   it("uses resolve duration over soft job duration", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
         config: { fps: 30, duration: 2 },
         sample: { n: 3 },
         resolve({ data }) {
           return { duration: data.n * 2 };
         },
-        render() { return '<div/>'; }
+        render() { return Html({ width: 'fill', height: 'fill', html: '<div/>' }); }
       });
     `;
     const templateBundle = await bundleTemplateCodeWithMap(code, {
@@ -262,11 +266,11 @@ describe("createRenderPlan + resolve", () => {
 
   it("explicitOverrides win over resolve duration", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
         config: { fps: 30, duration: 2 },
         resolve() { return { duration: 10 }; },
-        render() { return '<div/>'; }
+        render() { return Html({ width: 'fill', height: 'fill', html: '<div/>' }); }
       });
     `;
     const templateBundle = await bundleTemplateCodeWithMap(code, {

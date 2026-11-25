@@ -5,7 +5,7 @@ import {
   findUserFrame,
 } from "../source-map.js";
 import { extractInlineSourceMap } from "../../bundler/bundler.js";
-import type { RenderContext } from "@superimg/types";
+import { createRenderContext } from "../../rendering/create-render-context.js";
 
 describe("parseStackTrace", () => {
   it("parses standard V8 frames with fn name and (file:line:col)", () => {
@@ -105,14 +105,14 @@ describe("extractInlineSourceMap + mapFrame end-to-end through new Function()", 
     // Use the real bundler so we exercise the whole pipeline.
     const { bundleTemplateCodeWithMap } = await import("../../bundler/bundler.js");
 
-    const userSource = `import { define } from "superimg";
+    const userSource = `import { define, Html } from "@foxworth/superimg";
 
 export default define({
   render(ctx) {
-    if (ctx.frame === 0) {
+    if (ctx.timeline.frame === 0) {
       throw new Error("kaboom from line 6");
     }
-    return "<div>ok</div>";
+    return Html({ width: "fill", height: "fill", html: "<div>ok</div>" });
   },
 });
 `;
@@ -128,21 +128,7 @@ export default define({
 
     let caught: Error | undefined;
     try {
-      tpl.render({
-        frame: 0,
-        globalFrame: 0,
-        timelineFrame: 0,
-        timelineSeconds: 0,
-        timelineProgress: 0,
-        globalTimeSeconds: 0,
-        fps: 30,
-        totalFrames: 1,
-        width: 100,
-        height: 100,
-        sample: {},
-        outputName: "test",
-        assets: {},
-      } as RenderContext);
+      tpl.render(createRenderContext(0, 30, 1, 100, 100, {}));
     } catch (e) {
       caught = e as Error;
     }
@@ -203,7 +189,7 @@ describe("extractInlineSourceMap", () => {
   it("extracts a real map from a bundle", async () => {
     const { bundleTemplateCodeWithMap } = await import("../../bundler/bundler.js");
     const bundled = await bundleTemplateCodeWithMap(
-      `import { define } from "superimg";\nexport default define({ render: () => "x" });`,
+      `import { define } from "@foxworth/superimg";\nexport default define({ render: () => "x" });`,
       { sourcefile: "x.video.ts" },
     );
     const map = bundled.sourceMap;

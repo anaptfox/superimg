@@ -1,0 +1,57 @@
+{
+  "name": "@superimg/interactive",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive live-data experiences for SuperImg",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./define": {
+      "types": "./dist/define.d.ts",
+      "import": "./dist/define.js",
+      "default": "./dist/define.js"
+    },
+    "./player": {
+      "types": "./dist/player.d.ts",
+      "import": "./dist/player.js",
+      "default": "./dist/player.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest --run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@superimg/player": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@superimg/build-config": "workspace:*",
+    "@types/react": "catalog:",
+    "happy-dom": "catalog:",
+    "react": "catalog:",
+    "vitest": "catalog:"
+  }
+}

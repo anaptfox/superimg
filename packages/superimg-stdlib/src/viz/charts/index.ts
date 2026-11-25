@@ -1,9 +1,7 @@
-export { bar } from "./bar.js";
-export { barHorizontal } from "./bar-horizontal.js";
+// Line and ordinary bar authoring now lives on the typed @foxworth/superimg/charts entry.
+// Specialized string helpers below remain available until individually migrated.
 export { barRace } from "./bar-race.js";
 export type { BarRaceKeyframe, BarRaceOpts } from "./bar-race.js";
-export { bars } from "./bars.js";
-export { line, lineTime } from "./line.js";
 export { area } from "./area.js";
 export type { AreaChartOpts } from "./area.js";
 export { stack } from "./stack.js";
@@ -14,17 +12,11 @@ export { contour, density } from "./contour.js";
 export type { ContourOpts, DensityOpts } from "./contour.js";
 export { force } from "./force.js";
 export type { ForceNode, ForceLink, ForceOpts } from "./force.js";
-export type { LineChartOpts, LineTimeOpts, TimeDataPoint } from "./line.js";
-export { lines } from "./lines.js";
 export { pie } from "./pie.js";
 export { scatter } from "./scatter.js";
 export { sparkline } from "./sparkline.js";
 export type { ScatterPoint, ScatterOpts, TrendLineOpts } from "./scatter.js";
 export type { PieLabelOpts, PieOpts } from "./pie.js";
-export type { BarChartOpts } from "./bar.js";
-export type { BarHorizontalOpts } from "./bar-horizontal.js";
-export type { GroupedBarOpts } from "./bars.js";
-export type { MultiLineOpts } from "./lines.js";
 export type { SparklineOpts } from "./sparkline.js";
 export { legend } from "./legend.js";
 export type { ChartDataPoint, ChartSeries, ChartOpts, ChartScaleOpts } from "./shared.js";

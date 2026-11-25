@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agent inspection · SuperImg</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">SuperImg / browser inspection</p>
+        <h1>Hold a frame. See what was presented.</h1>
+        <p>A seven-frame composition at 25 fps. Select a named part, change its route, or capture one exact frame.</p>
+      </header>
+      <div id="player" aria-label="Composition preview"></div>
+      <form id="controls">
+        <fieldset disabled>
+          <label>Frame <input id="frame" type="number" min="0" max="6" step="1" value="6" required></label>
+          <button type="submit">Inspect frame</button>
+          <button id="select-part" type="button">Select chapter</button>
+          <label>Chapter route
+            <select id="route"><option value="calm">Calm</option><option value="contrast">Contrast</option></select>
+          </label>
+          <button id="live" type="button">Return to live</button>
+        </fieldset>
+      </form>
+      <p id="status" role="status" aria-live="polite">Loading preview…</p>
+      <section class="agent-controls" aria-label="Agent access">
+        <label><input id="allow-agent" type="checkbox" checked> Admit preview tools</label>
+        <button id="withdraw" type="button">Withdraw tools</button>
+        <p id="transport" role="status">Checking browser capabilities…</p>
+        <p>JavaScript inspection: <code>window.superimgInspection</code>. Inspection stays in control until you return to live.</p>
+      </section>
+      <details open>
+        <summary>Inspection snapshot</summary>
+        <pre id="snapshot">Waiting for an accepted presentation…</pre>
+      </details>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

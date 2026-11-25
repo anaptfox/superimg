@@ -1,205 +1,88 @@
 # Player Guide
 
-Guide to using the SuperImg browser player in vanilla JavaScript and React.
+The neutral Player is a passive host for canonical deterministic media. It loads a media definition, accepts host data, controls time, and renders HTML/SVG into its surface.
 
-## Overview
+```ts
+import { Player } from "@foxworth/superimg/player";
+import launch from "./launch.media";
 
-The player previews templates in the browser using **real HTML/CSS in a sandboxed iframe** (`superimg/media` + morphdom). It does not rasterize every frame to a canvas during playback.
-
-| Layer | Package | Role |
-|-------|---------|------|
-| **Player** | `@superimg/player` | High-level API, Zustand store, timeline helpers |
-| **Media** | `@superimg/media` | `MediaSession` + DOM surface |
-| **Export** | `@superimg/browser-export` | Capture backend + browser encoder |
-
-Two integration styles:
-
-1. **Vanilla JS** — `Player` + optional `createTimelineController`
-2. **React** — `<Player>` with built-in controls
-
----
-
-## Vanilla JavaScript
-
-### Installation
-
-```bash
-npm install superimg
-```
-
-### Basic Usage
-
-```typescript
-import { Player } from "superimg/browser";
-
-const player = new Player({
-  container: "#player",
-  format: "horizontal",
-  playbackMode: "loop",
-});
-
-const result = await player.load(template);
-if (result.status === "success") {
-  player.play();
-}
-```
-
-### Store + Timeline
-
-Vanilla apps use `player.store` (Zustand) for reactive UI:
-
-```typescript
-import { Player, createTimelineController } from "superimg/browser";
-
-const player = new Player({ container: "#player", playbackMode: "loop" });
-await player.load(template);
-
-const store = player.store;
-store.subscribe(() => {
-  const { isPlaying, currentFrame } = store.getState();
-  console.log(isPlaying, currentFrame);
-});
-
-createTimelineController(
-  { progress: progressEl, playhead: playheadEl, currentTime: timeEl, totalTime: totalEl },
-  store
-).attach(timelineEl);
-```
-
-### API Reference
-
-#### Constructor Options
-
-```typescript
-interface PlayerOptions {
-  container: string | HTMLElement;
-  format?: FormatOption;           // 'horizontal' | 'vertical' | preset path | { width, height }
-  playbackMode?: PlaybackMode;    // 'once' | 'loop' (default: 'once')
-  loadMode?: LoadMode;            // 'eager' | 'lazy' (lazy: React Player only today)
-  hoverBehavior?: HoverBehavior;  // 'none' | 'play' | 'preview-scrub'
-  hoverDelayMs?: number;
-}
-```
-
-#### Methods
-
-```typescript
-await player.load(template, { data, markers, assets, assetResolver });
-player.update({ data, format, width, height, fps, duration });
+const player = new Player({ container: "#launch" });
+await player.load(launch, { data: { title: "Launch day" } });
 player.play();
-player.pause();
-player.seekFrame(45);
-player.seekProgress(0.5);
-player.seekTimeSeconds(2.5);
-player.render(frame?);   // force re-render
+await player.seek({ progress: 0.5 });
+await player.seek({ seconds: 1.5 });
+await player.seek({ frame: 12 });
+```
+
+React:
+
+```tsx
+import { Player } from "@foxworth/superimg/react/player";
+import launch from "./launch.media";
+
+export function LaunchPreview() {
+  return <Player media={launch} data={{ title: "Launch day" }} controls />;
+}
+```
+
+It does not expose semantic scene queries, guides, actions, or hit targets. Those belong to `InteractivePlayer` from `@foxworth/superimg/react/interactive`.
+
+Collections remain a server-side export concept. Local preview resolves the collection once and sends only the selected entry to the passive Player.
+
+For exact browser capture, mount `createPreviewInspection` from
+`@foxworth/superimg/inspection`. It observes requested and accepted frames separately and
+holds playback or driven input while waiting for resources. See
+[Browser inspection](./inspection.md) for ordinary JavaScript and optional page tools.
+
+## Host-controlled Programs
+
+`present()` uses one Player to display a retained Program. Manual mode selects
+named top-level parts; timeline mode plays one continuous projection. Nested
+Programs retain their own timing. The host owns navigation controls and policy.
+
+```ts
+import { Player } from "@foxworth/superimg/player";
+import { present } from "@foxworth/superimg/player/program";
+import { story } from "./story.js";
+
+const player = new Player({ container: "#stage", playbackMode: "once" });
+const session = present(player, story, {
+  mode: "manual",
+  size: { width: 1920, height: 1080 },
+  fps: 25,
+});
+const result = await session.ready;
+if (result.status !== "success") throw new Error(result.message);
+await session.go("chapter");
+
+// Dispose the session before the player owned by this host.
+session.dispose();
 player.dispose();
-
-player.store;            // Zustand store (vanilla controls)
-player.getRuntimeStore(); // RuntimeStore adapter (React controls)
 ```
 
-#### Properties
+Use `parts`, `currentId`, `currentIndex`, `go`, `next` and `previous` for named
+selection. A failed replacement retains the last committed media. Competing loads
+use the latest request. Await load outcomes rather than assuming a selection
+committed when it was requested.
 
-```typescript
-player.playbackMode;      // getter/setter: 'once' | 'loop'
-player.isReady;
-player.isPlaying;
-player.currentFrame;
-player.totalFrames;
-player.fps;
-player.currentProgress;
-player.currentTimeSeconds;
-player.totalDurationSeconds;
-```
+A choice is selected by its qualified path: pass
+`routes: { "lesson/explanation": "beginner" }` initially, or call
+`session.choose("lesson/explanation", "advanced")`. Scoped updates use `setData`;
+interactive child scenes use `setScene` and `on("action", listener)`.
 
-#### Events
+Read `session.snapshot()` for the initial state, then subscribe with
+`session.on("state", listener)`. `currentId` identifies committed media;
+`pending` identifies a requested load, navigation or route selection. `result`
+contains the latest settled `LoadResult`, or `null` while an operation is pending.
+Disposal emits a final state with `disposed: true`. These events describe
+selection operations, not every frame or data update.
 
-```typescript
-player.on("ready", () => {});
-player.on("play", () => {});
-player.on("pause", () => {});
-player.on("ended", () => {});
-player.on("frame", (frame, totalFrames) => {});
-player.on("rendered", (payload) => {});  // { frame, html, compositeHtml }
-player.on("scenechange", (scene) => {});
-player.on("checkpoint", (checkpoint) => {});
-player.on("error", (err) => {});
-```
+SuperImg supplies the media session, playback and inspection. Presentation
+libraries own deck documents, notes, reading views and their controls. Timed
+exports use the same authored Program through `time()`.
 
-### Browser Export (MP4)
+## Resolved cues
 
-Preview uses `superimg/media`. Export uses `@superimg/browser-export`:
-
-```typescript
-import { createBrowserExporter, downloadBlob } from "@superimg/browser-export";
-```
-
-See the playground export hook or CLI dev-ui export panel for a full example.
-
----
-
-## React
-
-### Basic Usage
-
-```tsx
-import { Player } from "superimg/react/player";
-
-<Player
-  template={template}
-  format="horizontal"
-  playbackMode="loop"
-  controls="full"
-  style={{ width: "100%", maxWidth: 640, aspectRatio: "16/9" }}
-/>
-```
-
-### Ref API
-
-```tsx
-import { useRef } from "react";
-import { Player, type PlayerRef } from "superimg/react/player";
-
-const playerRef = useRef<PlayerRef>(null);
-
-<Player ref={playerRef} template={template} controls onStore={(store) => {}} />
-
-// Imperative
-playerRef.current?.play();
-playerRef.current?.seekFrame(0);
-playerRef.current?.update({ data: { title: "Updated" } });
-```
-
-`PlayerRef.store` is a `RuntimeStore` adapter over the internal Zustand store.
-
-### Layered Architecture
-
-The React `<Player>` uses a layered architecture internally to separate concerns:
-1. **Compile Layer**: Uses an off-thread worker to bundle templates without blocking the main thread UI.
-2. **Dynamic Layers**: Handles rendering and playback preview via a `MediaSession` (`@superimg/media`).
-
-Exporting to MP4/WebM is not built into `<Player>` — consumers call `exportToVideo`/`downloadBlob` from `@superimg/browser-export` directly (see `useExport`/`usePlaygroundExport`) and pass the result through the `onExport`/`onDownload` props.
-
----
-
-## Performance Tips
-
-- Preview re-renders DOM each frame via morphdom — simplify HTML/CSS for smooth playback
-- Use `loadMode="lazy"` on React `<Player>` for below-the-fold embeds
-- Use `hoverDelayMs` to debounce hover previews
-- For downloads, use the export path (`exportToVideo`) rather than frame capture on `Player`
-
----
-
-## Examples
-
-- `examples/apps/hover-preview/` — YouTube-style grid
-- `examples/apps/player-vite/` — Basic player
-- `examples/apps/react-player/` — React with controls
-
----
-
-## Next Steps
-
-- [Rendering Architecture](./rendering-architecture.md) — preview vs capture vs CLI
-- [Templates & Data](./templates-and-data.md) — writing templates
+A successful Player or DomPlayer load returns `cues` with start, end, and still
+times in seconds. Use `getCues()` to read cues against the current accepted
+clock. To recompute data-dependent cues, load the definition with the new data.

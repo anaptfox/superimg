@@ -1,4 +1,4 @@
-import { define, layoutTimeline, type RenderContext } from "superimg";
+import { define, Html, layoutTimeline, type RenderContext } from "@foxworth/superimg";
 
 export interface ClaudeMessage {
   id: string;
@@ -24,7 +24,7 @@ function estimateChatTimeline(data: ClaudeData) {
     data.timingPreset === "rapid" ? 0.85 : data.timingPreset === "dramatic" ? 1.25 : 1;
   const weights = data.messages.map((m) => messageWeight(m.text));
   const messagesS = Math.max(2, weights.reduce((a, w) => a + w, 0) * 1.55 * pace);
-  const holdS = Math.max(0.55, messagesS * (1 / 9));
+  const holdS = Math.max(1.6, messagesS / 9);
   return layoutTimeline({ messages: messagesS, hold: holdS });
 }
 
@@ -51,7 +51,7 @@ export default define<ClaudeData>({
     return { duration: `${totalSeconds}s`, phases };
   },
   render(ctx: RenderContext<ClaudeData>) {
-    const { std, width, height, data } = ctx;
+    const { std, width, height, data, timeline } = ctx;
     const {
       messages,
       model,
@@ -153,20 +153,18 @@ export default define<ClaudeData>({
       const isAssistant = msg.role === "assistant";
 
       if (isAssistant) {
-        if (showThinkingIndicator && item.state === "entering" && item.slot < 0.5) {
+        if (showThinkingIndicator && item.slot < 0.5) {
           currentThinkingHtml = renderThinkingIndicator(item.slot * 2);
           continue;
         }
 
-        const typeP = item.state === "revealed"
-          ? 1
-          : item.state === "entering"
-            ? std.interpolate(item.slot, [0.5, 1], [0, 1])
-            : 0;
+        // `enter` only describes arrival. `slot` keeps advancing after the
+        // stack item is revealed, leaving time for thinking, typing, and reading.
+        const typeP = std.interpolate(item.slot, [showThinkingIndicator ? 0.5 : 0, 0.9], [0, 1]);
         if (typeP <= 0) continue;
 
         const { visible: displayText, typing } = std.text.type(msg.text, typeP);
-        const showCursor = typing && item.state === "entering";
+        const showCursor = typing && std.text.cursor(timeline.seconds, 2);
         const cursorHtml = showCursor ? `<span style="
           display:inline-block;
           width:2px;
@@ -174,7 +172,6 @@ export default define<ClaudeData>({
           background:${THEME.accent};
           margin-left:2px;
           vertical-align:text-bottom;
-          animation:blink 0.5s infinite;
         "></span>` : "";
 
         const opacity = item.state === "entering" ? item.enter : 1;
@@ -195,7 +192,7 @@ export default define<ClaudeData>({
               color:${THEME.text};
               white-space:pre-wrap;
               word-wrap:break-word;
-            ">${displayText}${cursorHtml}</div>
+            ">${std.text.escapeHtml(displayText)}${cursorHtml}</div>
           </div>
         `;
       } else {
@@ -221,7 +218,7 @@ export default define<ClaudeData>({
               line-height:1.5;
               color:${THEME.text};
               word-wrap:break-word;
-            ">${msg.text}</div>
+            ">${std.text.escapeHtml(msg.text)}</div>
           </div>
         `;
       }
@@ -262,7 +259,7 @@ export default define<ClaudeData>({
           padding:${baseFontSize * 0.3}px ${baseFontSize * 0.6}px;
           border-radius:${baseFontSize * 0.5}px;
         ">
-          <span>${modelDisplay}</span>
+          <span>${std.text.escapeHtml(modelDisplay)}</span>
           <span style="font-size:${baseFontSize * 0.6}px;">▼</span>
         </div>
       </div>
@@ -311,8 +308,7 @@ export default define<ClaudeData>({
       </div>
     `;
 
-    return `
-      <style>@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }</style>
+    return Html({ id: "claude-conversation", width: "fill", height: "fill", html: `
       <div style="
         width:${width}px;
         height:${height}px;
@@ -347,6 +343,6 @@ export default define<ClaudeData>({
 
         ${footerHtml}
       </div>
-    `;
+    ` });
   },
 });

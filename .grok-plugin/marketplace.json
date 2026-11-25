@@ -1,0 +1,21 @@
+{
+  "name": "superimg",
+  "description": "SuperImg — programmatic HTML/CSS video templates to MP4",
+  "owner": {
+    "name": "anaptfox"
+  },
+  "plugins": [
+    {
+      "name": "superimg",
+      "description": "Full SuperImg video lifecycle: brief, design, build, motion craft, review, multi-format variants, ship.",
+      "category": "developer-tools",
+      "version": "0.1.0",
+      "source": {
+        "type": "local",
+        "path": "./packages/superimg-agent-plugins/grok"
+      },
+      "tags": ["video", "animation", "superimg", "media"],
+      "keywords": ["mp4", "reel", "motion", "templates"]
+    }
+  ]
+}

@@ -4,22 +4,28 @@ import {
   forceManyBody,
   forceCenter,
   forceCollide,
-  type SimulationNodeDatum,
-  type SimulationLinkDatum,
 } from "d3-force";
 import type { Box } from "../../layout.js";
 import type { ChartOpts } from "./shared.js";
 import { chartColors } from "./shared.js";
 
-export interface ForceNode extends SimulationNodeDatum {
+export interface ForceNode {
   id: string;
   label?: string;
   radius?: number;
+  index?: number;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
-export interface ForceLink extends SimulationLinkDatum<ForceNode> {
+export interface ForceLink {
   source: string;
   target: string;
+  index?: number;
 }
 
 export interface ForceOpts extends ChartOpts {
@@ -35,10 +41,10 @@ export interface ForceOpts extends ChartOpts {
   ticks?: number;
 }
 
-const simCache = new Map<string, { nodes: ForceNode[]; links: SimulationLinkDatum<ForceNode>[] }>();
-
-function cacheKey(box: Box, nodes: ForceNode[], links: ForceLink[]): string {
-  return `${box.x},${box.y},${box.width},${box.height}|${nodes.map((n) => n.id).join(",")}|${links.map((l) => `${l.source}-${l.target}`).join(",")}`;
+interface ResolvedForceLink {
+  source: string | ForceNode;
+  target: string | ForceNode;
+  index?: number;
 }
 
 function runSimulation(
@@ -47,20 +53,16 @@ function runSimulation(
   links: ForceLink[],
   tickCount: number,
   opts: ForceOpts,
-): { nodes: ForceNode[]; links: SimulationLinkDatum<ForceNode>[] } {
-  const key = cacheKey(box, nodes, links);
-  const cached = simCache.get(key);
-  if (cached && tickCount >= (opts.ticks ?? 300)) return cached;
-
+): { nodes: ForceNode[]; links: ResolvedForceLink[] } {
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
   const simNodes: ForceNode[] = nodes.map((n) => ({ ...n }));
-  const simLinks = links.map((l) => ({ ...l }));
+  const simLinks: ResolvedForceLink[] = links.map((l) => ({ ...l }));
 
   const sim = forceSimulation(simNodes)
     .force(
       "link",
-      forceLink<ForceNode, SimulationLinkDatum<ForceNode>>(simLinks)
+      forceLink<ForceNode, ResolvedForceLink>(simLinks)
         .id((d) => d.id)
         .distance(opts.linkDistance ?? 80),
     )
@@ -72,7 +74,6 @@ function runSimulation(
   for (let i = 0; i < tickCount; i++) sim.tick();
 
   const result = { nodes: simNodes, links: simLinks };
-  if (tickCount >= (opts.ticks ?? 300)) simCache.set(key, result);
   return result;
 }
 
@@ -99,7 +100,7 @@ export function force(
     .map((l) => {
       const src = typeof l.source === "object" ? l.source : nodeById.get(l.source as string);
       const tgt = typeof l.target === "object" ? l.target : nodeById.get(l.target as string);
-      if (!src?.x || !tgt?.x || src.y == null || tgt.y == null) return "";
+      if (src?.x == null || tgt?.x == null || src.y == null || tgt.y == null) return "";
       return `<line x1="${src.x.toFixed(2)}" y1="${src.y!.toFixed(2)}" x2="${tgt.x.toFixed(2)}" y2="${tgt.y!.toFixed(2)}" stroke="${linkColor}" stroke-width="${linkW}" opacity="${progress.toFixed(3)}"/>`;
     })
     .filter(Boolean)

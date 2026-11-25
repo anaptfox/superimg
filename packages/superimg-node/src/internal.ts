@@ -1,10 +1,11 @@
 export {
   BrowserInstallError,
+  BrowserLaunchDeniedError,
   BrowserNotInstalledError,
   FfmpegGifEncoder,
   NodeVideoEncoder,
   PlaywrightEngine,
-  PlaywrightFrameRenderer,
+  PlaywrightRasterizer,
   RenderSession,
   SharpStillEncoder,
   checkBrowserStatus,
@@ -17,6 +18,7 @@ export {
 
 export type {
   BrowserStatus,
+  BrowsersPathSource,
   EnsureBrowserOptions,
   InstallOptions,
   PlaywrightEngineOptions,

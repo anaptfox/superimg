@@ -1,146 +1,476 @@
-import { define } from "superimg";
+// Architecture — a cyanotype drafting sheet. The walkthrough is one semantic
+// vector tree, so every node and edge remains visible to check and inspect.
 
-/**
- * Pre-rendered architecture plate (static SVG).
- * SuperImg never calls mermaid.render inside render() — layout is one-shot offline.
- */
-const ARCH_SVG = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
-  <rect width="900" height="420" fill="transparent"/>
-  <g class="node" id="flowchart-client-1">
-    <rect x="40" y="160" width="140" height="72" rx="12" fill="#1e293b" stroke="#5b8cff" stroke-width="2"/>
-    <text x="110" y="204" text-anchor="middle" fill="#e2e8f0" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="600">Client</text>
-  </g>
-  <g class="edgePath" id="edge-client-api" data-id="client-api" data-edge="true">
-    <path d="M180 196 H 300" stroke="#64748b" stroke-width="2" fill="none"/>
-    <polygon points="300,196 288,190 288,202" fill="#64748b"/>
-  </g>
-  <g class="node" id="flowchart-api-2">
-    <rect x="300" y="160" width="160" height="72" rx="12" fill="#1e293b" stroke="#4fd1c5" stroke-width="2"/>
-    <text x="380" y="204" text-anchor="middle" fill="#e2e8f0" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="600">API</text>
-  </g>
-  <g class="edgePath" id="edge-api-db" data-id="api-db" data-edge="true">
-    <path d="M460 196 H 580" stroke="#64748b" stroke-width="2" fill="none"/>
-    <polygon points="580,196 568,190 568,202" fill="#64748b"/>
-  </g>
-  <g class="node" id="flowchart-db-3">
-    <rect x="580" y="160" width="160" height="72" rx="12" fill="#1e293b" stroke="#f093fb" stroke-width="2"/>
-    <text x="660" y="204" text-anchor="middle" fill="#e2e8f0" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="600">DB</text>
-  </g>
-  <g class="edgePath" id="edge-api-worker" data-id="api-worker" data-edge="true">
-    <path d="M380 232 V 320 H 520" stroke="#64748b" stroke-width="2" fill="none"/>
-    <polygon points="520,320 508,314 508,326" fill="#64748b"/>
-  </g>
-  <g class="node" id="flowchart-worker-4">
-    <rect x="520" y="290" width="160" height="72" rx="12" fill="#1e293b" stroke="#ffc857" stroke-width="2"/>
-    <text x="600" y="334" text-anchor="middle" fill="#e2e8f0" font-family="Inter,system-ui,sans-serif" font-size="18" font-weight="600">Worker</text>
-  </g>
-</svg>`;
+import {
+  video,
+  Frame,
+  Stack,
+  Text,
+  Vector,
+  vector,
+  type MediaElement,
+  type RenderContext,
+  googleFont,
+} from "@foxworth/superimg";
 
-export default define({
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "8s",
-    fonts: ["Inter:wght@400;600;700"],
+export interface ArchDiagramData extends Record<string, unknown> {
+  title: string;
+  system: string;
+  revision: string;
+  accentColor: string;
+}
+
+const GROUND = "#0A2340";
+const LINE = "#8FC0EE";
+const INK = "#EAF4FF";
+const DIM = "#7FA6CC";
+const HAIR = "rgba(143,192,238,0.28)";
+const MONO = "'JetBrains Mono', ui-monospace, monospace";
+
+type StepId = "n-client" | "n-api" | "n-db" | "n-worker";
+
+interface Step {
+  id: StepId;
+  label: string;
+  note: string;
+  edges: string[];
+}
+
+const STEPS: Step[] = [
+  { id: "n-client", label: "Client", note: "browser · fetch()", edges: [] },
+  { id: "n-api", label: "API", note: "edge gateway", edges: ["e-client-api"] },
+  { id: "n-db", label: "Database", note: "read replica", edges: ["e-api-db"] },
+  { id: "n-worker", label: "Worker", note: "async write-back", edges: ["e-api-worker", "e-worker-db"] },
+];
+
+interface NodeSpec {
+  id: StepId;
+  x: number;
+  y: number;
+  width: number;
+  label: string;
+  note: string;
+}
+
+interface EdgeSpec {
+  id: string;
+  d: string;
+  arrow: string;
+  label: string;
+  labelX: number;
+  labelY: number;
+}
+
+const NODES: NodeSpec[] = [
+  { id: "n-client", x: 60, y: 150, width: 240, label: "Client", note: "browser · fetch()" },
+  { id: "n-api", x: 470, y: 150, width: 260, label: "API", note: "edge gateway" },
+  { id: "n-db", x: 900, y: 150, width: 240, label: "Database", note: "read replica" },
+  { id: "n-worker", x: 470, y: 400, width: 260, label: "Worker", note: "async write-back" },
+];
+
+const EDGES: EdgeSpec[] = [
+  { id: "e-client-api", d: "M300 209H452", arrow: "M470 209L452 200V218Z", label: "1", labelX: 376, labelY: 174 },
+  { id: "e-api-db", d: "M730 209H882", arrow: "M900 209L882 200V218Z", label: "2", labelX: 806, labelY: 174 },
+  { id: "e-api-worker", d: "M600 268V382", arrow: "M600 400L591 382H609Z", label: "3", labelX: 600, labelY: 325 },
+  { id: "e-worker-db", d: "M730 459H1020V288", arrow: "M1020 270L1011 288H1029Z", label: "4", labelX: 875, labelY: 424 },
+];
+
+const GLYPHS: Record<StepId, string[]> = {
+  "n-client": [
+    "M1.5 3H22.5V20H1.5Z",
+    "M1.5 8H22.5",
+    "M5 4.7A0.9 0.9 0 1 0 5 6.5A0.9 0.9 0 1 0 5 4.7Z",
+  ],
+  "n-api": ["M1.5 4H22.5V20H1.5Z", "M9 4V20M15 4V20"],
+  "n-db": [
+    "M3.5 5.5C3.5 1.5 20.5 1.5 20.5 5.5C20.5 9.5 3.5 9.5 3.5 5.5Z",
+    "M3.5 5.5V18.5C3.5 22.5 20.5 22.5 20.5 18.5V5.5M3.5 12C3.5 16 20.5 16 20.5 12",
+  ],
+  "n-worker": [
+    "M12 7.8A4.2 4.2 0 1 0 12 16.2A4.2 4.2 0 1 0 12 7.8Z",
+    "M12 2V5.2M12 18.8V22M22 12H18.8M5.2 12H2M19.1 4.9L16.8 7.2M7.2 16.8L4.9 19.1M19.1 19.1L16.8 16.8M7.2 7.2L4.9 4.9",
+  ],
+};
+
+export default video<ArchDiagramData>({
+  duration: "7.6s",
+  fonts: [googleFont("Inter:wght@400;500;600;700"), googleFont("JetBrains+Mono:wght@400;500")],
+  inlineCss: [
+    "* { margin: 0; padding: 0; box-sizing: border-box; }",
+    "body { overflow: hidden; }",
+  ],
+  sample: {
+    title: "Request path walkthrough",
+    system: "Checkout service",
+    revision: "REV C",
+    accentColor: "#FFC857",
   },
-  render(ctx) {
-    const { std, width, height } = ctx;
-    // intro → then each hop holds, previous marks stay revealed (no jump-dim)
+
+  render(ctx: RenderContext<ArchDiagramData>) {
+    const { std, width, height, data } = ctx;
+    const ease = (v: number, fn: Parameters<typeof std.interpolate>[3]) =>
+      std.interpolate(v, [0, 1], [0, 1], fn);
+    const accent = String(data.accentColor ?? "#FFC857");
+    const title = String(data.title ?? "Request path walkthrough");
+    const system = String(data.system ?? "System");
+    const revision = String(data.revision ?? "REV A");
+
     const t = ctx.director({
-      intro: "12%",
-      client: "16%",
-      api: "16%",
-      db: "16%",
-      worker: "16%",
-      hold: "24%",
+      sheet: "0.7s",
+      "n-client": "1.1s",
+      "n-api": "1.1s",
+      "n-db": "1.1s",
+      "n-worker": "1.1s",
+      hold: "2.15s",
+      out: "0.35s",
     });
 
-    // Cumulative: once a phase starts, in() stays at 1 afterward → no drop-off
-    const clientP = t.in("client");
-    const apiP = t.in("api");
-    const dbP = t.in("db");
-    const workerP = t.in("worker");
+    const sheetP = ease(t.in("sheet"), "easeOutCubic");
+    const holdP = t.in("hold");
+    const outP = ease(t.in("out"), "easeInCubic");
 
-    // revealed = fully completed prior steps (opacity 1)
-    // active = currently ramping step
+    // Cumulative walkthrough: once a step completes it stays lit.
+    const stepP = STEPS.map((s) => ease(t.in(s.id), "easeInOutCubic"));
     const revealed: string[] = [];
     const activeNodes: string[] = [];
     const activeEdges: string[] = [];
     let activeProgress = 0;
+    let activeIndex = -1;
 
-    if (clientP >= 1) revealed.push("client");
-    else if (clientP > 0) {
-      activeNodes.push("client");
-      activeProgress = clientP;
-    }
+    STEPS.forEach((step, i) => {
+      const p = stepP[i]!;
+      if (p >= 1) {
+        revealed.push(step.id, ...step.edges);
+      } else if (p > 0) {
+        activeNodes.push(step.id);
+        activeEdges.push(...step.edges);
+        activeProgress = p;
+        activeIndex = i;
+      }
+    });
+    if (activeIndex === -1) activeIndex = holdP > 0 ? STEPS.length - 1 : -1;
 
-    if (apiP >= 1) {
-      revealed.push("api", "client-api");
-    } else if (apiP > 0) {
-      activeNodes.push("api");
-      activeEdges.push("client-api");
-      activeProgress = apiP;
-    }
+    const plateW = Math.round(width * 0.615);
+    const plateH = Math.round(plateW * (620 / 1200));
+    const plateOp = std.interpolate(sheetP, [0.25, 1], [0, 1], "easeOutCubic");
+    const dimOpacity = 0.16;
 
-    if (dbP >= 1) {
-      revealed.push("db", "api-db");
-    } else if (dbP > 0) {
-      activeNodes.push("db");
-      activeEdges.push("api-db");
-      activeProgress = dbP;
-    }
+    const opacityFor = (id: string) => {
+      if (revealed.includes(id)) return 1;
+      if ([...activeNodes, ...activeEdges].includes(id)) {
+        return dimOpacity + (1 - dimOpacity) * activeProgress;
+      }
+      return dimOpacity;
+    };
+    const colorFor = (id: string) =>
+      [...activeNodes, ...activeEdges].includes(id) ? accent : LINE;
 
-    if (workerP >= 1 || t.in("hold") > 0) {
-      revealed.push("worker", "api-worker");
-      // ensure path fully lit on hold
-      if (!revealed.includes("client")) revealed.push("client");
-      if (!revealed.includes("api")) revealed.push("api", "client-api");
-      if (!revealed.includes("db")) revealed.push("db", "api-db");
-    } else if (workerP > 0) {
-      activeNodes.push("worker");
-      activeEdges.push("api-worker");
-      activeProgress = workerP;
-    }
-
-    // Always walkthrough mode (dim baseline) so we never flash full-bright then dim
-    const diagram = std.viz.mermaid(ARCH_SVG, {
-      width: 1100,
-      height: 480,
-      // container fades in during intro, then stays fully visible
-      progress: Math.max(t.in("intro"), clientP > 0 ? 1 : 0),
-      dimOpacity: 0.18,
-      highlight: {
-        revealed,
-        nodes: activeNodes,
-        edges: activeEdges,
-        progress: activeNodes.length || activeEdges.length ? activeProgress || 1 : 0,
-      },
+    const edgeElements = EDGES.map((edge): MediaElement => {
+      const color = colorFor(edge.id);
+      return vector.group(
+        { id: edge.id, opacity: opacityFor(edge.id) },
+        vector.path({
+          id: `${edge.id}-line`,
+          d: edge.d,
+          fill: "none",
+          stroke: color,
+          strokeWidth: 1.8,
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+        }),
+        vector.path({ id: `${edge.id}-arrow`, d: edge.arrow, fill: color }),
+        vector.path({
+          id: `${edge.id}-label-cell`,
+          d: std.svg.shape.circle(edge.labelX, edge.labelY, 15),
+          fill: GROUND,
+          stroke: HAIR,
+          strokeWidth: 1,
+        }),
+        vector.text(
+          {
+            x: edge.labelX,
+            y: edge.labelY + 5,
+            fill: color,
+            family: MONO,
+            size: 14,
+            anchor: "middle",
+          },
+          edge.label,
+        ),
+      );
     });
 
-    const stepLabel =
-      workerP > 0 || t.in("hold") > 0
-        ? "Worker path"
-        : dbP > 0
-          ? "Persist to DB"
-          : apiP > 0
-            ? "Hit API"
-            : clientP > 0
-              ? "Client request"
-              : "Overview";
+    const nodeElements = NODES.map((node): MediaElement => {
+      const h = 118;
+      const tick = 12;
+      const color = colorFor(node.id);
+      const corners = [
+        `M${node.x} ${node.y + tick}V${node.y}H${node.x + tick}`,
+        `M${node.x + node.width - tick} ${node.y}H${node.x + node.width}V${node.y + tick}`,
+        `M${node.x + node.width} ${node.y + h - tick}V${node.y + h}H${node.x + node.width - tick}`,
+        `M${node.x + tick} ${node.y + h}H${node.x}V${node.y + h - tick}`,
+      ].map((d, i) =>
+        vector.path({
+          id: `${node.id}-corner-${i}`,
+          d,
+          fill: "none",
+          stroke: color,
+          strokeWidth: 2.4,
+          strokeLinecap: "square",
+        }),
+      );
+      const glyphs = GLYPHS[node.id].map((d, i) =>
+        vector.path({
+          id: `${node.id}-glyph-${i}`,
+          d,
+          fill: node.id === "n-client" && i === 2 ? color : "none",
+          stroke: node.id === "n-client" && i === 2 ? "none" : color,
+          strokeWidth: 1.4,
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+        }),
+      );
+      return vector.group(
+        { id: node.id, opacity: opacityFor(node.id) },
+        vector.path({
+          id: `${node.id}-box`,
+          d: std.svg.shape.roundedRect(node.x, node.y, node.width, h, 10),
+          fill: "rgba(143,192,238,0.06)",
+          stroke: HAIR,
+          strokeWidth: 1.2,
+        }),
+        vector.path({
+          id: `${node.id}-inset`,
+          d: std.svg.shape.roundedRect(node.x + 8, node.y + 8, node.width - 16, h - 16, 6),
+          fill: "none",
+          stroke: "rgba(143,192,238,0.16)",
+          strokeWidth: 1,
+        }),
+        ...corners,
+        vector.group(
+          { id: `${node.id}-glyph`, transform: `translate(${node.x + 26} ${node.y + 22}) scale(1.15)` },
+          ...glyphs,
+        ),
+        vector.text(
+          {
+            x: node.x + 26,
+            y: node.y + 82,
+            fill: colorFor(node.id),
+            family: "Inter, system-ui, sans-serif",
+            size: 27,
+            weight: 600,
+            letterSpacing: -0.3,
+          },
+          node.label,
+        ),
+        vector.text(
+          {
+            x: node.x + 26,
+            y: node.y + 104,
+            fill: DIM,
+            family: MONO,
+            size: 14,
+            letterSpacing: 0.6,
+          },
+          node.note,
+        ),
+      );
+    });
 
-    return `
-<div style="position:relative;width:${width}px;height:${height}px;background:#06060f;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center">
-  <div style="position:absolute;top:72px;left:80px;color:#f0f4ff">
-    <div style="font-size:22px;font-weight:600;letter-spacing:6px;color:#5b8cff">ARCHITECTURE</div>
-    <div style="font-size:42px;font-weight:700;margin-top:8px">Request path walkthrough</div>
-    <div style="margin-top:12px;font-size:20px;color:#94a3b8">${stepLabel}</div>
-  </div>
-  <div style="margin-top:80px">${diagram}</div>
-  <div style="position:absolute;bottom:48px;color:#6b7795;font-size:18px;opacity:${t.in("hold").toFixed(3)}">
-    cumulative highlights · prior steps stay lit
-  </div>
-</div>`;
+    const plate = Vector(
+      { id: "request-path", width: plateW, height: plateH, viewBox: { x: 0, y: 0, width: 1200, height: 620 } },
+      vector.group(
+        { id: "request-path-marks", opacity: plateOp },
+        ...edgeElements,
+        ...nodeElements,
+        vector.group(
+          { id: "request-path-scale", opacity: 0.55 },
+          vector.path({ d: "M60 560H1140", fill: "none", stroke: HAIR, strokeWidth: 1 }),
+          vector.path({ d: "M60 552V568M1140 552V568", fill: "none", stroke: HAIR, strokeWidth: 1 }),
+          vector.path({ d: "M470 545H730V575H470Z", fill: GROUND }),
+          vector.text(
+            { x: 600, y: 565, fill: DIM, family: MONO, size: 14, anchor: "middle", letterSpacing: 2 },
+            "REQUEST PATH · 4 HOPS",
+          ),
+        ),
+      ),
+    );
+
+    const px = (v: number) => Math.round(Math.min(width, height * 1.78) * v);
+    const inset = Math.round(width * 0.032);
+    const railW = Math.round(width * 0.235);
+
+    const gridSize = px(0.026);
+    const gridSegments: string[] = [];
+    for (let x = 0; x <= width; x += gridSize) gridSegments.push(`M${x} 0V${height}`);
+    for (let y = 0; y <= height; y += gridSize) gridSegments.push(`M0 ${y}H${width}`);
+    const grid = Vector(
+      { id: "grid", width, height, viewBox: { x: 0, y: 0, width, height } },
+      vector.path({
+        id: "grid-lines",
+        d: gridSegments.join(" "),
+        fill: "none",
+        stroke: LINE,
+        strokeWidth: 1,
+        opacity: 0.055,
+      }),
+    );
+    const perimeter = (width - inset * 2) * 2 + (height - inset * 2) * 2;
+    const border = Vector(
+      { id: "sheet-border", width, height, viewBox: { x: 0, y: 0, width, height } },
+      vector.path({
+        id: "sheet-perimeter",
+        d: `M${inset} ${inset}H${width - inset}V${height - inset}H${inset}Z`,
+        fill: "none",
+        stroke: HAIR,
+        strokeWidth: 1.5,
+        strokeDasharray: perimeter,
+        strokeDashoffset: (1 - sheetP) * perimeter,
+      }),
+      ...[
+        [inset, inset, 1, 1],
+        [width - inset, inset, -1, 1],
+        [inset, height - inset, 1, -1],
+        [width - inset, height - inset, -1, -1],
+      ].map(([cx, cy, sx, sy], i) =>
+        vector.path({
+          id: `sheet-corner-${i}`,
+          d: `M${cx! + sx! * 26} ${cy}H${cx}V${cy! + sy! * 26}`,
+          fill: "none",
+          stroke: LINE,
+          strokeWidth: 2.5,
+          opacity: sheetP,
+        }),
+      ),
+    );
+
+    // Step rail.
+    const rows = STEPS.map((step, i) => {
+      const p = stepP[i]!;
+      const isActive = i === activeIndex;
+      const done = p >= 1;
+      const appear = std.interpolate(sheetP, [0.3 + i * 0.12, 0.8 + i * 0.12], [0, 1], "easeOutCubic");
+      const lit = isActive ? 1 : done ? 0.72 : 0.3;
+      return Stack(
+        {
+          direction: "row",
+          width: railW,
+          height: px(0.048),
+          align: "center",
+          gap: px(0.014),
+          style: {
+            opacity: (appear * lit).toFixed(3),
+            transform: `translateX(${((1 - appear) * -14).toFixed(2)}px)`,
+          },
+        },
+        Frame({
+          width: 3,
+          height: px(0.034),
+          fill: isActive ? accent : LINE,
+          style: { opacity: isActive ? 1 : 0.4 },
+        }),
+        Text(
+          { variant: "label", color: isActive ? accent : DIM, size: px(0.0145), fontFamily: MONO },
+          String(i + 1).padStart(2, "0"),
+        ),
+        Stack(
+          { gap: 2, width: railW - px(0.07) },
+          Text(
+            { variant: "title", color: isActive ? INK : DIM, size: px(0.023), weight: 600 },
+            step.label,
+          ),
+          Text({ variant: "label", color: DIM, size: px(0.0135), fontFamily: MONO }, step.note),
+        ),
+      );
+    });
+
+    const blockCell = (label: string, value: string, w: number) =>
+      Stack(
+        { width: w, gap: 4, height: px(0.044), justify: "center" },
+        Text({ variant: "label", color: DIM, size: px(0.0115), letterSpacing: 2.5 }, label),
+        Text({ variant: "label", color: INK, size: px(0.0165), fontFamily: MONO }, value),
+      );
+
+    const blockW = Math.round(width * 0.155);
+
+    return Frame(
+      { id: "sheet", width, height, fill: GROUND, style: { opacity: 1 - outP } },
+      grid,
+      border,
+
+      Stack(
+        {
+          id: "page",
+          width: "fill",
+          height: "fill",
+          justify: "space-between",
+          pad: { x: Math.round(width * 0.062), y: Math.round(height * 0.085) },
+        },
+
+        // Masthead.
+        Stack(
+          {
+            direction: "row",
+            width: "fill",
+            height: px(0.072),
+            align: "start",
+            justify: "space-between",
+            motion: t.motion({ id: "masthead", during: "sheet", y: 14 }),
+          },
+          Stack(
+            { gap: px(0.008) },
+            Text(
+              { variant: "label", color: accent, size: px(0.0145), weight: 700, letterSpacing: 6 },
+              "ARCHITECTURE",
+            ),
+            Text(
+              { variant: "display", color: INK, size: px(0.038), weight: 700, letterSpacing: -0.8 },
+              title,
+            ),
+          ),
+          Text(
+            { variant: "label", color: DIM, size: px(0.0145), fontFamily: MONO, align: "right" },
+            `${system.toUpperCase()} · ${revision}`,
+          ),
+        ),
+
+        // Rail + plate.
+        Stack(
+          {
+            direction: "row",
+            width: "fill",
+            height: plateH,
+            align: "center",
+            justify: "space-between",
+          },
+          Stack({ width: railW, gap: px(0.018) }, ...rows),
+          plate,
+        ),
+
+        // Title block.
+        Stack(
+          {
+            width: "fill",
+            height: px(0.062),
+            gap: px(0.012),
+            style: { opacity: std.interpolate(sheetP, [0.6, 1], [0, 1], "easeOutCubic") },
+          },
+          Frame({ width: "fill", height: 1, fill: HAIR }),
+          Stack(
+            { direction: "row", width: "fill", height: px(0.044), align: "center", justify: "space-between" },
+            Stack(
+              { direction: "row", gap: px(0.03), align: "center", height: px(0.044) },
+              blockCell("SHEET", "A-01", blockW * 0.5),
+              blockCell("PLATE", "request path", blockW),
+              blockCell("HIGHLIGHT", "cumulative", blockW * 0.7),
+            ),
+            Text(
+              { variant: "label", color: DIM, size: px(0.0135), fontFamily: MONO, align: "right" },
+              `prior steps stay lit · ${(holdP > 0 ? STEPS.length : Math.max(0, activeIndex + 1))}/${STEPS.length}`,
+            ),
+          ),
+        ),
+      ),
+    );
   },
 });

@@ -9,7 +9,8 @@ export type ExampleCategoryId =
   | "interfaces"
   | "data"
   | "vector"
-  | "developer";
+  | "developer"
+  | "composed";
 
 export interface PlaygroundMeta {
   /** Pre-built rolldown IIFE — browser skips WASM when liveEdit is false */
@@ -30,8 +31,6 @@ export interface EditorExample {
   code?: string;
   /** Sidecar source — public/playground/examples/{id}/code.{hash}.ts */
   codeUrl?: string;
-  /** @deprecated Use bundledUrl — inline IIFE kept for backwards compat only */
-  bundled?: string;
   /** Pre-built rolldown IIFE — public/playground/examples/{id}/bundle.{hash}.iife.js */
   bundledUrl?: string;
   playground?: PlaygroundMeta;
@@ -46,6 +45,7 @@ export const EXAMPLE_CATEGORIES = [
   { id: "data", title: "Data" },
   { id: "vector", title: "Vector" },
   { id: "developer", title: "Developer" },
+  { id: "composed", title: "Composed" },
 ] as const satisfies ReadonlyArray<{ id: ExampleCategoryId; title: string }>;
 
 export const EDITOR_EXAMPLES: EditorExample[] = [

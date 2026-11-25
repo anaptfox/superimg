@@ -1,0 +1,16 @@
+{
+  "name": "@superimg/agent-plugins",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generates every agent-distribution artifact (Grok Build plugin, Grok Bot plugin, Codex plugin, openai.yaml metadata, embedded router copies, Codex command prompts) from the canonical root skills/, agents/, and commands/.",
+  "type": "module",
+  "scripts": {
+    "build": "tsx scripts/generate.ts",
+    "verify": "tsx scripts/generate.ts --check",
+    "clean": "rm -rf grok codex grok-bot"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "tsx": "catalog:"
+  }
+}

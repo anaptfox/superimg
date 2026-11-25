@@ -1,7 +1,11 @@
-import { copyFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
-import { basename, extname, join, resolve } from "node:path";
-import { execa } from "execa";
+import { copyFile, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { findProjectRoot } from "../utils/find-project-root.js";
+import { createRuntime, inspectFile, readByteStream, startConversion } from "@superimg/core/runtime";
+import { createNodeRuntimeAdapter } from "@superimg/node";
+import { normalizeTrim, selectMediaTrack, type ConversionRequest, type MediaInspection } from "@superimg/types";
+import { buildEncodingOptions } from "./render-encoding.js";
+import { attachMediaJobControls } from "../utils/media-job-controls.js";
 
 interface ProbeOptions {
   json?: boolean;
@@ -14,46 +18,137 @@ interface ImportOptions {
   json?: boolean;
 }
 
-interface ProbeResult {
-  path: string;
-  sizeBytes: number;
-  extension: string;
-  ffprobe?: {
-    durationSeconds?: number;
-    video?: { codec?: string; width?: number; height?: number; fps?: number };
-    audio?: { codec?: string };
-  };
-  note?: string;
+interface ConvertOptions {
+  plan?: string;
+  format?: "mp4" | "webm" | "mov" | "mkv";
+  output?: string;
+  videoTrack?: string;
+  audioTrack?: string[];
+  preset?: string;
+  quality?: string;
+  alpha?: string;
+  videoQuantizer?: string;
+  videoCodec?: string;
+  audioCodec?: string;
+  videoBitrate?: string;
+  audioBitrate?: string;
+  bitrateMode?: string;
+  audioBitrateMode?: string;
+  json?: boolean;
 }
 
 export async function mediaProbeCommand(input: string, options: ProbeOptions = {}): Promise<void> {
   assertLocalMediaInput(input);
   const file = resolve(input);
-  const result = await probeLocalMedia(file);
+  const runtime = createRuntime(createNodeRuntimeAdapter());
+  let result: MediaInspection;
+  try {
+    result = await inspectFile(runtime, await fileInput(file));
+  } finally {
+    await runtime.dispose();
+  }
 
   if (options.json) {
     console.log(JSON.stringify(result, null, 2));
     return;
   }
 
-  console.log(`\nMedia probe: ${result.path}`);
-  console.log(`  size: ${result.sizeBytes} bytes`);
-  console.log(`  extension: ${result.extension || "(none)"}`);
-  if (result.ffprobe) {
-    if (result.ffprobe.durationSeconds !== undefined) {
-      console.log(`  duration: ${result.ffprobe.durationSeconds}s`);
-    }
-    if (result.ffprobe.video) {
-      const v = result.ffprobe.video;
-      console.log(`  video: ${[v.codec, v.width && v.height ? `${v.width}x${v.height}` : "", v.fps ? `${v.fps}fps` : ""].filter(Boolean).join(" ")}`);
-    }
-    if (result.ffprobe.audio) {
-      console.log(`  audio: ${result.ffprobe.audio.codec ?? "present"}`);
-    }
-  }
-  if (result.note) console.log(`  note: ${result.note}`);
+  console.log(`\nMedia inspection: ${file}`);
+  console.log(`  mime: ${result.mimeType}`);
+  console.log(`  size: ${result.byteLength} bytes`);
+  if (result.durationSeconds !== undefined) console.log(`  duration: ${result.durationSeconds}s`);
+  for (const track of result.tracks) console.log(`  ${track.kind} ${track.id}: ${[track.codec, track.width && track.height ? `${track.width}x${track.height}` : "", track.fps ? `${track.fps}fps` : "", track.channels ? `${track.channels}ch` : ""].filter(Boolean).join(" ")}`);
   console.log("");
 }
+
+export async function mediaConvertCommand(input: string | undefined, options: ConvertOptions = {}): Promise<void> {
+  if (options.plan) return mediaConvertPlanCommand(options.plan, options);
+  if (!input) throw new Error("media convert requires a file or --plan");
+  assertLocalMediaInput(input);
+  const file = resolve(input);
+  const runtime = createRuntime(createNodeRuntimeAdapter());
+  try {
+    const media = await fileInput(file);
+    const inspection = await inspectFile(runtime, media);
+    const video = options.videoTrack === undefined
+      ? inspection.tracks.find((track) => track.kind === "video")
+      : selectMediaTrack(inspection, options.videoTrack, "video");
+    if (!video || video.kind !== "video") throw new Error("Conversion requires a video track; use media probe to select --video-track.");
+    const requestedAudio = options.audioTrack ?? inspection.tracks.filter((track) => track.kind === "audio").map((track) => track.id);
+    const audio = requestedAudio.map((trackId, index) => {
+      const track = selectMediaTrack(inspection, trackId, "audio");
+      if (!track) throw new Error(`Unknown audio track: ${trackId}`);
+      return { id: `audio-${index + 1}`, sourceId: "input", trackId };
+    });
+    const encoding = buildEncodingOptions(options);
+    const format = options.format ?? (encoding?.format === "mov" ? "mov" : "mp4");
+    const { format: _ignored, ...conversionEncoding } = encoding ?? {};
+    const job = startConversion(runtime, {
+      sources: [{ id: "input", input: media }], video: { sourceId: "input", trackId: video.id }, audio, format,
+      ...(Object.keys(conversionEncoding).length ? { encoding: conversionEncoding } : {}),
+    });
+    const detachControls = attachMediaJobControls(job);
+    try {
+      const artifact = await job.result;
+      try {
+      const output = resolve(options.output ?? join(dirname(file), `${basename(file, extname(file))}.${format}`));
+      if (output === file) throw new Error("Conversion output must not overwrite its input");
+      const temporary = join(dirname(output), `.${basename(output)}.${process.pid}.tmp`);
+      try {
+        await writeFile(temporary, await readByteStream(artifact.open()));
+        await rename(temporary, output);
+      } catch (error) {
+        await rm(temporary, { force: true });
+        throw error;
+      }
+      const receipt = { output, mimeType: artifact.mimeType, byteLength: artifact.byteLength, sha256: artifact.sha256, durationSeconds: artifact.durationSeconds, tracks: artifact.tracks };
+      if (options.json) console.log(JSON.stringify(receipt, null, 2)); else console.log(`Converted media: ${output}`);
+      } finally { await artifact.dispose(); }
+    } finally { detachControls(); await job.dispose(); }
+  } finally { await runtime.dispose(); }
+}
+
+async function mediaConvertPlanCommand(planPath: string, options: ConvertOptions): Promise<void> {
+  const absolutePlan = resolve(planPath);
+  const plan = JSON.parse(await readFile(absolutePlan, "utf8")) as Omit<ConversionRequest, "sources"> & { sources: Array<{ id: string; path: string }> };
+  if (!Array.isArray(plan.sources) || plan.sources.length === 0 || !plan.video || !plan.format) throw new Error("Conversion plan requires sources, video, and format");
+  const ids = new Set<string>();
+  const sourceFiles = await Promise.all(plan.sources.map(async (source) => {
+    if (!source.id || !source.path || ids.has(source.id)) throw new Error(`Invalid or duplicate plan source id: ${source.id}`);
+    ids.add(source.id); const path = resolve(dirname(absolutePlan), source.path); assertLocalMediaInput(path);
+    return { id: source.id, path, input: await fileInput(path) };
+  }));
+  const runtime = createRuntime(createNodeRuntimeAdapter());
+  try {
+    const inspections = new Map(await Promise.all(sourceFiles.map(async (source) => [source.id, await inspectFile(runtime, source.input)] as const)));
+    validateSelection(plan.video, "video", inspections);
+    for (const audio of plan.audio ?? []) validateSelection(audio, "audio", inspections);
+    const request: ConversionRequest = { ...plan, audio: plan.audio ?? [], sources: sourceFiles.map(({ id, input }) => ({ id, input })) };
+    const job = startConversion(runtime, request);
+    const detachControls = attachMediaJobControls(job);
+    try {
+      const artifact = await job.result;
+      try {
+      const output = resolve(options.output ?? join(dirname(absolutePlan), `${basename(absolutePlan, extname(absolutePlan))}.${plan.format}`));
+      if (sourceFiles.some((source) => source.path === output)) throw new Error("Conversion output must not overwrite a plan source");
+      const temporary = join(dirname(output), `.${basename(output)}.${process.pid}.tmp`);
+      try { await writeFile(temporary, await readByteStream(artifact.open())); await rename(temporary, output); } catch (error) { await rm(temporary, { force: true }); throw error; }
+      const receipt = { output, mimeType: artifact.mimeType, byteLength: artifact.byteLength, sha256: artifact.sha256, durationSeconds: artifact.durationSeconds, tracks: artifact.tracks };
+      if (options.json) console.log(JSON.stringify(receipt, null, 2)); else console.log(`Converted media: ${output}`);
+      } finally { await artifact.dispose(); }
+    } finally { detachControls(); await job.dispose(); }
+  } finally { await runtime.dispose(); }
+}
+
+export function validateSelection(selection: { sourceId: string; trackId: string; trim?: { startSeconds?: number; endSeconds?: number } }, kind: "video" | "audio", inspections: ReadonlyMap<string, MediaInspection>) {
+  const inspection = inspections.get(selection.sourceId);
+  const track = inspection && selectMediaTrack(inspection, selection.trackId, kind);
+  if (!track) throw new Error(`Unknown ${kind} track ${selection.sourceId}:${selection.trackId}`);
+  if (selection.trim) normalizeTrim(selection.trim, track.durationSeconds ?? inspection!.durationSeconds ?? 0);
+}
+
+async function fileInput(file: string) { return { kind: "bytes" as const, bytes: new Uint8Array(await readFile(file)), mimeType: mimeType(file) }; }
+function mimeType(file: string) { const ext = extname(file).toLowerCase(); return ext === ".mov" ? "video/quicktime" : ext === ".mkv" ? "video/x-matroska" : ext === ".webm" ? "video/webm" : "video/mp4"; }
 
 export async function mediaImportCommand(input: string, options: ImportOptions = {}): Promise<void> {
   assertLocalMediaInput(input);
@@ -115,70 +210,6 @@ function assertLocalMediaInput(input: string): void {
   if (/^https?:\/\//i.test(input)) {
     throw new Error("Media import/probe supports local files only. Use an app-provided resolver for remote media.");
   }
-}
-
-async function probeLocalMedia(file: string): Promise<ProbeResult> {
-  const fileStat = await stat(file);
-  if (!fileStat.isFile()) throw new Error(`Media probe target is not a file: ${file}`);
-  const result: ProbeResult = {
-    path: file,
-    sizeBytes: fileStat.size,
-    extension: extname(file).replace(/^\./, ""),
-  };
-
-  try {
-    const { stdout } = await execa("ffprobe", [
-      "-v", "error",
-      "-print_format", "json",
-      "-show_format",
-      "-show_streams",
-      file,
-    ]);
-    const parsed = JSON.parse(stdout) as {
-      format?: { duration?: string };
-      streams?: Array<Record<string, unknown>>;
-    };
-    result.ffprobe = normalizeFfprobe(parsed);
-  } catch {
-    result.note = "ffprobe not available; showing filesystem metadata only";
-  }
-
-  return result;
-}
-
-function normalizeFfprobe(parsed: {
-  format?: { duration?: string };
-  streams?: Array<Record<string, unknown>>;
-}): NonNullable<ProbeResult["ffprobe"]> {
-  const video = parsed.streams?.find((stream) => stream.codec_type === "video");
-  const audio = parsed.streams?.find((stream) => stream.codec_type === "audio");
-  const result: NonNullable<ProbeResult["ffprobe"]> = {};
-  const duration = parsed.format?.duration ? Number(parsed.format.duration) : NaN;
-  if (Number.isFinite(duration)) result.durationSeconds = Number(duration.toFixed(3));
-  if (video) {
-    const videoResult: NonNullable<NonNullable<ProbeResult["ffprobe"]>["video"]> = {};
-    if (typeof video.codec_name === "string") videoResult.codec = video.codec_name;
-    if (typeof video.width === "number") videoResult.width = video.width;
-    if (typeof video.height === "number") videoResult.height = video.height;
-    if (typeof video.r_frame_rate === "string") {
-      const fps = parseRate(video.r_frame_rate);
-      if (fps !== undefined) videoResult.fps = fps;
-    }
-    result.video = videoResult;
-  }
-  if (audio) {
-    const audioResult: NonNullable<NonNullable<ProbeResult["ffprobe"]>["audio"]> = {};
-    if (typeof audio.codec_name === "string") audioResult.codec = audio.codec_name;
-    result.audio = audioResult;
-  }
-  return result;
-}
-
-function parseRate(value: string): number | undefined {
-  const [a, b] = value.split("/").map(Number);
-  if (!a || !Number.isFinite(a)) return undefined;
-  if (!b || !Number.isFinite(b)) return a;
-  return Number((a / b).toFixed(3));
 }
 
 function sanitizeName(value: string): string {

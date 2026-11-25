@@ -1,109 +1,90 @@
 # Getting Started
 
-The fastest way to start building with SuperImg is to use the CLI to scaffold a new project.
+Author a media program, check it, then export for destinations — or embed the same program with the Player.
 
-## Quick Start
+## Install
 
-Run the `init` command to create a new SuperImg project:
-
-```bash
-npx superimg init my-video-project
-cd my-video-project
-```
-
-This sets up a fresh directory with the SuperImg CLI, the standard library, and a starter template.
-
-### Manual Installation
-
-If you prefer to add SuperImg to an existing project:
+The CLI requires Node.js 24.21.0 or newer. If you only need the core library
+on Node.js, its minimum is 22.12.0.
 
 ```bash
-npm install superimg
-```
-
-For React projects, the `<Player>` component is included in the same package — no extra install needed.
-
-## Your First Template
-
-A SuperImg template is a function that takes time and data, and returns HTML. Create a template that accepts a dynamic title and subtitle. The demo below shows the code and a live preview — click the video to play or pause, or scrub through frames.
-
-Create a file called `template.media.ts`:
-
-<CodeDemo templateId="getting-started" />
-
-Use `sample` for fallback values when no data is passed. The `render` function receives `data` from the context (merged from `sample` and any input you pass at render time).
-
-## Live Preview
-
-To see your template in action, start the local development server:
-
-```bash
-npx superimg dev template
-```
-
-This opens a live preview in your browser. Edit your code, and the video updates instantly at 60fps.
-
-> **Note on Browser Support:** The live playground and in-browser compilation require a browser that supports cross-origin isolation. If your browser does not support this (or if the required headers are not set by the host), you will see an "unsupported browser" message.
-
-## Render to MP4
-
-When you are ready to export, use the `render` command.
-
-Rendering requires a Chromium browser. If you skipped the download during `init`, run this once first:
-
-```bash
+npm i @foxworth/superimg
+npm i -D @foxworth/superimg-cli
 npx superimg setup
+npx superimg doctor --json
 ```
 
-Because our template accepts data, we can pass a JSON string to generate a personalized video:
+One-off CLI use without a project install is `npx @foxworth/superimg-cli <cmd>`. With `@foxworth/superimg-cli` installed, keep using `npx superimg <cmd>`.
+
+`setup` downloads Chromium headless shell once into the account Playwright cache (`~/Library/Caches/ms-playwright` on macOS, `~/.cache/ms-playwright` on Linux). Override with `SUPERIMG_BROWSERS_PATH`. Run `setup` again only when doctor reports `CHROMIUM_MISSING`. `CHROMIUM_LAUNCH_DENIED` means the binary is present but could not start — do not re-download.
+
+## Make a video
+
+```ts
+import { video, Frame, Stack, Text } from "@foxworth/superimg";
+
+export default video({
+  duration: "6s",
+  sample: { title: "Ship it" },
+  render(ctx) {
+    const enter = ctx.director({ enter: "20%", hold: "80%" });
+    return Frame(
+      { width: "fill", height: "fill", fill: "#0b1020" },
+      Stack(
+        { width: "fill", height: "fill", align: "center", justify: "center" },
+        Text(
+          { variant: "display", color: "#fff", motion: enter.motion({ y: 24 }) },
+          ctx.data.title,
+        ),
+      ),
+    );
+  },
+});
+```
+
+`video()` defaults to 1920×1080, 30 fps, and MP4. Use `image()`, `svg()`, or `ogImage()` for still, vector, and 1200×630 Open Graph media.
+
+`render(ctx)` returns a typed tree. Use `Frame` for positioned boxes, `Stack` for
+flow layout, `Text` for typography, and `Vector` plus `vector.*` for inspectable
+SVG geometry. Box deliberately opaque third-party markup with `Html()`.
+
+## Check, then export
 
 ```bash
-npx superimg render template --data '{"title": "Dynamic Video", "subtitle": "Rendered from CLI"}'
+npx superimg check hello.media.ts
+npx superimg export hello.media.ts --for youtube
+npx superimg export hello.media.ts --for instagram-square --for 1440x1440.mp4
+npx superimg dev hello.media.ts
 ```
 
-Output is written to `output/template.mp4` next to your template file. SuperImg renders every frame headlessly and encodes it into a high-quality MP4.
+The media program owns content and responsive layout. `--for` owns the delivery canvas and encoding. Custom targets use `WIDTHxHEIGHT[.format]`. Embed the same program with the [Player](/docs/player) when you need it live in an app.
 
-### Other output formats
+## Batch materialization
 
-```bash
-# Animated GIF
-npx superimg render template --format gif
+Collections run one deterministic media program against many entries:
 
-# Single-frame still (PNG)
-npx superimg render template --frame 45 --format png
+```ts
+import { collection, image, Frame, Stack, Text } from "@foxworth/superimg";
 
-# Static image template (no fps/duration in config)
-npx superimg render og-card.media.ts
+interface Product { id: string; name: string }
+
+export default collection({
+  entries: [
+    { id: "camera", name: "Camera" },
+    { id: "tripod", name: "Tripod" },
+  ],
+  media: image<Product>({
+    render: (ctx) => Frame(
+      { width: "fill", height: "fill", fill: "#f6f3ec" },
+      Stack(
+        { width: "fill", height: "fill", align: "center", justify: "center" },
+        Text({ variant: "display" }, ctx.data.name),
+      ),
+    ),
+  }),
+});
 ```
 
-## Use in React
+Use a zero-argument provider imported from a dedicated server module when entries come from a database or API. Provider code and raw entry data do not enter browser bundles.
 
-If you are building a web app, you can embed your templates directly in the browser using the `<Player>` component. 
-
-Just like the CLI, you can pass data to the player to update the video dynamically:
-
-```tsx
-import { Player } from 'superimg/react/player'
-import myTemplate from './template.media'
-
-function App() {
-  return (
-    <Player
-      template={myTemplate}
-      data={{ 
-        title: "React Player", 
-        subtitle: "Interactive video" 
-      }}
-      format="horizontal"
-      playbackMode="loop"
-      style={{ width: '100%', maxWidth: 640, aspectRatio: '16/9' }}
-    />
-  )
-}
-```
-
-## Next Steps
-
-- Read the [Introduction](/docs/introduction) for the core concepts and mental model.
-- Explore the `RenderContext` and template config options.
-- Check the standard library for easing, math, and color helpers.
+Next: [Concepts](/docs/concepts), [Data and formats](/docs/data-and-formats), and [CLI](/docs/cli).

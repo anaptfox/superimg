@@ -1,0 +1,7 @@
+{
+  "name": "superimg-example-superimg-launch",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@foxworth/superimg": "0.1.1-media-library.20261022.1" },
+  "devDependencies": { "@foxworth/superimg-cli": "0.1.1-media-library.20261022.1" }
+}

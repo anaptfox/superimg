@@ -17,7 +17,7 @@ export type RawSourceMap = TemplateSourceMap;
 
 /** Classification of a stack frame for filtering decisions in the formatter. */
 export type FrameKind =
-  /** Mapped back to user code (a `.video.ts` file the user authored) */
+  /** Mapped back to user code (a `*.media.ts` file the user authored) */
   | "user"
   /** From `new Function()` / `eval at ...` — generated bundle, candidate for sourcemap mapping */
   | "eval"

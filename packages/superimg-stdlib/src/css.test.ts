@@ -76,6 +76,26 @@ describe("css", () => {
   it("treats CSS custom properties as unitless", () => {
     expect(css({ "--progress": 0.5 })).toBe("--progress:0.5");
   });
+
+  it("retains order, units and vendor metadata across cache turnover", () => {
+    const style = { width: 3, "line-height": 1.4, WebkitLineClamp: 2, "--progress": 0.25 };
+    const expected = "width:3px;line-height:1.4;-webkit-line-clamp:2;--progress:0.25";
+    expect(css(style)).toBe(expected);
+    for (let i = 0; i < 600; i++) expect(css({ [`unknownProperty${i}`]: i })).toBe(`unknown-property${i}:${i}px`);
+    expect(css(style)).toBe(expected);
+    expect(css({ "-webkit-line-clamp": 3, msFlex: 2 })).toBe("-webkit-line-clamp:3;-ms-flex:2");
+  });
+
+  it("reads current values and accessors on every call", () => {
+    let width = 1;
+    const style = { get width() { return width++; }, opacity: 0.5 };
+    expect(css(style)).toBe("width:1px;opacity:0.5");
+    style.opacity = 0.8;
+    expect(css(style)).toBe("width:2px;opacity:0.8");
+    const value = { toString: () => String(width++) };
+    expect(css({ custom: value })).toBe("custom:3");
+    expect(css({ custom: value })).toBe("custom:4");
+  });
 });
 
 describe("css variadic", () => {

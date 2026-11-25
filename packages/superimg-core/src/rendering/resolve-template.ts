@@ -5,6 +5,7 @@ import type {
   Duration,
   JsonObject,
   Marker,
+  ResolveCue,
   ResolveMarker,
   ResolvePhaseConfig,
   ResolveResult,
@@ -12,6 +13,7 @@ import type {
   TemplateModule,
 } from "@superimg/types";
 import { ValidationError } from "@superimg/types";
+import type { MediaCapabilities } from "@superimg/types";
 import { parseDuration } from "../shared/utils.js";
 
 export interface ApplyTemplateResolveOptions {
@@ -49,6 +51,17 @@ export interface ResolvedSessionOptions {
 
 function defaultAsset(filename: string): string {
   return filename;
+}
+
+function copyDeclaredMediaCapabilities(from: object, to: object): void {
+  const capabilities = (from as { mediaCapabilities?: MediaCapabilities }).mediaCapabilities;
+  if (capabilities?.version !== 0) return;
+  Object.defineProperty(to, "mediaCapabilities", {
+    value: capabilities,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -214,8 +227,126 @@ export function normalizeResolveResult(raw: unknown): ResolveResult {
     }
     out.markers = raw.markers.map((m, i) => normalizeMarker(m, i));
   }
+  if (raw.cues !== undefined) {
+    if (!Array.isArray(raw.cues)) {
+      throw new ValidationError({ field: "cues", expectedType: "array", receivedValue: raw.cues });
+    }
+    out.cues = raw.cues.map((cue, i) => normalizeCue(cue, i));
+    const seen = new Set<string>();
+    for (const cue of out.cues) {
+      if (seen.has(cue.id)) {
+        throw new ValidationError({
+          field: "cues",
+          expectedType: "one cue per script block id",
+          receivedValue: cue.id,
+          suggestion: `The cue id ${JSON.stringify(cue.id)} appears twice.`,
+        });
+      }
+      seen.add(cue.id);
+    }
+    // A cue is also a seek target. Authored markers with the same id win.
+    const marked = new Set((out.markers ?? []).map((marker) => marker.id));
+    const fromCues = out.cues
+      .filter((cue) => !marked.has(cue.id))
+      .map((cue) => ({ id: cue.id, at: cue.start }));
+    if (fromCues.length > 0) out.markers = [...(out.markers ?? []), ...fromCues];
+  }
+  if (raw.cueFindings !== undefined) {
+    if (!Array.isArray(raw.cueFindings)) {
+      throw new ValidationError({ field: "cueFindings", expectedType: "array", receivedValue: raw.cueFindings });
+    }
+    out.cueFindings = raw.cueFindings.map((finding, i) => {
+      if (!isPlainObject(finding) || typeof finding.id !== "string" || !finding.id ||
+        typeof finding.message !== "string" || !finding.message ||
+        (finding.code !== undefined && typeof finding.code !== "string") ||
+        (finding.severity !== undefined && finding.severity !== "error" && finding.severity !== "warning" && finding.severity !== "info")) {
+        throw new ValidationError({
+          field: `cueFindings[${i}]`,
+          expectedType: '{ id: string; message: string; code?: string; severity?: "error" | "warning" | "info" }',
+          receivedValue: finding,
+        });
+      }
+      return {
+        id: finding.id,
+        message: finding.message,
+        ...(finding.code !== undefined ? { code: finding.code } : {}),
+        ...(finding.severity !== undefined ? { severity: finding.severity } : {}),
+      };
+    });
+  }
+  if (raw.breakdown !== undefined) {
+    if (!isPlainObject(raw.breakdown)) {
+      throw new ValidationError({
+        field: "breakdown",
+        expectedType: "Record<string, { cast: string[]; props: string[] }>",
+        receivedValue: raw.breakdown,
+      });
+    }
+    const breakdown: Record<string, { cast: string[]; props: string[] }> = {};
+    for (const [shotId, entry] of Object.entries(raw.breakdown)) {
+      if (
+        !isPlainObject(entry) ||
+        !Array.isArray(entry.cast) ||
+        !entry.cast.every((v) => typeof v === "string") ||
+        !Array.isArray(entry.props) ||
+        !entry.props.every((v) => typeof v === "string")
+      ) {
+        throw new ValidationError({
+          field: `breakdown.${shotId}`,
+          expectedType: "{ cast: string[]; props: string[] }",
+          receivedValue: entry,
+        });
+      }
+      breakdown[shotId] = { cast: [...entry.cast], props: [...entry.props] };
+    }
+    out.breakdown = breakdown;
+  }
+  if (raw.audio !== undefined) {
+    if (typeof raw.audio !== "object" || raw.audio === null) {
+      throw new ValidationError({
+        field: "audio",
+        expectedType: "AudioClip | AudioClip[] | AudioTimeline",
+        receivedValue: raw.audio,
+      });
+    }
+    out.audio = raw.audio as NonNullable<ResolveResult["audio"]>;
+  }
 
   return out;
+}
+
+function normalizeCueTime(field: string, value: unknown): number | string {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value < 0) {
+      throw new ValidationError({ field, expectedType: "finite seconds >= 0", receivedValue: value });
+    }
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    parseDuration(value, field, 30);
+    return value;
+  }
+  throw new ValidationError({
+    field,
+    expectedType: "number (seconds) or duration string",
+    receivedValue: value,
+  });
+}
+
+function normalizeCue(raw: unknown, index: number): ResolveCue {
+  if (!isPlainObject(raw) || typeof raw.id !== "string" || raw.id === "") {
+    throw new ValidationError({
+      field: `cues[${index}]`,
+      expectedType: "{ id: string; start; end; still? }",
+      receivedValue: raw,
+    });
+  }
+  return {
+    id: raw.id,
+    start: normalizeCueTime(`cues[${index}].start`, raw.start),
+    end: normalizeCueTime(`cues[${index}].end`, raw.end),
+    ...(raw.still !== undefined ? { still: normalizeCueTime(`cues[${index}].still`, raw.still) } : {}),
+  };
 }
 
 function normalizeMarker(raw: unknown, index: number): ResolveMarker {
@@ -370,8 +501,13 @@ export async function applyTemplateResolve(
     const next: TemplateModule = {
       ...template,
       config,
-      sample: baseData as TemplateModule["sample"],
+      ...(Object.keys(baseData).length > 0
+        ? { sample: baseData as NonNullable<TemplateModule["sample"]> }
+        : {}),
     };
+    // Spread clone drops WeakMap stamps on the template object; copy them.
+    // (Stamps are also keyed by `render`, which is shared — this is belt-and-suspenders.)
+    copyDeclaredMediaCapabilities(template, next);
     assertAnimatedHasDuration(next);
     return { template: next, resolved: null, data: baseData };
   }
@@ -395,6 +531,7 @@ export async function applyTemplateResolve(
   if (resolved.width !== undefined) config.width = resolved.width;
   if (resolved.height !== undefined) config.height = resolved.height;
   if (resolved.fps !== undefined) config.fps = resolved.fps;
+  if (resolved.audio !== undefined) config.audio = resolved.audio;
 
   if (opts.overrides) {
     config = { ...config, ...opts.overrides };
@@ -408,10 +545,13 @@ export async function applyTemplateResolve(
   const next: TemplateModule = {
     ...template,
     config,
-    sample: data as TemplateModule["sample"],
+    ...(Object.keys(data).length > 0
+      ? { sample: data as NonNullable<TemplateModule["sample"]> }
+      : {}),
     // Keep resolve for module identity; callers must not re-run per frame.
     resolve: template.resolve,
   };
+  copyDeclaredMediaCapabilities(template, next);
 
   assertAnimatedHasDuration(next);
 

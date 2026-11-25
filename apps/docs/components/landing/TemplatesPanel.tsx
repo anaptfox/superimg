@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Player } from "superimg/react/player";
+import { Player } from "@foxworth/superimg/react/player";
 import {
   Card,
   CardContent,
@@ -26,7 +26,7 @@ const CATEGORIES: Array<{
   id: EditorExample["category"];
   title: string;
   description: string;
-  template: Parameters<typeof Player>[0]["template"];
+  template: Parameters<typeof Player>[0]["media"];
   exampleId: string;
 }> = [
   {
@@ -100,8 +100,8 @@ export default function TemplatesPanel() {
             <CardContent className="p-0">
               <div className="overflow-hidden rounded-t-lg">
                 <Player
-                  template={category.template}
-                  format="horizontal"
+                  media={category.template}
+                  size={{ width: 1920, height: 1080 }}
                   playbackMode="loop"
                   loadMode="lazy"
                   hoverBehavior="play"

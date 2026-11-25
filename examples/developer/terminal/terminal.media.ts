@@ -1,4 +1,4 @@
-import { define, layoutTimeline, type RenderContext } from "superimg";
+import { video, Frame, Stack, Text, Fill, Html, layoutTimeline, type RenderContext } from "@foxworth/superimg";
 
 export interface TerminalCommand {
   prompt: string;
@@ -21,10 +21,10 @@ const THEMES: Record<string, { bg: string; text: string; prompt: string; headerB
   ubuntu: { bg: "#300a24", text: "#eeeeee", prompt: "#8ae234", headerBg: "#2c001e", title: "#eeeeee" },
 };
 
-const FONT_SIZE_MAP: Record<string, string> = {
-  small: "16px",
-  medium: "20px",
-  large: "24px",
+const FONT_SIZE_MAP: Record<string, number> = {
+  small: 26,
+  medium: 32,
+  large: 38,
 };
 
 const HEADER_S = 0.3;
@@ -34,14 +34,17 @@ const RESPONSE_PAUSE_SECONDS = 0.42;
 const OUTPUT_BURST_SECONDS = 0.22;
 const CHARS_PER_SEC = 1 / 0.03;
 
-function commandSeconds(cmd: TerminalCommand): number {
-  const typing = Math.max(0.35, cmd.command.length / CHARS_PER_SEC);
+function commandPlan(cmd: TerminalCommand) {
+  const typing = Math.max(0.35, Array.from(cmd.command).length / CHARS_PER_SEC);
   const outputLines = cmd.output ? cmd.output.split("\n").length : 0;
-  const output = cmd.output
-    ? RESPONSE_PAUSE_SECONDS + Math.max(OUTPUT_BURST_SECONDS, outputLines * 0.18) + 0.35
-    : 0.2;
-  // Hold after each command so output is readable (not just type speed).
-  return typing + (cmd.outputDelay ?? 0) * 0.35 + output + 0.45;
+  const delay = Number.isFinite(cmd.outputDelay) ? Math.max(0, cmd.outputDelay) : 0;
+  const responseStart = typing + delay + RESPONSE_PAUSE_SECONDS;
+  const burst = Math.max(OUTPUT_BURST_SECONDS, outputLines * 0.18);
+  return { typing, responseStart, burst, seconds: responseStart + (cmd.output ? burst : 0) + 0.8 };
+}
+
+function commandSeconds(cmd: TerminalCommand): number {
+  return commandPlan(cmd).seconds;
 }
 
 function estimateTerminalTimeline(data: TerminalVideoData) {
@@ -57,7 +60,9 @@ function estimateTerminalTimeline(data: TerminalVideoData) {
   });
 }
 
-export default define<TerminalVideoData>({
+export default video<TerminalVideoData>({
+  duration: "6s", // resolve() owns the data-driven duration
+  inlineCss: ["* { margin: 0; box-sizing: border-box; }", "body { overflow: hidden; }"],
   sample: {
     title: "Terminal",
     commands: [
@@ -77,12 +82,6 @@ export default define<TerminalVideoData>({
     theme: "dark",
     fontSize: "medium",
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "6s", // AST fallback; resolve() overrides
-  },
   resolve({ data }) {
     const { totalSeconds, phases } = estimateTerminalTimeline(data);
     return { duration: `${totalSeconds}s`, phases };
@@ -92,12 +91,13 @@ export default define<TerminalVideoData>({
     const { commands, title, theme, fontSize } = data;
 
     const themeStyle = (THEMES[theme] ?? THEMES.dark) as (typeof THEMES)["dark"];
-    const termFontSize = FONT_SIZE_MAP[fontSize] ?? "20px";
+    const termFontSize = FONT_SIZE_MAP[fontSize] ?? 32;
 
     const { phases } = estimateTerminalTimeline(data);
 
     const t = ctx.director(phases);
     const terminalAnim = t.motion({
+      id: "terminal-window",
       during: "header",
       y: 20,
       exit: { y: -20 },
@@ -106,39 +106,35 @@ export default define<TerminalVideoData>({
     const commandsProgress = t.in("commands");
     const numCommands = commands.length;
     const cmdSecs = commands.map(commandSeconds);
-    const cmdTotal = cmdSecs.reduce((a, b) => a + b, 0) || 1;
-    // Map each command to a weighted slice of the commands phase.
-    const cmdStarts: number[] = [];
-    let acc = 0;
-    for (const s of cmdSecs) {
-      cmdStarts.push(acc);
-      acc += s / cmdTotal;
-    }
+    const stack = std.stack(commands, {
+      id: "terminal-commands",
+      itemIds: commands.map((_command, index) => `command-${index}`),
+      during: commandsProgress,
+      weights: cmdSecs,
+      lead: 0,
+      trail: 0,
+    });
 
     let linesHtml = "";
     const cursorOpacity = timeline.seconds % 1.0 < 0.5 ? 0.75 : 0;
 
     for (let i = 0; i < numCommands; i++) {
       const cmd = commands[i]!;
-      const start = cmdStarts[i]!;
-      const end = i + 1 < numCommands ? cmdStarts[i + 1]! : 1;
-      const span = Math.max(0.0001, end - start);
-      const cmdLocalP = (commandsProgress - start) / span;
-      if (cmdLocalP < 0) continue;
+      const state = stack.state(i);
+      if (state.state === "hidden") continue;
+      const plan = commandPlan(cmd);
+      const cmdLocalSec = state.slot * plan.seconds;
+      const typingProgress = std.clamp01(cmdLocalSec / plan.typing);
+      const chars = Array.from(cmd.command);
+      const displayCmd = chars.slice(0, Math.floor(typingProgress * chars.length)).join("");
+      const isActiveCursor = typingProgress < 1;
 
-      const cmdLocalSec = cmdLocalP * cmdSecs[i]!;
-      const typingSecs = Math.max(0.01, cmd.command.length / CHARS_PER_SEC);
-      const typingProgress = std.clamp01(cmdLocalSec / typingSecs);
-      const visibleCmdChars = Math.floor(typingProgress * cmd.command.length);
-      const displayCmd = cmd.command.substring(0, visibleCmdChars);
-
-      const isActiveCursor = typingProgress < 1 && commandsProgress < end;
       const currentCursorOp = isActiveCursor ? 0.75 : cursorOpacity;
       const cursor = `<span class="cursor" style="opacity: ${currentCursorOp}">&nbsp;</span>`;
 
-      linesHtml += `<div class="line"><span class="prompt">${cmd.prompt}</span><span class="command">${displayCmd}${isActiveCursor ? cursor : ""}</span></div>`;
+      linesHtml += `<div class="line"><span class="prompt">${std.text.escapeHtml(cmd.prompt)}</span><span class="command">${std.text.escapeHtml(displayCmd)}${isActiveCursor ? cursor : ""}</span></div>`;
 
-      const responseStartSec = typingSecs + RESPONSE_PAUSE_SECONDS;
+      const responseStartSec = plan.responseStart;
 
       if (typingProgress >= 1 && cmdLocalSec < responseStartSec && cmd.output) {
         linesHtml += `<div class="line running"><span class="cursor" style="opacity: ${cursorOpacity}">&nbsp;</span></div>`;
@@ -147,7 +143,7 @@ export default define<TerminalVideoData>({
       if (cmdLocalSec >= responseStartSec && cmd.output) {
         const outputLines = cmd.output.split("\n");
         const outputBurstProgress = std.clamp01(
-          (cmdLocalSec - responseStartSec) / OUTPUT_BURST_SECONDS,
+          (cmdLocalSec - responseStartSec) / plan.burst,
         );
         const visibleOutputLines = Math.min(
           outputLines.length,
@@ -155,53 +151,44 @@ export default define<TerminalVideoData>({
         );
 
         for (let j = 0; j < visibleOutputLines && j < outputLines.length; j++) {
-          linesHtml += `<div class="line output">${outputLines[j]}</div>`;
+          linesHtml += `<div class="line output">${std.text.escapeHtml(outputLines[j]!)}</div>`;
         }
       }
     }
 
-    if (t.active === "prompt" && commands.length > 0) {
+    if (t.in("prompt") > 0 && commands.length > 0) {
       const firstPrompt = commands[0]!.prompt;
-      linesHtml += `<div class="line"><span class="prompt">${firstPrompt}</span><span class="cursor" style="opacity: ${cursorOpacity}">&nbsp;</span></div>`;
+      linesHtml += `<div class="line"><span class="prompt">${std.text.escapeHtml(firstPrompt)}</span><span class="cursor" style="opacity: ${cursorOpacity}">&nbsp;</span></div>`;
     }
 
-    return `
-    <style>
-      .terminal {
-        font-family: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-        font-weight: 400;
-        font-variant-ligatures: none;
-        -webkit-font-smoothing: antialiased;
-        letter-spacing: 0;
-      }
-      .line { min-height: 1.35em; padding: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-      .prompt { color: ${themeStyle.prompt}; }
-      .command { color: ${themeStyle.text}; }
-      .output { color: ${themeStyle.text}; }
-      .cursor {
-        display: inline-block;
-        width: 0.62em;
-        height: 1.05em;
-        margin-left: 2px;
-        background: ${themeStyle.text};
-        vertical-align: -0.12em;
-      }
-    </style>
-    <div style="width: ${width}px; height: ${height}px; background: linear-gradient(180deg, #0f0f0f 0%, #171720 100%); display: flex; align-items: center; justify-content: center; padding: 60px; box-sizing: border-box;">
-      <div style="width: 100%; max-width: 1100px; background: ${themeStyle.bg}; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; box-shadow: 0 22px 42px -22px rgba(0, 0, 0, 0.85); ${terminalAnim.style}">
-        <div style="background: ${themeStyle.headerBg}; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 12px 20px; display: flex; align-items: center; gap: 12px;">
-          <div style="display: flex; gap: 8px;">
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f56;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
-            <div style="width: 12px; height: 12px; border-radius: 50%; background: #27ca40;"></div>
-          </div>
-          <span style="flex: 1; text-align: center; color: ${themeStyle.title}; font-size: 14px; font-family: -apple-system, sans-serif;">${title}</span>
-        </div>
-        <div class="terminal" style="padding: 26px 28px; font-size: ${termFontSize}; line-height: 1.35; min-height: 300px;">
-          ${linesHtml}
-        </div>
-      </div>
-    </div>
-  `;
+    const windowW = Math.min(1440, width - 120);
+    const bodyH = Math.min(height - 300, Math.max(360, (commands.reduce((count, cmd) => count + 1 + (cmd.output ? cmd.output.split("\n").length : 0), 1)) * termFontSize * 1.4 + 80));
+    return Frame(
+      { id: "stage", width, height, fill: "#111116" },
+      Stack(
+        { width: "fill", height: "fill", align: "center", justify: "center", pad: 60 },
+        Frame(
+          { id: "terminal-window", width: windowW, height: bodyH + 64, fill: themeStyle.bg, radius: 12, overflow: "hidden", motion: terminalAnim, style: { boxShadow: "0 24px 64px rgba(0,0,0,0.4)" } },
+          Stack(
+            { direction: "row", width: windowW, height: 64, pad: { x: 28 }, gap: 12, align: "center", fill: themeStyle.headerBg },
+            ...["#ff5f56", "#ffbd2e", "#27ca40"].map((color, i) => Fill({ id: `window-control-${i}`, width: 14, height: 14, radius: 7, color })),
+            Text({ id: "terminal-title", variant: "label", size: 22, color: themeStyle.title }, title),
+          ),
+          Frame(
+            { x: 0, y: 64, width: windowW, height: bodyH, pad: 40 },
+            Html({ id: "terminal-lines", width: windowW - 80, height: bodyH - 80, html: `
+              <style>
+                .terminal { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-variant-ligatures: none; font-size: ${termFontSize}px; line-height: 1.4; }
+                .terminal .line { min-height: 1.4em; white-space: pre-wrap; overflow-wrap: anywhere; }
+                .terminal .prompt { color: ${themeStyle.prompt}; }
+                .terminal .command, .terminal .output { color: ${themeStyle.text}; }
+                .terminal .cursor { display: inline-block; width: 0.62em; height: 1.05em; margin-left: 2px; background: ${themeStyle.text}; vertical-align: -0.12em; }
+              </style>
+              <div class="terminal">${linesHtml}</div>
+            ` }),
+          ),
+        ),
+      ),
+    );
   },
 });

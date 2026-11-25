@@ -1,0 +1,23 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; color: #ede9e2; background: #13171b; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 980px; margin: 0 auto; padding: 48px 24px; }
+h1 { margin: 12px 0; font-size: clamp(30px, 4vw, 42px); font-weight: 650; letter-spacing: -0.03em; }
+p { line-height: 1.6; color: #b6c0c7; }
+.eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+#player { position: relative; width: min(100%, 800px); aspect-ratio: 16 / 9; margin: 28px 0; overflow: hidden; border-radius: 10px; }
+fieldset { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border: 0; padding: 0; }
+label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+input, select, button { font: inherit; }
+input[type="number"] { width: 70px; }
+input[type="number"], select, button { border: 1px solid #48535c; padding: 8px 10px; border-radius: 5px; color: inherit; background: #242d34; }
+button { cursor: pointer; }
+button:hover { background: #354550; }
+:focus-visible { outline: 2px solid #a7d5de; outline-offset: 3px; }
+:disabled { opacity: 0.55; cursor: default; }
+.agent-controls { margin: 24px 0; padding: 20px; background: #1c242a; border-radius: 8px; }
+.agent-controls button { margin-left: 16px; }
+details { padding: 16px; border: 1px solid #37444e; border-radius: 8px; }
+summary { cursor: pointer; }
+pre { overflow: auto; font: 12px/1.5 ui-monospace, monospace; color: #c4dcdd; }
+#status, #transport { font-size: 13px; }

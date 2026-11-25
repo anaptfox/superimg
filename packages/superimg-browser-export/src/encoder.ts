@@ -1,15 +1,12 @@
-import type { Quality } from "mediabunny";
 import {
   AudioBufferSource,
   BufferTarget,
   CanvasSource,
+  MkvOutputFormat,
+  MovOutputFormat,
   Mp4OutputFormat,
   Output,
-  QUALITY_HIGH,
-  QUALITY_LOW,
-  QUALITY_MEDIUM,
-  QUALITY_VERY_HIGH,
-  QUALITY_VERY_LOW,
+  Quality,
   WebMOutputFormat,
   getFirstEncodableAudioCodec,
   getFirstEncodableVideoCodec,
@@ -23,55 +20,69 @@ import {
 } from "@superimg/core";
 import type {
   EncodingOptions,
-  QualityPreset,
+  EncodingQuality,
   RenderExecutionOptions,
   ResolvedAudioTimeline,
   VideoCodecPreference,
 } from "@superimg/types";
-import { raceWithExecution, throwIfExecutionCancelled } from "@superimg/types";
+import { isAlphaCodecContainerCompatible, normalizeEncodingQuality, raceWithExecution, throwIfExecutionCancelled } from "@superimg/types";
+import { registerDtsEncoder } from "@mediabunny/dts";
 import { get2DContext } from "./utils.js";
 
 const MAX_BROWSER_AUDIO_BYTES = 256 * 1024 * 1024;
 
-function resolveVideoBitrate(value: number | QualityPreset | undefined): number | Quality {
-  if (value === undefined || typeof value === "string") {
-    return typeof value === "string" ? resolveQualityPreset(value) : QUALITY_HIGH;
-  }
-  return value;
-}
+let dtsRegistered = false;
 
-function resolveAudioBitrate(value: number | QualityPreset | undefined): number {
-  if (typeof value === "number") return value;
-  switch (value) {
-    case "very-low":
-      return 48_000;
-    case "low":
-      return 64_000;
-    case "medium":
-      return 128_000;
-    case "high":
-      return 192_000;
-    case "very-high":
-      return 256_000;
-    default:
-      return 128_000;
+function ensureDtsRegistered(): void {
+  if (!dtsRegistered) {
+    registerDtsEncoder();
+    dtsRegistered = true;
   }
 }
 
-function resolveQualityPreset(preset: QualityPreset): Quality {
-  switch (preset) {
-    case "very-low":
-      return QUALITY_VERY_LOW;
-    case "low":
-      return QUALITY_LOW;
-    case "medium":
-      return QUALITY_MEDIUM;
-    case "high":
-      return QUALITY_HIGH;
-    case "very-high":
-      return QUALITY_VERY_HIGH;
-    default:
-      return QUALITY_HIGH;
+function resolveQuality(
+  value: EncodingQuality | undefined,
+  fallback: ConstructorParameters<typeof Quality>[0],
+): Quality {
+  const normalized = normalizeEncodingQuality(value);
+  if (normalized === undefined || typeof normalized === "string") {
+    return new Quality(normalized ?? fallback);
+  }
+  if ("bitrate" in normalized) {
+    return new Quality({ bitrate: normalized.bitrate, ...(normalized.mode !== undefined ? { bitrateMode: normalized.mode } : {}) });
+  }
+  return new Quality({ quantizer: normalized.quantizer });
+}
+
+function createOutputFormat(encoding: EncodingOptions | undefined) {
+  if (encoding?.format === "webm") {
+    return new WebMOutputFormat({
+      ...(encoding.webm?.minimumClusterDuration !== undefined
+        ? { minimumClusterDuration: encoding.webm.minimumClusterDuration }
+        : {}),
+    });
+  }
+  if (encoding?.format === "mkv") {
+    return new MkvOutputFormat({
+      ...(encoding.webm?.minimumClusterDuration !== undefined
+        ? { minimumClusterDuration: encoding.webm.minimumClusterDuration }
+        : {}),
+    });
+  }
+  const options = {
+    ...(encoding?.mp4?.fastStart !== undefined
+      ? { fastStart: encoding.mp4.fastStart }
+      : {}),
+  };
+  return encoding?.format === "mov" ? new MovOutputFormat(options) : new Mp4OutputFormat(options);
+}
+
+function mimeType(format: EncodingOptions["format"]): string {
+  switch (format) {
+    case "webm": return "video/webm";
+    case "mov": return "video/quicktime";
+    case "mkv": return "video/x-matroska";
+    default: return "video/mp4";
   }
 }
 
@@ -96,7 +107,7 @@ async function decodeAudioUrl(
   options?: RenderExecutionOptions,
 ): Promise<DecodedAudioClip> {
   throwIfExecutionCancelled(options);
-  const response = await raceWithExecution(fetch(url, { signal: options?.signal }), options);
+  const response = await raceWithExecution(fetch(url, options?.signal === undefined ? {} : { signal: options.signal }), options);
   if (!response.ok) {
     throw new Error(`Failed to fetch audio: ${url} (${response.status})`);
   }
@@ -159,7 +170,7 @@ export class BrowserEncoder {
   private decodedClips: MixClipInput[] = [];
   private readonly frameCanvas: OffscreenCanvas;
   private readonly frameCtx: OffscreenCanvasRenderingContext2D;
-  private readonly encoding?: EncodingOptions;
+  private readonly encoding: EncodingOptions | undefined;
 
   constructor(width: number, height: number, fps: number, encoding?: EncodingOptions) {
     this.width = width;
@@ -188,40 +199,37 @@ export class BrowserEncoder {
 
   async init(options?: RenderExecutionOptions): Promise<void> {
     throwIfExecutionCancelled(options);
+    try {
+    ensureDtsRegistered();
     const isWebM = this.encoding?.format === "webm";
     const defaultCodecs: VideoCodecPreference[] = isWebM
       ? ["vp9", "av1"]
       : ["avc", "vp9", "av1"];
-    const codecPrefs = this.encoding?.video?.codec ?? defaultCodecs;
-    const codec = await getFirstEncodableVideoCodec(toCodecArray(codecPrefs), {
+    const outputFormat = createOutputFormat(this.encoding);
+    const supportedCodecs = outputFormat.getSupportedVideoCodecs();
+    const requested = this.encoding?.video?.codec ?? defaultCodecs;
+    const codecPrefs = toCodecArray(requested).filter((codec) => supportedCodecs.includes(codec)
+      && (this.encoding?.video?.alpha !== "keep" || isAlphaCodecContainerCompatible(this.encoding?.format, codec)));
+    const codec = await getFirstEncodableVideoCodec(codecPrefs, {
       width: this.width,
       height: this.height,
+      quality: resolveQuality(this.encoding?.video?.quality, "high"),
+      ...(this.encoding?.video?.latencyMode ? { latencyMode: this.encoding.video.latencyMode } : {}),
+      ...(this.encoding?.video?.alpha ? { alpha: this.encoding.video.alpha } : {}),
+      ...(this.encoding?.video?.hardwareAcceleration ? { hardwareAcceleration: this.encoding.video.hardwareAcceleration } : {}),
     });
     if (!codec) throw new Error("No supported video codec found");
 
     const outputTarget = new BufferTarget();
-    const outputFormat = isWebM
-      ? new WebMOutputFormat({
-          ...(this.encoding?.webm?.minimumClusterDuration !== undefined
-            ? { minimumClusterDuration: this.encoding.webm.minimumClusterDuration }
-            : {}),
-        })
-      : new Mp4OutputFormat({
-          ...(this.encoding?.mp4?.fastStart !== undefined
-            ? { fastStart: this.encoding.mp4.fastStart }
-            : {}),
-        });
     this.output = new Output({ format: outputFormat, target: outputTarget });
+    this.output.setMetadataTags({ creationTime: null });
 
     this.canvasSource = new CanvasSource(this.frameCanvas, {
       codec,
-      bitrate: resolveVideoBitrate(this.encoding?.video?.bitrate),
+      quality: resolveQuality(this.encoding?.video?.quality, "high"),
       keyFrameInterval: this.encoding?.video?.keyFrameInterval ?? 5,
       sizeChangeBehavior: "deny",
       ...(this.encoding?.video?.alpha !== undefined ? { alpha: this.encoding.video.alpha } : {}),
-      ...(this.encoding?.video?.bitrateMode !== undefined
-        ? { bitrateMode: this.encoding.video.bitrateMode }
-        : {}),
       ...(this.encoding?.video?.latencyMode !== undefined
         ? { latencyMode: this.encoding.video.latencyMode }
         : {}),
@@ -233,23 +241,20 @@ export class BrowserEncoder {
 
     if (this.resolvedAudio?.clips.length) {
       const codecPrefsAudio = this.encoding?.audio?.codec ?? (["aac", "opus"] as const);
-      const audioCodec = await getFirstEncodableAudioCodec(toCodecArray(codecPrefsAudio), {
-        numberOfChannels: TARGET_CHANNELS,
-        sampleRate: TARGET_SAMPLE_RATE,
-        bitrate: resolveAudioBitrate(this.encoding?.audio?.bitrate),
-      });
-      if (!audioCodec) throw new Error("No supported audio codec found");
-      this.audioSource = new AudioBufferSource({
-        codec: audioCodec,
-        bitrate: resolveAudioBitrate(this.encoding?.audio?.bitrate),
-        ...(this.encoding?.audio?.bitrateMode !== undefined
-          ? { bitrateMode: this.encoding.audio.bitrateMode }
-          : {}),
-      });
+      let selected: { codec: import("@superimg/types").AudioCodecPreference; quality: Quality } | undefined;
+      for (const candidate of toCodecArray(codecPrefsAudio).filter((codec) => outputFormat.getSupportedAudioCodecs().includes(codec))) {
+        const quality = resolveQuality(this.encoding?.audio?.quality, { bitrate: candidate === "dts" ? 768_000 : 128_000 });
+        if (await getFirstEncodableAudioCodec([candidate], { numberOfChannels: TARGET_CHANNELS, sampleRate: TARGET_SAMPLE_RATE, quality })) {
+          selected = { codec: candidate, quality }; break;
+        }
+      }
+      if (!selected) throw new Error("No supported audio codec found for this container and quality");
+      this.audioSource = new AudioBufferSource(selected);
       this.output.addAudioTrack(this.audioSource);
     }
 
     await raceWithExecution(this.output.start(), options);
+    } catch (error) { await this.cancel(); throw error; }
   }
 
   async addFrame(
@@ -267,36 +272,45 @@ export class BrowserEncoder {
   }
 
   async finalize(options?: RenderExecutionOptions): Promise<Blob> {
-    throwIfExecutionCancelled(options);
-    if (!this.canvasSource || !this.output) {
-      throw new Error("Encoder not initialized");
-    }
-    this.canvasSource.close();
+    let complete = false;
+    try {
+      throwIfExecutionCancelled(options);
+      if (!this.canvasSource || !this.output) throw new Error("Encoder not initialized");
+      this.canvasSource.close();
 
-    if (this.audioSource && this.resolvedAudio && this.decodedClips.length) {
-      const { left, right } = mixAudioClips(
-        this.decodedClips,
-        this.videoDuration,
-        this.resolvedAudio.mix,
-      );
-      const audioContext = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE });
-      try {
-        const buffer = audioContext.createBuffer(TARGET_CHANNELS, left.length, TARGET_SAMPLE_RATE);
-        buffer.copyToChannel(left, 0);
-        buffer.copyToChannel(right, 1);
-        await raceWithExecution(this.audioSource.add(buffer), options);
-        this.audioSource.close();
-      } finally {
-        await audioContext.close();
+      if (this.audioSource && this.resolvedAudio && this.decodedClips.length) {
+        const { left, right } = mixAudioClips(
+          this.decodedClips,
+          this.videoDuration,
+          this.resolvedAudio.mix,
+        );
+        const audioContext = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE });
+        try {
+          const buffer = audioContext.createBuffer(TARGET_CHANNELS, left.length, TARGET_SAMPLE_RATE);
+          buffer.copyToChannel(left, 0);
+          buffer.copyToChannel(right, 1);
+          await raceWithExecution(this.audioSource.add(buffer), options);
+          this.audioSource.close();
+        } finally {
+          await audioContext.close();
+        }
+      }
+
+      await raceWithExecution(this.output.finalize(), options);
+      const buffer = (this.output.target as BufferTarget).buffer;
+      if (!buffer) throw new Error("Failed to get encoded video buffer");
+      complete = true;
+      return new Blob([buffer], { type: mimeType(this.encoding?.format) });
+    } finally {
+      if (!complete) await this.cancel();
+      else {
+        this.canvasSource = null;
+        this.audioSource = null;
+        this.output = null;
+        this.decodedClips = [];
+        this.resolvedAudio = null;
       }
     }
-
-    await raceWithExecution(this.output.finalize(), options);
-    const buffer = (this.output.target as BufferTarget).buffer;
-    if (!buffer) throw new Error("Failed to get encoded video buffer");
-    return new Blob([buffer], {
-      type: this.encoding?.format === "webm" ? "video/webm" : "video/mp4",
-    });
   }
 
   async cancel(): Promise<void> {
@@ -309,5 +323,6 @@ export class BrowserEncoder {
     this.audioSource = null;
     this.output = null;
     this.decodedClips = [];
+    this.resolvedAudio = null;
   }
 }

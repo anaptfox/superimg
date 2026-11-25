@@ -1,4 +1,4 @@
-import type { AssetMeta, TemplateConfig } from "superimg/react";
+import type { AssetDeclaration, AssetMeta, TemplateConfig } from "@foxworth/superimg";
 
 const MIME_BY_EXT: Record<string, string> = {
   mp4: "video/mp4",
@@ -42,24 +42,25 @@ export function resolvePlaygroundAssets(
   if (!assets) return {};
 
   const result: Record<string, AssetMeta> = {};
-  for (const [key, value] of Object.entries(assets) as [
-    string,
-    string | { src: string; type?: "image" | "video" | "audio" },
-  ][]) {
-    const src = typeof value === "string" ? value : value.src;
-    const type =
-      typeof value === "string"
-        ? detectAssetType(src)
-        : (value.type ?? detectAssetType(src));
-    const url = playgroundAssetUrl(src);
-    const mimeType = mimeForSrc(src);
+  for (const [key, value] of Object.entries(assets) as [string, AssetDeclaration][]) {
+    const src = "url" in value ? String(value.url) : "";
+    const mimeType = "bytes" in value ? value.mimeType : mimeForSrc(src);
+    const type = value.type ?? (mimeType.startsWith("video/")
+      ? "video"
+      : mimeType.startsWith("audio/")
+        ? "audio"
+        : detectAssetType(src));
+    const url = "url" in value
+      ? /^(?:https?:|data:|blob:)/i.test(src) ? src : playgroundAssetUrl(src)
+      : bytesDataUrl(value.bytes, value.mimeType);
+    const size = "bytes" in value ? value.bytes.byteLength : 0;
 
     if (type === "video") {
       result[key] = {
         type: "video",
         url,
         mimeType,
-        size: 0,
+        size,
         width: 1920,
         height: 1080,
         duration: 30,
@@ -69,7 +70,7 @@ export function resolvePlaygroundAssets(
         type: "audio",
         url,
         mimeType,
-        size: 0,
+        size,
         duration: 30,
       };
     } else {
@@ -77,13 +78,21 @@ export function resolvePlaygroundAssets(
         type: "image",
         url,
         mimeType,
-        size: 0,
+        size,
         width: 1920,
         height: 1080,
       };
     }
   }
   return result;
+}
+
+function bytesDataUrl(bytes: Uint8Array, mimeType: string): string {
+  let binary = "";
+  for (let index = 0; index < bytes.byteLength; index += 1) {
+    binary += String.fromCharCode(bytes[index]!);
+  }
+  return `data:${mimeType};base64,${btoa(binary)}`;
 }
 
 export function hasRelativeImports(code: string): boolean {

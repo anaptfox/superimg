@@ -1,0 +1,57 @@
+# Surfaces
+
+Engineer map of SuperImg’s public import surface. Start with [Getting Started](/docs/getting-started) if you are authoring media; this page is for hosts and extenders.
+
+## Jobs
+
+| Job | What you do | Import / tool |
+|-----|-------------|----------------|
+| **Author** | Write `.media.ts`, check, export | `superimg`, CLI |
+| **Embed** | Play the same program in an app | `@foxworth/superimg/player`, `@foxworth/superimg/react` |
+| **Extend** | Inspect/render values or bind Host project interactions | `@foxworth/superimg/runtime`, `@foxworth/superimg/runtime/html`, `@foxworth/superimg-interactions` |
+
+One brand, one media program. Author is the default path; Embed is the second door; Extend stays in the docs sidebar for hosts.
+
+## Package surface
+
+| Import | Host | Responsibility |
+|--------|------|----------------|
+| `superimg` | any | `define`, `video`, `image`, `svg`, `ogImage`, `collection`, `compose`, layout tree |
+| `@foxworth/superimg/charts` | any | Typed chart layout, vector artwork, shared scales and annotation geometry; explicit progress |
+| `@foxworth/superimg/runtime` | Node/browser/edge | Value-first `init`, `check`, `inspect`, `render`, and `exportMedia` |
+| `@foxworth/superimg/runtime/html` | Node/browser/edge | Pure synchronous single-frame HTML projection without providers, font fetching, publication, or host authority |
+| `@foxworth/superimg/browser-export` | browser | Mounted DOM and trusted HTML capture to PNG, JPEG, WebP, SVG, editable SVG and PDF; explicit Figma clipboard helper |
+| `@foxworth/superimg/player` | browser | Framework-neutral passive deterministic playback |
+| `@foxworth/superimg/inspection` | browser | Optional preview snapshots, semantic bounds, and exact frame capture |
+| `@foxworth/superimg/inspection/boundary` | browser host | Optional host-admitted Preview Program, registered through the Boundary SDK |
+| `@foxworth/superimg/react` | browser | Passive React playback |
+| `@foxworth/superimg/react/compile` | browser | Opt-in source compilation for React authoring shells |
+| `@foxworth/superimg/interactive/define` | browser/server | Interactive definitions, semantic authoring, guide layout, checks |
+| `@foxworth/superimg/interactive/player` | browser | Framework-neutral controllers, guides, actions |
+| `@foxworth/superimg/react/interactive` | React client | InteractivePlayer adapter |
+| `@foxworth/superimg/player/dom` | browser | Passive DOM mounting without drive or inspection |
+| `@foxworth/superimg/destinations` | any | Schema-0 organic destination catalog and custom-target parsing |
+| `@foxworth/superimg-interactions` | Node host | Compiled Media, Edit, Render, and Script Programs with native dispatch, installations, and projections. |
+
+Use the narrowest import for the host. `@foxworth/superimg/runtime` selects a capability-honest implementation by package condition. `@foxworth/superimg-interactions` runs in Node and may load filesystem and browser-automation dependencies. Do not import it into browser, edge, or worker programs. Consumers import public `@foxworth/superimg/*` paths and `@foxworth/superimg-cli`. Private `@superimg/*` workspace packages are not a public import surface.
+
+`@foxworth/superimg/react` and `@foxworth/superimg/react/player` stay passive: pass them an imported,
+realized media value. A browser authoring shell that must accept source text uses
+`CompilingPlayer`, `useCompiler`, or `useCompiledMedia` from
+`@foxworth/superimg/react/compile`; ordinary application playback should not import that
+compiler graph.
+
+All public contracts use unsuffixed schema-0 names.
+
+### Interaction host
+
+`@foxworth/superimg-interactions` exports four compiled interaction sets and dispatch-only
+mounts. It provides projection helpers for all four Programs and installation helpers
+for Media, Edit, and Render. Typed references require a
+successful Binding. The embedding host owns projected `control.*`,
+authorization, attempts, recovery, and durable orchestration.
+
+Discovery, description, check, and inspect are direct-only. Snapshot, compile,
+and export may be called directly by trusted CLI/build stages or exposed in
+request mode as a proposal. Runtime artifact bundles remain distinct from
+publication receipts. Ordinary media authoring stays Boundary-free.

@@ -2,18 +2,36 @@
 //! Comprehensive validation for AI-generated templates with actionable feedback
 
 import type {
-  ValidationErrorCode,
   ValidationIssue,
   ValidationResult,
   ValidationOptions,
-  TemplateModule,
 } from "@superimg/types";
 import { resolveConfigAssets } from "../shared/assets.js";
 import { EASING_NAMES } from "@superimg/stdlib/easing";
 import { bundleTemplateCode } from "../bundler/bundler.js";
 import { compileTemplate } from "../rendering/compiler.js";
 import { createRenderContext } from "../rendering/create-render-context.js";
+import { lowerRenderOutput } from "../rendering/lower-output.js";
+import { textMeasurerForDeclarations } from "../rendering/text-measurer-declarations.js";
+import { isRenderOutput } from "@superimg/types";
 import { extractTemplateMetadata } from "../shared/template-metadata.js";
+import {
+  extractProblemContext,
+  scanHtmlIssues,
+  scanSourceFootguns,
+  scanAllFramesEmpty,
+  inferIsAnimated,
+} from "./scanners.js";
+
+export {
+  scanHtmlIssues,
+  scanSourceFootguns,
+  scanAllFramesEmpty,
+  extractProblemContext,
+  inferIsAnimated,
+  inferIsComposed,
+} from "./scanners.js";
+export type { SourceFootgunOptions } from "./scanners.js";
 
 /** Default validation options */
 const DEFAULTS: Required<Omit<ValidationOptions, "data">> = {
@@ -44,15 +62,6 @@ async function withTimeout<T>(
       setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
     }),
   ]);
-}
-
-/** Extract context around NaN/undefined in HTML output */
-function extractProblemContext(html: string, needle: string): string {
-  const idx = html.indexOf(needle);
-  if (idx === -1) return "";
-  const start = Math.max(0, idx - 30);
-  const end = Math.min(html.length, idx + needle.length + 30);
-  return "..." + html.slice(start, end) + "...";
 }
 
 const SPRING_AND_SEMANTIC = [
@@ -92,69 +101,6 @@ function checkEasingNames(code: string): ValidationIssue[] {
         });
       }
     }
-  }
-
-  return issues;
-}
-
-/** Check rendered HTML for common issues */
-function checkHtmlOutput(
-  html: string,
-  frame: number,
-  progress: number
-): ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
-
-  // Check for NaN (common animation bug)
-  if (html.includes("NaN")) {
-    issues.push({
-      severity: "error",
-      code: "ANIMATION_PRODUCES_NAN",
-      message: "Render output contains NaN",
-      frame,
-      progress,
-      context: extractProblemContext(html, "NaN"),
-      suggestion: "Check for division by zero or invalid math operations",
-    });
-  }
-
-  // Check for undefined in style attributes (common data bug)
-  if (/style="[^"]*undefined[^"]*"/i.test(html)) {
-    issues.push({
-      severity: "error",
-      code: "UNDEFINED_IN_OUTPUT",
-      message: 'Style attribute contains "undefined"',
-      frame,
-      progress,
-      context: extractProblemContext(html, "undefined"),
-      suggestion: "Check that all data properties exist and have values",
-    });
-  }
-
-  // Check for undefined anywhere (warning)
-  if (html.includes("undefined") && !issues.some((i) => i.code === "UNDEFINED_IN_OUTPUT")) {
-    issues.push({
-      severity: "warning",
-      code: "UNDEFINED_IN_OUTPUT",
-      message: 'Render output contains "undefined"',
-      frame,
-      progress,
-      context: extractProblemContext(html, "undefined"),
-      suggestion: "Check that all interpolated values are defined",
-    });
-  }
-
-  // Check for null in output
-  if (/style="[^"]*null[^"]*"/i.test(html) || html.includes(">null<")) {
-    issues.push({
-      severity: "warning",
-      code: "NULL_IN_OUTPUT",
-      message: 'Render output contains "null"',
-      frame,
-      progress,
-      context: extractProblemContext(html, "null"),
-      suggestion: "Check that all data properties have non-null values",
-    });
   }
 
   return issues;
@@ -231,10 +177,15 @@ export async function validateAITemplate(
   const issues: ValidationIssue[] = [];
   const samples: { frame: number; progress: number; html: string }[] = [];
 
-  // Phase 1: Check easing names in source (before bundling)
+  // Phase 1: Check easing names + footguns in source (before bundling)
   if (opts.checkEasingNames) {
     issues.push(...checkEasingNames(code));
   }
+  issues.push(
+    ...scanSourceFootguns(code, {
+      isAnimated: inferIsAnimated(code),
+    }),
+  );
 
   // Phase 2: Syntax validation (bundle the code)
   let bundledCode: string;
@@ -275,7 +226,7 @@ export async function validateAITemplate(
         severity: "error",
         code: "MISSING_RENDER_FUNCTION",
         message: "Template must have a render function",
-        suggestion: 'Add "render(ctx) { return `<div>...</div>`; }" to define',
+        suggestion: 'Add "render(ctx) { return Html({ width: \"fill\", height: \"fill\", html: \"<div>...</div>\" }); }" to define',
       });
     }
   } catch (e) {
@@ -298,9 +249,23 @@ export async function validateAITemplate(
     };
   }
 
-  const template = compileResult.template!;
-  const { prepareStdlibForTemplate } = await import("../shared/stdlib-capabilities.js");
-  await prepareStdlibForTemplate(template);
+  if (!compileResult.media) {
+    issues.push({
+      severity: "error",
+      code: "MISSING_RENDER_FUNCTION",
+      message: "Validation requires deterministic media",
+      suggestion: "Use the interactive checks from @foxworth/superimg/interactive/define for live experiences",
+    });
+    return {
+      valid: false,
+      issues,
+      validationTimeMs: performance.now() - startTime,
+    };
+  }
+  const template = compileResult.media;
+  const { createPreparedStdlibForTemplate } = await import("../shared/stdlib-capabilities.js");
+  const preparedStdlib = await createPreparedStdlibForTemplate(template);
+  const measurer = await textMeasurerForDeclarations(template.config?.fonts);
   const cfg = template.config ?? {};
 
   // Phase 5: Multi-frame render validation
@@ -326,13 +291,13 @@ export async function validateAITemplate(
       const { parseDuration } = await import("../shared/utils.js");
       resolvedDuration = parseDuration(resolvedDuration, "duration", fps);
     } catch {
-      resolvedDuration = parseFloat(resolvedDuration) || 3;
+      resolvedDuration = parseFloat(String(resolvedDuration)) || 3;
     }
   }
   if (typeof resolvedDuration !== "number" || !Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
     resolvedDuration = 3;
   }
-  const totalFrames = Math.ceil(resolvedDuration * fps);
+  const totalFrames = template.composition?.schedule.totalFrames ?? Math.ceil(resolvedDuration * fps);
   const mergedData = { ...(template.sample ?? {}), ...(opts.data ?? {}) };
 
   for (const progress of opts.sampleFrames) {
@@ -346,28 +311,39 @@ export async function validateAITemplate(
       totalFrames,
       width,
       height,
-      mergedData
+      mergedData,
+      {},
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      preparedStdlib,
     );
 
     try {
-      const html = await withTimeout(
+      const output = await withTimeout(
         () => template.render(ctx),
         opts.renderTimeout,
         `Render timeout at frame ${frame}`
       );
 
-      // Validate return type
-      if (typeof html !== "string") {
+      if (!isRenderOutput(output)) {
         issues.push({
           severity: "error",
-          code: "RENDER_RETURNED_NON_STRING",
-          message: `render() returned ${typeof html} instead of string`,
+          code: "RENDER_RETURNED_NON_TREE",
+          message: `render() returned ${typeof output} instead of a MediaElement tree`,
           frame,
           progress,
-          suggestion: "Ensure render() returns a template literal string",
+          suggestion: 'Return h()/primitives, or box legacy markup with Html({ width: "fill", height: "fill", html })',
         });
         continue;
       }
+
+      const html = lowerRenderOutput(output, template.medium, {
+        width,
+        height,
+        ...(measurer !== undefined ? { measurer } : {}),
+      });
 
       // Validate non-empty
       if (html.trim() === "") {
@@ -385,7 +361,7 @@ export async function validateAITemplate(
 
       // Check HTML output for issues
       if (opts.checkOutput) {
-        issues.push(...checkHtmlOutput(html, frame, progress));
+        issues.push(...scanHtmlIssues(html, frame, progress));
       }
     } catch (e) {
       const error = e as Error;
@@ -429,12 +405,17 @@ export async function validateAITemplate(
     });
   }
 
+  // All samples empty → hard error (agent gate)
+  issues.push(...scanAllFramesEmpty(samples.map((s) => s.html)));
+
   // Phase 6: Motion craft heuristics (optional)
   if (opts.craft) {
     const { critiqueTemplate } = await import("../critique/motion-critique.js");
     const craft = critiqueTemplate(template, {
       source: code,
-      data: opts.data as Record<string, unknown> | undefined,
+      ...(opts.data !== undefined
+        ? { data: opts.data as Record<string, unknown> }
+        : {}),
     });
     const codeMap = {
       HOLD_TOO_SHORT: "CRAFT_HOLD_TOO_SHORT",
@@ -458,7 +439,7 @@ export async function validateAITemplate(
         code: mapped,
         message: issue.message,
         suggestion: issue.suggestion,
-        progress: issue.progress,
+        ...(issue.progress !== undefined ? { progress: issue.progress } : {}),
       });
     }
   }

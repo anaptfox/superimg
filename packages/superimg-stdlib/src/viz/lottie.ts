@@ -1,4 +1,5 @@
 import { token as readyToken } from "../ready.js";
+import { graphicsKey, retainedResourcesScript } from "./retained.js";
 
 /** Pin — light SVG build is default for SuperImg. */
 export const LOTTIE_VERSION = "5.13.0";
@@ -38,23 +39,13 @@ export function durationSeconds(animationData: { ip?: number; op?: number; fr?: 
   return frames / (fr || 30);
 }
 
-function labelFor(opts: LottieOpts, wait: string | false | undefined): string {
-  if (typeof wait === "string" && wait.trim()) return wait.trim();
-  // Include progress so each frame has a distinct wait id / readiness cycle
-  const key = `${opts.width}x${opts.height}:${opts.progress.toFixed(4)}`;
-  let h = 2166136261;
-  for (let i = 0; i < key.length; i++) {
-    h ^= key.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return `lottie-${(h >>> 0).toString(36)}`;
-}
 
 /**
  * Emit a Lottie player driven by SuperImg progress (no RAF).
  * Playwright preloads `window.lottie` when it sees this markup.
  *
  * Seek: `goToAndStop(progress * (totalFrames - 1), true)` only.
+ * Reuses loaded animation state for unchanged data and destroys absent instances.
  */
 export function lottie(opts: LottieOpts): string {
   if (!Number.isFinite(opts.progress)) {
@@ -66,9 +57,12 @@ export function lottie(opts: LottieOpts): string {
 
   const progress = Math.max(0, Math.min(1, opts.progress));
   const waitOff = opts.wait === false;
-  const label = waitOff ? "" : labelFor(opts, opts.wait);
+  const dataJson = JSON.stringify(opts.animationData);
+  const signature = JSON.stringify([dataJson, opts.width, opts.height, opts.renderer, opts.player, opts.assetsPath, opts.preserveAspectRatio]);
+  const label = typeof opts.wait === "string" && opts.wait.trim()
+    ? opts.wait.trim() : `lottie-${graphicsKey(signature)}`;
   const w = waitOff ? null : readyToken(label);
-  const id = (waitOff ? `lottie-${opts.width}x${opts.height}` : label).replace(
+  const id = label.replace(
     /[^a-zA-Z0-9_-]/g,
     "_",
   );
@@ -77,81 +71,93 @@ export function lottie(opts: LottieOpts): string {
   const failLine = w ? w.fail("lottie failed") : "";
   const bg = opts.background ?? "transparent";
   const renderer = opts.renderer ?? "svg";
-  // Deep clone via JSON so lottie never mutates shared sample data
-  const dataJson = JSON.stringify(opts.animationData);
+  if (renderer === "canvas" && opts.player === "light") {
+    throw new Error("std.viz.lottie: the light player supports SVG only; use player: 'full' for canvas");
+  }
+  // The literal is instantiated only when loading a new retained player.
+  // Lottie can mutate it without touching authored sample data.
+  // Omit the key entirely when unset. Emitting a literal `undefined` is
+  // equivalent to bodymovin but trips the "undefined in output" check.
   const assetsPathJs =
-    opts.assetsPath !== undefined ? JSON.stringify(opts.assetsPath) : "undefined";
+    opts.assetsPath !== undefined
+      ? `\n        assetsPath: ${JSON.stringify(opts.assetsPath)},`
+      : "";
   const aspect = opts.preserveAspectRatio ?? "xMidYMid meet";
   const playerUrl =
-    opts.player === "full" ? LOTTIE_MODULE_FULL : LOTTIE_MODULE_LIGHT;
+    opts.player === "full" || renderer === "canvas" ? LOTTIE_MODULE_FULL : LOTTIE_MODULE_LIGHT;
 
   return `
 <div id="${id}-wrap" style="width:${opts.width}px;height:${opts.height}px;background:${bg};overflow:hidden;position:relative;flex-shrink:0">
   <div id="${id}"${attr} style="width:100%;height:100%"></div>
 </div>
 <script data-superimg-lottie>
-(function(){
-  var progress = ${progress};
-  function fail(msg) { ${failLine} }
-  function done() { ${doneLine} }
-  function run(lottieLib) {
-    try {
-      var el = document.getElementById(${JSON.stringify(id)});
-      var lib = lottieLib || window.lottie || window.bodymovin;
-      if (!el || !lib || typeof lib.loadAnimation !== "function") {
-        fail("lottie player missing");
-        return;
-      }
-      el.innerHTML = "";
-      var data = ${dataJson};
-      var anim = lib.loadAnimation({
+(async function() {
+  let state;
+  const host = document.currentScript.previousElementSibling;
+  const el = host && host.firstElementChild;
+  function fail() { ${failLine} }
+  try {
+    let lib = window.lottie || window.bodymovin;
+    if (!lib) {
+      await new Promise(function(resolve, reject) {
+        const script = document.createElement("script");
+        script.src = ${JSON.stringify(playerUrl)};
+        script.onload = resolve;
+        script.onerror = function() { reject(new Error("Lottie script load failed")); };
+        document.head.appendChild(script);
+      });
+      lib = window.lottie || window.bodymovin;
+    }
+    if (!el || !lib || typeof lib.loadAnimation !== "function") throw new Error("Lottie player missing");
+    ${retainedResourcesScript}
+    const captureDpr = window.__SUPERIMG_CAPTURE_DPR__ || window.devicePixelRatio || 1;
+    state = resources.retain(${JSON.stringify(label)}, ${JSON.stringify(signature)} + ':' + captureDpr, function() {
+      let resolveReady, rejectReady;
+      const ready = new Promise(function(resolve, reject) { resolveReady = resolve; rejectReady = reject; });
+      // A disposed or failed instance can be removed before a caller awaits it.
+      ready.catch(function() {});
+      let disposed = false;
+      const anim = lib.loadAnimation({
         container: el,
         renderer: ${JSON.stringify(renderer)},
         loop: false,
         autoplay: false,
-        animationData: data,
-        assetsPath: ${assetsPathJs},
+        animationData: ${dataJson},${assetsPathJs}
         rendererSettings: {
           preserveAspectRatio: ${JSON.stringify(aspect)},
           progressiveLoad: false,
           hideOnTransparent: true,
-          viewBoxOnly: true
+          viewBoxOnly: true,
+          dpr: captureDpr
         }
       });
-      function seekAndDone() {
-        try {
-          var total = Math.max(0, (anim.totalFrames || 1) - 1);
-          var frame = progress * total;
-          anim.goToAndStop(frame, true);
-        } catch (err) {
-          fail(String(err && err.message ? err.message : err));
-          return;
+      const loaded = function() { if (!disposed) resolveReady(); };
+      const failed = function() { rejectReady(new Error("Lottie data failed")); };
+      anim.addEventListener("DOMLoaded", loaded);
+      anim.addEventListener("data_failed", failed);
+      if (anim.isLoaded) loaded();
+      if (anim.setSubframe) anim.setSubframe(true);
+      return {
+        el, anim, ready,
+        dispose() {
+          if (disposed) return;
+          disposed = true;
+          anim.removeEventListener("DOMLoaded", loaded);
+          anim.removeEventListener("data_failed", failed);
+          anim.destroy();
+          rejectReady(new Error("Lottie instance disposed"));
         }
-        done();
-      }
-      // animationData usually loads sync; still listen for DOMLoaded
-      if (anim.isLoaded || anim.renderer) {
-        // next microtask so SVG DOM is attached
-        setTimeout(seekAndDone, 0);
-      } else {
-        anim.addEventListener("DOMLoaded", seekAndDone);
-        anim.addEventListener("data_failed", function() { fail("lottie data_failed"); });
-        // safety: if neither event fires
-        setTimeout(function() {
-          if (anim.isLoaded || anim.totalFrames > 0) seekAndDone();
-        }, 50);
-      }
-    } catch (e) {
-      fail(String(e && e.message ? e.message : e));
-    }
-  }
-  if (window.lottie || window.bodymovin) run(window.lottie || window.bodymovin);
-  else {
-    var s = document.createElement("script");
-    s.src = ${JSON.stringify(playerUrl)};
-    s.onload = function() { run(window.lottie || window.bodymovin); };
-    s.onerror = function() { fail("lottie script load failed"); };
-    document.head.appendChild(s);
+      };
+    });
+    if (state.el !== el) el.replaceWith(state.el);
+    await state.ready;
+    const total = Math.max(0, (state.anim.totalFrames || 1) - 1);
+    state.anim.goToAndStop(${progress} * total, true);
+    ${doneLine}
+  } catch (error) {
+    if (state) state.dispose();
+    fail();
+    throw error;
   }
 })();
 </script>`;

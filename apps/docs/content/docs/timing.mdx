@@ -1,46 +1,43 @@
-# Timing With Director And Cues
+# Timing With Director And Tracks
 
 SuperImg has two timing primitives for most template work:
 
 - `ctx.director()` choreographs scene-local phases from `timeline.progress`.
-- `std.cue.*` follows absolute timestamps from transcripts, markers, audio, or scripts.
+- `ctx.track()` follows absolute transcript or marker timestamps using `timeline.seconds`.
 
-Use `ctx.director()` when the scene owns the timing. Use `cue` when external data owns the timing.
+Use the director when the scene owns timing. Use a track when external narration or marker data owns timing.
 
 ## Enter, Hold, Exit
 
-`ctx.director()` defaults to `enter`, `hold`, and `exit` phases. It gives you ready-to-use motion styles and handles the fade-out math automatically.
-
 ```typescript
 render(ctx) {
-  const { std } = ctx;
   const t = ctx.director();
-
   const card = t.motion({ y: 32, scale: 0.96 });
-  const eyebrow = t.motion({ at: 0.15, y: 20 });
-  const number = t.tween(0, 1280, { during: "enter", at: 0.2 });
+  const eyebrow = t.motion({ at: "15%", y: 20 });
+  const number = t.tween(0, 1280, { during: "enter", at: "20%" });
 
-  return `
-    <section style="${card.style}">
-      <p style="${eyebrow.style}">Downloads</p>
-      <strong>${Math.floor(number).toLocaleString()}</strong>
-    </section>
-  `;
+  return Frame(
+    { motion: card, pad: 32, radius: 20, fill: "#151923" },
+    Stack(
+      { gap: 12 },
+      Text({ variant: "label", motion: eyebrow }, "Downloads"),
+      Text({ variant: "display" }, Math.floor(number).toLocaleString()),
+    ),
+  );
 }
 ```
 
 ## Named Phases
 
-For templates with a specific story arc, name the phases after the beats in the scene.
+Phase values are explicit percentages or durations.
 
 ```typescript
 render(ctx) {
-  const { std } = ctx;
   const t = ctx.director({
-    intro: 0.18,
-    terminal: 0.62,
-    summary: 0.12,
-    outro: 0.08,
+    intro: "18%",
+    terminal: "62%",
+    summary: "12%",
+    outro: "8%",
   });
 
   const shell = t.motion({ during: "intro", y: 28, exit: false });
@@ -48,99 +45,112 @@ render(ctx) {
   const summary = t.motion({ during: "summary", y: 18 });
   const fade = t.tween(1, 0, { during: "outro", easing: "easeInCubic" });
 
-  return `
-    <div style="${shell.style}; opacity:${shell.opacity * fade}">
-      <pre>${commandProgress > 0.5 ? "build complete" : "npm run build"}</pre>
-      <p style="${summary.style}">Ready to ship</p>
-    </div>
-  `;
+  return Frame(
+    { motion: shell, style: { opacity: shell.opacity * fade } },
+    Stack(
+      { gap: 16 },
+      Text({ variant: "body", fontFamily: "ui-monospace" }, commandProgress > 0.5 ? "build complete" : "npm run build"),
+      Text({ variant: "body", motion: summary }, "Ready to ship"),
+    ),
+  );
 }
 ```
 
-`t.active` tells you which phase is currently running, and `t.in("phase")` gives progress scoped to that phase.
+`t.active` identifies the current phase. `t.in("phase")` returns progress scoped to that phase.
 
 ## Nested Clips
 
-`director.clip()` opens nested timing windows — like Remotion sequences scoped to a parent phase or explicit time range. Each clip gets its own local `director()`:
+`t.clip()` opens a nested timing window with its own local director.
 
 ```typescript
 render(ctx) {
   const { std, width, height, data } = ctx;
   const t = ctx.director({ hook: "2s", demo: "3s", outro: "1s" });
-
   const hook = t.clip({ during: "hook" });
+
   if (hook.active) {
     const local = hook.director();
     const card = local.motion({ y: 32, scale: 0.92 });
-    return `<div style="${std.css({ width, height }, std.css.center())}">
-      <h1 style="${card.style}">${data.hook}</h1>
-    </div>`;
+    return Frame(
+      { width, height },
+      Stack(
+        { width: "fill", height: "fill", align: "center", justify: "center" },
+        Text({ variant: "display", motion: card }, data.hook),
+      ),
+    );
   }
 
-  // ... demo and outro clips
+  // ...demo and outro clips
 }
 ```
 
-## Transcript And Marker Timing
+## Transcript Timing
 
-`std.cue` reads absolute seconds. That makes it the right primitive for captions, voiceover sync, marker files, and scripted beats.
+Convert provider data outside the render loop, then pass normalized word timings to `ctx.track()`.
+
+```typescript
+import { fromElevenLabs } from "@foxworth/superimg/transcript";
+
+const words = fromElevenLabs(rawTranscript);
+```
 
 ```typescript
 render(ctx) {
-  const { std, timeline, data } = ctx;
-
-  const words = std.cue.fromElevenLabs(data.transcript);
-  const transcript = std.cue.transcript(words, time);
+  const transcript = ctx.track({ id: "voiceover", words: ctx.data.words }).transcript();
   const current = transcript.current();
 
-  const caption = transcript.map((word) => {
-    const color = word.active ? data.accentColor : "white";
-    return `<span style="color:${color}">${word.text}</span>`;
-  }).join(" ");
-
-  return `<p>${caption}</p>`;
+  return Vector(
+    { id: "captions", width: ctx.width, height: 120 },
+    vector.text(
+      { id: current?.id ?? "caption", x: 40, y: 76, size: 48, fill: "white" },
+      ...transcript.map((word) =>
+        vector.run(
+          { fill: word.active ? ctx.data.accentColor : "white" },
+          `${word.text} `,
+        ),
+      ),
+    ),
+  );
 }
 ```
 
-Markers are useful when the timing is known by named timestamps:
+## Marker Timing
 
 ```typescript
-const markers = std.cue.markers({
-  intro: 0,
-  demo: 2.5,
-  cta: 8,
-}, ctx.timeline.seconds);
+const markers = ctx.track({
+  id: "story-beats",
+  markers: { intro: 0, demo: 2.5, cta: 8 },
+}).markers();
 
 const demoProgress = markers.progress("demo", "cta");
 const demo = markers.segment("demo", "cta");
 ```
 
+Stable track IDs are recommended and required when compiling strict Media IR.
+
 ## Combining Them
 
-Use `ctx.director()` for the frame and `cue` for audio-synced content inside it.
+Use the director for the frame and a track for narration-synced content inside it.
 
 ```typescript
 render(ctx) {
-  const { std, timeline, data } = ctx;
-  const scene = ctx.director({ enter: 0.12, captions: 0.76, exit: 0.12 });
+  const { std, data } = ctx;
+  const scene = ctx.director({ enter: "12%", captions: "76%", exit: "12%" });
   const panel = scene.motion({ y: 24 });
 
-  const words = std.cue.fromElevenLabs(data.transcript);
-  const transcript = std.cue.transcript(words, time);
+  const transcript = ctx.track({ id: "voiceover", words: data.words }).transcript();
   const phrase = transcript.between(0, 3);
+  const opacity = std.interpolate(phrase.progress, [0, 1], [0.25, 1], "easeOutCubic");
 
-  const phraseOpacity = std.interpolate(phrase.progress, [0, 1], [0.25, 1], "easeOutCubic");
-
-  return `
-    <div style="${panel.style}">
-      <strong style="opacity:${phraseOpacity}">${phrase.text}</strong>
-    </div>
-  `;
+  return Frame(
+    { motion: panel },
+    Text({ variant: "title", style: { opacity } }, phrase.text),
+  );
 }
 ```
 
 ## Next Steps
 
-- [Animation Basics](/docs/animation) — Timing and easing fundamentals
+- [Animation Basics](/docs/animation) — Motion and easing fundamentals
 - [How It Works](/docs/how-it-works) — Rendering model and frame context
 - [CLI Reference](/docs/cli) — Render and inspect templates

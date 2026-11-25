@@ -2,19 +2,20 @@
  * Shared tsdown bundle policy for SuperImg packages.
  */
 
-/** Private workspace packages — always inline into published superimg. */
+/** Workspace packages inlined into published bundles. The public facade does not inline the CLI or interactions host. */
 export const workspaceBundle = [
-  "@superimg/cli",
   "@superimg/types",
+  "@foxworth/superimg-script",
   "@superimg/stdlib",
   /^@superimg\/core/,
   "@superimg/media",
   "@superimg/node",
   /^@superimg\/node\//,
+  /^@superimg\/edge-runtime(?:\/.*)?$/,
   "@superimg/player",
   "@superimg/playwright",
-  "@superimg/runtime-web",
   "@superimg/skill",
+  "ajv",
   "zod",
 ];
 
@@ -28,6 +29,7 @@ export const cliInlineBundle = [
 
 /** Node/server externals — resolved from node_modules at runtime. */
 export const nodeExternals = [
+  /^@foxworth\/boundary(?:\/|$)/,
   "@clack/prompts",
   "commander",
   "ink",
@@ -42,6 +44,7 @@ export const nodeExternals = [
   "playwright",
   "mediabunny",
   "@mediabunny/server",
+  "@mediabunny/dts",
   "sharp",
   "vite",
   "acorn",
@@ -56,16 +59,31 @@ export const browserExternals = [
   "colord",
   "simplex-noise",
   "morphdom",
-  "zustand",
   "mediabunny",
 ];
 
 /** WASM binaries — never inline. */
 export const wasmExternals = ["@resvg/resvg-wasm"];
 
-/** @superimg/cli policy */
-export const cliAlwaysBundle = [...workspaceBundle.filter((e) => e !== "@superimg/cli"), ...cliInlineBundle];
+/** @foxworth/superimg-cli policy */
+export const cliAlwaysBundle = [
+  ...workspaceBundle.filter((e) => e !== "@foxworth/superimg-cli"),
+  "@superimg/interactions",
+  "@superimg/adapters",
+  /^@superimg\/adapters(?:\/.*)?$/,
+  "@superimg/interactive",
+  /^@superimg\/interactive(?:\/.*)?$/,
+  ...cliInlineBundle,
+];
 export const cliNeverBundle = [
+  // The compatibility entry must share the independent interaction module.
+  /^@foxworth\/superimg-interactions(?:\/|$)/,
+  /^@foxworth\/superimg-node(?:\/|$)/,
+  /^@foxworth\/boundary(?:\/|$)/,
+  "@modelcontextprotocol/client",
+  /^@modelcontextprotocol\/client\//,
+  "@modelcontextprotocol/server",
+  /^@modelcontextprotocol\/server\//,
   "@clack/prompts",
   "chokidar",
   "commander",
@@ -82,30 +100,42 @@ export const cliNeverBundle = [
   "playwright",
   "mediabunny",
   "@mediabunny/server",
+  "@mediabunny/dts",
   "sharp",
+  ...wasmExternals,
+  // Wasm bindgen glue + .wasm sit in packages/superimg-blitz/pkg — never inline.
+  "@superimg/blitz",
 ];
 
 /** Published superimg policy */
-export const superimgAlwaysBundle = workspaceBundle;
+export const superimgAlwaysBundle = [
+  ...workspaceBundle,
+  // The public facade reaches D3 through stdlib viz. Inline the complete family
+  // so the assembled package never exposes undeclared transitive dependencies.
+  /^d3-[^/]+(?:\/.*)?$/,
+];
 export const superimgNeverBundle = [
+  "mediabunny",
+  "@mediabunny/server",
+  "@mediabunny/dts",
+  /^@foxworth\/boundary(?:\/|$)/,
   "react",
   "react-dom",
   /^react\//,
   /^react-dom\//,
   "@rolldown/browser",
-  "acorn",
   "date-fns",
   "colord",
   "simplex-noise",
-  "morphdom",
-  "zustand",
-  "rolldown",
-  "oxc-parser",
-  /^@oxc-parser\//,
+  "playwright",
+  "@superimg/blitz",
+  "node-av",
+  "roughjs",
+  "saxes",
+  "sharp",
   ...wasmExternals,
   // Stdlib peers that may remain external on browser/edge platform builds
   "path-data-parser",
-  "source-map-js",
 ];
 
 /** @superimg/core policy */
@@ -134,21 +164,33 @@ export const platformAlwaysBundle = [
   ...workspaceBundle,
   "@superimg/browser-export",
   /^@zumer\/snapdom($|\/)/,
+  "@zumer/snapdom-pdf",
+  /^@zumer\/snapdom-plugins($|\/)/,
+  "@zumer/snapdom-vector",
   /^colord($|\/)/,
   /^date-fns($|\/)/,
   "simplex-noise",
   "morphdom",
-  /^zustand($|\/)/,
   "mediabunny",
+  "@mediabunny/dts",
+  // Platform closures use D3 through stdlib viz and must carry its transitive modules.
+  /^d3-[^/]+(?:\/.*)?$/,
   /^roughjs($|\/)/,
   /^path-data-parser($|\/)/,
   /^source-map-js($|\/)/,
+  /^saxes($|\/)/,
+  /^xmlchars($|\/)/,
 ];
 
 /** Profiles for check-externals.mjs */
 export const profiles = {
   superimg: { alwaysBundle: superimgAlwaysBundle, neverBundle: superimgNeverBundle },
-  cli: { alwaysBundle: cliAlwaysBundle, neverBundle: cliNeverBundle },
+  // The CLI shares one external Boundary SDK instance with its host.
+  cli: {
+    alwaysBundle: cliAlwaysBundle,
+    neverBundle: cliNeverBundle,
+    facadeExternals: ["@foxworth/boundary"],
+  },
   core: { alwaysBundle: [], neverBundle: coreNeverBundle },
   platform: { alwaysBundle: platformAlwaysBundle, neverBundle: platformNeverBundle },
 };

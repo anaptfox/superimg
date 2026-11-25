@@ -1,0 +1,7 @@
+interface:
+  display_name: '/superimg-arrangements'
+  short_description: 'Choose and render a SuperImg perceptual arrangement that externalizes named human work'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$superimg-arrangements: Should this be a picture, and which arrangement earns it?'

@@ -1,0 +1,7 @@
+interface:
+  display_name: '/superimg-pipeline'
+  short_description: 'End-to-end SuperImg video workflow from idea to shipped files'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$superimg-pipeline: Make a product launch video from scratch'

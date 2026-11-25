@@ -1,0 +1,130 @@
+{
+  "pattern": "aligned-intervals",
+  "spec": {
+    "size": {
+      "width": 1100,
+      "height": 620
+    },
+    "evidence": "derived",
+    "source": "ILLUSTRATIVE MODEL · builds 4 min · tests 2 min · edits finish at 2 / 5 / 8 min",
+    "question": "What if we build only after the last edit?",
+    "workRemoved": "Computing dependency waits and comparing schedules on the same clock",
+    "timeRef": {
+      "unit": "min",
+      "origin": 0,
+      "originLabel": "one shared clock"
+    },
+    "tracks": [
+      {
+        "id": "window",
+        "label": "View window",
+        "intervals": [
+          {
+            "id": "window-24",
+            "start": 0,
+            "end": 24
+          }
+        ]
+      },
+      {
+        "id": "edits",
+        "label": "A / edit",
+        "intervals": [
+          {
+            "id": "edit-r1",
+            "start": 0,
+            "end": 2
+          },
+          {
+            "id": "edit-r2",
+            "start": 2,
+            "end": 5
+          },
+          {
+            "id": "edit-r3",
+            "start": 5,
+            "end": 8
+          }
+        ]
+      },
+      {
+        "id": "builds",
+        "label": "B / build",
+        "intervals": [
+          {
+            "id": "build-r1",
+            "start": 2,
+            "end": 6
+          },
+          {
+            "id": "build-r2",
+            "start": 6,
+            "end": 10
+          },
+          {
+            "id": "build-r3",
+            "start": 10,
+            "end": 14
+          }
+        ]
+      },
+      {
+        "id": "tests",
+        "label": "C / test r1–2",
+        "intervals": [
+          {
+            "id": "test-r1",
+            "start": 6,
+            "end": 8
+          },
+          {
+            "id": "test-r2",
+            "start": 10,
+            "end": 12
+          }
+        ]
+      },
+      {
+        "id": "final",
+        "label": "C / final test",
+        "intervals": [
+          {
+            "id": "test-r3",
+            "start": 14,
+            "end": 16
+          }
+        ]
+      },
+      {
+        "id": "batch-build",
+        "label": "Batch / build",
+        "intervals": [
+          {
+            "id": "batch-build-r3",
+            "start": 8,
+            "end": 12
+          }
+        ]
+      },
+      {
+        "id": "batch-test",
+        "label": "Batch / test",
+        "intervals": [
+          {
+            "id": "batch-test-r3",
+            "start": 12,
+            "end": 14
+          }
+        ]
+      }
+    ],
+    "motion": {
+      "phase": "predict",
+      "predict": "tick",
+      "revealIds": [
+        "batch-build",
+        "batch-test"
+      ]
+    }
+  }
+}

@@ -2,7 +2,7 @@ import type { CoordSystem } from "../coords.js";
 import { bandScale } from "../scale.js";
 import type { ChartSeries } from "./shared.js";
 import type { BarChartOpts } from "./bar.js";
-import { animOpacity, chartColors, chartScales, plotArea } from "./shared.js";
+import { baselineValue, animOpacity, chartColors, seriesCategories, chartScales, plotArea } from "./shared.js";
 
 export interface GroupedBarOpts extends BarChartOpts {
   groupPadding?: number;
@@ -18,7 +18,7 @@ export function bars(
   const progress = opts.progress ?? 1;
   const area = plotArea(coords, opts.padding ?? 8);
   const scales = chartScales(coords, area, opts);
-  const categories = series[0]!.data.map((d) => d.label);
+  const categories = seriesCategories(series);
   const x = bandScale(categories, [area.left, area.left + area.width], 0.2);
   const groupBw = x.bandwidth();
   const n = series.length;
@@ -34,14 +34,15 @@ export function bars(
     const gx = x(cat) ?? area.left;
     series.forEach((s, si) => {
       const pt = s.data.find((d) => d.label === cat);
-      if (!pt) return;
+      if (!pt || !Number.isFinite(pt.value)) return;
       const staggered = opts.stagger
         ? Math.max(0, Math.min(1, (progress * n - si) / 1))
         : progress;
       const grow = opts.animate === "grow" ? staggered : 1;
-      const animatedVal = scales.yMin + (pt.value - scales.yMin) * grow;
-      const yTop = scales.y(animatedVal)!;
-      const h = scales.baseline - yTop;
+      const animatedVal = baselineValue(scales.yMin, scales.yMax) + (pt.value - baselineValue(scales.yMin, scales.yMax)) * grow;
+      const yEnd = scales.y(animatedVal)!;
+      const yTop = Math.min(scales.baseline, yEnd);
+      const h = Math.abs(scales.baseline - yEnd);
       const bx = gx + gap + si * (barW + gap);
       const color = s.color ?? colors[si % colors.length]!;
       parts.push(

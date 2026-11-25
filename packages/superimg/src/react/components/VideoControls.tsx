@@ -2,13 +2,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { RuntimeStore, FormatOption } from "../../index.browser.js";
+import type { RuntimeStore } from "@superimg/media";
+import type { CanvasSize } from "@superimg/types";
 import { useIsMobile } from "../hooks/useMediaQuery.js";
 import { PlayButton } from "./PlayButton.js";
 import { Timeline } from "./Timeline.js";
 import { ExportButton } from "./ExportButton.js";
 import { ExportDialog, type ExportOptions } from "./ExportDialog.js";
-import { FormatSelector } from "./FormatSelector.js";
 
 export interface VideoControlsProps {
   /** The player store to control */
@@ -17,8 +17,6 @@ export interface VideoControlsProps {
   showTimeline?: boolean;
   /** Show time labels on timeline (default: false) */
   showTime?: boolean;
-  /** Show format/size selector (default: false). Requires currentFormat + onFormatChange. */
-  showFormat?: boolean;
   /** Show export button (default: false). Requires onExport + onDownload to function. */
   showExport?: boolean;
   /** Export handler — called when user clicks "Export" in the dialog */
@@ -29,10 +27,8 @@ export interface VideoControlsProps {
   exporting?: boolean;
   /** Export progress 0-1 */
   exportProgress?: number;
-  /** Current format (passed to dialog and format selector) */
-  currentFormat?: FormatOption;
-  /** Called when user changes format via format selector */
-  onFormatChange?: (format: FormatOption) => void;
+  /** Current custom preview size, used as the export dialog default. */
+  currentSize?: CanvasSize;
   /** Optional CSS class */
   className?: string;
   /** Controlled export dialog open state */
@@ -47,7 +43,7 @@ export interface VideoControlsProps {
  * @example
  * ```tsx
  * const playerRef = useRef<PlayerRef>(null);
- * const { exportMp4, download, exporting, exportProgress } = usePlaygroundExport({ template, data });
+ * const { exportMp4, download, exporting, exportProgress } = usePlaygroundExport({ media, data });
  *
  * <VideoControls
  *   store={playerRef.current!.store!}
@@ -57,7 +53,7 @@ export interface VideoControlsProps {
  *   onDownload={download}
  *   exporting={exporting}
  *   exportProgress={exportProgress}
- *   currentFormat="horizontal"
+ *   currentSize={{ width: 1280, height: 720 }}
  * />
  * ```
  */
@@ -65,14 +61,12 @@ export function VideoControls({
   store,
   showTimeline = true,
   showTime = false,
-  showFormat = false,
   showExport = false,
   onExport,
   onDownload,
   exporting = false,
   exportProgress = 0,
-  currentFormat,
-  onFormatChange,
+  currentSize,
   className,
   exportDialogOpen,
   onExportDialogOpenChange,
@@ -90,7 +84,6 @@ export function VideoControls({
   }, [exporting, setDialogOpen]);
 
   const canExport = showExport && onExport && onDownload;
-  const canFormat = showFormat && currentFormat !== undefined && onFormatChange;
   const isMobile = useIsMobile();
 
   const controlsPadding = showTime ? "12px 12px 12px" : "12px";
@@ -138,7 +131,7 @@ export function VideoControls({
                 )}
               </div>
             </div>
-            {/* Row 2: Format + Export */}
+            {/* Row 2: Export */}
             <div
               style={{
                 display: "flex",
@@ -147,13 +140,6 @@ export function VideoControls({
                 width: "100%",
               }}
             >
-              {canFormat && (
-                <FormatSelector
-                  value={currentFormat}
-                  onChange={onFormatChange}
-                  showLabels={isMobile}
-                />
-              )}
               {canExport && (
                 <ExportButton
                   onClick={handleExportClick}
@@ -166,9 +152,6 @@ export function VideoControls({
         ) : (
           <>
             <PlayButton store={store} size="md" />
-            {canFormat && (
-              <FormatSelector value={currentFormat} onChange={onFormatChange} />
-            )}
             {showTimeline && (
               <div
                 style={{
@@ -205,7 +188,7 @@ export function VideoControls({
           onDownload={onDownload}
           exporting={exporting}
           exportProgress={exportProgress}
-          {...(currentFormat !== undefined ? { currentFormat } : {})}
+          {...(currentSize !== undefined ? { currentSize } : {})}
         />
       )}
     </>

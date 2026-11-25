@@ -1,63 +1,45 @@
-import { compose, scene } from "superimg";
+// "The Persistence of Vision" — a five-scene documentary reel.
+//
+// The music bed and chapter voiceovers live on the timed composition, positioned
+// with `atScene` so the bed ducks under each chapter. Chapters share one film
+// stock via `./reel.ts`.
+import { sequence, time } from "@foxworth/superimg";
+import { SCRIPTS, voiceClip } from "./reel.js";
 import hook from "./hook.media.js";
-import chapter from "./chapter.media.js";
+import zoetrope from "./zoetrope.media.js";
+import muybridge from "./muybridge.media.js";
+import fusion from "./fusion.media.js";
 import outro from "./outro.media.js";
 
 const BED = "../../_assets/lofi-bg.mp3";
 
-/** Placeholder voice segments — swap for real VO files or TTS output later */
-const CH1_VO = BED;
+const documentary = sequence([
+  { id: "title", content: hook },
+  { id: "zoetrope", content: zoetrope },
+  { id: "muybridge", content: muybridge },
+  { id: "fusion", content: fusion },
+  { id: "colophon", content: outro },
+]);
 
-export default compose(
-  [
-    scene(hook, { id: "hook", duration: "6s", label: "Hook" }),
-    scene(chapter, {
-      id: "ch1",
-      duration: "20s",
-      label: "Chapter 1",
-      audio: {
-        id: "ch1-vo",
-        label: "Chapter narration",
-        src: CH1_VO,
-        role: "voice",
-        trim: { in: "0s", out: "4s" },
-        volume: 0.9,
-        fadeIn: "0.2s",
-        fadeOut: "0.3s",
-        transcript: [
-          { text: "SuperImg", start: 0.0, end: 0.6 },
-          { text: "layers", start: 0.65, end: 1.0 },
-          { text: "HTML", start: 1.05, end: 1.35 },
-          { text: "templates", start: 1.4, end: 1.9 },
-          { text: "into", start: 1.95, end: 2.1 },
-          { text: "multi-track", start: 2.15, end: 2.7 },
-          { text: "audio", start: 2.75, end: 3.05 },
-          { text: "timelines.", start: 3.1, end: 3.6 },
-        ],
+export default time(documentary, {
+  size: { width: 1920, height: 1080 },
+  fps: 30,
+  audio: {
+    clips: [
+      {
+        id: "bed",
+        label: "Music bed",
+        src: BED,
+        role: "music",
+        volume: 0.32,
+        fadeIn: "1s",
+        fadeOut: "2s",
+        loop: true,
       },
-    }),
-    scene(outro, { id: "outro", duration: "4s", label: "Outro" }),
-  ],
-  {
-    config: {
-      width: 1920,
-      height: 1080,
-      fps: 30,
-      audio: {
-        clips: [
-          {
-            id: "bed",
-            label: "Music bed",
-            src: BED,
-            role: "music",
-            volume: 0.35,
-            fadeIn: "0.5s",
-            fadeOut: "1.5s",
-            loop: true,
-          },
-        ],
-        mix: { ducking: true, duckingLevel: 0.25 },
-      },
-    },
+      { ...voiceClip(SCRIPTS.ch1), atScene: "zoetrope" },
+      { ...voiceClip(SCRIPTS.ch2), atScene: "muybridge" },
+      { ...voiceClip(SCRIPTS.ch3), atScene: "fusion" },
+    ],
+    mix: { ducking: true, duckingLevel: 0.25 },
   },
-);
+});

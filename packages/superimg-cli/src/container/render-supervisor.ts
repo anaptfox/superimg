@@ -44,8 +44,8 @@ interface Job {
   resolve(value: unknown): void;
   reject(error: unknown): void;
   clientSettled: boolean;
-  slot?: WorkerSlot;
-  forceTimer?: ReturnType<typeof setTimeout>;
+  slot: WorkerSlot | undefined;
+  forceTimer: ReturnType<typeof setTimeout> | undefined;
   onAbort(): void;
 }
 
@@ -53,7 +53,7 @@ interface WorkerSlot {
   index: number;
   child: ChildProcess;
   ready: boolean;
-  active?: Job;
+  active: Job | undefined;
 }
 
 interface WorkerMessage {
@@ -120,6 +120,8 @@ export class RenderSupervisor {
         resolve,
         reject,
         clientSettled: false,
+        slot: undefined,
+        forceTimer: undefined,
         onAbort: () => this.#cancel(job),
       };
       if (execution.signal.aborted) {
@@ -160,7 +162,7 @@ export class RenderSupervisor {
       serialization: "advanced",
       env: process.env,
     });
-    const slot: WorkerSlot = { index, child, ready: false };
+    const slot: WorkerSlot = { index, child, ready: false, active: undefined };
     const existing = this.#slots.findIndex((candidate) => candidate.index === index);
     if (existing >= 0) this.#slots[existing] = slot;
     else this.#slots.push(slot);

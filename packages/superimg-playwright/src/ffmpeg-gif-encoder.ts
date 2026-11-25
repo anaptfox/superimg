@@ -1,17 +1,19 @@
-//! FFmpeg-based GIF encoder - renders frames to temp PNGs then encodes via ffmpeg
+//! FFmpeg GIF encoder with asynchronous scratch staging and optional host-owned file output.
 
 import { execa } from "execa";
-import { mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import type { VideoEncoder, VideoEncoderConfig } from "@superimg/types";
+import type { EncodedFileResult, VideoEncoder, VideoEncoderConfig } from "@superimg/types";
+import { EncoderFileOutput } from "./encoder-file-output.js";
+import { validateFrameSize } from "./encoder-frame.js";
 
 function detectFrameExt(frame: Buffer): string {
   // JPEG: FF D8 FF
   if (frame[0] === 0xff && frame[1] === 0xd8 && frame[2] === 0xff) return "jpg";
   // PNG: 89 50 4E 47
   if (frame[0] === 0x89 && frame[1] === 0x50 && frame[2] === 0x4e && frame[3] === 0x47) return "png";
-  return "png";
+  throw new TypeError("GIF frames must be encoded PNG or JPEG screenshots");
 }
 
 export class FfmpegGifEncoder implements VideoEncoder<Buffer> {
@@ -20,10 +22,22 @@ export class FfmpegGifEncoder implements VideoEncoder<Buffer> {
   private fps = 30;
   private frameExt = "png";
   private gifOptions: { maxColors?: number; loop?: number; dither?: string } = {};
+  private width = 0;
+  private height = 0;
+  private fileOutput = new EncoderFileOutput();
+  private finalized = false;
 
   async init(config: VideoEncoderConfig): Promise<void> {
+    if (this.frameDir) throw new Error("FfmpegGifEncoder is already initialized");
+    validateFrameSize(config.width, config.height);
+    if (!Number.isFinite(config.fps) || config.fps <= 0) throw new TypeError("GIF fps must be positive and finite");
+    this.width = config.width;
+    this.height = config.height;
     this.fps = config.fps;
     this.gifOptions = config.encoding?.gif ?? {};
+    this.frameCount = 0;
+    this.finalized = false;
+    this.fileOutput = new EncoderFileOutput();
 
     try {
       await execa("ffmpeg", ["-version"]);
@@ -37,54 +51,82 @@ export class FfmpegGifEncoder implements VideoEncoder<Buffer> {
       );
     }
 
-    this.frameDir = join(tmpdir(), `superimg-gif-${Date.now()}`);
-    mkdirSync(this.frameDir, { recursive: true });
+    try {
+      this.frameDir = await mkdtemp(join(tmpdir(), "superimg-gif-"));
+      await this.fileOutput.reserve(config.output);
+    } catch (error) {
+      await this.dispose();
+      throw error;
+    }
   }
 
   async addFrame(frame: Buffer, _timestamp: number): Promise<void> {
+    if (!this.frameDir || this.finalized) throw new Error("FfmpegGifEncoder is not accepting frames");
+    const extension = detectFrameExt(frame);
     if (this.frameCount === 0) {
-      this.frameExt = detectFrameExt(frame);
+      this.frameExt = extension;
     }
+    if (extension !== this.frameExt) throw new TypeError("GIF capture format must stay consistent across frames");
     const padded = String(this.frameCount).padStart(5, "0");
-    writeFileSync(join(this.frameDir, `frame_${padded}.${this.frameExt}`), frame);
+    await writeFile(join(this.frameDir, `frame_${padded}.${this.frameExt}`), frame);
     this.frameCount++;
   }
 
   async finalize(): Promise<Uint8Array> {
+    if (this.fileOutput.path) throw new Error("File output requires finalizeToFile()");
+    return readFile(await this.finish());
+  }
+
+  async finalizeToFile(): Promise<EncodedFileResult> {
+    if (!this.fileOutput.path) throw new Error("Encoder was not initialized with file output");
+    try {
+      await this.finish();
+      return await this.fileOutput.result();
+    } catch (error) {
+      await this.fileOutput.dispose();
+      throw error;
+    }
+  }
+
+  private async finish(): Promise<string> {
+    if (!this.frameDir || !this.frameCount || this.finalized) throw new Error("GIF encoder has no pending frames");
+    this.finalized = true;
     const palettePath = join(this.frameDir, "palette.png");
-    const outputPath = join(this.frameDir, "output.gif");
+    const outputPath = this.fileOutput.path ?? join(this.frameDir, "output.gif");
     const maxColors = this.gifOptions.maxColors ?? 256;
     const dither = this.gifOptions.dither ?? "sierra2_4a";
     const loop = this.gifOptions.loop ?? 0;
     const inputPattern = join(this.frameDir, `frame_%05d.${this.frameExt}`);
+    const scale = `scale=${this.width}:${this.height}:flags=lanczos`;
 
-    // Pass 1: generate optimal color palette from all frames
+    // Pass 1: global palette across all frames (prevents color popping)
     await execa("ffmpeg", [
       "-y",
       "-framerate", String(this.fps),
       "-i", inputPattern,
-      "-vf", `palettegen=max_colors=${maxColors}`,
+      "-vf", `${scale},palettegen=max_colors=${maxColors}:stats_mode=full:reserve_transparent=1`,
       palettePath,
     ]);
 
-    // Pass 2: encode GIF using the generated palette
+    // Pass 2: encode with bounding-box delta + dither
     await execa("ffmpeg", [
       "-y",
       "-framerate", String(this.fps),
       "-i", inputPattern,
       "-i", palettePath,
-      "-filter_complex", `[0:v][1:v]paletteuse=dither=${dither}`,
+      "-filter_complex", `[0:v]${scale}[scaled];[scaled][1:v]paletteuse=dither=${dither}:diff_mode=rectangle`,
       "-loop", String(loop),
       outputPath,
     ]);
 
-    const result = readFileSync(outputPath);
-    return new Uint8Array(result);
+    return outputPath;
   }
 
   async dispose(): Promise<void> {
     if (this.frameDir) {
-      rmSync(this.frameDir, { recursive: true, force: true });
+      await rm(this.frameDir, { recursive: true, force: true });
+      this.frameDir = "";
     }
+    await this.fileOutput.dispose();
   }
 }

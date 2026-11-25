@@ -1,0 +1,30 @@
+{
+  "name": "@superimg/film",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Script-driven film authoring for SuperImg",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@foxworth/superimg-script": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@superimg/build-config": "workspace:*",
+    "tsdown": "catalog:",
+    "vitest": "catalog:"
+  }
+}

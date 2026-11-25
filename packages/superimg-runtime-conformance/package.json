@@ -1,0 +1,39 @@
+{
+  "name": "@superimg/runtime-conformance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared assembled-interface conformance contract for SuperImg runtimes",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run --config vitest.node.config.ts",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test:edge": "vitest run --config vitest.workerd.config.ts",
+    "test:edge-resolution": "vitest run --config vitest.edge.config.ts",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@foxworth/superimg": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.6.1",
+    "@superimg/build-config": "workspace:*",
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "@vitest/ui": "catalog:",
+    "vitest": "catalog:"
+  }
+}

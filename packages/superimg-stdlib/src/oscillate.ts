@@ -5,7 +5,7 @@
  * `period` can be a string ("1s", "500ms") or a number (seconds).
  */
 
-import { repeat, pingPong } from "./math.js";
+import { repeat, pingPong } from "./math-basic.js";
 
 function parsePeriod(period: number | string): number {
   if (typeof period === "number") return period;

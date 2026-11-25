@@ -16,8 +16,9 @@
  */
 
 import { tween } from "./tween";
-import { css } from "./css";
+import { css, appleGlass as appleGlassStyle } from "./css";
 import { clamp01 } from "./easing";
+import { Image } from "./tree/primitives.js";
 
 /** Options for Ken Burns background effect */
 export interface KenBurnsOptions {
@@ -78,6 +79,7 @@ export interface KenBurnsResult {
  * ```
  */
 export function kenBurns(options: KenBurnsOptions): KenBurnsResult {
+
   const {
     src,
     progress,
@@ -108,6 +110,47 @@ export function kenBurns(options: KenBurnsOptions): KenBurnsResult {
   });
 
   const html = `<div style="${backgroundStyle}"></div><div style="${overlayStyle}"></div>`;
+  const node = Image({
+    src,
+    fit: "cover",
+    kenBurns: { progress: t, zoomFrom, zoomTo, overlay, position, overflow },
+  });
 
-  return { zoom, backgroundStyle, overlayStyle, html };
+  return Object.assign(node, { zoom, backgroundStyle, overlayStyle, html });
+}
+
+export interface AppleGlassPanelOptions {
+  /** Content HTML inside the glass panel. */
+  content?: string;
+  /** Extra style for the panel shell. */
+  style?: string;
+  blur?: number;
+  fill?: string;
+  border?: string;
+  radius?: number | string;
+}
+
+/**
+ * Glass panel with optional inner content (structure + style).
+ * Style recipe alone lives on `std.css.appleGlass()`.
+ */
+export function appleGlass(options: AppleGlassPanelOptions = {}): {
+  style: string;
+  html: string;
+} {
+  const style = [
+    "position:relative",
+    appleGlassStyle({
+      blur: options.blur,
+      fill: options.fill,
+      border: options.border,
+      radius: options.radius,
+    }),
+    options.style ?? "",
+  ]
+    .filter(Boolean)
+    .join(";");
+  const inner = options.content ?? "";
+  const html = `<div style="${style}">${inner}</div>`;
+  return { style, html };
 }

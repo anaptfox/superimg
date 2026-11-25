@@ -1,178 +1,68 @@
 # Player
 
-Embed SuperImg templates directly in web apps. The Player renders templates in the browser using real HTML/CSS in a sandboxed iframe — no video file needed for preview.
+The passive Player evaluates a deterministic media definition in the browser, lowers its typed media tree, and paints the resulting HTML/SVG into a sandboxed surface. It accepts live data, seek/play controls, and canvas size. It does not own export destinations or interactive scene behavior.
 
-## Installation
+```ts
+import { Player } from "@foxworth/superimg/player";
 
-```bash
-npm install superimg
-```
-
-For React projects, the `<Player>` component is included in the same package — no extra install needed.
-
-## Basic Usage
-
-### Vanilla JavaScript
-
-```typescript
-import { Player } from 'superimg/browser';
-import template from './my-video.media';
-
-const player = new Player({ container: '#video', format: 'horizontal' });
-await player.load(template);
+const player = new Player({ container });
+await player.load(launch, { data: { title: "Live preview" } });
 player.play();
 ```
 
-### React
+For exact browser capture and optional agent tools, mount the pure
+`@foxworth/superimg/inspection` entry. See [Browser inspection](/docs/inspection) for
+accepted frames, resource readiness, and persistent inspection mode.
+
+React apps use `@foxworth/superimg/react` for the passive component and playback hooks:
 
 ```tsx
-import { Player } from 'superimg/react/player';
-import template from './my-video.media';
+import { Player } from "@foxworth/superimg/react/player";
+import launch from "./launch.media";
 
-function App() {
-  return (
-    <Player
-      template={template}
-      format="horizontal"
-      playbackMode="loop"
-      controls
-      style={{ width: '100%', maxWidth: 640, aspectRatio: '16/9' }}
-    />
-  );
+export function LaunchPreview() {
+  return <Player media={launch} controls />;
 }
 ```
 
-## Playback Controls
-
-```typescript
-player.play();
-player.pause();
-
-player.isPlaying;
-player.isReady;
-player.currentFrame;
-player.totalFrames;
-player.fps;
-```
-
-## Seeking
-
-```typescript
-player.seekFrame(50);
-player.seekTimeSeconds(2.5);
-player.seekProgress(0.5);
-```
-
-## Dynamic Data
-
-```typescript
-await player.load(template, { data: { title: 'Hello' } });
-player.update({ data: { title: 'Updated Title' } });
-```
-
-## Format Options
-
-```typescript
-const player = new Player({ container: '#video', format: 'horizontal' });
-player.update({ format: 'vertical' });
-player.update({ width: 800, height: 600 });
-```
-
-## Playback Modes
-
-```typescript
-const player = new Player({
-  container: '#video',
-  playbackMode: 'loop',  // or 'once'
-});
-```
-
-## Store (vanilla UI)
-
-```typescript
-const store = player.store;
-store.subscribe(() => {
-  const { isPlaying, currentFrame, isScrubbing } = store.getState();
-});
-store.getState().togglePlayPause();
-store.getState().setFrame(30);
-```
-
-Use `createTimelineController` from `superimg/browser` for scrubbing UI.
-
-## Events
-
-```typescript
-player.on('play', () => {});
-player.on('pause', () => {});
-player.on('ended', () => {});
-player.on('ready', () => {});
-player.on('frame', (frame, totalFrames) => {});
-player.on('rendered', (payload) => {}); // payload.compositeHtml for inspector/debug
-player.on('scenechange', (scene) => {});
-player.on('error', (err) => {});
-```
-
-## Composed Templates
-
-```typescript
-import { compose } from 'superimg';
-
-const composed = compose([intro, content, outro]);
-await player.load(composed);
-
-player.seekScene('intro');
-player.seekScene(0);
-player.nextScene();
-player.previousScene();
-```
-
-## Checkpoints
-
-```typescript
-player.goToCheckpoint('chorus');
-player.nextCheckpoint();
-player.prevCheckpoint();
-player.addCheckpoint('chorus', 120, { label: 'Chorus' });
-player.removeCheckpoint('chorus');
-```
-
-## Player Options
-
-```typescript
-const player = new Player({
-  container: '#video',
-  format: 'horizontal',
-  playbackMode: 'once',
-  loadMode: 'eager',
-  hoverBehavior: 'none',
-  hoverDelayMs: 200,
-});
-```
-
-## React Props
+That surface deliberately does not compile source strings. Browser authoring
+shells opt into the compiler graph explicitly:
 
 ```tsx
-<Player
-  template={template}
-  data={{ title: 'Dynamic' }}
-  format="horizontal"
-  playbackMode="loop"
-  autoPlay
-  controls="full"
-  onStore={(store) => {}}
-  onPlay={() => {}}
-  onPause={() => {}}
-  onFrame={(frame) => {}}
-/>
+import { CompilingPlayer } from "@foxworth/superimg/react/compile";
+
+export function SourcePreview({ code }: { code: string }) {
+  return <CompilingPlayer code={code} controls />;
+}
 ```
 
-## Browser Export
+`@foxworth/superimg/react/compile` also exports `useCompiler` and
+`useCompiledMedia`. Keep it out of ordinary application playback bundles.
 
-Preview (`Player`) and export (`exportToVideo`) are separate paths:
+Interactive explainers use `InteractivePlayer` from `@foxworth/superimg/react/interactive`; see [Scene guides](/docs/scene-guide). Keeping that path on a separate import means ordinary image/video playback does not carry guide, action, query, or hit-target APIs.
+Passing a raw interactive definition to the passive Player fails with
+`INTERACTIVE_PLAYER_REQUIRED` instead of silently inventing a playback clock.
 
-```typescript
-import { CanvasRenderer, exportToVideo, downloadBlob } from 'superimg/browser';
+Export remains server-side:
+
+```bash
+superimg export launch --for youtube
 ```
 
-See the docs playground or `usePlaygroundExport` for a complete export example.
+## Driven playback
+
+`drive` seeks the same timeline the export uses. Two values. Springs are fixed.
+
+```ts
+new Player({ container, drive: "scroll" });   // page story — sticky player, tall parent
+new Player({ container, drive: "pointer" });  // scrub / follow — X across the box
+```
+
+Author nothing about drive. `ctx.timeline.progress` is the clock. Prefer **one lockup, many materials**: teach the mark with a quiet reveal, then cut paint (not position). See `examples/marketing/lockup-tour` and:
+
+- `just example apps/lockup-scroll`
+- `just example apps/lockup-pointer`
+
+`hoverBehavior: "preview-scrub"` stays for gallery cards. Heroes use `drive`.
+
+`Plate({ src })` is only for a photoreal subject that already exists as a short clip. Compile with `superimg plate <file>` (atlas, ≤6s). Page / `Fill` owns the background. Do not generate video in the framework.

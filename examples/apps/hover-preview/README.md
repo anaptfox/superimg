@@ -1,36 +1,21 @@
 # Hover Preview
 
-YouTube-style hover preview using `SuperImgPlayer`.
+Hover or focus a card to play a SuperImg program. Leave it to pause and return
+to the first frame. The host delays playback by 200 ms and preloads cards within
+100 px of the viewport with `IntersectionObserver`.
 
-## Usage
+From the repository root:
 
 ```bash
-pnpm dev
+just build-render
+pnpm --filter superimg-example-hover-preview dev
 ```
 
-## Features
+The six loops live in `../_shared/preview.media.ts`, also used by `react-player`.
+They use typed `Frame`, `Fill`, and `Text` nodes plus `std.oscillate` / `std.loop`.
+There are no pre-exported videos or wall-clock CSS animations.
 
-- Hover to play, leave to pause
-- 200ms hover debounce (prevents accidental triggers)
-- Intersection Observer lazy loading (100px preload margin)
-- LRU frame cache (30 frames, ~7 MB)
-
-## Performance Optimizations
-
-✅ **Lazy loading** - Template loads when card is near viewport  
-✅ **Hover delay** - 200ms debounce prevents rapid triggers  
-✅ **Reduced duration** - 2s at 24fps = 48 frames (vs 3s = 72)  
-✅ **Cache limit** - Max 30 frames in memory (~7 MB)  
-✅ **Canvas reuse** - No GIF encoding overhead
-
-## Memory Profile
-
-- **Single preview**: ~7 MB (30 frames × 320×180×4 bytes)
-- **10 previews**: ~70 MB
-- **50 previews**: ~350 MB (with lazy loading, only visible ones load)
-
-## Alternatives Considered
-
-- ❌ **Real GIF**: 3-10x slower, worse quality
-- ❌ **Video element**: Requires pre-rendered file
-- ✅ **Canvas playback**: Best balance (this approach)
+The host waits for `Player.load()` before playing, retains hover/focus intent
+while loading, permits retries after load errors, and disposes players, observers,
+and pending hover timers during Vite hot reload. Memory usage depends on the
+player runtime and browser; this example does not configure an LRU frame cache.

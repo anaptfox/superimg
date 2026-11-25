@@ -19,5 +19,5 @@ interface PageProps {
 
 export default function PlaygroundEditorPage({ params }: PageProps) {
   const { id } = use(params);
-  return <Editor templateId={id} />;
+  return <Editor exampleId={id} />;
 }

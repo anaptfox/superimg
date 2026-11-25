@@ -1,6 +1,8 @@
-import { define, type RenderContext } from "superimg";
+// Before / After Code — one transition, done for real: the diff collapses.
+// Removed lines are struck and fold to nothing; added lines grow into the gap.
 
-export type TransitionStyle = "wipe" | "split" | "flip" | "slide";
+import { video, Frame, Stack, Text, Html, type RenderContext, googleFont } from "@foxworth/superimg";
+import type { LangName } from "@foxworth/superimg/stdlib/code";
 
 export interface CodeContent {
   code: string;
@@ -13,230 +15,323 @@ export interface BeforeAfterCodeData extends Record<string, unknown> {
   before: CodeContent;
   after: CodeContent;
   title: string;
-  transition: TransitionStyle;
-  theme: "light" | "dark";
   accentColor: string;
 }
 
-const TIMING = {
-  titleFadeIn: { start: 0, end: 0.03 },
-  transition: { start: 0.42, end: 0.5 },
-  fadeOut: { start: 0.97, end: 1.0 },
-};
-
-function renderCodeWindow(
-  content: CodeContent,
-  baseFontSize: number,
-  theme: { cardBg: string; border: string; headerBg: string; mutedText: string; text: string },
-  std: any,
-  shikiTheme: string
-): string {
-  const highlighted = std.code.highlight(content.code, { 
-    lang: (content.language || "typescript") as any, 
-    theme: shikiTheme as any 
-  });
-
-  return `
-    <div style="
-      display:flex;
-      flex-direction:column;
-      width:100%;
-      height:100%;
-      background:${theme.cardBg};
-      border-radius:${baseFontSize * 0.5}px;
-      overflow:hidden;
-      box-shadow:0 20px 50px rgba(0,0,0,0.3);
-      border:1px solid ${theme.border};
-    ">
-      <div style="
-        height:${baseFontSize * 1.4}px;
-        background:${theme.headerBg};
-        display:flex;
-        align-items:center;
-        padding:0 ${baseFontSize * 0.6}px;
-        gap:${baseFontSize * 0.4}px;
-        border-bottom:1px solid ${theme.border};
-      ">
-        <div style="display:flex;gap:${baseFontSize * 0.25}px;">
-          <div style="width:${baseFontSize * 0.35}px;height:${baseFontSize * 0.35}px;border-radius:50%;background:#ff5f56;"></div>
-          <div style="width:${baseFontSize * 0.35}px;height:${baseFontSize * 0.35}px;border-radius:50%;background:#ffbd2e;"></div>
-          <div style="width:${baseFontSize * 0.35}px;height:${baseFontSize * 0.35}px;border-radius:50%;background:#27ca40;"></div>
-        </div>
-        <div style="
-          font-size:${baseFontSize * 0.5}px;
-          color:${theme.mutedText};
-          margin-left:${baseFontSize * 0.5}px;
-          font-family:ui-sans-serif,system-ui,sans-serif;
-          white-space:nowrap;
-          overflow:hidden;
-          text-overflow:ellipsis;
-        ">${content.filename || (content.language === 'html' ? 'index.html' : 'index.ts')}</div>
-      </div>
-      <div style="
-        flex:1;
-        padding:${baseFontSize * 0.7}px ${baseFontSize * 0.9}px;
-        font-family:'SF Mono', 'Fira Code', monospace;
-        font-size:${baseFontSize * 0.65}px;
-        line-height:1.6;
-        overflow:hidden;
-        background:${theme.cardBg};
-      ">
-        ${highlighted}
-      </div>
-    </div>
-  `;
+type OpKind = "keep" | "remove" | "add";
+interface Op {
+  kind: OpKind;
+  text: string;
 }
 
-export default define<BeforeAfterCodeData>({
+const PAPER = "#F5F2EA";
+const PLATE = "#FDFCF8";
+const INK = "#1C1E22";
+const MUTED = "#797468";
+const HAIR = "rgba(28,30,34,0.14)";
+const CUT = "#B4232A";
+const GROW = "#1B7A44";
+const MONO = "'JetBrains Mono', ui-monospace, monospace";
+
+/** Line-level LCS so the transition folds only what actually changed. */
+function diffLines(a: string[], b: string[]): Op[] {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      dp[i]![j] = a[i] === b[j] ? dp[i + 1]![j + 1]! + 1 : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
+    }
+  }
+  const ops: Op[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < m && j < n) {
+    if (a[i] === b[j]) {
+      ops.push({ kind: "keep", text: a[i]! });
+      i++;
+      j++;
+    } else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) {
+      ops.push({ kind: "remove", text: a[i]! });
+      i++;
+    } else {
+      ops.push({ kind: "add", text: b[j]! });
+      j++;
+    }
+  }
+  while (i < m) ops.push({ kind: "remove", text: a[i++]! });
+  while (j < n) ops.push({ kind: "add", text: b[j++]! });
+  return ops;
+}
+
+
+
+export default video<BeforeAfterCodeData>({
+  duration: "7.4s",
+  fonts: [googleFont("JetBrains+Mono:wght@400;500;700"), googleFont("Inter:wght@400;500;600;700;800")],
+  inlineCss: [
+    "* { margin: 0; padding: 0; box-sizing: border-box; }",
+    "body { overflow: hidden; }",
+    "pre.shiki { margin: 0; padding: 0; background: transparent !important; }",
+    "pre.shiki code { background: transparent !important; }",
+    ".diff { display: flex; flex-direction: column; justify-content: center; }",
+    ".drow { display: flex; align-items: center; overflow: hidden; white-space: pre; background-repeat: no-repeat; }",
+    ".mark { flex-shrink: 0; text-align: center; }",
+  ],
   sample: {
-    title: "Simplify your Code",
-    before: { 
-      code: "const res = await fetch('/api/user');\nconst data = await res.json();\nif (!res.ok) throw new Error();\nconsole.log(data.name);", 
+    title: "Four calls become one",
+    before: {
+      code: "const res = await fetch('/api/user');\nconst data = await res.json();\nif (!res.ok) throw new Error();\nconsole.log(data.name);",
       language: "javascript",
       filename: "raw-fetch.js",
-      label: "MANUAL FETCH"
+      label: "MANUAL FETCH",
     },
-    after: { 
-      code: "const user = await sdk.users.get();\nconsole.log(user.name);", 
+    after: {
+      code: "const user = await sdk.users.get();\nconsole.log(user.name);",
       language: "typescript",
       filename: "with-sdk.ts",
-      label: "USING SDK"
+      label: "USING SDK",
     },
-    transition: "wipe",
-    theme: "dark",
-    accentColor: "#3b82f6",
+    accentColor: "#B4232A",
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "10s",
-  },
+
   render(ctx: RenderContext<BeforeAfterCodeData>) {
-    const { std, width, height, timeline, data } = ctx;
-    const { title, transition, theme: themeKey, accentColor } = data;
+    const { std, width, height, data } = ctx;
+    const ease = (v: number, fn: Parameters<typeof std.interpolate>[3]) =>
+      std.interpolate(v, [0, 1], [0, 1], fn);
+    const before = data.before ?? { code: "" };
+    const after = data.after ?? { code: "" };
+    const title = String(data.title ?? "");
+    const accent = String(data.accentColor ?? CUT);
 
-    const isDark = themeKey === "dark";
-    const bgColor = isDark ? "#0a0a0a" : "#fafafa";
-    const bgGradient = isDark 
-      ? `linear-gradient(135deg, #0a0a0a 0%, #171717 100%)`
-      : `linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%)`;
-    
-    const textColor = isDark ? "#ffffff" : "#0a0a0a";
-    const mutedColor = isDark ? "#a1a1aa" : "#71717a";
-    const cardBg = isDark ? "#121212" : "#ffffff";
-    const border = isDark ? "#262626" : "#e5e5e5";
-    const headerBg = isDark ? "#1c1c1c" : "#f3f4f6";
-    const shikiTheme = isDark ? "dark-plus" : "github-light";
+    const beforeLines = String(before.code ?? "").replace(/\s+$/, "").split("\n");
+    const afterLines = String(after.code ?? "").replace(/\s+$/, "").split("\n");
+    const ops = diffLines(beforeLines, afterLines);
+    const removals = ops.filter((o) => o.kind === "remove");
+    const additions = ops.filter((o) => o.kind === "add");
 
-    const theme = { text: textColor, cardBg, border, headerBg, mutedText: mutedColor };
-
-    const titleProgress = std.interpolate(timeline.progress, [TIMING.titleFadeIn.start, TIMING.titleFadeIn.end], [0, 1], "easeOutCubic");
-    const transitionProgress = std.interpolate(timeline.progress, [TIMING.transition.start, TIMING.transition.end], [0, 1], "easeInOutCubic");
-    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeInCubic");
-
-    const globalOpacity = 1 - fadeOutProgress;
-
-    const baseFontSize = Math.min(width, height) * 0.045;
-    const horizontalPadding = width * 0.08;
-
-    const [titleArea, labelArea, windowArea] = std.layout.partitionY(
-      { x: 0, y: 0, width, height },
-      [
-        { height: title ? height * 0.15 : 0 },
-        { height: baseFontSize * 2.5 },
-        { fill: true },
-      ],
-      { gap: baseFontSize * 0.3 },
-    );
-    const codeArea = std.layout.inset(windowArea, {
-      x: horizontalPadding,
-      bottom: baseFontSize * 1.2,
+    const t = ctx.director({
+      open: "0.9s",
+      before: "1.8s",
+      fold: "1.3s",
+      after: "2.8s",
+      out: "0.6s",
     });
-    const labelRow = std.layout.inset(labelArea, { x: horizontalPadding });
 
-    const beforeLabel = data.before.label || "BEFORE";
-    const afterLabel = data.after.label || "AFTER";
+    const openP = ease(t.in("open"), "easeOutCubic");
+    const foldP = ease(t.in("fold"), "easeInOutCubic");
+    const afterP = t.in("after");
+    const outP = ease(t.in("out"), "easeInCubic");
 
-    let contentHtml = "";
+    const px = (v: number) => Math.round(Math.min(width, height * 1.78) * v);
+    const plateW = Math.round(Math.min(width * 0.68, 1300));
+    const longest = ops.reduce((max, op) => Math.max(max, op.text.length), 1);
+    const codePx = Math.round(
+      std.math.clamp((plateW - px(0.05) - px(0.06)) / (longest * 0.605), 18, 34),
+    );
+    const lineH = Math.round(codePx * 1.85);
+    const markW = Math.round(codePx * 1.6);
+    const restRows = Math.max(beforeLines.length, afterLines.length);
+    const plateInnerH = restRows * lineH;
 
-    const codeBox = `top:${codeArea.y}px;left:${codeArea.x}px;width:${codeArea.width}px;height:${codeArea.height}px;`;
-    const labelBox = `top:${labelRow.y}px;height:${labelRow.height}px;`;
-
-    if (transition === "wipe") {
-      const wipePosition = transitionProgress * 100;
-      contentHtml = `
-      <div style="position:absolute;${codeBox}overflow:hidden;">
-        <div style="position:absolute;inset:0;clip-path:inset(0 ${100 - wipePosition}% 0 0);">${renderCodeWindow(data.after, baseFontSize, theme, std, shikiTheme)}</div>
-        <div style="position:absolute;inset:0;clip-path:inset(0 0 0 ${wipePosition}%);">${renderCodeWindow(data.before, baseFontSize, theme, std, shikiTheme)}</div>
-        <div style="position:absolute;top:0;bottom:0;left:${wipePosition}%;width:4px;background:${accentColor};transform:translateX(-50%);box-shadow:0 0 30px ${accentColor};opacity:${transitionProgress > 0 && transitionProgress < 1 ? 1 : 0};z-index:10;"></div>
-      </div>
-      <div style="position:absolute;${labelBox}left:${labelRow.x}px;display:flex;align-items:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${accentColor};letter-spacing:0.15em;opacity:${transitionProgress};">${afterLabel}</div>
-      <div style="position:absolute;${labelBox}right:${horizontalPadding}px;display:flex;align-items:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${mutedColor};letter-spacing:0.15em;opacity:${1 - transitionProgress};">${beforeLabel}</div>
-    `;
-    } else if (transition === "slide") {
-      const beforeX = -transitionProgress * 120;
-      const afterX = (1 - transitionProgress) * 120;
-      contentHtml = `
-      <div style="position:absolute;${codeBox}overflow:hidden;">
-        <div style="position:absolute;inset:0;transform:translateX(${beforeX}%);opacity:${1 - transitionProgress};">${renderCodeWindow(data.before, baseFontSize, theme, std, shikiTheme)}</div>
-        <div style="position:absolute;inset:0;transform:translateX(${afterX}%);opacity:${transitionProgress};">${renderCodeWindow(data.after, baseFontSize, theme, std, shikiTheme)}</div>
-      </div>
-      <div style="position:absolute;${labelBox}left:${labelRow.x}px;right:${horizontalPadding}px;display:flex;align-items:center;justify-content:center;font-size:${baseFontSize * 0.8}px;font-weight:700;color:${transitionProgress < 0.5 ? mutedColor : accentColor};letter-spacing:0.15em;">${transitionProgress < 0.5 ? beforeLabel : afterLabel}</div>
-    `;
-    } else if (transition === "flip") {
-      const rotateY = transitionProgress * 180;
-      contentHtml = `
-      <div style="position:absolute;${codeBox}perspective:2000px;">
-        <div style="width:100%;height:100%;position:relative;transform-style:preserve-3d;transform:rotateY(${rotateY}deg);">
-          <div style="position:absolute;inset:0;backface-visibility:hidden;">${renderCodeWindow(data.before, baseFontSize, theme, std, shikiTheme)}</div>
-          <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);">${renderCodeWindow(data.after, baseFontSize, theme, std, shikiTheme)}</div>
-        </div>
-      </div>
-      <div style="position:absolute;${labelBox}left:${labelRow.x}px;right:${horizontalPadding}px;display:flex;align-items:center;justify-content:center;font-size:${baseFontSize * 0.8}px;font-weight:700;color:${rotateY < 90 ? mutedColor : accentColor};letter-spacing:0.15em;">${rotateY < 90 ? beforeLabel : afterLabel}</div>
-    `;
-    } else {
-      const splitGap = baseFontSize;
-      const halfWidth = (codeArea.width - splitGap) / 2;
-      contentHtml = `
-      <div style="position:absolute;${codeBox}display:flex;gap:${splitGap}px;">
-        <div style="flex:1;transform:scale(${0.95 + (1 - transitionProgress) * 0.05});opacity:${0.6 + (1 - transitionProgress) * 0.4};">${renderCodeWindow(data.before, baseFontSize, theme, std, shikiTheme)}</div>
-        <div style="flex:1;transform:scale(${0.95 + transitionProgress * 0.05});opacity:${0.6 + transitionProgress * 0.4};">${renderCodeWindow(data.after, baseFontSize, theme, std, shikiTheme)}</div>
-      </div>
-      <div style="position:absolute;${labelBox}left:${labelRow.x}px;width:${halfWidth}px;display:flex;align-items:center;justify-content:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${mutedColor};letter-spacing:0.15em;">${beforeLabel}</div>
-      <div style="position:absolute;${labelBox}right:${horizontalPadding}px;width:${halfWidth}px;display:flex;align-items:center;justify-content:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${accentColor};letter-spacing:0.15em;">${afterLabel}</div>
-    `;
+    function highlight(line: string, lang: string): string {
+      if (!line.trim()) return "&nbsp;";
+      try {
+        const html = std.code.highlight(line, {
+          lang: (lang || "typescript") as LangName,
+          theme: "github-light",
+        });
+        return html.match(/<code[^>]*>([\s\S]*?)<\/code>/)?.[1]?.replace(/\n$/, "") ?? std.text.escapeHtml(line);
+      } catch {
+        return std.text.escapeHtml(line);
+      }
     }
 
-    return `
-    <div style="
-      width:${width}px;
-      height:${height}px;
-      background:${bgGradient};
-      font-family:ui-sans-serif,system-ui,sans-serif;
-      position:relative;
-      overflow:hidden;
-      opacity:${globalOpacity};
-    ">
-      ${title ? `
-        <div style="
-          position:absolute;
-          top:0;
-          left:0;
-          right:0;
-          height:${titleArea.height}px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          padding:0 ${horizontalPadding}px;
-          opacity:${titleProgress};
-          transform:translateY(${(1 - titleProgress) * -20}px);
-        ">
-          <h1 style="font-size:${baseFontSize * 1.3}px;font-weight:800;color:${textColor};text-align:center;margin:0;letter-spacing:-0.02em;">${title}</h1>
-        </div>
-      ` : ""}
-      ${contentHtml}
-    </div>
-  `;
+    const removalProgress = std.stagger(removals.length, std.clamp01(foldP / 0.78), { duration: 0.75, easing: "linear" });
+    const additionProgress = std.stagger(additions.length, std.clamp01((foldP - 0.5) / 0.5), { duration: 0.8 });
+    let removeIdx = 0;
+    let addIdx = 0;
+    const rowsHtml = ops
+      .map((op) => {
+        if (op.kind === "keep") {
+          return `<div class="drow" style="height:${lineH}px;line-height:${lineH}px;font-size:${codePx}px;"><span class="mark" style="width:${markW}px;color:${HAIR};">·</span><span>${highlight(op.text, after.language ?? "typescript")}</span></div>`;
+        }
+
+        if (op.kind === "remove") {
+          const i = removeIdx++;
+          const progress = removalProgress[i]!;
+          const strike = std.clamp01(progress / 0.42);
+          const fold = std.clamp01((progress - 0.42) / 0.58);
+          const h = lineH * (1 - fold);
+          const op1 = (1 - fold) * (1 - fold * 0.4);
+          return `<div class="drow" style="height:${h.toFixed(2)}px;line-height:${lineH}px;font-size:${codePx}px;opacity:${op1.toFixed(3)};background-color:rgba(180,35,42,${(0.07 * (1 - fold)).toFixed(3)});background-image:linear-gradient(${CUT},${CUT});background-size:${(strike * 100).toFixed(1)}% 2px;background-position:left center;"><span class="mark" style="width:${markW}px;color:${CUT};font-weight:700;">−</span><span>${highlight(op.text, before.language ?? "javascript")}</span></div>`;
+        }
+
+        const i = addIdx++;
+        const grow = additionProgress[i]!;
+        const h = lineH * grow;
+        const slide = (1 - grow) * -14;
+        return `<div class="drow" style="height:${h.toFixed(2)}px;line-height:${lineH}px;font-size:${codePx}px;opacity:${grow.toFixed(3)};transform:translateX(${slide.toFixed(2)}px);background-color:rgba(27,122,68,${(0.08 * (1 - afterP)).toFixed(3)});"><span class="mark" style="width:${markW}px;color:${GROW};font-weight:700;">+</span><span>${highlight(op.text, after.language ?? "typescript")}</span></div>`;
+      })
+      .join("");
+
+    const showAfter = foldP > 0.5;
+    const labelMix = std.interpolate(foldP, [0.42, 0.68], [0, 1], "easeInOutCubic");
+    const beforeLabel = String(before.label ?? "BEFORE");
+    const afterLabel = String(after.label ?? "AFTER");
+    const filename = showAfter ? String(after.filename ?? "after") : String(before.filename ?? "before");
+
+    const counted = Math.round(
+      std.interpolate(foldP, [0.3, 0.95], [beforeLines.length, afterLines.length], "easeInOutCubic"),
+    );
+
+    const page = t.motion({ id: "page", during: "open", y: 20, exit: { y: -16 } });
+
+    return Frame(
+      { id: "stage", width, height, fill: PAPER, style: { opacity: 1 - outP } },
+      Frame({
+        width,
+        height,
+        fill: "radial-gradient(110% 80% at 50% 0%, rgba(255,255,255,0.75), transparent 68%)",
+      }),
+      Stack(
+        {
+          id: "page",
+          width: "fill",
+          height: "fill",
+          align: "center",
+          justify: "center",
+          gap: px(0.026),
+          motion: page,
+        },
+
+        title
+          ? Stack(
+              {
+                gap: px(0.008),
+                width: plateW,
+                align: "center",
+                style: { opacity: std.interpolate(openP, [0, 0.6], [0, 1], "easeOutCubic") },
+              },
+              Text(
+                { variant: "label", color: accent, size: px(0.0135), weight: 700, letterSpacing: 4.4 },
+                "REFACTOR",
+              ),
+              Text(
+                {
+                  variant: "display",
+                  color: INK,
+                  size: px(0.046),
+                  weight: 800,
+                  align: "center",
+                  letterSpacing: -1.4,
+                },
+                title,
+              ),
+            )
+          : null,
+
+        Frame(
+          {
+            id: "plate",
+            width: plateW,
+            height: plateInnerH + px(0.09),
+            radius: 12,
+            fill: PLATE,
+            overflow: "hidden",
+            style: {
+              border: `1px solid ${HAIR}`,
+              boxShadow: "0 18px 46px rgba(28,30,34,0.10)",
+              opacity: std.interpolate(openP, [0.2, 1], [0, 1], "easeOutCubic"),
+            },
+          },
+          Stack(
+            { width: "fill", height: "fill", pad: { x: px(0.016), y: px(0.012) }, gap: px(0.008) },
+            Stack(
+              {
+                direction: "row",
+                width: "fill",
+                height: px(0.026),
+                align: "center",
+                justify: "space-between",
+              },
+              Text({ variant: "label", color: MUTED, size: px(0.0145), fontFamily: MONO }, filename),
+              Frame(
+                { width: Math.round(plateW * 0.3), height: px(0.026) },
+                Stack(
+                  {
+                    direction: "row",
+                    width: "fill",
+                    height: px(0.026),
+                    justify: "end",
+                    align: "center",
+                    style: { opacity: 1 - labelMix },
+                  },
+                  Text(
+                    { variant: "label", color: MUTED, size: px(0.0135), weight: 700, letterSpacing: 2.6 },
+                    beforeLabel,
+                  ),
+                ),
+                Stack(
+                  {
+                    direction: "row",
+                    width: "fill",
+                    height: px(0.026),
+                    justify: "end",
+                    align: "center",
+                    style: { opacity: labelMix },
+                  },
+                  Text(
+                    { variant: "label", color: GROW, size: px(0.0135), weight: 700, letterSpacing: 2.6 },
+                    afterLabel,
+                  ),
+                ),
+              ),
+            ),
+            Frame({ width: "fill", height: 1, fill: HAIR }),
+            Html({
+              id: "diff",
+              width: plateW - px(0.032),
+              height: plateInnerH,
+              html: `<div class="diff" style="width:100%;height:100%;font-family:${MONO};">${rowsHtml}</div>`,
+            }),
+          ),
+        ),
+
+        Stack(
+          {
+            direction: "row",
+            width: plateW,
+            height: px(0.032),
+            align: "center",
+            justify: "space-between",
+            style: { opacity: std.interpolate(openP, [0.45, 1], [0, 1], "easeOutCubic") },
+          },
+          Text(
+            {
+              variant: "label",
+              color: MUTED,
+              size: px(0.0145),
+              fontFamily: MONO,
+            },
+            `−${removals.length}  +${additions.length}`,
+          ),
+          Stack(
+            { direction: "row", gap: px(0.008), align: "center", height: px(0.032) },
+            Text(
+              {
+                variant: "title",
+                color: afterP > 0 ? GROW : INK,
+                size: px(0.024),
+                weight: 700,
+                fontFamily: MONO,
+              },
+              String(counted),
+            ),
+            Text({ variant: "label", color: MUTED, size: px(0.0145) }, "lines"),
+          ),
+        ),
+      ),
+    );
   },
 });

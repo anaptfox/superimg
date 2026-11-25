@@ -2,9 +2,9 @@
 // progress rail (one segment per post) and a summary end-card.
 // Demonstrates: std.carousel choreography, resolve() + layoutTimeline
 // (duration scales with post count AND reading time), string-shorthand
-// entries, responsive outputs (16:9 / 1:1 / 9:16).
+// entries and responsive editions (16:9 / 1:1 / 9:16).
 
-import { define, layoutTimeline, type RenderContext } from "superimg";
+import { define, Html, layoutTimeline, type RenderContext } from "@foxworth/superimg";
 import {
   avatarHtml,
   brandWatermark,
@@ -57,18 +57,18 @@ function entries(data: ThreadData): Array<{ text: string; media?: Media[]; stats
 }
 
 /**
- * Seconds per beat → percent phases. Uniform carousel slots sized to the
- * longest post's reading floor. Called from both resolve() and render().
+ * Seconds per beat → percent phases. Uniform carousel slots sized so the
+ * longest post can be read during its settled hold (excluding enter/exit). Called from both resolve() and render().
  */
 function estimate(data: ThreadData) {
   const tweets = entries(data);
-  const count = Math.max(1, tweets.length);
+  const count = tweets.length;
   const slotSec = Math.max(
-    ...tweets.map((tw) => 0.35 + clamp(wordCount(tw.text) / 3, 1.3, 3.2)),
+    ...tweets.map((tw) => Math.max(1.3, wordCount(tw.text) / 3) / (1 - 0.26 - 0.2)),
     1.65,
   );
 
-  const segments: Record<string, number> = { intro: 0.8, tweets: slotSec * count };
+  const segments: Record<string, number> = { intro: 0.8, tweets: slotSec * Math.max(1, count) };
   if (count > 1) segments.count = 1.4;
   segments.outro = 0.6;
 
@@ -76,13 +76,18 @@ function estimate(data: ThreadData) {
 }
 
 export default define<ThreadData>({
+  editions: {
+    landscape: { size: { width: 1920, height: 1080 } },
+    square: { size: { width: 1080, height: 1080 } },
+    story: { size: { width: 1080, height: 1920 } },
+  },
   sample: {
     author: { name: "Maya Chen", handle: "mayabuilds", verified: "blue" },
     tweets: [
-      "How I make videos with code, in 3 steps:",
-      "1. Write a template — HTML and CSS as a pure function of time.",
-      "2. Add motion with easing helpers. No keyframes, no After Effects.",
-      "3. Render to MP4. Same data in, same video out — perfect for CI.",
+      "I stopped opening a video editor. Three things replaced it:",
+      "1. The video is a program. Data goes in, frames come out — no timeline to scrub.",
+      "2. Motion is a director: phases, springs, staggers. Nothing to nudge by hand.",
+      "3. One source exports to video, images, and social sizes. Same input, same authored frame.",
     ],
     theme: "dark",
     transition: "slide",
@@ -94,11 +99,6 @@ export default define<ThreadData>({
     fps: 30,
     duration: "9s", // AST fallback; resolve() overrides from content
     fonts: SOCIAL_FONTS,
-    outputs: {
-      landscape: { width: 1920, height: 1080 },
-      square: { width: 1080, height: 1080 },
-      story: { width: 1080, height: 1920 },
-    },
     inlineCss: [
       `* { margin: 0; padding: 0; box-sizing: border-box; }
        body { font-family: ${FONT_FAMILY}; overflow: hidden; }`,
@@ -130,6 +130,8 @@ export default define<ThreadData>({
     const colWidth = width - marginX * 2;
 
     const car = std.carousel(tweets, {
+      id: "posts",
+      itemIds: tweets.map((tw, i) => `post-${i + 1}-${tw.text.slice(0, 24)}`),
       during: t.in("tweets"),
       enter: 0.26,
       exit: 0.2,
@@ -138,8 +140,8 @@ export default define<ThreadData>({
     const tweetsP = t.in("tweets");
 
     // ---- persistent header (enters once, holds for the whole video) ----
-    const headerIn = t.motion({ during: "intro", at: "0s", for: "0.5s", y: -15, easing: "easeOutCubic" });
-    const labelIn = t.motion({ during: "intro", at: "0.12s", for: "0.45s", y: -10, easing: "easeOutCubic" });
+    const headerIn = t.motion({ id: "header", during: "intro", at: "0s", for: "0.5s", y: -15, easing: "easeOutCubic" });
+    const labelIn = t.motion({ id: "label", during: "intro", at: "0.12s", for: "0.45s", y: -10, easing: "easeOutCubic" });
     const ghostOpacity = std.interpolate(t.in("intro"), [0, 1], [0, 1], "easeOutCubic");
     const headerHtml = `<div style="${std.css({ display: "flex", alignItems: "center", gap: 20 * s })}">
       <div style="${headerIn.style}">${avatarHtml(author, Math.round(64 * s), std)}</div>
@@ -150,7 +152,10 @@ export default define<ThreadData>({
         </div>
         <div style="${std.css({ fontSize: 22 * s, fontWeight: 500, color: tk.muted, marginTop: 2 })}">@${std.text.escapeHtml(stripAt(author.handle))}</div>
       </div>
-      <div style="${std.css({ marginLeft: "auto", fontSize: 20 * s, fontWeight: 700, letterSpacing: "0.16em", color: tk.accent })}; ${labelIn.style}">THREAD</div>
+      <div style="${std.css({ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 * s })}; ${labelIn.style}">
+        <div style="${std.css({ width: 9 * s, height: 9 * s, borderRadius: "50%", background: tk.accent })}"></div>
+        <span style="${std.css({ fontSize: 20 * s, fontWeight: 700, letterSpacing: "0.22em", color: tk.accent, fontVariantNumeric: "tabular-nums" })}">THREAD · ${est.count}</span>
+      </div>
     </div>`;
 
     // ---- segmented progress rail: one segment per post, fills in sequence ----
@@ -161,9 +166,9 @@ export default define<ThreadData>({
               const fill = clamp(tweetsP * est.count - i, 0, 1);
               return `<div style="${std.css({
                 flex: 1,
-                height: 4,
-                borderRadius: 2,
-                background: std.color.alpha(tk.muted, 0.25),
+                height: 6,
+                borderRadius: 3,
+                background: std.color.alpha(tk.muted, 0.2),
                 position: "relative",
                 overflow: "hidden",
               })}"><div style="${std.css({
@@ -171,7 +176,7 @@ export default define<ThreadData>({
                 inset: 0,
                 width: `${fill * 100}%`,
                 background: tk.accent,
-                borderRadius: 2,
+                borderRadius: 3,
               })}"></div></div>`;
             })
             .join("")}</div>`
@@ -221,7 +226,10 @@ export default define<ThreadData>({
       const tw = tweets[i]!;
       const { transform, opacity, extra } = slideTransform(item.state, item.enter, item.exit);
 
-      const bodySize = Math.round(Math.min(heroFontSize(tw.text.length), 84) * s);
+      // The hook reads as a cover; the numbered posts read as body. Same font,
+      // two ranks — that hierarchy is what stops a thread looking like slides.
+      const isHook = i === 0;
+      const bodySize = Math.round(Math.min(heroFontSize(tw.text.length), isHook ? 108 : 80) * s);
       const statsHtml = tw.stats
         ? `<div style="${std.css({ marginTop: 40 * s })}">${metricsRow(
             tw.stats,
@@ -261,11 +269,11 @@ export default define<ThreadData>({
         ${counterHtml}
         <div style="${std.css({
           fontSize: bodySize,
-          fontWeight: 700,
-          lineHeight: 1.18,
-          letterSpacing: "-0.022em",
+          fontWeight: isHook ? 800 : 600,
+          lineHeight: isHook ? 1.06 : 1.2,
+          letterSpacing: isHook ? "-0.035em" : "-0.018em",
           color: tk.text,
-          maxWidth: colWidth,
+          maxWidth: isHook ? Math.round(colWidth * 0.92) : colWidth,
         })}">${linkify(tw.text, tk.accent, std)}</div>
         ${mediaHtml}
         ${statsHtml}
@@ -277,10 +285,10 @@ export default define<ThreadData>({
     if (est.hasCount && t.in("count") > 0) {
       const shown = Math.max(
         1,
-        Math.floor(t.tween(0, est.count, { during: "count", at: "0s", for: "0.5s", easing: "easeOutBack" })),
+        Math.floor(t.tween(0, est.count, { id: "count.roll", during: "count", at: "0s", for: "0.5s", easing: "easeOutBack" })),
       );
-      const numberIn = t.motion({ during: "count", at: "0s", for: "0.45s", scale: 0.92, easing: "easeOutCubic" });
-      const caption = t.motion({ during: "count", at: "0.15s", for: "0.4s", y: 12, easing: "easeOutCubic" });
+      const numberIn = t.motion({ id: "count.number", during: "count", at: "0s", for: "0.45s", scale: 0.92, easing: "easeOutCubic" });
+      const caption = t.motion({ id: "count.caption", during: "count", at: "0.15s", for: "0.4s", y: 12, easing: "easeOutCubic" });
       summaryHtml = `<div style="${std.css({
         position: "absolute",
         inset: 0,
@@ -299,7 +307,8 @@ export default define<ThreadData>({
           color: tk.text,
           fontVariantNumeric: "tabular-nums",
         })}; ${numberIn.style}">${shown}</div>
-        <div style="${std.css({ fontSize: 34 * s, fontWeight: 600, color: tk.muted, marginTop: 20 * s })}; ${caption.style}">posts in this thread by @${std.text.escapeHtml(stripAt(author.handle))}</div>
+        <div style="${std.css({ width: 120 * s, height: 6, borderRadius: 3, background: tk.accent, marginTop: 26 * s })}; ${caption.style}"></div>
+        <div style="${std.css({ fontSize: 32 * s, fontWeight: 600, letterSpacing: "-0.01em", color: tk.muted, marginTop: 24 * s })}; ${caption.style}">posts in this thread by @${std.text.escapeHtml(stripAt(author.handle))}</div>
         ${brand ? `<div style="${std.css({ display: "flex", justifyContent: "center", marginTop: 36 * s })}; ${caption.style}">${brandWatermark(brand, tk, std, Math.round(24 * s))}</div>` : ""}
       </div>`;
     }
@@ -312,7 +321,7 @@ export default define<ThreadData>({
     // ---- outro: exits accelerate out ----
     const globalOpacity = 1 - std.interpolate(t.in("outro"), [0, 1], [0, 1], "easeInCubic");
 
-    return `<div style="${std.css({
+    return Html({ id: "post-thread", width: "fill", height: "fill", html: `<div style="${std.css({
       width,
       height,
       background: canvasBackground(tk, std, 0),
@@ -338,6 +347,6 @@ export default define<ThreadData>({
           ${summaryHtml}
         </div>
       </div>
-    </div>`;
+    </div>` });
   },
 });

@@ -1,0 +1,37 @@
+{
+  "name": "@superimg/blitz",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser-free HTML rasterizer: Blitz wasm (no NAPI)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "build:wasm": "cd rust && CARGO_TARGET_DIR=target cargo build --target wasm32-unknown-unknown --release && wasm-bindgen --target experimental-nodejs-module --out-dir ../pkg ./target/wasm32-unknown-unknown/release/superimg_blitz.wasm",
+    "spike": "node scripts/spike.mjs",
+    "test": "vitest --run",
+    "typecheck": "node ../../scripts/typecheck-native.mjs -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist rust/target pkg output"
+  },
+  "files": [
+    "dist",
+    "pkg"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@superimg/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@superimg/build-config": "workspace:*",
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  }
+}

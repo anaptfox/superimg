@@ -1,0 +1,44 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "rootDir": ".",
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
+    "paths": {
+      "@superimg/core": [
+        "../superimg-core/dist/index.d.ts"
+      ],
+      "@superimg/core/bundler": [
+        "../superimg-core/dist/bundler.d.ts"
+      ],
+      "@superimg/core/destinations": [
+        "../superimg-core/dist/destinations.d.ts"
+      ],
+      "@superimg/core/runtime": [
+        "../superimg-core/dist/runtime.d.ts"
+      ],
+      "@superimg/core/source-analysis": [
+        "../superimg-core/dist/source-analysis.d.ts"
+      ],
+      "@superimg/node": [
+        "../superimg-node/dist/index.d.ts"
+      ],
+      "@superimg/types": [
+        "../superimg-types/dist/index.d.ts"
+      ],
+      "oxc-parser": [
+        "./node_modules/oxc-parser/src-js/index.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "scripts/**/*"
+  ]
+}

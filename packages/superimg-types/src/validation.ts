@@ -15,16 +15,41 @@ export type ValidationErrorCode =
   // Runtime
   | "RENDER_TIMEOUT"
   | "RENDER_EXCEPTION"
-  | "RENDER_RETURNED_NON_STRING"
+  | "RENDER_RETURNED_NON_TREE"
   | "RENDER_RETURNED_EMPTY"
+  | "ALL_FRAMES_EMPTY"
   // Output issues
   | "ANIMATION_PRODUCES_NAN"
   | "UNDEFINED_IN_OUTPUT"
   | "NULL_IN_OUTPUT"
+  | "TEXT_PAINT_UNVERIFIED"
   // Stdlib usage
   | "INVALID_EASING_NAME"
   // Asset usage
   | "UNDECLARED_ASSET"
+  // SuperImg footguns (static / heuristic)
+  | "UNITLESS_MOTION_TIME"
+  | "ZERO_BOX"
+  | "EMPTY_CONTAINER"
+  | "IDENTITY_FLICKER"
+  | "DUPLICATE_NODE_ID"
+  | "UNRESOLVED_NODE_REF"
+  | "INVALID_PATH_DATA"
+  | "NAMESPACE_MISMATCH"
+  | "TEXT_RUN_OUTSIDE_TEXT"
+  | "TEXT_METRICS_APPROXIMATE"
+  | "EMPTY_CLIP_OR_MASK"
+  | "OPAQUE_REGION"
+  | "TEMPORAL_API_ON_STATIC"
+  | "SCENE_LOCAL_USES_GLOBAL"
+  | "FIXED_DURATION_STACK_GROWTH"
+  | "MEDIUM_MISMATCH"
+  | "RAW_SVG_IN_HTML"
+  | "UNPAINTED_STAGE"
+  | "LOW_CONTRAST_TEXT"
+  | "MISSING_EDITION"
+  | "SPARSE_FOCAL"
+  | "FOCAL_COVERAGE_UNVERIFIED"
   // Motion craft (warnings by default)
   | "CRAFT_HOLD_TOO_SHORT"
   | "CRAFT_EXIT_SLOWER_THAN_ENTER"
@@ -32,7 +57,12 @@ export type ValidationErrorCode =
   | "CRAFT_TEXT_HOLD_SHORT"
   | "CRAFT_LINEAR_POSITIONAL"
   | "CRAFT_LONG_CONTINUOUS_MOVE"
-  | "CRAFT_NO_HOLD_PHASE";
+  | "CRAFT_NO_HOLD_PHASE"
+  | "PLATE_ON_STILL"
+  | "PLATE_NO_ASSET"
+  | "PLATE_TOO_LONG"
+  | "PLATE_BAKED_BG"
+  | "CSS_MOTION_IN_DRIVE";
 
 /**
  * A single validation issue found during template validation.
@@ -52,6 +82,14 @@ export interface ValidationIssue {
   suggestion?: string;
   /** Relevant code snippet or HTML output context */
   context?: string;
+  /** Stable semantic-tree identity, when the node declares one. */
+  nodeId?: string;
+  /** Structural tree path at the sampled frame. */
+  nodePath?: string;
+  /** Other semantic ids involved in this issue (references or duplicates). */
+  relatedIds?: string[];
+  /** Rule-specific machine-readable evidence. */
+  details?: Record<string, unknown>;
 }
 
 /**

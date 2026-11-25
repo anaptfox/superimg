@@ -11,10 +11,19 @@ The signature hand-drawn-diagram move. `std.svg.draw` does the dash math:
 
 ```typescript
 const draw = std.svg.draw(d, progress, { easing: "easeOutCubic" });
-return `<path d="${d}" fill="none" stroke="#2b2b2b" stroke-width="3"
-  stroke-linecap="round" stroke-linejoin="round"
-  stroke-dasharray="${draw.strokeDasharray}"
-  stroke-dashoffset="${draw.strokeDashoffset}" />`;
+return Vector(
+  { width, height, viewBox: { x: 0, y: 0, width, height } },
+  vector.path({
+    d,
+    fill: "none",
+    stroke: "#2b2b2b",
+    strokeWidth: 3,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    strokeDasharray: draw.strokeDasharray,
+    strokeDashoffset: draw.strokeDashoffset,
+  }),
+);
 ```
 
 - **Easing choice sets the character**: `easeOutCubic`/`easeInOutCubic` =
@@ -23,8 +32,8 @@ return `<path d="${d}" fill="none" stroke="#2b2b2b" stroke-width="3"
 - Multi-path illustrations: drive each path with `std.stagger` so strokes
   draw in a deliberate order — structure first (frame, ground), then
   subject, then details. Drawing order is narrative.
-- Stroke style for hand-drawn feel: `stroke-linecap="round"`,
-  `stroke-linejoin="round"`, 2–4px weight variety across paths (heavier =
+- Stroke style for hand-drawn feel: `strokeLinecap: "round"`,
+  `strokeLinejoin: "round"`, 2–4px weight variety across paths (heavier =
   structural, lighter = detail).
 - Fills come *after* strokes: fade `fill-opacity` in during the last 25% of
   each path's draw progress, or in a separate detail phase. Ink first, then
@@ -35,7 +44,8 @@ return `<path d="${d}" fill="none" stroke="#2b2b2b" stroke-width="3"
 ## Path morphing
 
 ```typescript
-const d = std.svg.morph(pathA, pathB, progress); // then feed to <path d>
+const d = std.svg.morph(pathA, pathB, progress);
+const shape = vector.path({ id: "morphing-shape", d, fill: ink });
 ```
 
 - Native interpolation requires **matched command counts and types** in both
@@ -51,19 +61,23 @@ const d = std.svg.morph(pathA, pathB, progress); // then feed to <path d>
 
 ## Mask & clip reveals
 
-- `std.reveal.clip.{circle, wipe, inset, iris}` return `clip-path` strings —
-  apply to any HTML/SVG container for wipes and iris reveals.
-- Hand-rolled SVG: animate a `<clipPath>` rect's width/x or a circle's `r`.
+- `std.reveal.clip.{circle, wipe, inset, iris}` return `clip-path` strings for
+  layout nodes.
+- Semantic vector clips use an explicit stable id: put path geometry inside
+  `vector.clip({ id: "line-reveal" }, ...)`, then set
+  `clip: "line-reveal"` on the target `vector.group()`.
 - **Masks beat clips for polish**: masks are grayscale and can be
-  gradient-feathered (soft edge); clips are always hard-edged.
+  feathered (soft edge); clips are always hard-edged. Use
+  `vector.mask({ id: "soft-reveal", mode: "luminance" }, ...)` and refer to
+  the id from a group.
 - Text line reveal ("rising from behind a shelf"): clip each line with a
   rect; translate the text up from below the clip edge with `easeOutCubic`.
   Stagger lines 80–150ms.
 
 ## Transform-origin (the #1 SVG gotcha)
 
-SVG transforms rotate/scale about the **canvas origin (0,0)**, not the
-element's center. The robust fix works in every renderer:
+Vector transforms rotate/scale about the **canvas origin (0,0)**, not the
+element's center. Give `vector.group()` an explicit transform with a centre:
 
 ```
 transform="translate(cx, cy) rotate(angle) translate(-cx, -cy)"
@@ -71,8 +85,8 @@ transform="translate(cx, cy) rotate(angle) translate(-cx, -cy)"
 transform="rotate(angle, cx, cy)"     <!-- rotate's 3-arg form -->
 ```
 
-- You're generating the markup — compute `cx, cy` from your own geometry.
-- Nested groups compound: give each `<g>` one transform responsibility
+- Compute `cx, cy` from authored geometry; inspect reports the transformed bounds.
+- Nested groups compound: give each `vector.group()` one transform responsibility
   (outer translates, inner rotates). Debugging compound transforms in one
   attribute is misery.
 - CSS `transform-origin` on SVG needs `transform-box: fill-box` and is less
@@ -80,30 +94,19 @@ transform="rotate(angle, cx, cy)"     <!-- rotate's 3-arg form -->
 
 ## Filters
 
-Filters cost GPU time in a live browser but are effectively **free in offline
-rendering** — use them deliberately.
+The semantic vector tree does not yet model arbitrary SVG filter graphs. Keep
+core art inspectable and prefer compositional substitutes: duplicate a path at
+low opacity for a glow, layer offset copies for a shadow, or use deterministic
+geometry jitter for an organic line. If a third-party filter is essential,
+isolate that whole region in one explicitly sized `Html()` node so inspection
+reports the opaque boundary.
 
-- Always expand the filter region so effects don't clip:
-  `<filter x="-20%" y="-20%" width="140%" height="140%">`.
-- **Glow / soft shadow**: `feDropShadow` (simple) or
-  `feGaussianBlur` + `feMerge` (layered glow).
-- **Organic wobble / hand-drawn line jitter**:
-
-```xml
-<filter id="wobble" x="-20%" y="-20%" width="140%" height="140%">
-  <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="${seed}"/>
-  <feDisplacementMap in="SourceGraphic" scale="4"/>
-</filter>
-```
-
-- **Boiling lines** (squigglevision): change `seed` every **2–4 frames, not
+- **Boiling lines** (squigglevision): change the geometry seed every **2–4 frames, not
   every frame** — `const seed = Math.floor(timeline.frame / 3);`. Per-frame
   jitter reads as electrical noise; a held 2–3-frame cycle (~8–12 changes/s)
   reads as hand-drawn boil.
-- **Fake motion blur** for fast moves (offline rendering has none): a brief
-  `feGaussianBlur` with `stdDeviation` only along the motion axis
-  (`stdDeviation="8 0"` for horizontal), or 2–3 ghost copies at 20–40%
-  opacity trailing the element.
+- **Fake motion blur** for fast moves (offline rendering has none): use 2–3
+  trailing `vector.group()` copies at 20–40% opacity.
 
 ## Hand-drawn / sketch aesthetic
 
@@ -123,7 +126,8 @@ payoff element.
 
 ## Text animation patterns
 
-- **Word/char stagger** (the workhorse): split into `<tspan>`/spans, each
+- **Word/char stagger** (the workhorse): split one `vector.text()` into
+  `vector.run()` children, each
   translate-up 12–24px + fade, `easeOutCubic`, 80–150ms/word or 20–40ms/char.
 - **Stroke-then-fill display text**: render text as outlined paths (or with
   `stroke` + transparent fill), draw on the stroke, then fade `fill-opacity`
@@ -141,7 +145,7 @@ payoff element.
 ## SVG-specific checklist
 
 - [ ] All rotate/scale transforms use explicit centers
-- [ ] Filter regions expanded; nothing clips at the frame edge
+- [ ] Opaque filter regions are boxed and justified; semantic geometry stays outside them
 - [ ] Draw-on order tells a story (structure → subject → detail)
 - [ ] Fills arrive after strokes, not with them
 - [ ] Morph midpoint frame inspected and clean

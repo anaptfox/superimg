@@ -16,6 +16,18 @@ describe("parseDuration", () => {
     expect(parseDuration("2.5s")).toBe(2.5);
   });
 
+  it("parses bare numbers as seconds", () => {
+    expect(parseDuration("0")).toBe(0);
+    expect(parseDuration("0s")).toBe(0);
+    expect(parseDuration("1.5")).toBe(1.5);
+  });
+
+  it("names the export vs inspect clocks when --at is invalid", () => {
+    expect(() => parseDuration("hold", "--at")).toThrow(
+      /Export --at is time in seconds.*Inspect --at is progress/,
+    );
+  });
+
   it("parses millisecond strings", () => {
     expect(parseDuration("500ms")).toBe(0.5);
     expect(parseDuration("1500ms")).toBe(1.5);

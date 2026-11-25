@@ -11,7 +11,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "typescript";
-import { createRenderContext } from "@superimg/core";
+import {
+  createPreparedStdlibForTemplate,
+  renderTemplateFrame,
+  type RuntimeTemplate,
+} from "@superimg/core";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..", "..");
@@ -19,21 +23,15 @@ const SKILL_ROOT = join(REPO_ROOT, "skills", "superimg");
 const EXAMPLES_DIR = join(SKILL_ROOT, "examples");
 const SKILL_MD = join(SKILL_ROOT, "SKILL.md");
 
-interface SceneLike {
-  data?: Record<string, unknown>;
-  config?: { width?: number; height?: number; duration?: number; fps?: number };
-  render: (ctx: ReturnType<typeof createRenderContext>) => string;
-}
-
 function listExampleFiles(): string[] {
   return readdirSync(EXAMPLES_DIR)
     .filter((f) => f.endsWith(".ts") && !f.endsWith(".d.ts"))
     .map((f) => join(EXAMPLES_DIR, f));
 }
 
-async function loadScene(filePath: string): Promise<SceneLike> {
+async function loadScene(filePath: string): Promise<RuntimeTemplate> {
   const mod = await import(pathToFileURL(filePath).href);
-  const def = (mod.default ?? mod) as SceneLike;
+  const def = (mod.default ?? mod) as RuntimeTemplate;
   if (typeof def?.render !== "function") {
     throw new Error(`Example ${filePath} does not export a SceneDef with .render()`);
   }
@@ -52,13 +50,34 @@ describe("skill contract — examples render", () => {
       const width = scene.config?.width ?? 1920;
       const height = scene.config?.height ?? 1080;
       const fps = scene.config?.fps ?? 30;
-      const totalFrames = (scene.config?.duration ?? 3) * fps;
-      const ctx = createRenderContext(0, fps, totalFrames, width, height, scene.data ?? {});
-      const html = scene.render(ctx);
+      const preparedStdlib = await createPreparedStdlibForTemplate(scene);
+      const result = renderTemplateFrame({
+        template: scene,
+        frame: 0,
+        fps,
+        width,
+        height,
+        data: scene.sample ?? {},
+        preparedStdlib,
+        composite: false,
+      });
+      const html = result.html;
       expect(typeof html).toBe("string");
       expect(html.length).toBeGreaterThan(0);
     });
   }
+});
+
+describe("skill contract — documented imports", () => {
+  it("does not import createDirector from the superimg root", () => {
+    const md = readFileSync(SKILL_MD, "utf-8");
+    expect(md).not.toMatch(/import\s*\{[^}]*createDirector[^}]*\}\s*from\s*["']superimg["']/);
+  });
+
+  it("documents defineInteractive on @foxworth/superimg/interactive/define", () => {
+    const md = readFileSync(SKILL_MD, "utf-8");
+    expect(md).toContain('from "@foxworth/superimg/interactive/define"');
+  });
 });
 
 describe("skill contract — SKILL.md code blocks compile", () => {

@@ -1,0 +1,2322 @@
+{
+  "schemaVersion": 1,
+  "study": "sandglass",
+  "method": "discrete request event clicks and pebble settles",
+  "seed": "345abcde",
+  "sampleRate": 48000,
+  "samplesPerFrame": 1600,
+  "channels": 2,
+  "bitDepth": 16,
+  "sampleCount": 1920000,
+  "durationSeconds": 40,
+  "loop": false,
+  "peak": 0.72,
+  "rms": 0.06695173244284824,
+  "sha256": "896206f226fe850b5e1ba51e282d220c3e5ab670e8d8e68e450e3ac4a9a2034e",
+  "cues": [
+    {
+      "id": "comparison/1/arrival",
+      "seconds": 3.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 168000
+    },
+    {
+      "id": "comparison/1/start",
+      "seconds": 3.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 168000
+    },
+    {
+      "id": "primary/1/arrival",
+      "seconds": 3.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 168000
+    },
+    {
+      "id": "primary/1/start",
+      "seconds": 3.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 168000
+    },
+    {
+      "id": "comparison/2/arrival",
+      "seconds": 4,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 192000
+    },
+    {
+      "id": "comparison/2/start",
+      "seconds": 4,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 192000
+    },
+    {
+      "id": "primary/2/arrival",
+      "seconds": 4,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 192000
+    },
+    {
+      "id": "primary/2/start",
+      "seconds": 4,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 192000
+    },
+    {
+      "id": "comparison/3/arrival",
+      "seconds": 4.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 216000
+    },
+    {
+      "id": "comparison/3/start",
+      "seconds": 4.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 216000
+    },
+    {
+      "id": "primary/3/arrival",
+      "seconds": 4.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 216000
+    },
+    {
+      "id": "comparison/4/arrival",
+      "seconds": 5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 240000
+    },
+    {
+      "id": "comparison/4/start",
+      "seconds": 5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 240000
+    },
+    {
+      "id": "primary/4/arrival",
+      "seconds": 5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 240000
+    },
+    {
+      "id": "comparison/1/completion",
+      "seconds": 5.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 264000
+    },
+    {
+      "id": "comparison/5/arrival",
+      "seconds": 5.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 264000
+    },
+    {
+      "id": "comparison/5/start",
+      "seconds": 5.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 264000
+    },
+    {
+      "id": "primary/1/completion",
+      "seconds": 5.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 264000
+    },
+    {
+      "id": "primary/3/start",
+      "seconds": 5.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 264000
+    },
+    {
+      "id": "primary/5/arrival",
+      "seconds": 5.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 264000
+    },
+    {
+      "id": "comparison/2/completion",
+      "seconds": 6,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 288000
+    },
+    {
+      "id": "comparison/6/arrival",
+      "seconds": 6,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 288000
+    },
+    {
+      "id": "comparison/6/start",
+      "seconds": 6,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 288000
+    },
+    {
+      "id": "primary/2/completion",
+      "seconds": 6,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 288000
+    },
+    {
+      "id": "primary/4/start",
+      "seconds": 6,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 288000
+    },
+    {
+      "id": "primary/6/arrival",
+      "seconds": 6,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 288000
+    },
+    {
+      "id": "comparison/3/completion",
+      "seconds": 6.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 312000
+    },
+    {
+      "id": "comparison/7/arrival",
+      "seconds": 6.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 312000
+    },
+    {
+      "id": "comparison/7/start",
+      "seconds": 6.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 312000
+    },
+    {
+      "id": "primary/7/arrival",
+      "seconds": 6.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 312000
+    },
+    {
+      "id": "comparison/4/completion",
+      "seconds": 7,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 336000
+    },
+    {
+      "id": "comparison/8/arrival",
+      "seconds": 7,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 336000
+    },
+    {
+      "id": "comparison/8/start",
+      "seconds": 7,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 336000
+    },
+    {
+      "id": "primary/8/arrival",
+      "seconds": 7,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 336000
+    },
+    {
+      "id": "comparison/5/completion",
+      "seconds": 7.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 360000
+    },
+    {
+      "id": "comparison/9/arrival",
+      "seconds": 7.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 360000
+    },
+    {
+      "id": "comparison/9/start",
+      "seconds": 7.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 360000
+    },
+    {
+      "id": "primary/3/completion",
+      "seconds": 7.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 360000
+    },
+    {
+      "id": "primary/5/start",
+      "seconds": 7.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 360000
+    },
+    {
+      "id": "primary/9/arrival",
+      "seconds": 7.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 360000
+    },
+    {
+      "id": "comparison/10/arrival",
+      "seconds": 8,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 384000
+    },
+    {
+      "id": "comparison/10/start",
+      "seconds": 8,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 384000
+    },
+    {
+      "id": "comparison/6/completion",
+      "seconds": 8,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 384000
+    },
+    {
+      "id": "primary/10/arrival",
+      "seconds": 8,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 384000
+    },
+    {
+      "id": "primary/4/completion",
+      "seconds": 8,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 384000
+    },
+    {
+      "id": "primary/6/start",
+      "seconds": 8,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 384000
+    },
+    {
+      "id": "comparison/11/arrival",
+      "seconds": 8.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 408000
+    },
+    {
+      "id": "comparison/11/start",
+      "seconds": 8.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 408000
+    },
+    {
+      "id": "comparison/7/completion",
+      "seconds": 8.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 408000
+    },
+    {
+      "id": "primary/11/arrival",
+      "seconds": 8.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 408000
+    },
+    {
+      "id": "comparison/12/arrival",
+      "seconds": 9,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 432000
+    },
+    {
+      "id": "comparison/12/start",
+      "seconds": 9,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 432000
+    },
+    {
+      "id": "comparison/8/completion",
+      "seconds": 9,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 432000
+    },
+    {
+      "id": "primary/12/arrival",
+      "seconds": 9,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 432000
+    },
+    {
+      "id": "comparison/13/arrival",
+      "seconds": 9.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 456000
+    },
+    {
+      "id": "comparison/13/start",
+      "seconds": 9.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 456000
+    },
+    {
+      "id": "comparison/9/completion",
+      "seconds": 9.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 456000
+    },
+    {
+      "id": "primary/13/arrival",
+      "seconds": 9.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 456000
+    },
+    {
+      "id": "primary/5/completion",
+      "seconds": 9.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 456000
+    },
+    {
+      "id": "primary/7/start",
+      "seconds": 9.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 456000
+    },
+    {
+      "id": "comparison/10/completion",
+      "seconds": 10,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 480000
+    },
+    {
+      "id": "comparison/14/arrival",
+      "seconds": 10,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 480000
+    },
+    {
+      "id": "comparison/14/start",
+      "seconds": 10,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 480000
+    },
+    {
+      "id": "primary/14/arrival",
+      "seconds": 10,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 480000
+    },
+    {
+      "id": "primary/6/completion",
+      "seconds": 10,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 480000
+    },
+    {
+      "id": "primary/8/start",
+      "seconds": 10,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 480000
+    },
+    {
+      "id": "comparison/11/completion",
+      "seconds": 10.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 504000
+    },
+    {
+      "id": "comparison/15/arrival",
+      "seconds": 10.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 504000
+    },
+    {
+      "id": "comparison/15/start",
+      "seconds": 10.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 504000
+    },
+    {
+      "id": "primary/15/arrival",
+      "seconds": 10.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 504000
+    },
+    {
+      "id": "comparison/12/completion",
+      "seconds": 11,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 528000
+    },
+    {
+      "id": "comparison/16/arrival",
+      "seconds": 11,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 528000
+    },
+    {
+      "id": "comparison/16/start",
+      "seconds": 11,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 528000
+    },
+    {
+      "id": "primary/16/arrival",
+      "seconds": 11,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 528000
+    },
+    {
+      "id": "comparison/13/completion",
+      "seconds": 11.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 552000
+    },
+    {
+      "id": "comparison/17/arrival",
+      "seconds": 11.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 552000
+    },
+    {
+      "id": "comparison/17/start",
+      "seconds": 11.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 552000
+    },
+    {
+      "id": "primary/17/arrival",
+      "seconds": 11.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 552000
+    },
+    {
+      "id": "primary/7/completion",
+      "seconds": 11.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 552000
+    },
+    {
+      "id": "primary/9/start",
+      "seconds": 11.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 552000
+    },
+    {
+      "id": "comparison/14/completion",
+      "seconds": 12,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 576000
+    },
+    {
+      "id": "comparison/18/arrival",
+      "seconds": 12,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 576000
+    },
+    {
+      "id": "comparison/18/start",
+      "seconds": 12,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 576000
+    },
+    {
+      "id": "primary/10/start",
+      "seconds": 12,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 576000
+    },
+    {
+      "id": "primary/18/arrival",
+      "seconds": 12,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 576000
+    },
+    {
+      "id": "primary/8/completion",
+      "seconds": 12,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 576000
+    },
+    {
+      "id": "comparison/15/completion",
+      "seconds": 12.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 600000
+    },
+    {
+      "id": "comparison/19/arrival",
+      "seconds": 12.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 600000
+    },
+    {
+      "id": "comparison/19/start",
+      "seconds": 12.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 600000
+    },
+    {
+      "id": "primary/19/arrival",
+      "seconds": 12.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 600000
+    },
+    {
+      "id": "comparison/16/completion",
+      "seconds": 13,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 624000
+    },
+    {
+      "id": "comparison/20/arrival",
+      "seconds": 13,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 624000
+    },
+    {
+      "id": "comparison/20/start",
+      "seconds": 13,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 624000
+    },
+    {
+      "id": "primary/20/arrival",
+      "seconds": 13,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 624000
+    },
+    {
+      "id": "comparison/17/completion",
+      "seconds": 13.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 648000
+    },
+    {
+      "id": "comparison/21/arrival",
+      "seconds": 13.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 648000
+    },
+    {
+      "id": "comparison/21/start",
+      "seconds": 13.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 648000
+    },
+    {
+      "id": "primary/11/start",
+      "seconds": 13.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 648000
+    },
+    {
+      "id": "primary/21/arrival",
+      "seconds": 13.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 648000
+    },
+    {
+      "id": "primary/9/completion",
+      "seconds": 13.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 648000
+    },
+    {
+      "id": "comparison/18/completion",
+      "seconds": 14,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 672000
+    },
+    {
+      "id": "comparison/22/arrival",
+      "seconds": 14,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 672000
+    },
+    {
+      "id": "comparison/22/start",
+      "seconds": 14,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 672000
+    },
+    {
+      "id": "primary/10/completion",
+      "seconds": 14,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 672000
+    },
+    {
+      "id": "primary/12/start",
+      "seconds": 14,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 672000
+    },
+    {
+      "id": "primary/22/arrival",
+      "seconds": 14,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 672000
+    },
+    {
+      "id": "comparison/19/completion",
+      "seconds": 14.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 696000
+    },
+    {
+      "id": "comparison/23/arrival",
+      "seconds": 14.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 696000
+    },
+    {
+      "id": "comparison/23/start",
+      "seconds": 14.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 696000
+    },
+    {
+      "id": "primary/23/arrival",
+      "seconds": 14.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 696000
+    },
+    {
+      "id": "comparison/20/completion",
+      "seconds": 15,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 720000
+    },
+    {
+      "id": "comparison/24/arrival",
+      "seconds": 15,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 720000
+    },
+    {
+      "id": "comparison/24/start",
+      "seconds": 15,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 720000
+    },
+    {
+      "id": "primary/24/arrival",
+      "seconds": 15,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 720000
+    },
+    {
+      "id": "comparison/21/completion",
+      "seconds": 19.25,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 924000
+    },
+    {
+      "id": "comparison/25/arrival",
+      "seconds": 19.25,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 924000
+    },
+    {
+      "id": "comparison/25/start",
+      "seconds": 19.25,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 924000
+    },
+    {
+      "id": "primary/11/completion",
+      "seconds": 19.25,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 924000
+    },
+    {
+      "id": "primary/13/start",
+      "seconds": 19.25,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 924000
+    },
+    {
+      "id": "primary/25/arrival",
+      "seconds": 19.25,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 924000
+    },
+    {
+      "id": "comparison/22/completion",
+      "seconds": 19.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 936000
+    },
+    {
+      "id": "comparison/26/arrival",
+      "seconds": 19.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 936000
+    },
+    {
+      "id": "comparison/26/start",
+      "seconds": 19.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 936000
+    },
+    {
+      "id": "primary/12/completion",
+      "seconds": 19.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 936000
+    },
+    {
+      "id": "primary/14/start",
+      "seconds": 19.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 936000
+    },
+    {
+      "id": "primary/26/arrival",
+      "seconds": 19.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 936000
+    },
+    {
+      "id": "comparison/23/completion",
+      "seconds": 19.75,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 948000
+    },
+    {
+      "id": "comparison/27/arrival",
+      "seconds": 19.75,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 948000
+    },
+    {
+      "id": "comparison/27/start",
+      "seconds": 19.75,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 948000
+    },
+    {
+      "id": "primary/27/arrival",
+      "seconds": 19.75,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 948000
+    },
+    {
+      "id": "comparison/24/completion",
+      "seconds": 20,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 960000
+    },
+    {
+      "id": "comparison/28/arrival",
+      "seconds": 20,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 960000
+    },
+    {
+      "id": "comparison/28/start",
+      "seconds": 20,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 960000
+    },
+    {
+      "id": "primary/28/arrival",
+      "seconds": 20,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 960000
+    },
+    {
+      "id": "comparison/25/completion",
+      "seconds": 20.25,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 972000
+    },
+    {
+      "id": "comparison/29/arrival",
+      "seconds": 20.25,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 972000
+    },
+    {
+      "id": "comparison/29/start",
+      "seconds": 20.25,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 972000
+    },
+    {
+      "id": "primary/13/completion",
+      "seconds": 20.25,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 972000
+    },
+    {
+      "id": "primary/15/start",
+      "seconds": 20.25,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 972000
+    },
+    {
+      "id": "primary/29/arrival",
+      "seconds": 20.25,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 972000
+    },
+    {
+      "id": "comparison/26/completion",
+      "seconds": 20.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 984000
+    },
+    {
+      "id": "comparison/30/arrival",
+      "seconds": 20.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 984000
+    },
+    {
+      "id": "comparison/30/start",
+      "seconds": 20.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 984000
+    },
+    {
+      "id": "primary/14/completion",
+      "seconds": 20.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 984000
+    },
+    {
+      "id": "primary/16/start",
+      "seconds": 20.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 984000
+    },
+    {
+      "id": "primary/30/arrival",
+      "seconds": 20.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 984000
+    },
+    {
+      "id": "comparison/27/completion",
+      "seconds": 20.75,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 996000
+    },
+    {
+      "id": "comparison/31/arrival",
+      "seconds": 20.75,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 996000
+    },
+    {
+      "id": "comparison/31/start",
+      "seconds": 20.75,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 996000
+    },
+    {
+      "id": "primary/31/arrival",
+      "seconds": 20.75,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 996000
+    },
+    {
+      "id": "comparison/28/completion",
+      "seconds": 21,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1008000
+    },
+    {
+      "id": "comparison/32/arrival",
+      "seconds": 21,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1008000
+    },
+    {
+      "id": "comparison/32/start",
+      "seconds": 21,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1008000
+    },
+    {
+      "id": "primary/32/arrival",
+      "seconds": 21,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1008000
+    },
+    {
+      "id": "comparison/29/completion",
+      "seconds": 21.25,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1020000
+    },
+    {
+      "id": "comparison/33/arrival",
+      "seconds": 21.25,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1020000
+    },
+    {
+      "id": "comparison/33/start",
+      "seconds": 21.25,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1020000
+    },
+    {
+      "id": "primary/15/completion",
+      "seconds": 21.25,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1020000
+    },
+    {
+      "id": "primary/17/start",
+      "seconds": 21.25,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1020000
+    },
+    {
+      "id": "primary/33/arrival",
+      "seconds": 21.25,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1020000
+    },
+    {
+      "id": "comparison/30/completion",
+      "seconds": 21.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1032000
+    },
+    {
+      "id": "comparison/34/arrival",
+      "seconds": 21.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1032000
+    },
+    {
+      "id": "comparison/34/start",
+      "seconds": 21.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1032000
+    },
+    {
+      "id": "primary/16/completion",
+      "seconds": 21.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1032000
+    },
+    {
+      "id": "primary/18/start",
+      "seconds": 21.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1032000
+    },
+    {
+      "id": "primary/34/arrival",
+      "seconds": 21.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1032000
+    },
+    {
+      "id": "comparison/31/completion",
+      "seconds": 21.75,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1044000
+    },
+    {
+      "id": "comparison/35/arrival",
+      "seconds": 21.75,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1044000
+    },
+    {
+      "id": "comparison/35/start",
+      "seconds": 21.75,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1044000
+    },
+    {
+      "id": "primary/35/arrival",
+      "seconds": 21.75,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1044000
+    },
+    {
+      "id": "comparison/32/completion",
+      "seconds": 22,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1056000
+    },
+    {
+      "id": "comparison/36/arrival",
+      "seconds": 22,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1056000
+    },
+    {
+      "id": "comparison/36/start",
+      "seconds": 22,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1056000
+    },
+    {
+      "id": "primary/36/arrival",
+      "seconds": 22,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1056000
+    },
+    {
+      "id": "comparison/33/completion",
+      "seconds": 22.25,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1068000
+    },
+    {
+      "id": "comparison/37/arrival",
+      "seconds": 22.25,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1068000
+    },
+    {
+      "id": "comparison/37/start",
+      "seconds": 22.25,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1068000
+    },
+    {
+      "id": "primary/17/completion",
+      "seconds": 22.25,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1068000
+    },
+    {
+      "id": "primary/19/start",
+      "seconds": 22.25,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1068000
+    },
+    {
+      "id": "primary/37/arrival",
+      "seconds": 22.25,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1068000
+    },
+    {
+      "id": "comparison/34/completion",
+      "seconds": 22.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1080000
+    },
+    {
+      "id": "comparison/38/arrival",
+      "seconds": 22.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1080000
+    },
+    {
+      "id": "comparison/38/start",
+      "seconds": 22.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1080000
+    },
+    {
+      "id": "primary/18/completion",
+      "seconds": 22.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1080000
+    },
+    {
+      "id": "primary/20/start",
+      "seconds": 22.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1080000
+    },
+    {
+      "id": "primary/38/arrival",
+      "seconds": 22.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1080000
+    },
+    {
+      "id": "comparison/35/completion",
+      "seconds": 22.75,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1092000
+    },
+    {
+      "id": "comparison/39/arrival",
+      "seconds": 22.75,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1092000
+    },
+    {
+      "id": "comparison/39/start",
+      "seconds": 22.75,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1092000
+    },
+    {
+      "id": "primary/39/arrival",
+      "seconds": 22.75,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1092000
+    },
+    {
+      "id": "comparison/36/completion",
+      "seconds": 23,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1104000
+    },
+    {
+      "id": "comparison/40/arrival",
+      "seconds": 23,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1104000
+    },
+    {
+      "id": "comparison/40/start",
+      "seconds": 23,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1104000
+    },
+    {
+      "id": "primary/40/arrival",
+      "seconds": 23,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1104000
+    },
+    {
+      "id": "comparison/37/completion",
+      "seconds": 23.25,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1116000
+    },
+    {
+      "id": "comparison/41/arrival",
+      "seconds": 23.25,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1116000
+    },
+    {
+      "id": "comparison/41/start",
+      "seconds": 23.25,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1116000
+    },
+    {
+      "id": "primary/19/completion",
+      "seconds": 23.25,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1116000
+    },
+    {
+      "id": "primary/21/start",
+      "seconds": 23.25,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1116000
+    },
+    {
+      "id": "primary/41/arrival",
+      "seconds": 23.25,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1116000
+    },
+    {
+      "id": "comparison/38/completion",
+      "seconds": 23.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1128000
+    },
+    {
+      "id": "comparison/42/arrival",
+      "seconds": 23.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1128000
+    },
+    {
+      "id": "comparison/42/start",
+      "seconds": 23.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1128000
+    },
+    {
+      "id": "primary/20/completion",
+      "seconds": 23.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1128000
+    },
+    {
+      "id": "primary/22/start",
+      "seconds": 23.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1128000
+    },
+    {
+      "id": "primary/42/arrival",
+      "seconds": 23.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1128000
+    },
+    {
+      "id": "comparison/39/completion",
+      "seconds": 23.75,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1140000
+    },
+    {
+      "id": "comparison/43/arrival",
+      "seconds": 23.75,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1140000
+    },
+    {
+      "id": "comparison/43/start",
+      "seconds": 23.75,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1140000
+    },
+    {
+      "id": "primary/43/arrival",
+      "seconds": 23.75,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1140000
+    },
+    {
+      "id": "comparison/40/completion",
+      "seconds": 24,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1152000
+    },
+    {
+      "id": "comparison/44/arrival",
+      "seconds": 24,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1152000
+    },
+    {
+      "id": "comparison/44/start",
+      "seconds": 24,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1152000
+    },
+    {
+      "id": "primary/44/arrival",
+      "seconds": 24,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1152000
+    },
+    {
+      "id": "comparison/41/completion",
+      "seconds": 24.25,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1164000
+    },
+    {
+      "id": "comparison/45/arrival",
+      "seconds": 24.25,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1164000
+    },
+    {
+      "id": "comparison/45/start",
+      "seconds": 24.25,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1164000
+    },
+    {
+      "id": "primary/21/completion",
+      "seconds": 24.25,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1164000
+    },
+    {
+      "id": "primary/23/start",
+      "seconds": 24.25,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1164000
+    },
+    {
+      "id": "primary/45/arrival",
+      "seconds": 24.25,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1164000
+    },
+    {
+      "id": "comparison/42/completion",
+      "seconds": 24.5,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1176000
+    },
+    {
+      "id": "comparison/46/arrival",
+      "seconds": 24.5,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1176000
+    },
+    {
+      "id": "comparison/46/start",
+      "seconds": 24.5,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1176000
+    },
+    {
+      "id": "primary/22/completion",
+      "seconds": 24.5,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1176000
+    },
+    {
+      "id": "primary/24/start",
+      "seconds": 24.5,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1176000
+    },
+    {
+      "id": "primary/46/arrival",
+      "seconds": 24.5,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1176000
+    },
+    {
+      "id": "comparison/43/completion",
+      "seconds": 24.75,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1188000
+    },
+    {
+      "id": "comparison/47/arrival",
+      "seconds": 24.75,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1188000
+    },
+    {
+      "id": "comparison/47/start",
+      "seconds": 24.75,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1188000
+    },
+    {
+      "id": "primary/47/arrival",
+      "seconds": 24.75,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1188000
+    },
+    {
+      "id": "comparison/44/completion",
+      "seconds": 25,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1200000
+    },
+    {
+      "id": "comparison/48/arrival",
+      "seconds": 25,
+      "kind": "arrival",
+      "pan": 0.45,
+      "frequency": 1400,
+      "sample": 1200000
+    },
+    {
+      "id": "comparison/48/start",
+      "seconds": 25,
+      "kind": "start",
+      "pan": 0.45,
+      "frequency": 720,
+      "sample": 1200000
+    },
+    {
+      "id": "primary/48/arrival",
+      "seconds": 25,
+      "kind": "arrival",
+      "pan": -0.45,
+      "frequency": 1400,
+      "sample": 1200000
+    },
+    {
+      "id": "comparison/45/completion",
+      "seconds": 27.16,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1303680
+    },
+    {
+      "id": "primary/23/completion",
+      "seconds": 27.16,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1303680
+    },
+    {
+      "id": "primary/25/start",
+      "seconds": 27.16,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1303680
+    },
+    {
+      "id": "comparison/46/completion",
+      "seconds": 27.32,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1311360
+    },
+    {
+      "id": "primary/24/completion",
+      "seconds": 27.32,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1311360
+    },
+    {
+      "id": "primary/26/start",
+      "seconds": 27.32,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1311360
+    },
+    {
+      "id": "comparison/47/completion",
+      "seconds": 27.48,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1319040
+    },
+    {
+      "id": "comparison/48/completion",
+      "seconds": 27.64,
+      "kind": "completion",
+      "pan": 0.45,
+      "frequency": 320,
+      "sample": 1326720
+    },
+    {
+      "id": "primary/25/completion",
+      "seconds": 27.8,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1334400
+    },
+    {
+      "id": "primary/27/start",
+      "seconds": 27.8,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1334400
+    },
+    {
+      "id": "primary/26/completion",
+      "seconds": 27.96,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1342080
+    },
+    {
+      "id": "primary/28/start",
+      "seconds": 27.96,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1342080
+    },
+    {
+      "id": "primary/27/completion",
+      "seconds": 28.44,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1365120
+    },
+    {
+      "id": "primary/29/start",
+      "seconds": 28.44,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1365120
+    },
+    {
+      "id": "primary/28/completion",
+      "seconds": 28.6,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1372800
+    },
+    {
+      "id": "primary/30/start",
+      "seconds": 28.6,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1372800
+    },
+    {
+      "id": "primary/29/completion",
+      "seconds": 29.08,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1395840
+    },
+    {
+      "id": "primary/31/start",
+      "seconds": 29.08,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1395840
+    },
+    {
+      "id": "primary/30/completion",
+      "seconds": 29.240000000000002,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1403520
+    },
+    {
+      "id": "primary/32/start",
+      "seconds": 29.240000000000002,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1403520
+    },
+    {
+      "id": "primary/31/completion",
+      "seconds": 29.72,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1426560
+    },
+    {
+      "id": "primary/33/start",
+      "seconds": 29.72,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1426560
+    },
+    {
+      "id": "primary/32/completion",
+      "seconds": 29.88,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1434240
+    },
+    {
+      "id": "primary/34/start",
+      "seconds": 29.88,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1434240
+    },
+    {
+      "id": "primary/33/completion",
+      "seconds": 30.36,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1457280
+    },
+    {
+      "id": "primary/35/start",
+      "seconds": 30.36,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1457280
+    },
+    {
+      "id": "primary/34/completion",
+      "seconds": 30.52,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1464960
+    },
+    {
+      "id": "primary/36/start",
+      "seconds": 30.52,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1464960
+    },
+    {
+      "id": "primary/35/completion",
+      "seconds": 31,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1488000
+    },
+    {
+      "id": "primary/37/start",
+      "seconds": 31,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1488000
+    },
+    {
+      "id": "primary/36/completion",
+      "seconds": 31.16,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1495680
+    },
+    {
+      "id": "primary/38/start",
+      "seconds": 31.16,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1495680
+    },
+    {
+      "id": "primary/37/completion",
+      "seconds": 31.64,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1518720
+    },
+    {
+      "id": "primary/39/start",
+      "seconds": 31.64,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1518720
+    },
+    {
+      "id": "primary/38/completion",
+      "seconds": 31.8,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1526400
+    },
+    {
+      "id": "primary/40/start",
+      "seconds": 31.8,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1526400
+    },
+    {
+      "id": "primary/39/completion",
+      "seconds": 32.28,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1549440
+    },
+    {
+      "id": "primary/41/start",
+      "seconds": 32.28,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1549440
+    },
+    {
+      "id": "primary/40/completion",
+      "seconds": 32.44,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1557120
+    },
+    {
+      "id": "primary/42/start",
+      "seconds": 32.44,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1557120
+    },
+    {
+      "id": "primary/41/completion",
+      "seconds": 32.92,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1580160
+    },
+    {
+      "id": "primary/43/start",
+      "seconds": 32.92,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1580160
+    },
+    {
+      "id": "primary/42/completion",
+      "seconds": 33.08,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1587840
+    },
+    {
+      "id": "primary/44/start",
+      "seconds": 33.08,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1587840
+    },
+    {
+      "id": "primary/43/completion",
+      "seconds": 33.56,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1610880
+    },
+    {
+      "id": "primary/45/start",
+      "seconds": 33.56,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1610880
+    },
+    {
+      "id": "primary/44/completion",
+      "seconds": 33.72,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1618560
+    },
+    {
+      "id": "primary/46/start",
+      "seconds": 33.72,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1618560
+    },
+    {
+      "id": "primary/45/completion",
+      "seconds": 34.2,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1641600
+    },
+    {
+      "id": "primary/47/start",
+      "seconds": 34.2,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1641600
+    },
+    {
+      "id": "primary/46/completion",
+      "seconds": 34.36,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1649280
+    },
+    {
+      "id": "primary/48/start",
+      "seconds": 34.36,
+      "kind": "start",
+      "pan": -0.45,
+      "frequency": 720,
+      "sample": 1649280
+    },
+    {
+      "id": "primary/47/completion",
+      "seconds": 34.84,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1672320
+    },
+    {
+      "id": "primary/48/completion",
+      "seconds": 35,
+      "kind": "completion",
+      "pan": -0.45,
+      "frequency": 320,
+      "sample": 1680000
+    }
+  ]
+}

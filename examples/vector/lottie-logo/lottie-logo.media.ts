@@ -1,21 +1,21 @@
-import { define } from "superimg";
+// Aperture — a seek-driven Lottie mark. Six blades spiral into a locked ring,
+// then the core fires. std.viz.lottie is scrubbed by the director, never played.
+import { Html, video, googleFont } from "@foxworth/superimg";
 
-/**
- * Multi-shape logo mark (valid Bodymovin JSON):
- * rounded tile + three staggered bars + accent dot.
- * Driven by std.viz.lottie seek (progress 0→1).
- */
-function kf1(
-  t0: number,
-  s0: number[],
-  t1: number,
-  s1: number[],
-): object[] {
+const CHARCOAL = "#141210";
+const BONE = "#F2EDE4";
+const VERMILION = "#D8542F";
+
+const BONE_RGB: [number, number, number] = [0.949, 0.929, 0.894];
+const VERMILION_RGB: [number, number, number] = [0.847, 0.329, 0.184];
+
+/** Two-keyframe segment with an ease-out feel, sized to the value arity. */
+function kf(t0: number, s0: number[], t1: number, s1: number[]): object[] {
   return [
     {
       t: t0,
       s: s0,
-      i: { x: s0.map(() => 0.4), y: s0.map(() => 1) },
+      i: { x: s0.map(() => 0.32), y: s0.map(() => 1) },
       o: { x: s0.map(() => 0.6), y: s0.map(() => 0) },
     },
     { t: t1, s: s1 },
@@ -25,19 +25,13 @@ function kf1(
 function shapeLayer(opts: {
   ind: number;
   name: string;
-  /** layer position */
   pos: [number, number];
-  /** shapes in local space */
   shapes: object[];
-  /** scale keyframes [sx,sy,sz] */
   scale?: object[];
-  /** opacity keyframes [o] */
   opacity?: object[];
-  /** rotation keyframes [deg] */
-  rotation?: object[];
-  ip?: number;
-  op?: number;
+  rotation?: object[] | number;
 }): object {
+  const rotation = opts.rotation;
   return {
     ddd: 0,
     ind: opts.ind,
@@ -45,56 +39,41 @@ function shapeLayer(opts: {
     nm: opts.name,
     sr: 1,
     ks: {
-      o: opts.opacity
-        ? { a: 1, k: opts.opacity }
-        : { a: 0, k: 100 },
-      r: opts.rotation
-        ? { a: 1, k: opts.rotation }
-        : { a: 0, k: 0 },
+      o: opts.opacity ? { a: 1, k: opts.opacity } : { a: 0, k: 100 },
+      r:
+        Array.isArray(rotation)
+          ? { a: 1, k: rotation }
+          : { a: 0, k: rotation ?? 0 },
       p: { a: 0, k: [opts.pos[0], opts.pos[1], 0] },
+      // Anchor at the layer origin, so rotation happens about `pos`.
       a: { a: 0, k: [0, 0, 0] },
-      s: opts.scale
-        ? { a: 1, k: opts.scale }
-        : { a: 0, k: [100, 100, 100] },
+      s: opts.scale ? { a: 1, k: opts.scale } : { a: 0, k: [100, 100, 100] },
     },
     ao: 0,
     shapes: opts.shapes,
-    ip: opts.ip ?? 0,
-    op: opts.op ?? 90,
+    ip: 0,
+    op: 90,
     st: 0,
     bm: 0,
   };
 }
 
-function rectGroup(
-  name: string,
-  w: number,
-  h: number,
-  color: [number, number, number],
-  corner = 16,
-  localPos: [number, number] = [0, 0],
-): object {
+/**
+ * A shape group. `localPos` may be a static offset or an animated keyframe
+ * list — blades travel radially inward, which is what makes the close read as
+ * an iris rather than six fragments finding each other.
+ */
+function group(name: string, items: object[], localPos: [number, number] | object[]): object {
   return {
     ty: "gr",
     nm: name,
     it: [
-      {
-        ty: "rc",
-        p: { a: 0, k: [0, 0] },
-        s: { a: 0, k: [w, h] },
-        r: { a: 0, k: corner },
-        nm: "Rect",
-      },
-      {
-        ty: "fl",
-        c: { a: 0, k: [...color, 1] },
-        o: { a: 0, k: 100 },
-        r: 1,
-        nm: "Fill",
-      },
+      ...items,
       {
         ty: "tr",
-        p: { a: 0, k: localPos },
+        p: Array.isArray(localPos) && typeof localPos[0] === "object"
+          ? { a: 1, k: localPos }
+          : { a: 0, k: localPos },
         a: { a: 0, k: [0, 0] },
         s: { a: 0, k: [100, 100] },
         r: { a: 0, k: 0 },
@@ -107,49 +86,53 @@ function rectGroup(
   };
 }
 
-function ellipseGroup(
-  name: string,
-  size: [number, number],
-  color: [number, number, number],
-  localPos: [number, number] = [0, 0],
-): object {
-  return {
-    ty: "gr",
-    nm: name,
-    it: [
-      {
-        ty: "el",
-        p: { a: 0, k: [0, 0] },
-        s: { a: 0, k: size },
-        nm: "Ellipse",
-      },
-      {
-        ty: "fl",
-        c: { a: 0, k: [...color, 1] },
-        o: { a: 0, k: 100 },
-        r: 1,
-        nm: "Fill",
-      },
-      {
-        ty: "tr",
-        p: { a: 0, k: localPos },
-        a: { a: 0, k: [0, 0] },
-        s: { a: 0, k: [100, 100] },
-        r: { a: 0, k: 0 },
-        o: { a: 0, k: 100 },
-        sk: { a: 0, k: 0 },
-        sa: { a: 0, k: 0 },
-        nm: "Transform",
-      },
-    ],
-  };
+/** Blade radius at rest — the closed hexagon's flat-to-centre distance. */
+const BLADE_HOME = 104;
+const BLADE_START = 208;
+
+function bladeShapes(t0: number, t1: number): object[] {
+  return [
+    group(
+      "blade",
+      [
+        {
+          ty: "rc",
+          p: { a: 0, k: [0, 0] },
+          s: { a: 0, k: [142, 30] },
+          r: { a: 0, k: 15 },
+          nm: "Rect",
+        },
+        {
+          ty: "fl",
+          c: { a: 0, k: [...BONE_RGB, 1] },
+          o: { a: 0, k: 100 },
+          r: 1,
+          nm: "Fill",
+        },
+      ],
+      kf(t0, [0, -BLADE_START], t1, [0, -BLADE_HOME]),
+    ),
+  ];
 }
 
-const BLUE: [number, number, number] = [0.357, 0.549, 1];
-const CYAN: [number, number, number] = [0.31, 0.82, 0.77];
-const PINK: [number, number, number] = [0.94, 0.58, 0.98];
-const TILE: [number, number, number] = [0.12, 0.16, 0.27];
-const WHITE: [number, number, number] = [0.94, 0.96, 1];
+const BLADES = 6;
+
+// Each blade sweeps in over ~0.87s on a 4-frame cascade, so the ring closes as
+// a single gesture instead of six separate arrivals.
+const bladeLayers = Array.from({ length: BLADES }, (_, i) => {
+  const home = i * (360 / BLADES);
+  const t0 = 6 + i * 4;
+  const t1 = t0 + 26;
+  return shapeLayer({
+    ind: 10 + i,
+    name: `Blade${i}`,
+    pos: [256, 256],
+    shapes: bladeShapes(t0, t1),
+    // Rotation trails the travel slightly, so blades pivot as they land.
+    rotation: kf(t0, [home - 34], t1, [home]),
+    opacity: kf(t0, [0], t0 + 10, [100]),
+  });
+});
 
 const LOGO_LOTTIE = {
   v: "5.7.4",
@@ -158,147 +141,126 @@ const LOGO_LOTTIE = {
   op: 90,
   w: 512,
   h: 512,
-  nm: "superimg-logo-mark",
+  nm: "aperture-mark",
   ddd: 0,
   assets: [],
   layers: [
-    // 1) Dark rounded tile (pops in)
+    // Core fires last, with a short overshoot that settles.
     shapeLayer({
       ind: 1,
-      name: "Tile",
-      pos: [256, 256],
-      shapes: [rectGroup("tile", 280, 280, TILE, 48)],
-      scale: kf1(0, [0, 0, 100], 18, [100, 100, 100]),
-      opacity: kf1(0, [0], 12, [100]),
-    }),
-    // 2) Top bar (grows from left)
-    shapeLayer({
-      ind: 2,
-      name: "BarTop",
-      pos: [256, 200],
-      shapes: [rectGroup("bar", 160, 28, BLUE, 14)],
-      scale: kf1(10, [0, 100, 100], 32, [100, 100, 100]),
-      opacity: kf1(10, [0], 18, [100]),
-    }),
-    // 3) Middle bar (wider, staggered)
-    shapeLayer({
-      ind: 3,
-      name: "BarMid",
-      pos: [256, 256],
-      shapes: [rectGroup("bar", 200, 28, CYAN, 14)],
-      scale: kf1(18, [0, 100, 100], 42, [100, 100, 100]),
-      opacity: kf1(18, [0], 26, [100]),
-    }),
-    // 4) Bottom bar
-    shapeLayer({
-      ind: 4,
-      name: "BarBot",
-      pos: [256, 312],
-      shapes: [rectGroup("bar", 120, 28, PINK, 14)],
-      scale: kf1(26, [0, 100, 100], 52, [100, 100, 100]),
-      opacity: kf1(26, [0], 34, [100]),
-    }),
-    // 5) Accent dot (pops late)
-    shapeLayer({
-      ind: 5,
-      name: "Dot",
-      pos: [340, 200],
-      shapes: [ellipseGroup("dot", [36, 36], WHITE)],
-      scale: kf1(40, [0, 0, 100], 58, [100, 100, 100]),
-      opacity: kf1(40, [0], 48, [100]),
-    }),
-    // 6) Soft outer ring (optional pulse at end)
-    shapeLayer({
-      ind: 6,
-      name: "Ring",
+      name: "Core",
       pos: [256, 256],
       shapes: [
-        {
-          ty: "gr",
-          nm: "ring",
-          it: [
+        group(
+          "core",
+          [
+            { ty: "el", p: { a: 0, k: [0, 0] }, s: { a: 0, k: [92, 92] }, nm: "Ellipse" },
             {
-              ty: "el",
-              p: { a: 0, k: [0, 0] },
-              s: { a: 0, k: [340, 340] },
-              nm: "Ellipse",
+              ty: "fl",
+              c: { a: 0, k: [...VERMILION_RGB, 1] },
+              o: { a: 0, k: 100 },
+              r: 1,
+              nm: "Fill",
             },
+          ],
+          [0, 0],
+        ),
+      ],
+      scale: [
+        { t: 52, s: [0, 0, 100], i: { x: [0.25, 0.25, 0.25], y: [1, 1, 1] }, o: { x: [0.6, 0.6, 0.6], y: [0, 0, 0] } },
+        { t: 66, s: [118, 118, 100], i: { x: [0.4, 0.4, 0.4], y: [1, 1, 1] }, o: { x: [0.5, 0.5, 0.5], y: [0, 0, 0] } },
+        { t: 80, s: [100, 100, 100] },
+      ],
+      opacity: kf(52, [0], 62, [100]),
+    }),
+    ...bladeLayers,
+    // Rim scales in first and holds as the quietest element.
+    shapeLayer({
+      ind: 40,
+      name: "Rim",
+      pos: [256, 256],
+      shapes: [
+        group(
+          "rim",
+          [
+            { ty: "el", p: { a: 0, k: [0, 0] }, s: { a: 0, k: [356, 356] }, nm: "Ellipse" },
             {
               ty: "st",
-              c: { a: 0, k: [...BLUE, 1] },
-              o: { a: 0, k: 40 },
-              w: { a: 0, k: 3 },
+              c: { a: 0, k: [...BONE_RGB, 1] },
+              o: { a: 0, k: 34 },
+              w: { a: 0, k: 2.5 },
               lc: 2,
               lj: 2,
               nm: "Stroke",
             },
-            {
-              ty: "tr",
-              p: { a: 0, k: [0, 0] },
-              a: { a: 0, k: [0, 0] },
-              s: { a: 0, k: [100, 100] },
-              r: { a: 0, k: 0 },
-              o: { a: 0, k: 100 },
-              sk: { a: 0, k: 0 },
-              sa: { a: 0, k: 0 },
-              nm: "Transform",
-            },
           ],
-        },
+          [0, 0],
+        ),
       ],
-      scale: kf1(48, [70, 70, 100], 75, [100, 100, 100]),
-      opacity: [
-        {
-          t: 48,
-          s: [0],
-          i: { x: [0.5], y: [1] },
-          o: { x: [0.5], y: [0] },
-        },
-        {
-          t: 62,
-          s: [80],
-          i: { x: [0.5], y: [1] },
-          o: { x: [0.5], y: [0] },
-        },
-        { t: 90, s: [40] },
-      ],
+      scale: kf(0, [76, 76, 100], 30, [100, 100, 100]),
+      opacity: kf(0, [0], 16, [100]),
     }),
   ],
 };
 
-export default define({
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "4s",
-    fonts: ["Inter:wght@400;600;700"],
+export default video({
+  duration: "6s",
+  poster: "5s",
+  fonts: [googleFont("Fraunces:wght@600"), googleFont("Inter:wght@400;600")],
+  sample: {
+    wordmark: "APERTURE",
+    tagline: "Six blades, one opening",
+    meta: "Lottie · seek-driven, never played",
   },
   render(ctx) {
-    const { std, width, height, timeline } = ctx;
-    const t = ctx.director({ enter: "85%", hold: "15%" });
-    // Scrub the whole mark on enter, freeze final pose on hold
-    const progress = t.in("enter") < 1 ? t.in("enter") : 1;
+    const { std, width, height, data } = ctx;
+    const t = ctx.director({ mark: "51%", lockup: "14%", hold: "35%" });
+
+    // The whole Bodymovin timeline is scrubbed across the mark phase, then held.
+    const progress = t.in("mark");
 
     const logo = std.viz.lottie({
       animationData: LOGO_LOTTIE,
       progress,
-      width: 560,
-      height: 560,
+      width: 520,
+      height: 520,
       player: "light",
       background: "transparent",
     });
 
-    return `
-<div style="position:relative;width:${width}px;height:${height}px;background:#06060f;display:flex;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif">
-  <div style="position:absolute;top:72px;left:0;right:0;text-align:center;color:#f0f4ff;pointer-events:none">
-    <div style="font-size:22px;font-weight:600;letter-spacing:6px;color:#5b8cff">LOTTIE</div>
-    <div style="font-size:40px;font-weight:700;margin-top:8px">Logo mark reveal</div>
+    const lockupP = std.interpolate(t.in("lockup"), [0, 0.7], [0, 1], "easeOutCubic");
+    const taglineP = std.interpolate(t.in("lockup"), [0.4, 1], [0, 1], "easeOutCubic");
+    const metaP = std.interpolate(t.in("hold"), [0, 0.6], [0, 1], "easeOutCubic");
+    const ruleW = 120 * lockupP;
+
+    return Html({ id: "aperture-lockup", width: "fill", height: "fill", html: `
+<div style="${std.css({ width, height, background: CHARCOAL, position: "relative", fontFamily: "Inter, system-ui, sans-serif" }, std.css.center())}">
+  <div style="${std.css({ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 })}">
+    ${logo}
+    <div style="${std.css({ height: 1, width: ruleW, background: VERMILION, marginTop: 12, opacity: lockupP })}"></div>
+    <div style="${std.css({
+      fontFamily: "Fraunces, Georgia, serif",
+      fontSize: 58,
+      fontWeight: 600,
+      letterSpacing: 14,
+      color: BONE,
+      marginTop: 20,
+      opacity: lockupP,
+      transform: `translateY(${std.interpolate(lockupP, [0, 1], [18, 0], "easeOutCubic").toFixed(2)}px)`,
+    })}">${std.text.escapeHtml(data.wordmark)}</div>
+    <div style="${std.css({ fontSize: 22, color: BONE, opacity: 0.55 * taglineP })}">${std.text.escapeHtml(data.tagline)}</div>
   </div>
-  ${logo}
-  <div style="position:absolute;bottom:48px;left:0;right:0;text-align:center;color:#6b7795;font-size:18px;opacity:${t.in("hold").toFixed(3)}">
-    tile + staggered bars + accent · seek ${progress.toFixed(2)} · ${timeline.seconds.toFixed(2)}s
-  </div>
-</div>`;
+  <div style="${std.css({
+    position: "absolute",
+    bottom: 48,
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    fontSize: 16,
+    letterSpacing: 4,
+    color: BONE,
+    opacity: 0.3 * metaP,
+  })}">${std.text.escapeHtml(data.meta)}</div>
+</div>` });
   },
 });

@@ -1,4 +1,4 @@
-import { define, type RenderContext } from "superimg";
+import { define, Html, type RenderContext } from "@foxworth/superimg";
 
 export interface PlanLine {
   num: string;
@@ -54,7 +54,7 @@ function escapeHtml(value: string): string {
 
 export default define<GrokBuildData>({
   sample: {
-    workspace: "projects/main · gumbo/src",
+    workspace: "projects/main · product-demo/src",
     prompt: "Migrate auth from sessions to JWT with token rotation.",
     thoughtSeconds: 3.4,
     planTitle: "plan.md",
@@ -101,9 +101,9 @@ export default define<GrokBuildData>({
       think: "10%",
       plan: "22%",
       agents: "20%",
-      progress: "15%",
-      approve: "10%",
-      hold: "5%",
+      progress: "12%",
+      approve: "8%",
+      hold: "10%",
     });
 
     const fs = 20;
@@ -122,7 +122,7 @@ export default define<GrokBuildData>({
       std.clamp01((p - start) / span);
 
     const intro = t.motion({ during: "boot", y: 20, scale: 0.992, exit: false });
-    const blink = timeline.seconds % 1.06 < 0.53 ? 1 : 0;
+    const blink = std.text.cursor(timeline.seconds, 1 / 1.06) ? 1 : 0;
     const spinGlyph = SPIN[Math.floor(timeline.seconds / 0.18) % SPIN.length];
 
     // ---- prompt typing ------------------------------------------------------
@@ -204,7 +204,7 @@ export default define<GrokBuildData>({
       t.in("hold") > 0 || t.in("approve") > 0
         ? 1
         : t.in("progress") > 0
-          ? t.in("progress")
+          ? 0.08 + 0.92 * t.in("progress")
           : t.in("agents") > 0.7
             ? win(t.in("agents"), 0.7, 0.3) * 0.08
             : 0;
@@ -268,7 +268,7 @@ export default define<GrokBuildData>({
 
     const cursorHtml = `<span style="background:${C.text};width:7px;height:${fs * 0.85}px;display:inline-block;vertical-align:-2px;opacity:${blink};"></span>`;
 
-    return `
+    return Html({ id: "grok-build-terminal", width: "fill", height: "fill", html: `
       <style>
         * { box-sizing: border-box; margin: 0; }
         .mono {
@@ -346,6 +346,6 @@ export default define<GrokBuildData>({
           </div>
         </main>
       </div>
-    `;
+    ` });
   },
 });

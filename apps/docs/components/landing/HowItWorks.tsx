@@ -2,12 +2,12 @@
 
 import { useRef } from "react";
 import { Code, Sparkles, Eye, Video } from "lucide-react";
-import { Player, type PlayerRef } from "superimg/react/player";
+import { Player, type PlayerRef } from "@foxworth/superimg/react/player";
 import {
   howItWorksBeforeTemplate,
   howItWorksAfterTemplate,
 } from "@/content/templates/landing-demos";
-import type { TemplateModule } from "superimg";
+import type { MediaDefinition } from "@foxworth/superimg";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
@@ -28,7 +28,7 @@ const AFTER_CODE_DISPLAY = `render(ctx) {
   return \`<div style="\${s}">\${count}</div>\`;
 }`;
 
-function MiniVideoPreview({ template }: { template: TemplateModule }) {
+function MiniVideoPreview({ media }: { media: MediaDefinition }) {
   const playerRef = useRef<PlayerRef>(null);
 
   return (
@@ -40,8 +40,8 @@ function MiniVideoPreview({ template }: { template: TemplateModule }) {
       <div className="flex items-center justify-center p-4">
         <Player
           ref={playerRef}
-          template={template as Parameters<typeof Player>[0]["template"]}
-          format="square"
+          media={media as Parameters<typeof Player>[0]["media"]}
+          size={{ width: 1080, height: 1080 }}
           playbackMode="loop"
           loadMode="eager"
           autoPlay
@@ -57,7 +57,7 @@ export function HowItWorks() {
   const steps = [
     {
       number: "1",
-      title: "Write a template",
+      title: "Author a media program",
       description: "HTML/CSS with JavaScript logic",
       icon: Code,
       color: "text-blue-400",
@@ -77,7 +77,7 @@ export function HowItWorks() {
           />
         </div>
       ),
-      video: <MiniVideoPreview template={howItWorksBeforeTemplate} />,
+      video: <MiniVideoPreview media={howItWorksBeforeTemplate} />,
     },
     {
       number: "2",
@@ -117,12 +117,12 @@ export function HowItWorks() {
           />
         </div>
       ),
-      video: <MiniVideoPreview template={howItWorksAfterTemplate} />,
+      video: <MiniVideoPreview media={howItWorksAfterTemplate} />,
     },
     {
       number: "4",
-      title: "Export or embed",
-      description: "Render to MP4, GIF, or PNG — or embed with React",
+      title: "Check, export, or embed",
+      description: "Same media program → CLI ship or in-app Player",
       icon: Video,
       color: "text-orange-400",
       content: (
@@ -130,12 +130,12 @@ export function HowItWorks() {
           <div className="rounded-lg border border-border/50 bg-(--code-bg) p-3 text-left font-mono">
             <code className="text-sm text-(--code-foreground)">
               <span className="select-none text-muted-foreground">$ </span>
-              npx superimg render intro.media.ts
+              npx superimg export intro.media.ts --for youtube
             </code>
           </div>
           <div className="overflow-hidden rounded-lg border border-border/50 bg-(--code-bg)">
             <CodeMirror
-              value={'<Player template={template} />'}
+              value={'<Player media={launch} />'}
               theme={oneDark}
               extensions={[javascript({ jsx: true, typescript: true })]}
               readOnly
@@ -160,6 +160,9 @@ export function HowItWorks() {
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
             How it works
           </h2>
+          <p className="mt-2 text-muted-foreground">
+            Write a media program once. Play live. Export anywhere.
+          </p>
         </div>
 
         <div className="space-y-4">

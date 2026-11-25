@@ -2,7 +2,7 @@
 
 import {
   SuperImgError,
-  TemplateRuntimeError,
+  isSuperImgError,
   type SuperImgErrorJSON,
   type TimeContext,
 } from "@superimg/types";
@@ -26,7 +26,7 @@ export interface FormattedError {
  *
  * If `err` is not already a SuperImgError, it's wrapped via `enrichError(err, ctx)`.
  * The optional `ctx.sourceMap` lets us map `<anonymous>` stack frames back to
- * the user's `.video.ts` source.
+ * the user's `*.media.ts` source.
  */
 export function formatError(
   err: unknown,
@@ -72,7 +72,7 @@ function renderAnsi(err: SuperImgError): string {
   }
 
   // Frame / time context for runtime errors
-  if (err instanceof TemplateRuntimeError) {
+  if (isSuperImgError(err, "TEMPLATE_RUNTIME_ERROR")) {
     const det = err.details as {
       frame?: number;
       timeContext?: TimeContext;
@@ -168,7 +168,7 @@ function renderHtml(err: SuperImgError): string {
     );
   }
 
-  if (err instanceof TemplateRuntimeError) {
+  if (isSuperImgError(err, "TEMPLATE_RUNTIME_ERROR")) {
     const det = err.details as {
       frame?: number;
       timeContext?: TimeContext;
@@ -247,7 +247,7 @@ function renderPlain(err: SuperImgError): string {
     lines.push(err.codeFrame);
   }
 
-  if (err instanceof TemplateRuntimeError) {
+  if (isSuperImgError(err, "TEMPLATE_RUNTIME_ERROR")) {
     const det = err.details as {
       frame?: number;
       timeContext?: TimeContext;

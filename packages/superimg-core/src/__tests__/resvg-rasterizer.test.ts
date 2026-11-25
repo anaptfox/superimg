@@ -3,6 +3,7 @@ import {
   rasterize,
   rasterizeSvgSync,
   ensureInit,
+  nodeEnsureInit,
   ResvgRasterizer,
 } from "../rendering/resvg-rasterizer.node.js";
 
@@ -29,7 +30,8 @@ const SQUARE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="
 
 describe("ResvgRasterizer (browser-free SVG → PNG)", () => {
   it("rasterizes an SVG string to a real PNG with no browser", async () => {
-    const png = await rasterize(SQUARE_SVG, { width: 120, height: 80 });
+    await nodeEnsureInit();
+    const png = rasterizeSvgSync(SQUARE_SVG, { width: 120, height: 80 });
     expect(isPng(png)).toBe(true);
     expect(pngSize(png)).toEqual({ width: 120, height: 80 });
   });

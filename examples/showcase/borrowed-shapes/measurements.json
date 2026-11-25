@@ -1,0 +1,417 @@
+{
+  "schemaVersion": 1,
+  "measuredOn": "2026-10-05",
+  "kind": "borrowed-shapes/source-transport-measurement",
+  "modelSha256": "e706adc39c4d3d879ca39865b73fd33d8115bbec1d3e9f2ce9043a7c7bc042b7",
+  "worldSize": 520,
+  "fps": 30,
+  "totalFrames": 900,
+  "authoredClock": "frame / 899 * 30 seconds",
+  "canvas": {
+    "width": 3840,
+    "height": 2160
+  },
+  "pathIntegrationSamples": 64,
+  "staggerSeconds": 0.2,
+  "timingScope": "actual canonical limbs I–V then core; fixed five-second endpoint; same source-part schedule for global matcher",
+  "transitions": [
+    {
+      "semanticParts": {
+        "from": "seed",
+        "to": "tree",
+        "endpointWorld": {
+          "median": 127.81438431534495,
+          "p95": 233.55089133575655,
+          "p99": 322.3899073015032,
+          "max": 369.8974129906009
+        },
+        "pathWorld": {
+          "median": 130.09626928314893,
+          "p95": 235.35217001639728,
+          "p99": 324.0436128030239,
+          "max": 370.66455096279736
+        },
+        "peakStep4K": {
+          "median": 4.908313232826225,
+          "p95": 8.431951025619734,
+          "p99": 13.459669117847463,
+          "max": 14.88034632464157
+        },
+        "longestIds": [
+          13667,
+          13668,
+          13595,
+          13594,
+          13593,
+          13629,
+          13669,
+          13670,
+          13630,
+          13686,
+          13621,
+          13622,
+          13681,
+          13666,
+          13678,
+          13680,
+          13682,
+          13685,
+          13592,
+          13624
+        ],
+        "partMismatch": 0
+      },
+      "globalMorton": {
+        "from": "seed",
+        "to": "tree",
+        "endpointWorld": {
+          "median": 129.90539366664984,
+          "p95": 245.1763021029918,
+          "p99": 285.2096748664055,
+          "max": 327.4813146809787
+        },
+        "pathWorld": {
+          "median": 132.7924344780301,
+          "p95": 246.8569857076307,
+          "p99": 287.0981137552549,
+          "max": 327.683359746696
+        },
+        "peakStep4K": {
+          "median": 4.837502913817073,
+          "p95": 10.019095561399736,
+          "p99": 11.150552838468322,
+          "max": 12.677396725074686
+        },
+        "longestIds": [
+          15666,
+          15665,
+          2375,
+          15667,
+          15673,
+          15663,
+          2415,
+          2393,
+          2394,
+          15664,
+          2413,
+          15631,
+          2420,
+          2418,
+          2419,
+          15632,
+          2414,
+          2407,
+          15674,
+          15669
+        ],
+        "partMismatch": 11394
+      }
+    },
+    {
+      "semanticParts": {
+        "from": "tree",
+        "to": "citadel",
+        "endpointWorld": {
+          "median": 190.86524620180967,
+          "p95": 312.21126026979016,
+          "p99": 345.90797999670366,
+          "max": 379.4332313474942
+        },
+        "pathWorld": {
+          "median": 193.63179639685765,
+          "p95": 314.0511807513715,
+          "p99": 347.6689305122107,
+          "max": 380.0350389313022
+        },
+        "peakStep4K": {
+          "median": 6.574864460211718,
+          "p95": 10.584883877228865,
+          "p99": 12.255340293944336,
+          "max": 14.171863857759492
+        },
+        "longestIds": [
+          5840,
+          5841,
+          5843,
+          5839,
+          5855,
+          5842,
+          5832,
+          5854,
+          5856,
+          5835,
+          5893,
+          5831,
+          5833,
+          5834,
+          5838,
+          5869,
+          5847,
+          6615,
+          5837,
+          5848
+        ],
+        "partMismatch": 0
+      },
+      "globalMorton": {
+        "from": "tree",
+        "to": "citadel",
+        "endpointWorld": {
+          "median": 206.74538547156016,
+          "p95": 394.48427241140996,
+          "p99": 450.66974155660387,
+          "max": 518.404797087682
+        },
+        "pathWorld": {
+          "median": 210.21693961205054,
+          "p95": 396.2375813169153,
+          "p99": 451.90063329783516,
+          "max": 519.102921273253
+        },
+        "peakStep4K": {
+          "median": 7.260513696004086,
+          "p95": 15.63527863991933,
+          "p99": 17.74336245621853,
+          "max": 20.83726919647982
+        },
+        "longestIds": [
+          4969,
+          4970,
+          4971,
+          4984,
+          4995,
+          4974,
+          4996,
+          4973,
+          4961,
+          4986,
+          4985,
+          4972,
+          4967,
+          4975,
+          4965,
+          4966,
+          4993,
+          4976,
+          4968,
+          4977
+        ],
+        "partMismatch": 13404
+      }
+    },
+    {
+      "semanticParts": {
+        "from": "citadel",
+        "to": "seed",
+        "endpointWorld": {
+          "median": 163.0423015777788,
+          "p95": 278.02559765752045,
+          "p99": 309.36506148860906,
+          "max": 378.2821676614947
+        },
+        "pathWorld": {
+          "median": 167.2522097605248,
+          "p95": 281.53439480821544,
+          "p99": 311.90185917056596,
+          "max": 379.12595673287746
+        },
+        "peakStep4K": {
+          "median": 5.0968845788556045,
+          "p95": 8.265438352095908,
+          "p99": 10.751608121359036,
+          "max": 12.695682646426272
+        },
+        "longestIds": [
+          7464,
+          7472,
+          7433,
+          7439,
+          7432,
+          7467,
+          7466,
+          7435,
+          7462,
+          7438,
+          7437,
+          7431,
+          7465,
+          7473,
+          7463,
+          7430,
+          7412,
+          7434,
+          7471,
+          7411
+        ],
+        "partMismatch": 0
+      },
+      "globalMorton": {
+        "from": "citadel",
+        "to": "seed",
+        "endpointWorld": {
+          "median": 172.07116941361355,
+          "p95": 305.00621488076314,
+          "p99": 335.07206009635195,
+          "max": 359.5587265656607
+        },
+        "pathWorld": {
+          "median": 177.12547143557185,
+          "p95": 308.0605733188368,
+          "p99": 337.3336966150944,
+          "max": 361.06304231567725
+        },
+        "peakStep4K": {
+          "median": 5.381453848689741,
+          "p95": 10.317469384298839,
+          "p99": 12.079941923188127,
+          "max": 13.821122186126457
+        },
+        "longestIds": [
+          7926,
+          7929,
+          7927,
+          7930,
+          7931,
+          7952,
+          7934,
+          7954,
+          7935,
+          7953,
+          7928,
+          7932,
+          7933,
+          7936,
+          7864,
+          7834,
+          15506,
+          15502,
+          15500,
+          15517
+        ],
+        "partMismatch": 13848
+      }
+    }
+  ],
+  "treeReadability": {
+    "terminalCounts": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "forkDirections": {
+      "minimumDegrees": 18.00381166398835,
+      "minimumElbowGap4K": 56.895375421289586,
+      "scope": "centerline directions and conservative circular envelope at first-section elbows; shared junction intentionally touches"
+    },
+    "primaryTipMinimumSeparation4K": 149.36869414014544,
+    "towerMinimumHorizontalCenterSeparation4K": 193.45699915849207,
+    "followedIds": [
+      2468,
+      2683,
+      4171,
+      4458,
+      7363,
+      8790,
+      11068,
+      10215,
+      13040,
+      13166,
+      16449,
+      16521
+    ]
+  },
+  "holdObservations": [
+    {
+      "seconds": 4.5,
+      "inputVersion": 0,
+      "phase": "seed",
+      "from": "seed",
+      "to": "seed",
+      "progress": 1,
+      "logicalGrains": 19600,
+      "drawnGrains": 19600,
+      "finite": true,
+      "uniqueIds": 18000,
+      "parts": [
+        3000,
+        3000,
+        3000,
+        3000,
+        3000,
+        3000
+      ],
+      "followedVisible": 12,
+      "followedFrontFacing": 6,
+      "maximumHeight": 206.98514048699576,
+      "targetTreePrimaryTips": 5,
+      "targetTreeMaximumTerminalsPerLimb": 1,
+      "targetTreeTipSeparation4K": 149.36869414014544,
+      "targetTreeForkDirectionDegrees": 18.00381166398835,
+      "targetTreeElbowGap4K": 56.895375421289586,
+      "targetTowerHorizontalCenterSeparation4K": 193.45699915849207,
+      "returnedSeed": true
+    },
+    {
+      "seconds": 12.5,
+      "inputVersion": 0,
+      "phase": "tree",
+      "from": "tree",
+      "to": "tree",
+      "progress": 1,
+      "logicalGrains": 19600,
+      "drawnGrains": 19600,
+      "finite": true,
+      "uniqueIds": 18000,
+      "parts": [
+        3000,
+        3000,
+        3000,
+        3000,
+        3000,
+        3000
+      ],
+      "followedVisible": 12,
+      "followedFrontFacing": 12,
+      "maximumHeight": 388.1439482263448,
+      "targetTreePrimaryTips": 5,
+      "targetTreeMaximumTerminalsPerLimb": 1,
+      "targetTreeTipSeparation4K": 149.36869414014544,
+      "targetTreeForkDirectionDegrees": 18.00381166398835,
+      "targetTreeElbowGap4K": 56.895375421289586,
+      "targetTowerHorizontalCenterSeparation4K": 193.45699915849207,
+      "returnedSeed": false
+    },
+    {
+      "seconds": 20.5,
+      "inputVersion": 0,
+      "phase": "citadel",
+      "from": "citadel",
+      "to": "citadel",
+      "progress": 1,
+      "logicalGrains": 19600,
+      "drawnGrains": 19600,
+      "finite": true,
+      "uniqueIds": 18000,
+      "parts": [
+        3000,
+        3000,
+        3000,
+        3000,
+        3000,
+        3000
+      ],
+      "followedVisible": 12,
+      "followedFrontFacing": 12,
+      "maximumHeight": 311,
+      "targetTreePrimaryTips": 5,
+      "targetTreeMaximumTerminalsPerLimb": 1,
+      "targetTreeTipSeparation4K": 149.36869414014544,
+      "targetTreeForkDirectionDegrees": 18.00381166398835,
+      "targetTreeElbowGap4K": 56.895375421289586,
+      "targetTowerHorizontalCenterSeparation4K": 193.45699915849207,
+      "returnedSeed": false
+    }
+  ]
+}

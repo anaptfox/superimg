@@ -1,87 +1,24 @@
-//! Player types - User-facing options, events, and input types for the browser player
-//! Implementation types (PlayerState, PlayerStore, etc.) live in @superimg/player
+//! Player input guards shared across packages.
+//! Canonical PlayerOptions / PlayerEvents live in @superimg/player.
 
-import type { Checkpoint } from "./checkpoint.js";
-import type {
-  TemplateModule,
-  ComposedTemplate,
-  PlaybackMode,
-  LoadMode,
-  HoverBehavior,
-  ResolvedScene,
-} from "./types.js";
-
-// =============================================================================
-// PLAYER OPTIONS - User-facing configuration
-// =============================================================================
-
-/**
- * Options for creating a Player instance
- */
-export interface PlayerOptions {
-  /** Container element or CSS selector */
-  container: string | HTMLElement;
-  /** Canvas width in pixels (optional, can be inferred from template) */
-  width?: number;
-  /** Canvas height in pixels (optional, can be inferred from template) */
-  height?: number;
-  /** Playback mode when video ends (default: 'once') */
-  playbackMode?: PlaybackMode;
-  /** When to load/compile the template (default: 'eager') */
-  loadMode?: LoadMode;
-  /** Behavior on hover (default: 'none') */
-  hoverBehavior?: HoverBehavior;
-  /** Delay before hover behavior triggers, in milliseconds (default: 200) */
-  hoverDelayMs?: number;
-  /** Maximum frames to cache (default: 30) */
-  maxCacheFrames?: number;
-  /** Show built-in controls (default: false) */
-  showControls?: boolean;
-}
-
-// =============================================================================
-// PLAYER EVENTS
-// =============================================================================
-
-export interface PlayerEvents {
-  /** Fired on each frame render */
-  frame: (frame: number) => void;
-  /** Fired on each frame render with the raw HTML payload for debugging */
-  frameRendered: (frame: number, html: string, compositeHtml: string) => void;
-  /** Fired when playback starts */
-  play: () => void;
-  /** Fired when playback pauses */
-  pause: () => void;
-  /** Fired when playback reaches the end */
-  ended: () => void;
-  /** Fired when player is ready (loaded) */
-  ready: () => void;
-  /** Fired on error */
-  error: (error: Error) => void;
-  /** Fired when passing a checkpoint */
-  checkpoint: (checkpoint: Checkpoint) => void;
-  /** Fired when the active scene changes (composed templates only) */
-  scenechange: (scene: ResolvedScene) => void;
-}
-
-// =============================================================================
-// PLAYER INPUT
-// =============================================================================
+import type { MediaDefinition } from "./define.js";
 
 /** What can be passed to player.load() */
-export type PlayerInput = TemplateModule | ComposedTemplate;
+export type PlayerInput = MediaDefinition;
 
-/** Type guard for ComposedTemplate */
-export function isComposedTemplate(
-  input: unknown
-): input is ComposedTemplate {
-  return typeof input === "object" && input !== null && "type" in input && input.type === "composed";
-}
-
-/** @deprecated Use isComposedTemplate */
-export const isAnyComposedTemplate = isComposedTemplate;
-
-/** @deprecated Removed — use isComposedTemplate and check medium === "svg" */
-export function isComposedSvgTemplate(input: unknown): input is ComposedTemplate {
-  return isComposedTemplate(input) && (input as ComposedTemplate).medium === "svg";
+/**
+ * Single source of truth for whether a template is animated.
+ *
+ * Explicit `animated` stamp wins. Otherwise inferred:
+ * fps + duration present means animated. IR, engine, CLI metadata, and the
+ * runtime must all classify identically — a fork here makes the IR clock and
+ * the session clock disagree and every `mediaIR` load fails with
+ * IR_CLOCK_MISMATCH (plain module templates without a stamp hit this).
+ */
+export function inferTemplateAnimated(template: {
+  animated?: boolean;
+  config?: { fps?: number; duration?: number | string };
+}): boolean {
+  if (typeof template.animated === "boolean") return template.animated;
+  return !!(template.config?.fps && template.config?.duration != null);
 }

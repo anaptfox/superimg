@@ -1,0 +1,10 @@
+{
+  "sandbox": {
+    "filesystem": {
+      "allowWrite": [
+        "~/Library/Caches/ms-playwright",
+        "~/.cache/ms-playwright"
+      ]
+    }
+  }
+}

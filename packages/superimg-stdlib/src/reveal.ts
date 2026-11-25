@@ -10,6 +10,8 @@
 import { css } from "./css.js";
 import { clamp01 } from "./easing.js";
 import { interpolate } from "./interpolate.js";
+import { Html } from "./tree/primitives.js";
+import type { MediaElement } from "./tree/node-types.js";
 
 export type WipeDirection = "left" | "right" | "up" | "down" | "diagonal";
 
@@ -19,6 +21,10 @@ export interface RevealResult {
   html: string;
   active: boolean;
   progress: number;
+}
+
+function revealNode(html: string, active: boolean, progress: number): RevealResult & MediaElement {
+  return Object.assign(Html({ html, width: "fill", height: "fill" }), { html, active, progress });
 }
 
 export interface WipeOptions {
@@ -88,7 +94,7 @@ export function wipe(options: WipeOptions): RevealResult {
     pointerEvents: "none",
   })}"></div>`;
 
-  return { html, active, progress: p };
+  return revealNode(html, active, p);
 }
 
 export function curtain(options: CurtainOptions): RevealResult {
@@ -119,7 +125,7 @@ export function curtain(options: CurtainOptions): RevealResult {
     pointerEvents: "none",
   })}"></div>`;
 
-  return { html, active, progress: p };
+  return revealNode(html, active, p);
 }
 
 export function crossfade(options: CrossfadeOptions): RevealResult {
@@ -134,7 +140,7 @@ export function crossfade(options: CrossfadeOptions): RevealResult {
     </div>
   `;
 
-  return { html, active, progress: p };
+  return revealNode(html, active, p);
 }
 
 export function split(options: SplitOptions): RevealResult {
@@ -194,7 +200,7 @@ export function split(options: SplitOptions): RevealResult {
     `;
   }
 
-  return { html, active, progress: p };
+  return revealNode(html, active, p);
 }
 
 export function iris(options: { progress: number; color?: string }): RevealResult {
@@ -212,7 +218,7 @@ export function iris(options: { progress: number; color?: string }): RevealResul
     pointerEvents: "none",
   })}"></div>`;
 
-  return { html, active, progress: p };
+  return revealNode(html, active, p);
 }
 
 /**

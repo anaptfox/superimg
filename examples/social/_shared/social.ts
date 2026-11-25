@@ -1,8 +1,9 @@
+import { googleFont } from "@foxworth/superimg";
 // Shared types, design tokens, and helpers for the social templates
 // (tweet + thread). Design language: floating card on a tinted canvas,
 // monochrome metrics, a single accent color.
 
-import type { RenderContext } from "superimg";
+import type { RenderContext } from "@foxworth/superimg";
 
 type Std = RenderContext<Record<string, unknown>>["std"];
 
@@ -76,33 +77,33 @@ export interface SocialTokens {
 export function socialTokens(theme: SocialTheme, accent?: string): SocialTokens {
   if (theme === "light") {
     return {
-      canvasTop: "#F7F9F9",
-      canvasBot: "#F7F9F9",
+      canvasTop: "#F4F7F8",
+      canvasBot: "#F4F7F8",
       surface: "#FFFFFF",
       surfaceInset: "#F7F9F9",
-      border: "#EFF3F4",
-      divider: "#EFF3F4",
-      text: "#0F1419",
-      muted: "#536471",
-      metricIcon: "#536471",
-      shadow: "0 24px 60px -24px rgba(15,20,25,0.22)",
+      border: "#E3E9EB",
+      divider: "#E3E9EB",
+      text: "#0B1116",
+      muted: "#4E5D6A",
+      metricIcon: "#4E5D6A",
+      shadow: "0 24px 60px -24px rgba(11,17,22,0.22)",
       accent: accent ?? "#1D9BF0",
-      ghost: "#F1F4F5",
+      ghost: "#EDF1F3",
     };
   }
   return {
-    canvasTop: "#000000",
-    canvasBot: "#000000",
-    surface: "#16181C",
-    surfaceInset: "#1D1F23",
-    border: "#2F3336",
-    divider: "#2F3336",
-    text: "#E7E9EA",
-    muted: "#71767B",
-    metricIcon: "#71767B",
+    canvasTop: "#07090B",
+    canvasBot: "#07090B",
+    surface: "#14171B",
+    surfaceInset: "#1B1F24",
+    border: "#2C3136",
+    divider: "#23282D",
+    text: "#F2F4F5",
+    muted: "#7C858D",
+    metricIcon: "#7C858D",
     shadow: "none",
     accent: accent ?? "#1D9BF0",
-    ghost: "#101214",
+    ghost: "#0E1216",
   };
 }
 
@@ -120,8 +121,8 @@ export function heroFontSize(len: number): number {
   return 46;
 }
 
-export const SOCIAL_FONTS = ["Archivo:wght@400;500;600;700;900"];
-export const FONT_FAMILY = "'Archivo', system-ui, -apple-system, sans-serif";
+export const SOCIAL_FONTS = [googleFont("Schibsted+Grotesk:wght@400;500;600;700;900")];
+export const FONT_FAMILY = "'Schibsted Grotesk', system-ui, -apple-system, sans-serif";
 
 /**
  * The signature backdrop: a massive X glyph in near-canvas tone, cropped by
@@ -194,7 +195,7 @@ export function heroCharsPerLine(len: number): number {
 export function formatDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
 // ---------------------------------------------------------------------------
@@ -203,7 +204,7 @@ export function formatDate(iso: string): string {
 
 export function avatarHtml(author: Author, size: number, std: Std): string {
   if (author.avatar) {
-    return `<img src="${author.avatar}" crossorigin="anonymous" style="${std.css({
+    return `<img src="${std.text.escapeHtml(author.avatar)}" crossorigin="anonymous" style="${std.css({
       width: size,
       height: size,
       borderRadius: "50%",
@@ -235,7 +236,7 @@ export function avatarHtml(author: Author, size: number, std: Std): string {
     fontWeight: 700,
     fontSize: Math.round(size * 0.4),
     flexShrink: 0,
-  })}">${initials}</div>`;
+  })}">${std.text.escapeHtml(initials)}</div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -374,7 +375,7 @@ function mediaCell(m: Media, t: SocialTokens, std: Std, style: Record<string, un
     border: `1px solid ${t.border}`,
     ...style,
   })}">
-    <img src="${src}" crossorigin="anonymous" alt="${std.text.escapeHtml(m.alt ?? "")}" style="${std.css({ width: "100%", height: "100%", objectFit: "cover", display: "block" })}" />
+    <img src="${std.text.escapeHtml(src)}" crossorigin="anonymous" alt="${std.text.escapeHtml(m.alt ?? "")}" style="${std.css({ width: "100%", height: "100%", objectFit: "cover", display: "block" })}" />
     ${playBadge}
   </div>`;
 }

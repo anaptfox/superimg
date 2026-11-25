@@ -7,7 +7,7 @@ import {
 import type {
   AudioValue,
   EncodingOptions,
-  FrameRenderer,
+  Rasterizer,
   RenderJob,
   RenderPlan,
   RenderExecutionOptions,
@@ -15,7 +15,8 @@ import type {
   ResolvedAssetDeclaration,
   VideoEncoder,
 } from "@superimg/types";
-import { RenderExecutionError, raceWithExecution } from "@superimg/types";
+import { RenderExecutionError, raceWithExecution, resolveCaptureDefaults } from "@superimg/types";
+import { resolve } from "node:path";
 import { PlaywrightEngine } from "./playwright-engine.js";
 
 export interface RenderSessionOptions {
@@ -36,10 +37,10 @@ export interface RenderSessionRenderOptions extends RenderExecutionOptions {
 export interface RenderSessionEngine<TFrame> {
   init(): Promise<void>;
   createAdapters(options?: { encoding?: EncodingOptions; audio?: AudioValue }): {
-    renderer: FrameRenderer<TFrame>;
+    renderer: Rasterizer<TFrame>;
     encoder: VideoEncoder<TFrame>;
   };
-  createParallelRenderers?(count: number): Promise<FrameRenderer<TFrame>[]>;
+  createParallelRenderers?(count: number, options?: { dpr?: number; width?: number; height?: number }): Promise<Rasterizer<TFrame>[]>;
   registerAsset?(filePath: string): string;
   dispose(): Promise<void>;
 }
@@ -70,7 +71,10 @@ export class RenderSession<TFrame = Buffer> {
       await raceWithExecution(previous, options);
       return await this.renderNow(job, options);
     } finally {
-      release();
+      // An aborted queued job must not let the next job overtake its still-active
+      // predecessor. Settle this queue link after both the predecessor and this
+      // job, without delaying the caller's cancellation result.
+      void previous.then(release, release);
     }
   }
 
@@ -89,7 +93,8 @@ export class RenderSession<TFrame = Buffer> {
         ...(plan.encoding !== undefined ? { encoding: plan.encoding } : {}),
         ...(plan.audio !== undefined ? { audio: plan.audio } : {}),
       });
-      const renderers = await this.engine.createParallelRenderers(this.concurrency);
+      const capture = resolveCaptureDefaults(plan.encoding?.format, plan.encoding?.capture, plan.encoding?.video?.alpha === "keep");
+      const renderers = await this.engine.createParallelRenderers(this.concurrency, { dpr: capture.dpr, width: plan.width, height: plan.height });
       return executeRenderPlanParallel(plan, renderers, encoder, execution);
     }
 
@@ -122,14 +127,15 @@ export class RenderSession<TFrame = Buffer> {
   }
 
   private createPlan(job: RenderJob, options: RenderSessionRenderOptions): Promise<RenderPlan> {
+    const registerAsset = options.assetUrlResolver ?? this.engine.registerAsset?.bind(this.engine);
+    const assetResolver = registerAsset === undefined
+      ? undefined
+      : options.templateDir === undefined
+        ? registerAsset
+        : (name: string) => registerAsset(resolve(options.templateDir!, "assets", name));
     return createRenderPlan(job, {
-      ...(options.assetUrlResolver !== undefined
-        ? { assetUrlResolver: options.assetUrlResolver }
-        : this.engine.registerAsset
-          ? { assetUrlResolver: (filePath: string) => this.engine.registerAsset!(filePath) }
-          : {}),
+      ...(assetResolver !== undefined ? { assetResolver } : {}),
       ...(options.resolvedAssets !== undefined ? { resolvedAssets: options.resolvedAssets } : {}),
-      ...(options.templateDir !== undefined ? { templateDir: options.templateDir } : {}),
       ...(options.startFrame !== undefined ? { startFrame: options.startFrame } : {}),
       ...(options.endFrame !== undefined ? { endFrame: options.endFrame } : {}),
       ...(options.signal !== undefined ? { signal: options.signal } : {}),

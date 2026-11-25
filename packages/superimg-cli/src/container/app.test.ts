@@ -32,9 +32,22 @@ function appWith(
   });
 }
 
+function byteRun(bytes: Uint8Array) {
+  return vi.fn(async (
+    _request: RenderSupervisorRequest,
+    _options?: RenderExecutionOptions,
+  ) => bytes);
+}
+
 describe("container HTTP app", () => {
+  it("does not expose the removed standalone jobs protocol", async () => {
+    const app = appWith(byteRun(new Uint8Array()));
+    expect((await app.request("/jobs", { method: "POST" })).status).toBe(404);
+    expect((await app.request("/jobs/old-job")).status).toBe(404);
+  });
+
   it("returns immutable bytes only after a successful supervised render", async () => {
-    const run = vi.fn(async () => new Uint8Array([1, 2, 3]));
+    const run = byteRun(new Uint8Array([1, 2, 3]));
     const app = appWith(run);
     const response = await app.request("/render", {
       method: "POST",
@@ -59,8 +72,21 @@ describe("container HTTP app", () => {
     }
   });
 
+  it.each([
+    ["mov", "video/quicktime"],
+    ["mkv", "video/x-matroska"],
+  ] as const)("serves %s renders with %s", async (format, contentType) => {
+    const app = appWith(byteRun(new Uint8Array([1, 2, 3])));
+    const response = await app.request("/render", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ template: "demo", encoding: { format } }),
+    });
+    expect(response.headers.get("content-type")).toBe(contentType);
+  });
+
   it("rejects oversized request bodies before queue admission", async () => {
-    const run = vi.fn(async () => new Uint8Array());
+    const run = byteRun(new Uint8Array());
     const app = appWith(run, { maxRequestBytes: 16 });
     const response = await app.request("/render", {
       method: "POST",
@@ -120,6 +146,6 @@ describe("container HTTP app", () => {
     const response = await responsePromise;
 
     expect(receivedSignal?.aborted).toBe(true);
-    expect(response.status).toBe(499);
+    expect(response.status).toBe(408);
   });
 });

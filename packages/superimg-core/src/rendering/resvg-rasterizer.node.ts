@@ -5,4 +5,5 @@ import { bindEnsureInit } from "./resvg-rasterizer.js";
 
 bindEnsureInit(nodeEnsureInit);
 
+export { nodeEnsureInit };
 export * from "./resvg-rasterizer.js";

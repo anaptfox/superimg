@@ -1,12 +1,58 @@
 {
-  "name": "superimg",
-  "version": "0.0.16",
-  "description": "Programmatic video generation with HTML/CSS templates",
+  "name": "@foxworth/superimg",
+  "version": "0.1.1-media-library.20261022.1",
+  "description": "Responsive images and video from deterministic media programs",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./transcript": {
+      "types": "./dist/transcript.d.ts",
+      "react-server": "./dist/transcript.js",
+      "edge-light": "./dist/transcript.js",
+      "workerd": "./dist/transcript.js",
+      "deno": "./dist/transcript.js",
+      "worker": "./dist/transcript.js",
+      "browser": "./dist/transcript.js",
+      "node": "./dist/transcript.js",
+      "import": "./dist/transcript.js",
+      "default": "./dist/transcript.js"
+    },
+    "./charts": {
+      "types": "./dist/charts.d.ts",
+      "react-server": "./dist/charts.js",
+      "edge-light": "./dist/charts.js",
+      "workerd": "./dist/charts.js",
+      "deno": "./dist/charts.js",
+      "worker": "./dist/charts.js",
+      "browser": "./dist/charts.js",
+      "node": "./dist/charts.js",
+      "import": "./dist/charts.js",
+      "default": "./dist/charts.js"
+    },
+    "./browser-export": {
+      "types": "./dist/browser-export.d.ts",
+      "react-server": {
+        "types": "./dist/browser-export.react-server.d.ts",
+        "default": "./dist/browser-export.react-server.js"
+      },
+      "browser": "./dist/browser-export.js",
+      "import": "./dist/browser-export.js",
+      "default": "./dist/browser-export.js"
+    },
+    "./inspection": {
+      "types": "./dist/inspection.d.ts",
+      "browser": "./dist/inspection.js",
+      "import": "./dist/inspection.js",
+      "default": "./dist/inspection.js"
+    },
+    "./inspection/boundary": {
+      "types": "./dist/inspection/boundary.d.ts",
+      "browser": "./dist/inspection/boundary.js",
+      "import": "./dist/inspection/boundary.js",
+      "default": "./dist/inspection/boundary.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "react-server": "./dist/index.js",
@@ -19,26 +65,27 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./server": {
-      "types": "./dist/index.server.d.ts",
-      "node": "./dist/index.server.js",
-      "import": "./dist/index.server.js",
-      "default": "./dist/index.server.js"
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "edge-light": "./dist/runtime.edge.js",
+      "workerd": "./dist/runtime.edge.js",
+      "deno": "./dist/runtime.edge.js",
+      "worker": "./dist/runtime.edge.js",
+      "browser": "./dist/runtime.browser.js",
+      "node": "./dist/runtime.node.js",
+      "import": "./dist/runtime.node.js",
+      "default": "./dist/runtime.node.js"
     },
-    "./browser": {
-      "types": "./dist/index.browser.d.ts",
-      "browser": "./dist/index.browser.js",
-      "import": "./dist/index.browser.js",
-      "default": "./dist/index.browser.js"
-    },
-    "./edge": {
-      "types": "./dist/index.edge.d.ts",
-      "edge-light": "./dist/index.edge.js",
-      "workerd": "./dist/index.edge.js",
-      "deno": "./dist/index.edge.js",
-      "worker": "./dist/index.edge.js",
-      "import": "./dist/index.edge.js",
-      "default": "./dist/index.edge.js"
+    "./runtime/html": {
+      "types": "./dist/runtime/html.d.ts",
+      "edge-light": "./dist/runtime/html.js",
+      "workerd": "./dist/runtime/html.js",
+      "deno": "./dist/runtime/html.js",
+      "worker": "./dist/runtime/html.js",
+      "browser": "./dist/runtime/html.js",
+      "node": "./dist/runtime/html.js",
+      "import": "./dist/runtime/html.js",
+      "default": "./dist/runtime/html.js"
     },
     "./player": {
       "types": "./dist/player.d.ts",
@@ -46,47 +93,108 @@
       "import": "./dist/player.js",
       "default": "./dist/player.js"
     },
-    "./media": {
-      "types": "./dist/media.d.ts",
-      "browser": "./dist/media.js",
-      "import": "./dist/media.js",
-      "default": "./dist/media.js"
+    "./player/program": {
+      "types": "./dist/player/program.d.ts",
+      "browser": "./dist/player/program.js",
+      "import": "./dist/player/program.js",
+      "default": "./dist/player/program.js"
     },
-    "./define": {
-      "types": "./dist/define.d.ts",
-      "import": "./dist/define.js",
-      "default": "./dist/define.js"
+    "./composition/prepare": {
+      "types": "./dist/composition/prepare.d.ts",
+      "react-server": "./dist/composition/prepare.js",
+      "edge-light": "./dist/composition/prepare.js",
+      "workerd": "./dist/composition/prepare.js",
+      "deno": "./dist/composition/prepare.js",
+      "worker": "./dist/composition/prepare.js",
+      "browser": "./dist/composition/prepare.js",
+      "node": "./dist/composition/prepare.js",
+      "import": "./dist/composition/prepare.js",
+      "default": "./dist/composition/prepare.js"
     },
-    "./bundler": {
-      "types": "./dist/bundler-browser.d.ts",
-      "browser": "./dist/bundler-browser.js",
-      "import": "./dist/bundler-browser.js",
-      "default": "./dist/bundler-browser.js"
+    "./destinations": {
+      "types": "./dist/destinations.d.ts",
+      "react-server": "./dist/destinations.js",
+      "edge-light": "./dist/destinations.js",
+      "workerd": "./dist/destinations.js",
+      "deno": "./dist/destinations.js",
+      "worker": "./dist/destinations.js",
+      "browser": "./dist/destinations.js",
+      "node": "./dist/destinations.js",
+      "import": "./dist/destinations.js",
+      "default": "./dist/destinations.js"
     },
+    "./ir": {
+      "types": "./dist/ir.d.ts",
+      "react-server": "./dist/ir.js",
+      "edge-light": "./dist/ir.js",
+      "workerd": "./dist/ir.js",
+      "deno": "./dist/ir.js",
+      "worker": "./dist/ir.js",
+      "browser": "./dist/ir.js",
+      "node": "./dist/ir.js",
+      "import": "./dist/ir.js",
+      "default": "./dist/ir.js"
+    },
+    "./ir/schema/media-ir.json": "./dist/ir/schema/media-ir.json",
     "./stdlib/code": {
       "types": "./dist/stdlib/code.d.ts",
+      "react-server": "./dist/stdlib/code.js",
+      "edge-light": "./dist/stdlib/code.js",
+      "workerd": "./dist/stdlib/code.js",
+      "deno": "./dist/stdlib/code.js",
+      "worker": "./dist/stdlib/code.js",
+      "browser": "./dist/stdlib/code.js",
+      "node": "./dist/stdlib/code.js",
       "import": "./dist/stdlib/code.js",
       "default": "./dist/stdlib/code.js"
     },
     "./stdlib/text": {
       "types": "./dist/stdlib/text.d.ts",
+      "react-server": "./dist/stdlib/text.js",
+      "edge-light": "./dist/stdlib/text.js",
+      "workerd": "./dist/stdlib/text.js",
+      "deno": "./dist/stdlib/text.js",
+      "worker": "./dist/stdlib/text.js",
+      "browser": "./dist/stdlib/text.js",
+      "node": "./dist/stdlib/text.js",
       "import": "./dist/stdlib/text.js",
       "default": "./dist/stdlib/text.js"
     },
-    "./stdlib/cue": {
-      "types": "./dist/stdlib/cue.d.ts",
-      "import": "./dist/stdlib/cue.js",
-      "default": "./dist/stdlib/cue.js"
-    },
     "./stdlib/easing": {
       "types": "./dist/stdlib/easing.d.ts",
+      "react-server": "./dist/stdlib/easing.js",
+      "edge-light": "./dist/stdlib/easing.js",
+      "workerd": "./dist/stdlib/easing.js",
+      "deno": "./dist/stdlib/easing.js",
+      "worker": "./dist/stdlib/easing.js",
+      "browser": "./dist/stdlib/easing.js",
+      "node": "./dist/stdlib/easing.js",
       "import": "./dist/stdlib/easing.js",
       "default": "./dist/stdlib/easing.js"
     },
     "./stdlib/math": {
       "types": "./dist/stdlib/math.d.ts",
+      "react-server": "./dist/stdlib/math.js",
+      "edge-light": "./dist/stdlib/math.js",
+      "workerd": "./dist/stdlib/math.js",
+      "deno": "./dist/stdlib/math.js",
+      "worker": "./dist/stdlib/math.js",
+      "browser": "./dist/stdlib/math.js",
+      "node": "./dist/stdlib/math.js",
       "import": "./dist/stdlib/math.js",
       "default": "./dist/stdlib/math.js"
+    },
+    "./stdlib/arrange": {
+      "types": "./dist/stdlib/arrange.d.ts",
+      "react-server": "./dist/stdlib/arrange.js",
+      "edge-light": "./dist/stdlib/arrange.js",
+      "workerd": "./dist/stdlib/arrange.js",
+      "deno": "./dist/stdlib/arrange.js",
+      "worker": "./dist/stdlib/arrange.js",
+      "browser": "./dist/stdlib/arrange.js",
+      "node": "./dist/stdlib/arrange.js",
+      "import": "./dist/stdlib/arrange.js",
+      "default": "./dist/stdlib/arrange.js"
     },
     "./react": {
       "types": "./dist/react/index.d.ts",
@@ -107,29 +215,149 @@
     },
     "./react/compile": {
       "types": "./dist/react/compile.d.ts",
+      "react-server": "./dist/react/compile.js",
       "browser": "./dist/react/compile.js",
       "import": "./dist/react/compile.js",
       "default": "./dist/react/compile.js"
     },
     "./react/session": {
       "types": "./dist/react/session.d.ts",
+      "react-server": "./dist/react/session.js",
       "browser": "./dist/react/session.js",
       "import": "./dist/react/session.js",
       "default": "./dist/react/session.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "node": "./dist/vite.js",
+      "default": "./dist/vite.js"
+    },
+    "./internal/native-surface-browser": {
+      "types": "./dist/internal/native-surface-browser.d.ts",
+      "import": "./dist/internal/native-surface-browser.js",
+      "require": "./dist/internal/native-surface-browser.js",
+      "default": "./dist/internal/native-surface-browser.js"
+    },
+    "./scene": {
+      "types": "./dist/scene.d.ts",
+      "react-server": "./dist/scene.js",
+      "edge-light": "./dist/scene.js",
+      "workerd": "./dist/scene.js",
+      "deno": "./dist/scene.js",
+      "worker": "./dist/scene.js",
+      "browser": "./dist/scene.js",
+      "node": "./dist/scene.js",
+      "import": "./dist/scene.js",
+      "default": "./dist/scene.js"
+    },
+    "./film": {
+      "types": "./dist/film.d.ts",
+      "react-server": "./dist/film.js",
+      "edge-light": "./dist/film.js",
+      "workerd": "./dist/film.js",
+      "deno": "./dist/film.js",
+      "worker": "./dist/film.js",
+      "browser": "./dist/film.js",
+      "node": "./dist/film.js",
+      "import": "./dist/film.js",
+      "default": "./dist/film.js"
+    },
+    "./script": {
+      "types": "./dist/script.d.ts",
+      "react-server": "./dist/script.js",
+      "edge-light": "./dist/script.js",
+      "workerd": "./dist/script.js",
+      "deno": "./dist/script.js",
+      "worker": "./dist/script.js",
+      "browser": "./dist/script.js",
+      "node": "./dist/script.js",
+      "import": "./dist/script.js",
+      "default": "./dist/script.js"
+    },
+    "./takes": {
+      "types": "./dist/takes.d.ts",
+      "react-server": "./dist/takes.js",
+      "edge-light": "./dist/takes.js",
+      "workerd": "./dist/takes.js",
+      "deno": "./dist/takes.js",
+      "worker": "./dist/takes.js",
+      "browser": "./dist/takes.js",
+      "node": "./dist/takes.js",
+      "import": "./dist/takes.js",
+      "default": "./dist/takes.js"
+    },
+    "./interactive/define": {
+      "types": "./dist/interactive/define.d.ts",
+      "browser": "./dist/interactive/define.js",
+      "import": "./dist/interactive/define.js",
+      "default": "./dist/interactive/define.js"
+    },
+    "./interactive/player": {
+      "types": "./dist/interactive/player.d.ts",
+      "browser": "./dist/interactive/player.js",
+      "import": "./dist/interactive/player.js",
+      "default": "./dist/interactive/player.js"
+    },
+    "./react/interactive": {
+      "types": "./dist/react/interactive.d.ts",
+      "react-server": "./dist/react/interactive.js",
+      "browser": "./dist/react/interactive.js",
+      "import": "./dist/react/interactive.js",
+      "default": "./dist/react/interactive.js"
+    },
+    "./player/dom": {
+      "types": "./dist/player/dom.d.ts",
+      "browser": "./dist/player/dom.js",
+      "import": "./dist/player/dom.js",
+      "default": "./dist/player/dom.js"
+    },
+    "./review": {
+      "types": "./dist/review.d.ts",
+      "react-server": "./dist/review.js",
+      "edge-light": "./dist/review.js",
+      "workerd": "./dist/review.js",
+      "deno": "./dist/review.js",
+      "worker": "./dist/review.js",
+      "browser": "./dist/review.js",
+      "node": "./dist/review.js",
+      "import": "./dist/review.js",
+      "default": "./dist/review.js"
+    },
+    "./runtime/edge-raster": {
+      "types": "./dist/runtime.edge-raster.d.ts",
+      "edge-light": "./dist/runtime.edge-raster.js",
+      "workerd": "./dist/runtime.edge-raster.js",
+      "deno": "./dist/runtime.edge-raster.js",
+      "worker": "./dist/runtime.edge-raster.js",
+      "import": "./dist/runtime.edge-raster.js",
+      "default": "./dist/runtime.edge-raster.js"
+    },
+    "./internal/runtime-kernel": {
+      "types": "./dist/internal/runtime-kernel.d.ts",
+      "node": "./dist/internal/runtime-kernel.js",
+      "import": "./dist/internal/runtime-kernel.js"
+    },
+    "./runtime/describe": {
+      "types": "./dist/runtime/describe.d.ts",
+      "browser": "./dist/runtime/describe.js",
+      "import": "./dist/runtime/describe.js",
+      "default": "./dist/runtime/describe.js"
+    }
   },
   "scripts": {
     "build:node": "tsdown --config tsdown.node.ts",
     "build:define": "tsdown --config tsdown.define.ts",
     "build:edge": "tsdown --config tsdown.edge.ts",
+    "build:player": "tsdown --config tsdown.player.ts && tsdown --config tsdown.program.ts && tsdown --config tsdown.inspection.ts",
     "build:browser": "tsdown --config tsdown.browser.ts",
-    "assemble": "node scripts/assemble-builds.mjs && superimg-generate-platform-manifest .",
+    "assemble": "node scripts/assemble-builds.mjs && node ../../tooling/build-config/dist/generate-platform-manifest.mjs .",
     "build": "node scripts/verify-assembled.mjs",
     "dev": "tsdown --watch",
     "test": "vitest --run",
     "clean": "rm -rf dist .build",
-    "verify:build": "superimg-check-externals --profile superimg && superimg-check-workerd-compat && superimg-check-platform-self-contained && superimg-check-no-react",
+    "verify:build": "node ../../tooling/build-config/dist/check-externals.mjs --profile superimg && node ../../tooling/build-config/dist/check-workerd-compat.mjs && node ../../tooling/build-config/dist/check-platform-self-contained.mjs && node ../../tooling/build-config/dist/check-no-react.mjs && node scripts/check-player-bundle-size.mjs",
+    "verify:player-size": "node scripts/check-player-bundle-size.mjs",
     "verify:package": "publint && node scripts/verify-attw.mjs",
     "verify": "pnpm run verify:build && pnpm run verify:package"
   },
@@ -163,37 +391,49 @@
     "url": "https://github.com/anaptfox/superimg/issues"
   },
   "dependencies": {
-    "@resvg/resvg-wasm": "2.6.2",
-    "acorn": "^8.17.0",
-    "colord": "^2.9.3",
+    "@resvg/resvg-wasm": "catalog:",
+    "@types/d3-scale": "^4.0.9",
+    "colord": "catalog:",
+    "d3-scale": "^4.0.3",
     "date-fns": "^4.4.0",
-    "morphdom": "^2.7.8",
-    "oxc-parser": "^0.137.0",
     "path-data-parser": "^0.1.0",
-    "rolldown": "1.1.3",
     "roughjs": "4.6.6",
-    "source-map-js": "^1.2.1",
-    "simplex-noise": "^4.0.3",
-    "zustand": "^5.0.14"
+    "saxes": "6.0.0",
+    "simplex-noise": "^4.0.3"
   },
   "optionalDependencies": {
-    "@oxc-parser/binding-darwin-arm64": "^0.137.0",
-    "@oxc-parser/binding-darwin-x64": "^0.137.0",
-    "@oxc-parser/binding-linux-arm64-gnu": "^0.137.0",
-    "@oxc-parser/binding-linux-arm64-musl": "^0.137.0",
-    "@oxc-parser/binding-linux-x64-gnu": "^0.137.0",
-    "@oxc-parser/binding-linux-x64-musl": "^0.137.0",
-    "@oxc-parser/binding-win32-arm64-msvc": "^0.137.0",
-    "@oxc-parser/binding-win32-x64-msvc": "^0.137.0",
-    "sharp": "^0.35.2"
+    "@oxc-parser/binding-darwin-arm64": "catalog:",
+    "@oxc-parser/binding-darwin-x64": "catalog:",
+    "@oxc-parser/binding-linux-arm64-gnu": "catalog:",
+    "@oxc-parser/binding-linux-arm64-musl": "catalog:",
+    "@oxc-parser/binding-linux-x64-gnu": "catalog:",
+    "@oxc-parser/binding-linux-x64-musl": "catalog:",
+    "@oxc-parser/binding-win32-arm64-msvc": "catalog:",
+    "@oxc-parser/binding-win32-x64-msvc": "catalog:",
+    "sharp": "catalog:"
   },
   "peerDependencies": {
-    "@rolldown/browser": "1.1.3",
+    "@foxworth/boundary": "^0.2.0",
+    "@rolldown/browser": "catalog:",
+    "node-av": "^6.1.1",
+    "playwright": "catalog:",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "mediabunny": "catalog:",
+    "@mediabunny/server": "catalog:",
+    "@mediabunny/dts": "catalog:"
   },
   "peerDependenciesMeta": {
+    "@foxworth/boundary": {
+      "optional": true
+    },
     "@rolldown/browser": {
+      "optional": true
+    },
+    "node-av": {
+      "optional": true
+    },
+    "playwright": {
       "optional": true
     },
     "react": {
@@ -201,32 +441,50 @@
     },
     "react-dom": {
       "optional": true
+    },
+    "mediabunny": {
+      "optional": true
+    },
+    "@mediabunny/server": {
+      "optional": true
+    },
+    "@mediabunny/dts": {
+      "optional": true
     }
   },
   "devDependencies": {
-    "@superimg/build-config": "workspace:*",
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@arethetypeswrong/core": "^0.18.5",
+    "@foxworth/boundary": "^0.2.0",
+    "@foxworth/superimg-script": "workspace:*",
+    "@rolldown/browser": "catalog:",
+    "@superimg/adapters": "workspace:*",
     "@superimg/browser-export": "workspace:*",
-    "@superimg/cli": "workspace:*",
+    "@superimg/build-config": "workspace:*",
     "@superimg/core": "workspace:*",
+    "@superimg/edge-runtime": "workspace:*",
+    "@superimg/film": "workspace:*",
+    "@superimg/interactive": "workspace:*",
     "@superimg/media": "workspace:*",
+    "@superimg/node": "workspace:*",
     "@superimg/player": "workspace:*",
-    "@superimg/runtime-web": "workspace:*",
     "@superimg/skill": "workspace:*",
     "@superimg/stdlib": "workspace:*",
-    "@rolldown/browser": "1.1.3",
     "@superimg/types": "workspace:*",
-    "@tailwindcss/vite": "^4.3.1",
-    "@testing-library/react": "^16.3.2",
+    "@tailwindcss/vite": "catalog:",
+    "@testing-library/react": "^16.3.3",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@types/ws": "^8.18.1",
-    "@arethetypeswrong/core": "^0.18.3",
-    "@arethetypeswrong/cli": "^0.18.5",
-    "happy-dom": "^20.10.6",
-    "publint": "^0.3.21",
+    "@types/ws": "^8.18.2",
+    "happy-dom": "catalog:",
+    "node-av": "^6.2.0",
+    "publint": "^0.3.25",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "rolldown": "1.1.3",
-    "tailwindcss": "^4.3.1"
+    "rolldown": "catalog:",
+    "tailwindcss": "catalog:",
+    "mediabunny": "catalog:",
+    "@mediabunny/server": "catalog:",
+    "@mediabunny/dts": "catalog:"
   }
 }

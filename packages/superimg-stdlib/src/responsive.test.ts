@@ -1,5 +1,14 @@
-import { describe, it, expect } from "vitest";
-import { responsive } from "./responsive.js";
+import { describe, it, expect, expectTypeOf } from "vitest";
+import { responsive, createResponsive } from "./responsive.js";
+
+it("preserves a required default in the direct and bound selector types", () => {
+  const ctx = { isPortrait: true, isLandscape: false, isSquare: false };
+  const r = createResponsive(ctx);
+  expectTypeOf(responsive({ default: 48, portrait: 64 }, ctx)).toEqualTypeOf<number>();
+  expectTypeOf(r({ default: 48, portrait: 64 })).toEqualTypeOf<number>();
+  expectTypeOf(r<number>({ landscape: 48 })).toEqualTypeOf<number | undefined>();
+  expect(r({ default: 48, portrait: 64 })).toBe(64);
+});
 
 describe("responsive", () => {
   it("returns portrait value when isPortrait", () => {

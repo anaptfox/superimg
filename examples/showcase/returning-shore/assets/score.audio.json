@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "study": "returning-shore",
+  "method": "stick-slip bristle friction on plaster",
+  "seed": "345abcde",
+  "sampleRate": 48000,
+  "samplesPerFrame": 1600,
+  "channels": 2,
+  "bitDepth": 16,
+  "sampleCount": 1152000,
+  "durationSeconds": 24,
+  "loop": false,
+  "peak": 0.72,
+  "rms": 0.06019546076869658,
+  "sha256": "e44586aba20ca413dfe6d393a7362665e5c7a0f0b8d85316af8becd592e219a1",
+  "cues": []
+}

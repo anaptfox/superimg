@@ -102,18 +102,39 @@ function tokenColor(token: string, palette: Palette): string | null {
   return null;
 }
 
-function highlightTokens(source: string, palette: Palette): string {
-  let output = "";
+export interface HighlightToken {
+  text: string;
+  /** Theme color. Null uses the palette foreground. */
+  color: string | null;
+}
+
+export interface TokenizeResult {
+  background: string;
+  foreground: string;
+  tokens: HighlightToken[];
+}
+
+/** Same lexer as `highlight`, as tokens instead of HTML spans. */
+export function tokenize(code: string, theme: ThemeName = "dark-plus"): TokenizeResult {
+  const palette = PALETTES[theme] ?? PALETTES["dark-plus"];
+  const tokens: HighlightToken[] = [];
   let cursor = 0;
-  for (const match of source.matchAll(TOKEN_RE)) {
+  for (const match of code.matchAll(new RegExp(TOKEN_RE.source, "g"))) {
     const index = match.index ?? 0;
-    output += escapeHtml(source.slice(cursor, index));
+    if (index > cursor) tokens.push({ text: code.slice(cursor, index), color: null });
     const token = match[0];
-    const color = tokenColor(token, palette);
-    output += color ? span(color, token) : escapeHtml(token);
+    tokens.push({ text: token, color: tokenColor(token, palette) });
     cursor = index + token.length;
   }
-  return output + escapeHtml(source.slice(cursor));
+  if (cursor < code.length) tokens.push({ text: code.slice(cursor), color: null });
+  return { background: palette.background, foreground: palette.foreground, tokens };
+}
+
+function highlightTokens(source: string, palette: Palette): string {
+  const theme = (Object.keys(PALETTES) as ThemeName[]).find((name) => PALETTES[name] === palette) ?? "dark-plus";
+  return tokenize(source, theme).tokens.map((token) =>
+    token.color ? span(token.color, token.text) : escapeHtml(token.text),
+  ).join("");
 }
 
 export function highlight(code: string, options: HighlightOptions): string {

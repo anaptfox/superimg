@@ -9,14 +9,14 @@ const InteractivePlayerDemo = dynamic(
 );
 
 interface PlayerDemoProps {
-  templateId?: string;
+  exampleId?: string;
   duration?: number;
 }
 
-export function PlayerDemo({ templateId, duration = 5 }: PlayerDemoProps) {
+export function PlayerDemo({ exampleId, duration = 5 }: PlayerDemoProps) {
   return (
-    <DeferredDemo label={`Interactive player${templateId ? `: ${templateId}` : ""}`}>
-      <InteractivePlayerDemo templateId={templateId} duration={duration} />
+    <DeferredDemo label={`Interactive player${exampleId ? `: ${exampleId}` : ""}`}>
+      <InteractivePlayerDemo exampleId={exampleId} duration={duration} />
     </DeferredDemo>
   );
 }

@@ -1,0 +1,39 @@
+{
+  "name": "@foxworth/superimg-script",
+  "version": "0.1.0",
+  "description": "The SuperImg script file format: parse, print, and hash *.script.md",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown",
+    "test": "vitest --run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "superimg",
+    "script",
+    "screenplay"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@superimg/build-config": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

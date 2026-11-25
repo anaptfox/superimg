@@ -13,7 +13,7 @@ export type ContainerManifest = Record<string, ManifestEntry>;
 export interface ContainerRenderQueue {
   readonly activeCount: number;
   readonly queuedCount: number;
-  run<T>(request: RenderSupervisorRequest, options?: RenderExecutionOptions): Promise<T>;
+  run(request: RenderSupervisorRequest, options?: RenderExecutionOptions): Promise<unknown>;
 }
 
 export interface ContainerAppOptions {
@@ -27,10 +27,20 @@ export interface ContainerAppOptions {
   getFfmpegVersion(): Promise<string | null>;
 }
 
+interface ContainerRenderBody {
+  template?: string;
+  data?: Record<string, unknown>;
+  encoding?: EncodingOptions;
+  startFrame?: number;
+  endFrame?: number;
+}
+
 function contentTypeForEncoding(encoding?: EncodingOptions): string {
   switch (encoding?.format) {
     case "gif": return "image/gif";
     case "webm": return "video/webm";
+    case "mov": return "video/quicktime";
+    case "mkv": return "video/x-matroska";
     default: return "video/mp4";
   }
 }
@@ -71,7 +81,7 @@ export function statusForExecutionError(error: unknown): number {
   const code = (error as { code?: string })?.code;
   if (code === "queue_full") return 503;
   if (code === "deadline_exceeded") return 504;
-  if (code === "aborted") return 499;
+  if (code === "aborted") return 408;
   if (code === "resource_limit") return 413;
   if (code === "template_not_found") return 404;
   return 422;
@@ -91,13 +101,35 @@ export function createContainerApp(options: ContainerAppOptions): Hono {
   const templateNames = Object.keys(manifest);
   const app = new Hono();
 
-  app.get("/healthz", async (c) => c.json({
-    ok: true,
-    ffmpeg: await getFfmpegVersion() ?? "missing",
-    templates: templateNames,
-    activeRenders: supervisor.activeCount,
-    queuedRenders: supervisor.queuedCount,
-  }));
+  app.get("/healthz", async (c) => {
+    const ffmpeg = await getFfmpegVersion();
+    const profile = ffmpeg ? "node-media" : "node";
+    return c.json({
+      ok: true,
+      /** FFmpeg is optional; null/missing means GIF/embedded-video/stitch paths are unavailable. */
+      ffmpeg: ffmpeg ?? null,
+      profile,
+      capabilities: {
+        schemaVersion: 0 as const,
+        profile: profile as "node" | "node-media",
+        rasterizers: ["playwright", "resvg", "blitz"] as const,
+        encoders: ffmpeg
+          ? (["mediabunny-node", "ffmpeg"] as const)
+          : (["mediabunny-node"] as const),
+        decoders: ffmpeg ? (["ffmpeg"] as const) : ([] as const),
+        stitchers: ffmpeg
+          ? (["mediabunny-node", "ffmpeg"] as const)
+          : (["mediabunny-node"] as const),
+        processExecution: true,
+        filesystem: "temporary" as const,
+        versions: { ffmpeg },
+      },
+      packageHashes: templateNames,
+      templates: templateNames,
+      activeRenders: supervisor.activeCount,
+      queuedRenders: supervisor.queuedCount,
+    });
+  });
 
   app.get("/info/:template", async (c) => {
     const templateName = c.req.param("template");
@@ -108,29 +140,23 @@ export function createContainerApp(options: ContainerAppOptions): Hono {
       );
     }
     try {
-      const info = await supervisor.run<Record<string, number>>(
+      const info = await supervisor.run(
         { type: "info", template: templateName, limits: renderLimits },
         { signal: c.req.raw.signal, deadlineMs: Date.now() + renderTimeoutMs },
-      );
+      ) as Record<string, number>;
       return c.json(info);
     } catch (error) {
       return c.json(
         { error: (error as { code?: string }).code ?? "plan_failed", message: (error as Error).message },
-        statusForExecutionError(error) as 404 | 413 | 422 | 499 | 503 | 504,
+        statusForExecutionError(error) as 404 | 408 | 413 | 422 | 503 | 504,
       );
     }
   });
 
   app.post("/render", async (c) => {
-    let body: {
-      template?: string;
-      data?: Record<string, unknown>;
-      encoding?: EncodingOptions;
-      startFrame?: number;
-      endFrame?: number;
-    } | null = null;
+    let body: ContainerRenderBody | null = null;
     try {
-      body = await readBoundedJson(c.req.raw, maxRequestBytes) as typeof body;
+      body = await readBoundedJson(c.req.raw, maxRequestBytes) as ContainerRenderBody | null;
     } catch (error) {
       const status = statusForExecutionError(error);
       return c.json(
@@ -165,7 +191,7 @@ export function createContainerApp(options: ContainerAppOptions): Hono {
       const chunkEncoding = isChunk && encoding
         ? (({ audio: _audio, ...rest }) => rest)(encoding)
         : encoding;
-      const bytes = await supervisor.run<Uint8Array>({
+      const bytes = await supervisor.run({
         type: "render",
         template: templateName,
         ...(data !== undefined ? { data } : {}),
@@ -178,7 +204,7 @@ export function createContainerApp(options: ContainerAppOptions): Hono {
         signal: c.req.raw.signal,
         deadlineMs: Date.now() + renderTimeoutMs,
         cleanupTimeoutMs: cancellationGraceMs,
-      });
+      }) as Uint8Array;
 
       console.log(`[${requestId}] done in ${Date.now() - startMs}ms (${bytes.byteLength} bytes)`);
       return new Response(bytes.buffer as ArrayBuffer, {
@@ -194,7 +220,7 @@ export function createContainerApp(options: ContainerAppOptions): Hono {
       console.error(`[${requestId}] render failed after ${Date.now() - startMs}ms (${status}):`, message);
       return c.json(
         { error: (error as { code?: string }).code ?? "render_failed", message },
-        status as 404 | 413 | 422 | 499 | 503 | 504,
+        status as 404 | 408 | 413 | 422 | 503 | 504,
       );
     }
   });

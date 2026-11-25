@@ -8,6 +8,16 @@ import type {
   SvgStdlib,
 } from "../index.js";
 import { define } from "../index.js";
+import { MEDIA_ELEMENT, type MediaElement } from "../media-node.js";
+
+function Html(html: string): MediaElement {
+  return {
+    $$typeof: MEDIA_ELEMENT,
+    type: "Html",
+    props: { width: "fill", height: "fill", html },
+    children: [],
+  };
+}
 
 const img = define({
   config: { width: 800, height: 600 },
@@ -22,7 +32,7 @@ const img = define({
     // @ts-expect-error - no director on static image context
     const tl = ctx.director;
 
-    return "<div/>";
+    return Html("<div/>");
   },
 });
 const imgMedium: "html" = img.medium;
@@ -34,12 +44,11 @@ const gif = define({
     type HasFrame = typeof ctx extends { globalFrame: number } ? true : false;
     const _: HasFrame = true;
     const tl = ctx.director({ hold: "3s", exit: "1s" });
-    return `<div>${tl.progress}</div>`;
+    return Html(`<div>${tl.progress}</div>`);
   },
 });
 const gifMedium: "html" = gif.medium;
 const gifAnimated: true = gif.animated;
-
 const svg = define({
   medium: "svg",
   config: { width: 600, height: 600, duration: 3 },
@@ -51,12 +60,15 @@ const svg = define({
     // @ts-expect-error - static svg has no globalFrame
     const frame = ctx.globalFrame;
 
+    // @ts-expect-error - no director on static svg context
+    const tl = ctx.director;
+
     const coords = ctx.std.viz.createCoords({
       width: ctx.width,
       height: ctx.height,
     });
 
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${ctx.width}" height="${ctx.height}"/>`;
+    return Html(`<svg xmlns="http://www.w3.org/2000/svg" width="${ctx.width}" height="${ctx.height}"/>`);
   },
 });
 const svgMedium: "svg" = svg.medium;
@@ -67,7 +79,7 @@ const storedInput: DefineInput<{ title: string }> = {
   config: { width: 400, height: 300 },
   sample: { title: "Preview" },
   render(ctx: ImageRenderContext<{ title: string }>) {
-    return `<h1>${ctx.data.title}</h1>`;
+    return Html(`<h1>${ctx.data.title}</h1>`);
   },
 };
 const fromStored = define(storedInput);

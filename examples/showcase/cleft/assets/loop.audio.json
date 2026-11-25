@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "study": "cleft-loop",
+  "method": "periodic bowed glass with wrapped resonator tails",
+  "seed": "345abcde",
+  "sampleRate": 48000,
+  "samplesPerFrame": 1600,
+  "channels": 2,
+  "bitDepth": 16,
+  "sampleCount": 192000,
+  "durationSeconds": 4,
+  "loop": true,
+  "peak": 0.72,
+  "rms": 0.10625051713219666,
+  "sha256": "05b247cd8b752f437d872512ffbeae4a2c74e823982b6934270746d6ee9956ca",
+  "cues": [
+    {
+      "id": "cyclic-bowed-glass",
+      "seconds": 0,
+      "kind": "cyclic-bowed-glass",
+      "duration": 4,
+      "sustained": true,
+      "frequency": 480,
+      "sample": 0
+    },
+    {
+      "id": "wrapped-stone",
+      "seconds": 3.7,
+      "kind": "wrapped-stone",
+      "duration": 1.8,
+      "sustained": false,
+      "frequency": 240,
+      "sample": 177600
+    }
+  ]
+}

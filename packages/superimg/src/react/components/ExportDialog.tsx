@@ -10,7 +10,7 @@ import {
   startTransition,
 } from "react";
 import { createPortal } from "react-dom";
-import type { FormatOption } from "../../index.browser.js";
+import type { CanvasSize, EncodingOptions } from "@superimg/types";
 
 // ============================================================================
 // Types
@@ -31,17 +31,15 @@ export interface ExportDialogProps {
   exporting: boolean;
   /** Export progress 0-1 */
   exportProgress: number;
-  /** Current format (used as default selection) */
-  currentFormat?: FormatOption;
+  /** Current canvas size (used as the custom export default). */
+  currentSize?: CanvasSize;
   /** Optional CSS class on the overlay */
   className?: string;
 }
 
 export interface ExportOptions {
-  format?: FormatOption;
-  encoding?: {
-    format?: OutputFormat;
-  };
+  size?: CanvasSize;
+  encoding?: EncodingOptions;
 }
 
 type ExportActionState = {
@@ -50,19 +48,9 @@ type ExportActionState = {
 };
 
 type ExportActionPayload = {
-  resolution: string;
+  size: CanvasSize;
   outputFmt: OutputFormat;
 };
-
-// ============================================================================
-// Format presets
-// ============================================================================
-
-const FORMAT_PRESETS = [
-  { id: "horizontal" as const, label: "1920 × 1080", sub: "Landscape" },
-  { id: "vertical" as const, label: "1080 × 1920", sub: "Portrait" },
-  { id: "square" as const, label: "1080 × 1080", sub: "Square" },
-] as const;
 
 const OUTPUT_FORMATS: { id: OutputFormat; label: string }[] = [
   { id: "mp4", label: "MP4" },
@@ -70,16 +58,6 @@ const OUTPUT_FORMATS: { id: OutputFormat; label: string }[] = [
 ];
 
 const INITIAL_EXPORT_STATE: ExportActionState = { blob: null, error: null };
-
-function resolveDefaultResolution(currentFormat?: FormatOption): string {
-  if (
-    typeof currentFormat === "string" &&
-    FORMAT_PRESETS.some((preset) => preset.id === currentFormat)
-  ) {
-    return currentFormat;
-  }
-  return "horizontal";
-}
 
 // ============================================================================
 // Inline styles (no CSS framework dependency)
@@ -169,6 +147,17 @@ const S = {
     color: "rgba(255,255,255,0.35)",
     marginTop: 1,
   },
+  sizeInput: {
+    width: "100%",
+    minWidth: 0,
+    padding: "9px 10px",
+    borderRadius: 6,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.05)",
+    color: "white",
+    fontSize: 13,
+    boxSizing: "border-box" as const,
+  },
   exportBtn: (disabled: boolean) => ({
     width: "100%",
     padding: "10px 0",
@@ -233,7 +222,7 @@ interface ExportDialogPanelProps {
   onDownload: (blob: Blob, filename: string) => void;
   exporting: boolean;
   exportProgress: number;
-  currentFormat?: FormatOption;
+  currentSize?: CanvasSize;
   className?: string;
 }
 
@@ -243,12 +232,11 @@ function ExportDialogPanel({
   onDownload,
   exporting,
   exportProgress,
-  currentFormat,
+  currentSize,
   className,
 }: ExportDialogPanelProps) {
-  const [resolution, setResolution] = useState(() =>
-    resolveDefaultResolution(currentFormat)
-  );
+  const [width, setWidth] = useState(currentSize?.width ?? 1920);
+  const [height, setHeight] = useState(currentSize?.height ?? 1080);
   const [outputFmt, setOutputFmt] = useState<OutputFormat>("mp4");
   const overlayRef = useRef<HTMLDivElement>(null);
   const onExportRef = useRef(onExport);
@@ -260,7 +248,7 @@ function ExportDialogPanel({
       payload: ExportActionPayload
     ): Promise<ExportActionState> => {
       const blob = await onExportRef.current({
-        format: payload.resolution as FormatOption,
+        size: payload.size,
         encoding: { format: payload.outputFmt },
       });
 
@@ -290,9 +278,9 @@ function ExportDialogPanel({
 
   const handleExport = useCallback(() => {
     startTransition(() => {
-      submitExport({ resolution, outputFmt });
+      submitExport({ size: { width, height }, outputFmt });
     });
-  }, [submitExport, resolution, outputFmt]);
+  }, [submitExport, width, height, outputFmt]);
 
   const handleDownload = useCallback(() => {
     if (!resultBlob) return;
@@ -379,19 +367,27 @@ function ExportDialogPanel({
         ) : (
           <>
             <div style={S.fieldGroup}>
-              <span style={S.label}>Resolution</span>
-              <div style={S.pillRow}>
-                {FORMAT_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    style={S.pill(resolution === preset.id)}
-                    onClick={() => setResolution(preset.id)}
-                  >
-                    {preset.sub}
-                    <span style={S.pillSub}>{preset.label}</span>
-                  </button>
-                ))}
+              <span style={S.label}>Canvas size</span>
+              <div style={{ ...S.pillRow, alignItems: "center" }}>
+                <input
+                  aria-label="Export width"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={width}
+                  onChange={(event) => setWidth(Number(event.currentTarget.value))}
+                  style={S.sizeInput}
+                />
+                <span aria-hidden="true">×</span>
+                <input
+                  aria-label="Export height"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={height}
+                  onChange={(event) => setHeight(Number(event.currentTarget.value))}
+                  style={S.sizeInput}
+                />
               </div>
             </div>
 
@@ -419,7 +415,8 @@ function ExportDialogPanel({
 
             <button
               type="button"
-              style={S.exportBtn(false)}
+              disabled={!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1}
+              style={S.exportBtn(!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1)}
               onClick={handleExport}
             >
               Export
@@ -446,7 +443,7 @@ export function ExportDialog({
   onDownload,
   exporting,
   exportProgress,
-  currentFormat,
+  currentSize,
   className,
 }: ExportDialogProps) {
   const [panelKey, setPanelKey] = useState(0);
@@ -467,7 +464,7 @@ export function ExportDialog({
       onDownload={onDownload}
       exporting={exporting}
       exportProgress={exportProgress}
-      {...(currentFormat !== undefined ? { currentFormat } : {})}
+      {...(currentSize !== undefined ? { currentSize } : {})}
       {...(className !== undefined ? { className } : {})}
     />,
     document.body

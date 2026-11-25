@@ -15,7 +15,7 @@ import {
 import { ReelItem, type ReelItemData, type ReelItemRef } from "./ReelItem";
 import { useSwipeGesture } from "./useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { FormatOption } from "superimg/react";
+import type { CanvasSize } from "@foxworth/superimg/react";
 
 export type { ReelItemData };
 
@@ -30,8 +30,8 @@ export interface ReelsPlayerProps {
   preloadCount?: number;
   /** Enable keyboard navigation (default: true) */
   keyboardNavigation?: boolean;
-  /** Video format (default: "vertical") */
-  format?: FormatOption;
+  /** Preview canvas (default: 1080×1920). */
+  size?: CanvasSize;
   /** Show story-style progress indicators (default: true) */
   showIndicators?: boolean;
   /** Render overlay content for each reel */
@@ -126,7 +126,7 @@ export const ReelsPlayer = forwardRef<ReelsPlayerRef, ReelsPlayerProps>(
       onIndexChange,
       preloadCount = 1,
       keyboardNavigation = true,
-      format = "vertical",
+      size = { width: 1080, height: 1920 },
       showIndicators = true,
       renderOverlay,
       className,
@@ -344,7 +344,7 @@ export const ReelsPlayer = forwardRef<ReelsPlayerRef, ReelsPlayerProps>(
             isActive={index === activeIndex && !isPaused}
             isNearby={isNearby(index)}
             isHorizontal={isHorizontal}
-            format={format}
+            size={size}
             renderOverlay={renderOverlay}
             onVisibilityChange={handleVisibilityChange}
             onProgress={handleProgress}

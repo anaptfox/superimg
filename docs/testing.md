@@ -1,121 +1,102 @@
-# Testing Templates
+# Testing
 
-SuperImg captures stills via the same encoder path as image output — no separate `renderStill` API. For **agent debug loops**, prefer **`superimg inspect`** over ad-hoc multi-frame render shells.
-
-## Agent debug loop (preferred)
-
-```bash
-# Runtime config + director phases + HTML semantics at several progresses
-superimg inspect my.media.ts --pretty
-
-# What changed between two beats? (text / colors / data-eq-key)
-superimg inspect my.media.ts --diff 0.35,0.85
-
-# Optional pixel stills (Playwright)
-superimg inspect my.media.ts --at 0.5,0.9 --png -o /tmp/inspect
-
-# Final export only after structure looks right
-superimg render my.media.ts -y
-```
-
-**Stdout:** single JSON report (`config`, `phases`, `samples`, optional `diff`).  
-**No browser** unless `--png`. Typical HTML-only run is sub-second to a few seconds.
-
-| Field | Meaning |
-|-------|---------|
-| `config.duration` | Runtime-true duration (executed template config) |
-| `phases` | Director layout with start/end sec + frames (or `null`) |
-| `samples[].text` / `.colors` / `.eqKeys` | Scraped from rendered HTML |
-| `samples[].activePhase` | Which phase is live at that progress |
-| `diff` | Added/removed text & colors between two progresses |
-
-Also useful:
+The repository pins Node.js 26.13.1 in `.node-version` and `.nvmrc`, and
+pnpm 12.18.0 in the root `package.json`. From the repository root, install the
+workspace and the Chromium revision used by Playwright:
 
 ```bash
-superimg validate my.media.ts   # NaN / throws / empty frames
-superimg info my.media.ts       # config + phase summary
-superimg doctor                 # environment only
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
 ```
 
-## Single-frame CLI
+On Linux, add `--with-deps` to install Chromium's system libraries. The full
+gate also runs the packed consumer checks, which require registry access and
+FFmpeg. See [packed consumer prerequisites](./codec-consumer-testing.md).
+
+Start with deterministic checks:
 
 ```bash
-# HTML snapshot at frame 45 (no browser)
-superimg render my.media.ts --format html --frame 45
-
-# PNG still at frame 45
-superimg render my.media.ts --format png --frame 45
+superimg check path/to/media.media.ts
+superimg inspect path/to/media.media.ts
 ```
 
-For static templates (no `fps`/`duration` in config), add `--format png`. For animated templates, add `--frame`.
-
-> **Note:** Progress-based capture exists on the programmatic API (`renderVideo({ progress })`). CLI still capture currently takes `--frame`. Use `inspect --at 0.5` for progress-based multi-samples.
-
-Full video HTML dump (heavy):
+For collections, `check` validates the complete entry snapshot. Repeat `--entry` to restrict it. Provider failures, timeouts, invalid JSON values, duplicate/path-unsafe ids, nested collections, and interactive collections fail during preflight.
 
 ```bash
-superimg render my.media.ts --debug-html
-# → output/.superimg/debug/<name>/frame_*.html
+superimg check episodes --entry introduction
+superimg export episodes --entry introduction --for youtube
 ```
 
-## Programmatic
+Interactive scene checks are exported only from `@foxworth/superimg/interactive/define`.
 
-### Fast HTML snapshots (no Playwright)
+Coverage floors live in each package `vitest.config.ts`. Package-wide: stdlib 75% statements / 65% branches, core 50% / 45%. **New product files** (tree primitives, `tree-check`, Chromium preflight) must stay at **90% statements**. Do not raise the package floor to chase old heuristic files (`motion-critique`).
 
-```typescript
-import { renderToHtml } from "superimg";
-import { renderHtmlAtFrame, probeDirectorPhases } from "@superimg/core/testing";
+Repository gates:
 
-// Edge / Workers — compile or pass a module
-const html = renderToHtml({ template: bundledCode, frame: 45, fps: 30, durationSeconds: 5 });
-
-// In tests — pass a compiled module
-const snapshot = renderHtmlAtFrame(template, { progress: 0.5, composite: false });
-const phases = probeDirectorPhases(template, { durationSeconds: 5, fps: 30 });
+```bash
+just build-render
+pnpm verify:examples
+pnpm verify:generated-artifacts
+pnpm verify:docs
+pnpm check
+just publish-dry
 ```
 
-`renderHtmlAtFrame` merges `template.sample` with optional `data` and binds `timeline` + `ctx.director()` at the requested frame.
+The full and affected gates cap Turbo at 25% of available CPU concurrency.
+Cold app builds and native media encoding can still compete with browser
+tests on a busy machine. To run only the Turbo phase with two tasks at a time:
 
-### Pixel snapshots (Playwright)
-
-```typescript
-import { renderVideo } from "superimg/server";
-
-const png = await renderVideo("./intro.media.ts", {
-  frame: 45,
-  encoding: { format: "png" },
-});
+```bash
+pnpm turbo:prepare &&
+pnpm exec turbo run build test typecheck check-types verify lint lint:root --concurrency=2
 ```
 
-Uses `createRenderPlan({ startFrame, endFrame: startFrame + 1 })` under the hood — the same path as full video render, but only one frame.
+Vitest 5 fork pools use `maxWorkers: 1` when a package needs serial file
+scheduling. The obsolete `singleFork` option no longer provides that limit.
+Keep file isolation enabled. For a serial suite inside a concurrent context,
+use `describe(name, { concurrent: false }, fn)`.
 
-## Vitest pattern
+Vitest 5 adds an optional Browser Mode Trace View. Enable it for the browser
+export and runtime-conformance suites when replay evidence would help diagnose
+a failure; canvas pixels and loaded images are included in the trace:
 
-```typescript
-import { describe, it, expect } from "vitest";
-import { compileFromString } from "./__test-utils__/index.js";
-import { renderHtmlAtFrame } from "@superimg/core/testing";
-
-describe("keyframes", () => {
-  it("matches snapshots", async () => {
-    const { template } = await compileFromString(TEMPLATE_SOURCE);
-    for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
-      const html = renderHtmlAtFrame(template!, { progress, composite: false });
-      expect(html).toMatchSnapshot(`progress=${progress}`);
-    }
-  });
-});
+```bash
+SUPERIMG_TRACE_VIEW=1 pnpm --filter @superimg/browser-export exec vitest run --config vitest.browser.config.ts --reporter=html
+SUPERIMG_TRACE_VIEW=1 pnpm --filter @superimg/runtime-conformance exec vitest run --config vitest.browser.config.ts --reporter=html
 ```
 
-Use `composite: false` when you only want the scene HTML (no background/watermark wrapper).
+The static trace report is written to `.vitest/index.html` in the package.
 
-## When to use which
+Trace View collection defaults off. Its replay is diagnostic evidence, with
+known limits around adopted stylesheets, external resources, and custom element
+code. It does not turn tests that launch Playwright directly into Vitest Browser
+Mode tests.
 
-| Goal | Tool |
-|------|------|
-| Agent timing / content debug | **`superimg inspect`** (+ `--diff`) |
-| CI HTML regression | `renderHtmlAtFrame` or `renderToHtml({ frame })` |
-| Visual pixel diff | `inspect --png` or `renderVideo({ frame, encoding: { format: "png" } })` |
-| Crash / NaN check | `superimg validate` |
-| Static OG card | `define()` (no fps/duration) + `--format png` |
-| Embedded video in frame | `std.video.sync` — Playwright seeks before capture |
+For Node suites, Vitest 5 can persist transformed modules between processes.
+Try the opt-in cache on one package at a time, then clear Vitest's caches if a
+transform looks stale:
+
+```bash
+pnpm --filter @superimg/core exec vitest run --fsModuleCache
+pnpm exec vitest --clearCache
+```
+
+The filesystem module cache is off by default and does not apply to Browser
+Mode. It can reuse stale transforms if a plugin reads configuration or files
+that Vitest cannot include in the cache key, so keep it opt-in and disable it
+while investigating such a mismatch. Vitest's `doctor` command measures
+candidate configurations by running tests repeatedly; use it on a green,
+stable package suite when tuning workers or isolation:
+
+```bash
+pnpm exec vitest doctor --config packages/superimg-core/vitest.config.ts
+```
+
+The runtime-conformance Workerd suite continues to use the Cloudflare Vitest
+plugin's `cloudflareTest()` pool and the assembled edge entry. The workspace
+uses the Cloudflare Vitest plugin 1.6.1 with Vitest 5.1.0. Request V8 coverage with
+`pnpm --filter @superimg/runtime-conformance exec vitest run --config
+vitest.workerd.config.ts --coverage --testTimeout=30000`. Coverage
+instrumentation can push the longer export cases past their ordinary 5-second
+test timeout, so this raises the limit for the diagnostic run. This is separate
+from the default conformance gate.

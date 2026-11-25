@@ -1,0 +1,7 @@
+interface:
+  display_name: '/superimg-ship'
+  short_description: 'Check and export SuperImg media, collections, destinations, custom sizes, schema-0 arti...'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$superimg-ship: Export for YouTube and Instagram square'

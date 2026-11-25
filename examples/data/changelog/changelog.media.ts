@@ -1,7 +1,12 @@
-import { define, type RenderContext } from "superimg";
+// Changelog — a release note as printed matter: paper stock, crop marks, riso inks.
+// The version presses in like a rubber stamp, a rule draws, then the sections set themselves.
+
+import { video, Frame, Stack, Text, Fill, Html, Spacer, type MediaElement, googleFont } from "@foxworth/superimg";
+
+export type ChangelogKind = "added" | "changed" | "fixed" | "removed" | "security" | "deprecated";
 
 export interface ChangelogSection {
-  type: "added" | "changed" | "fixed" | "removed" | "security" | "deprecated";
+  type: ChangelogKind;
   items: string[];
 }
 
@@ -14,116 +19,277 @@ export interface ChangelogVideoData extends Record<string, unknown> {
   accentColor: string;
 }
 
-const SECTION_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
-  added: { icon: "+", color: "#22c55e", label: "Added" },
-  changed: { icon: "~", color: "#3b82f6", label: "Changed" },
-  fixed: { icon: "x", color: "#f59e0b", label: "Fixed" },
-  removed: { icon: "-", color: "#ef4444", label: "Removed" },
-  security: { icon: "!", color: "#a855f7", label: "Security" },
-  deprecated: { icon: "d", color: "#71717a", label: "Deprecated" },
+const SERIF = "'Fraunces', Georgia, serif";
+const SANS = "'Inter', system-ui, sans-serif";
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+
+/** Riso ink pairs — one for paper stock, one for the ink-negative press run. */
+const INKS: Record<ChangelogKind, { light: string; dark: string; mark: string; label: string }> = {
+  added: { light: "#2C7A4B", dark: "#5FCB8B", mark: "+", label: "Added" },
+  changed: { light: "#1F5FA8", dark: "#6BA8E8", mark: "~", label: "Changed" },
+  fixed: { light: "#C0670F", dark: "#F0A868", mark: "*", label: "Fixed" },
+  removed: { light: "#B4302C", dark: "#F07A70", mark: "–", label: "Removed" },
+  security: { light: "#6C3FA0", dark: "#B08CE0", mark: "!", label: "Security" },
+  deprecated: { light: "#6E6A60", dark: "#A5A196", mark: "·", label: "Deprecated" },
 };
 
-const TIMING = {
-  headerFadeIn: { start: 0, end: 0.15 },
-  sectionsReveal: { start: 0.15, end: 0.95 },
-  final: { start: 0.95, end: 1.0 },
-};
+export default video<ChangelogVideoData>({
+  duration: "7.5s",
+  poster: "5.2s",
+  fonts: [googleFont("Fraunces:opsz,wght@9..144,600;9..144,700"), googleFont("Inter:wght@400;500;600"), googleFont("IBM+Plex+Mono:wght@400;500")],
+  inlineCss: ["* { margin: 0; padding: 0; box-sizing: border-box; }", "body { overflow: hidden; }"],
 
-export default define<ChangelogVideoData>({
   sample: {
     version: "2.0.0",
     date: "2025-01-15",
     title: "Major Release",
     sections: [
-      { type: "added", items: ["New dashboard with real-time analytics", "Dark mode support"] },
-      { type: "changed", items: ["Improved performance by 50%"] },
-      { type: "fixed", items: ["Fixed login issue on Safari"] },
+      { type: "added", items: ["Real-time analytics dashboard", "System-wide dark mode"] },
+      { type: "changed", items: ["Cold start cut by 50%"] },
+      { type: "fixed", items: ["Safari login redirect loop"] },
     ],
-    theme: "dark",
-    accentColor: "#3b82f6",
+    theme: "light",
+    accentColor: "#B4302C",
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "6.2s",
-  },
-  render(ctx: RenderContext<ChangelogVideoData>) {
-    const { std, width, height, timeline, data } = ctx;
+
+  render(ctx) {
+    const { std, width, height, data } = ctx;
     const { version, date, title, sections, theme, accentColor } = data;
 
-    const bgColor = theme === "dark" ? "#0f0f0f" : "#ffffff";
-    const textColor = theme === "dark" ? "#ffffff" : "#0f0f0f";
-    const mutedColor = theme === "dark" ? "#71717a" : "#a1a1aa";
-    const gradientEnd = theme === "dark" ? "#1a1a2e" : "#e4e4e7";
+    const press = theme === "dark";
+    const paper = press ? "#14120E" : "#F2EDE1";
+    const ink = press ? "#F2EDE1" : "#17150F";
+    const faint = press ? "rgba(242,237,225,0.42)" : "rgba(23,21,15,0.46)";
+    const hair = press ? "rgba(242,237,225,0.20)" : "rgba(23,21,15,0.20)";
+    const inkOf = (k: ChangelogKind) => (press ? INKS[k].dark : INKS[k].light);
 
-    const headerProgress = std.interpolate(timeline.progress, [TIMING.headerFadeIn.start, TIMING.headerFadeIn.end], [0, 1], "easeOutBack");
-    const sectionsProgress = std.interpolate(timeline.progress, [TIMING.sectionsReveal.start, TIMING.sectionsReveal.end], [0, 1]);
-    const exitProgress = std.interpolate(timeline.progress, [TIMING.final.start, TIMING.final.end], [0, 1], "easeInCubic");
-    const globalOpacity = 1 - exitProgress;
+    const t = ctx.director({
+      stamp: "11%",
+      rule: "7%",
+      set: "42%",
+      hold: "30%",
+      lift: "10%",
+    });
 
-    const totalItems = sections.reduce((acc: number, s: ChangelogSection) => acc + s.items.length + 1, 0);
-    let itemIndex = 0;
+    const margin = 96;
+    const railW = 400;
+    const bodyX = margin + railW + 64;
+    const bodyW = width - bodyX - margin;
 
-    let sectionsHtml = "";
+    // ── Stamp: the version presses down and settles ─────────────────────────
+    const stampP = t.in("stamp");
+    const stampScale = std.spring(1.09, 1, stampP, "snappy");
+    const stampTilt = std.interpolate(stampP, [0, 1], [-2.2, 0], "easeOutQuint");
+    const stampOp = std.interpolate(stampP, [0, 0.28], [0, 1], "easeOutCubic");
 
-    for (const section of sections) {
-      const config = (SECTION_CONFIG[section.type] ?? SECTION_CONFIG.changed)!;
+    // Rule draws left→right beneath the masthead.
+    const ruleP = t.in("rule");
 
-      const sectionHeaderProgress = Math.max(0, Math.min(1, (sectionsProgress * totalItems - itemIndex) * 2));
-      itemIndex++;
+    // ── Flatten sections into typeset rows so the cascade reads top-to-bottom ─
+    type Row =
+      | { kind: "head"; section: ChangelogSection; index: number }
+      | { kind: "item"; section: ChangelogSection; text: string };
+    const rows: Row[] = [];
+    sections.forEach((section, index) => {
+      rows.push({ kind: "head", section, index });
+      for (const text of section.items) rows.push({ kind: "item", section, text });
+    });
 
-      if (sectionHeaderProgress <= 0) continue;
+    // A weighted stack gives section heads a longer beat and guarantees that
+    // every row lands, even when the release has more items than the sample.
+    const typesetting = std.stack(rows, {
+      id: "release-rows",
+      itemIds: rows.map((_row, i) => `release-row-${i}`),
+      during: t.in("set"),
+      lead: 0,
+      trail: 0.05,
+      enter: 0.8,
+      weights: rows.map((row) => row.kind === "head" ? 1.7 : 1),
+    });
+    const rowP = (i: number) => typesetting.state(i).enter;
 
-      const headerOpacity = std.interpolate(sectionHeaderProgress, [0, 1], [0, 1], "easeOutCubic");
-      const headerTransform = (1 - headerOpacity) * 20;
+    const lift = t.in("lift");
+    const pageOp = 1 - std.interpolate(lift, [0, 1], [0, 1], "easeInCubic");
+    const pageY = std.interpolate(lift, [0, 1], [0, -22], "easeInCubic");
 
-      sectionsHtml += `
-      <div style="margin-bottom: 24px; opacity: ${headerOpacity}; transform: translateX(${headerTransform}px);">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <div style="width: 32px; height: 32px; border-radius: 8px; background: ${config.color}20; display: flex; align-items: center; justify-content: center; font-weight: 700; color: ${config.color}; font-size: 18px;">${config.icon}</div>
-          <span style="font-size: 28px; font-weight: 600; color: ${config.color};">${config.label}</span>
-        </div>
-        <div style="padding-left: 44px;">
-    `;
+    // ── Paper: crop marks, tooth, and a soft press shadow ───────────────────
+    const m = 44;
+    const arm = 34;
+    const cropSvg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="tooth" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="7" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+    </filter>
+  </defs>
+  <rect width="${width}" height="${height}" filter="url(#tooth)" opacity="${press ? 0.05 : 0.07}"/>
+  <g stroke="${hair}" stroke-width="1.5" fill="none">
+    <path d="M${m} ${m - 14}V${m}H${m - 14} M${m} ${m}h${arm} M${m} ${m}v${arm}"/>
+    <path d="M${width - m} ${m - 14}V${m}H${width - m + 14} M${width - m} ${m}h${-arm} M${width - m} ${m}v${arm}"/>
+    <path d="M${m} ${height - m + 14}V${height - m}H${m - 14} M${m} ${height - m}h${arm} M${m} ${height - m}v${-arm}"/>
+    <path d="M${width - m} ${height - m + 14}V${height - m}H${width - m + 14} M${width - m} ${height - m}h${-arm} M${width - m} ${height - m}v${-arm}"/>
+  </g>
+</svg>`;
 
-      let sectionClosed = false;
-      for (let i = 0; i < section.items.length; i++) {
-        const itemProgress = Math.max(0, Math.min(1, (sectionsProgress * totalItems - itemIndex) * 3));
-        itemIndex++;
+    const ruleSvg = `<svg width="${railW}" height="4" viewBox="0 0 ${railW} 4" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="${(railW * ruleP).toFixed(2)}" height="4" fill="${accentColor}"/>
+</svg>`;
 
-        if (itemProgress <= 0) {
-          sectionsHtml += "</div></div>";
-          sectionClosed = true;
-          break;
-        }
-
-        const itemOpacity = std.interpolate(itemProgress, [0, 1], [0, 1], "easeOutCubic");
-        const itemTransform = (1 - itemOpacity) * 15;
-
-        sectionsHtml += `
-        <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; opacity: ${itemOpacity}; transform: translateX(${itemTransform}px);">
-          <div style="width: 6px; height: 6px; border-radius: 50%; background: ${config.color}; margin-top: 12px; flex-shrink: 0;"></div>
-          <span style="font-size: 24px; color: ${textColor}; line-height: 1.5;">${section.items[i]}</span>
-        </div>
-      `;
-      }
-      if (!sectionClosed) sectionsHtml += "</div></div>";
+    // ── Rows ────────────────────────────────────────────────────────────────
+    function headRow(row: Extract<Row, { kind: "head" }>, i: number) {
+      const p = rowP(i);
+      const color = inkOf(row.section.type);
+      const count = row.section.items.length;
+      const ruleLen = std.interpolate(p, [0, 1], [0, 1], "easeOutQuart");
+      return Stack(
+        {
+          direction: "row",
+          width: "fill",
+          height: 46,
+          gap: 18,
+          align: "center",
+          style: { opacity: p, transform: `translateX(${((1 - p) * 14).toFixed(2)}px)` },
+        },
+        Frame(
+          { width: 34, height: 34, radius: 3, fill: color },
+          Stack(
+            { width: 34, height: 34, align: "center", justify: "center" },
+            Text({ variant: "label", color: paper, size: 20, weight: 600, fontFamily: MONO }, INKS[row.section.type].mark),
+          ),
+        ),
+        Text({ variant: "title", color: ink, size: 34, weight: 600, fontFamily: SERIF, letterSpacing: -0.3 }, INKS[row.section.type].label),
+        Frame(
+          { width: "fill", height: 1 },
+          Frame({
+            width: "fill",
+            height: 1,
+            fill: hair,
+            style: { transform: `scaleX(${ruleLen.toFixed(3)})`, transformOrigin: "left center" },
+          }),
+        ),
+        Text({ variant: "label", color: faint, size: 17, fontFamily: MONO }, String(count).padStart(2, "0")),
+      );
     }
 
-    return `
-    <div style="width: ${width}px; height: ${height}px; background: linear-gradient(180deg, ${bgColor} 0%, ${gradientEnd} 100%); display: flex; flex-direction: column; padding: 80px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; opacity: ${globalOpacity};">
-      <div style="margin-bottom: 48px; opacity: ${headerProgress}; transform: scale(${0.8 + headerProgress * 0.2});">
-        <div style="display: flex; align-items: baseline; gap: 16px; margin-bottom: 8px;">
-          <span style="font-size: 64px; font-weight: 800; color: ${accentColor};">v${version}</span>
-          ${date ? `<span style="font-size: 24px; color: ${mutedColor};">${date}</span>` : ""}
-        </div>
-        ${title ? `<div style="font-size: 32px; color: ${textColor}; opacity: 0.9;">${title}</div>` : ""}
-      </div>
-      <div style="flex: 1; overflow: hidden;">
-        ${sectionsHtml}
-      </div>
-    </div>
-  `;
+    function itemRow(row: Extract<Row, { kind: "item" }>, i: number) {
+      const p = rowP(i);
+      const color = inkOf(row.section.type);
+      return Stack(
+        {
+          direction: "row",
+          width: "fill",
+          height: 44,
+          gap: 18,
+          align: "center",
+          style: { opacity: p, transform: `translateX(${((1 - p) * 18).toFixed(2)}px)` },
+        },
+        Frame({ width: 34, height: 44 }, Frame({ x: 14, y: 20, width: 7, height: 3, fill: color })),
+        Text({ variant: "body", color: ink, size: 27, fontFamily: SANS, lineHeight: 1.3 }, row.text),
+      );
+    }
+
+    const bodyRows = rows.map((row, i) =>
+      row.kind === "head" ? headRow(row, i) : itemRow(row, i),
+    );
+    // Breathe between groups without inventing a nested container per section.
+    const spaced: MediaElement[] = [];
+    rows.forEach((row, i) => {
+      if (row.kind === "head" && i > 0) spaced.push(Spacer({ height: 30 }));
+      spaced.push(bodyRows[i]!);
+    });
+
+    return Frame(
+      { id: "sheet", width, height },
+      Fill({ color: paper }),
+      Fill({
+        gradient: {
+          kind: "radial",
+          at: "22% 12%",
+          size: "78% 70%",
+          stops: [press ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.7)", "transparent"],
+        },
+      }),
+      Html({ id: "crop", width, height, html: cropSvg }),
+
+      Frame(
+        { x: 0, y: 0, width, height, style: { opacity: pageOp, transform: `translateY(${pageY.toFixed(2)}px)` } },
+
+        // ── Masthead rail ─────────────────────────────────────────────────
+        Frame(
+          { x: margin, y: 168, width: railW, height: 460 },
+          Stack(
+            { width: railW, gap: 0 },
+            Text({ variant: "label", color: faint, size: 14, weight: 600, fontFamily: MONO, letterSpacing: 4 }, "RELEASE NOTE"),
+            Spacer({ height: 20 }),
+            Frame(
+              {
+                width: railW,
+                height: 132,
+                style: {
+                  opacity: stampOp,
+                  transform: `scale(${stampScale.toFixed(4)}) rotate(${stampTilt.toFixed(2)}deg)`,
+                  transformOrigin: "left center",
+                },
+              },
+              Text(
+                {
+                  id: "version",
+                  variant: "display",
+                  color: accentColor,
+                  size: 118,
+                  weight: 700,
+                  fontFamily: SERIF,
+                  letterSpacing: -4,
+                  style: { lineHeight: 1 },
+                },
+                `v${version}`,
+              ),
+            ),
+            Spacer({ height: 14 }),
+            Html({ id: "rule", width: railW, height: 4, html: ruleSvg }),
+            Spacer({ height: 26 }),
+            Text(
+              {
+                variant: "title",
+                color: ink,
+                size: 36,
+                weight: 600,
+                fontFamily: SERIF,
+                maxWidth: railW,
+                style: { opacity: std.clamp01(ruleP * 1.4) },
+              },
+              title,
+            ),
+            Spacer({ height: 12 }),
+            Text(
+              {
+                variant: "caption",
+                color: faint,
+                size: 19,
+                fontFamily: MONO,
+                style: { opacity: std.clamp01(ruleP * 1.4) },
+              },
+              date,
+            ),
+          ),
+        ),
+
+        // Gutter hairline between rail and body.
+        Frame({
+          x: bodyX - 34,
+          y: 168,
+          width: 1,
+          height: 744,
+          fill: hair,
+          style: { transform: `scaleY(${std.interpolate(ruleP, [0, 1], [0, 1], "easeOutCubic").toFixed(3)})`, transformOrigin: "center top" },
+        }),
+
+        // ── Typeset body ──────────────────────────────────────────────────
+        Frame(
+          { x: bodyX, y: 172, width: bodyW, height: 736 },
+          Stack({ width: bodyW, gap: 6 }, ...spaced),
+        ),
+      ),
+    );
   },
 });

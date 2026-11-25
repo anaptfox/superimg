@@ -10,7 +10,7 @@ const LiveExample = dynamic(
 
 export function LiveExampleLoader() {
   return (
-    <DeferredLanding minHeight={560}>
+    <DeferredLanding minHeight={420}>
       <LiveExample />
     </DeferredLanding>
   );

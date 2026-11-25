@@ -1,9 +1,8 @@
-//! Container process entrypoint: load manifest, validate runtime, start the
-//! bounded render supervisor, then expose the HTTP app.
+//! Container process entrypoint for the synchronous supervised render service.
 
 import { serve } from "@hono/node-server";
 import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { promisify } from "node:util";
 import type { RenderLimits } from "@superimg/types";
 import { createContainerApp, type ContainerManifest } from "./app.js";
@@ -36,6 +35,9 @@ const RENDER_LIMITS: RenderLimits = {
 };
 
 function loadManifest(): Manifest {
+  if (!existsSync(MANIFEST_PATH)) {
+    return {};
+  }
   return JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
 }
 
@@ -59,11 +61,15 @@ async function main(): Promise<void> {
   });
 
   const manifest = loadManifest();
-  console.log(`[superimg] Manifest loaded. Templates: ${Object.keys(manifest).join(", ")}`);
+  console.log(
+    `[superimg] Manifest loaded. Sync templates: ${Object.keys(manifest).join(", ") || "(none)"}`,
+  );
+
   const ffmpegVersion = await getFfmpegVersion();
   if (!ffmpegVersion) {
-    console.error("[superimg] ffmpeg not found — container image misconfigured");
-    process.exit(1);
+    console.warn(
+      "[superimg] ffmpeg not found — GIF/embedded-video/stitching unavailable (node profile still runs)",
+    );
   }
 
   const supervisor = new RenderSupervisor({
@@ -84,7 +90,9 @@ async function main(): Promise<void> {
     getFfmpegVersion,
   });
   serve({ fetch: app.fetch, port: PORT });
-  console.log(`[superimg] Ready. ffmpeg=${ffmpegVersion} port=${PORT}`);
+  console.log(
+    `[superimg] Ready. profile=${ffmpegVersion ? "node-media" : "node"} ffmpeg=${ffmpegVersion ?? "absent"} port=${PORT}`,
+  );
 
   const shutdown = () => {
     void supervisor.close().finally(() => process.exit(0));

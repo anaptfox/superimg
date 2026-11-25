@@ -1,35 +1,45 @@
-//! The unified `define()` template factory.
+//! Canonical deterministic media definitions and authoring helpers.
 //!
-//! Unified template factory — one `define()` for all output kinds.
-//! Three orthogonal axes select behaviour:
-//!  - medium:   "html" (Chromium) | "svg" (resvg-wasm, browser-free, edge).
-//!  - animated: inferred from the config — true iff it declares fps AND
-//!              (duration OR a `resolve` hook that will supply duration).
-//!  - sink:     chosen later (config.outputs / CLI / `as`), not at authoring time.
-//!
-//! TypeScript narrows `ctx` to the right variant at the call site via overloads:
-//! medium picks the stdlib flavour, animated adds the temporal fields + helpers.
+//! `video()`, `image()`, `svg()`, and `ogImage()` are the concise authoring
+//! surface. They all lower to the same `MediaDefinition` returned by `define()`.
+//! Delivery destinations and file paths are deliberately absent from this layer.
 
+import type { FontInput } from "./fonts.js";
 import type { JsonObject } from "./json.js";
+import type { RenderOutput } from "./media-node.js";
 import type {
   Medium,
   Duration,
   RenderContext,
-  OutputInfo,
   AssetMeta,
   AssetDeclaration,
   TemplateConfig,
   TailwindConfig,
   TemplateModule,
+  TemporalMode,
+  FrameReadinessPolicy,
+  BackgroundValue,
+  WatermarkValue,
 } from "./types.js";
+import type { AudioValue } from "./audio.js";
 import type { ImageStdlib, SvgStdlib, SvgAnimatedStdlib } from "./stdlib.js";
 import type { ResolveFn } from "./resolve.js";
+import type { RetainedComposition } from "./composition.js";
 
-// =============================================================================
-// STATIC RENDER CONTEXTS (no temporal fields)
-// =============================================================================
+/** Pixel dimensions owned by the authored media, independent of delivery. */
+export interface CanvasSize {
+  width: number;
+  height: number;
+}
 
-/** Render context for a static HTML template (`medium:"html"`, no fps/duration). */
+export type DeterministicMediaKind = "video" | "image" | "svg";
+
+export type DefaultMediaFormat<TKind extends DeterministicMediaKind> =
+  TKind extends "video" ? "mp4"
+  : TKind extends "svg" ? "svg"
+  : "png";
+
+/** Render context for a static HTML definition. */
 export interface ImageRenderContext<TData = JsonObject> {
   std: ImageStdlib;
   width: number;
@@ -41,10 +51,9 @@ export interface ImageRenderContext<TData = JsonObject> {
   data: TData;
   assets: Record<string, AssetMeta>;
   asset: (filename: string) => string;
-  output: OutputInfo;
 }
 
-/** Render context for a static SVG template. render() must return SVG markup. */
+/** Render context for a static SVG definition. */
 export interface SvgRenderContext<TData = JsonObject> {
   std: SvgStdlib;
   width: number;
@@ -53,99 +62,168 @@ export interface SvgRenderContext<TData = JsonObject> {
   isPortrait: boolean;
   isLandscape: boolean;
   isSquare: boolean;
-  /** Declared duration in seconds — use for CSS animation-duration. */
   duration?: number;
   data: TData;
   assets: Record<string, AssetMeta>;
   asset: (filename: string) => string;
-  output: OutputInfo;
 }
 
-/**
- * Render context for an animated SVG template (`medium:"svg"` + fps/duration):
- * the full temporal context, but with the SVG-safe stdlib flavour.
- */
+/** Animated SVG remains available through the lower-level `define()` API. */
 export type SvgAnimatedRenderContext<TData = JsonObject> = Omit<
   RenderContext<TData>,
   "std"
 > & { std: SvgAnimatedStdlib };
 
-// =============================================================================
-// CONFIG SHAPES FOR OVERLOAD DISCRIMINATION
-// =============================================================================
+/** A responsive art-direction override for one exact canvas. */
+export interface MediaEdition<TData, TContext> {
+  size: CanvasSize;
+  render?: (ctx: TContext) => RenderOutput;
+}
 
-/** A config that makes a template animated: both fps and duration are present. */
-export type AnimatedConfig = TemplateConfig & { fps: number; duration: Duration };
+type ReservedVariantField =
+  | "width"
+  | "height"
+  | "size"
+  | "fps"
+  | "duration"
+  | "temporal"
+  | "format"
+  | "codec"
+  | "path"
+  | "filename";
+
+/** A root-level shallow patch to data. Arrays and nested values replace. */
+export type MediaVariantPatch<TData> = Partial<TData> & {
+  readonly [K in ReservedVariantField]?: never;
+};
+
+export type MediaEditions<TData, TContext> = Readonly<
+  Record<string, MediaEdition<TData, TContext>>
+>;
+
+export type MediaVariants<TData> = Readonly<
+  Record<string, MediaVariantPatch<TData>>
+>;
+
+interface DefinitionExtras<TData, TContext> {
+  editions?: MediaEditions<TData, TContext>;
+  variants?: MediaVariants<TData>;
+}
 
 /**
- * Animated when `fps` is set and duration will come from `resolve` (or optional static duration).
- * Use with `define({ resolve, config: { fps } })`.
+ * The one canonical deterministic authoring value understood by compilers,
+ * players, collections, and adapters.
  */
-export type ResolveAnimatedConfig = TemplateConfig & { fps: number; duration?: Duration };
+export type MediaDefinition<
+  TData = JsonObject,
+  TKind extends DeterministicMediaKind = DeterministicMediaKind,
+  TContext = RenderContext<TData>,
+> = Omit<TemplateModule<TData>, "render"> &
+  DefinitionExtras<TData, TContext> & {
+    readonly kind: "media";
+    readonly media: TKind;
+    /** Format used only when no destination or custom rendition is requested. */
+    readonly fallbackFormat: DefaultMediaFormat<TKind>;
+    /** Authored frame time used only when an export explicitly requests a poster. */
+    readonly poster?: Duration;
+    /** Retained authored structure for a projected composition. */
+    readonly composition?: RetainedComposition;
+    render: (ctx: TContext) => RenderOutput;
+  };
 
-/** A static config (no required temporal fields). */
+export type VideoDefinition<TData = JsonObject> = MediaDefinition<
+  TData,
+  "video",
+  RenderContext<TData>
+> & { readonly animated: true; readonly medium: "html" };
+
+export type ImageDefinition<TData = JsonObject> = MediaDefinition<
+  TData,
+  "image",
+  ImageRenderContext<TData>
+> & { readonly animated: false; readonly medium: "html" };
+
+export type SvgDefinition<TData = JsonObject> = MediaDefinition<
+  TData,
+  "svg",
+  SvgRenderContext<TData>
+> & { readonly animated: false; readonly medium: "svg" };
+
+export type DeterministicMediaDefinition<TData = unknown> =
+  | MediaDefinition<TData, "video", RenderContext<TData>>
+  | MediaDefinition<TData, "image", ImageRenderContext<TData>>
+  | MediaDefinition<TData, "svg", SvgRenderContext<TData>>
+  | MediaDefinition<TData, "svg", SvgAnimatedRenderContext<TData>>;
+
+/** A config that makes a definition animated. */
+export type AnimatedConfig = TemplateConfig & { fps: number; duration: Duration };
+
+/** Animated when duration is supplied by `resolve()`. */
+export type ResolveAnimatedConfig = TemplateConfig & {
+  fps: number;
+  duration?: Duration;
+};
+
 export type StaticConfig = TemplateConfig;
 
-// =============================================================================
-// TEMPLATE MODULE NARROWING (animated literal true/false)
-// =============================================================================
-
-/** Template module known to be animated (config declares fps + duration). */
 export type AnimatedTemplateModule<
   TData = JsonObject,
   M extends Medium = Medium,
-> = TemplateModule<TData> & { readonly medium: M; readonly animated: true };
+> = MediaDefinition<
+  TData,
+  M extends "svg" ? "svg" : "video",
+  M extends "svg" ? SvgAnimatedRenderContext<TData> : RenderContext<TData>
+> & {
+  readonly medium: M;
+  readonly animated: true;
+};
 
-/** Template module known to be static (no fps/duration pair). */
 export type StaticTemplateModule<
   TData = JsonObject,
   M extends Medium = Medium,
-> = TemplateModule<TData> & { readonly medium: M; readonly animated: false };
+> = MediaDefinition<
+  TData,
+  M extends "svg" ? "svg" : "image",
+  M extends "svg" ? SvgRenderContext<TData> : ImageRenderContext<TData>
+> & {
+  readonly medium: M;
+  readonly animated: false;
+};
 
-// =============================================================================
-// define() INPUT — discriminated union (safe to store before calling define())
-// =============================================================================
+interface DefineShared<TData, TContext> extends DefinitionExtras<TData, TContext> {
+  sample?: TData;
+  resolve?: ResolveFn<TData>;
+  render: (ctx: TContext) => RenderOutput;
+}
 
-/** SVG template with fps + duration — animated vector output. */
-export interface DefineSvgAnimatedInput<TData = JsonObject> {
+export interface DefineSvgAnimatedInput<TData = JsonObject>
+  extends DefineShared<TData, SvgAnimatedRenderContext<TData>> {
   medium: "svg";
   config: AnimatedConfig | ResolveAnimatedConfig;
-  sample?: TData;
-  resolve?: ResolveFn<TData>;
-  render: (ctx: SvgAnimatedRenderContext<TData>) => string;
+  poster?: Duration;
 }
 
-/** Static SVG template — single-frame vector output. */
-export interface DefineSvgStaticInput<TData = JsonObject> {
+export interface DefineSvgStaticInput<TData = JsonObject>
+  extends DefineShared<TData, SvgRenderContext<TData>> {
   medium: "svg";
   config?: StaticConfig;
-  sample?: TData;
-  resolve?: ResolveFn<TData>;
-  render: (ctx: SvgRenderContext<TData>) => string;
+  poster?: never;
 }
 
-/** HTML template with fps + duration — video / GIF output. */
-export interface DefineHtmlAnimatedInput<TData = JsonObject> {
+export interface DefineHtmlAnimatedInput<TData = JsonObject>
+  extends DefineShared<TData, RenderContext<TData>> {
   medium?: "html";
   config: AnimatedConfig | ResolveAnimatedConfig;
-  sample?: TData;
-  resolve?: ResolveFn<TData>;
-  render: (ctx: RenderContext<TData>) => string;
+  poster?: Duration;
 }
 
-/** Static HTML template — still image output. */
-export interface DefineHtmlStaticInput<TData = JsonObject> {
+export interface DefineHtmlStaticInput<TData = JsonObject>
+  extends DefineShared<TData, ImageRenderContext<TData>> {
   medium?: "html";
   config?: StaticConfig;
-  sample?: TData;
-  resolve?: ResolveFn<TData>;
-  render: (ctx: ImageRenderContext<TData>) => string;
+  poster?: never;
 }
 
-/**
- * Unified `define()` input — mirrors the overload axes without `ctx: never`.
- * Safe to assign to a variable before passing to `define()`.
- */
 export type DefineInput<TData = JsonObject> =
   | DefineSvgAnimatedInput<TData>
   | DefineSvgStaticInput<TData>
@@ -154,91 +232,148 @@ export type DefineInput<TData = JsonObject> =
 
 export type { TailwindConfig, AssetDeclaration };
 
-// =============================================================================
-// define() — overloads narrow ctx and animated; impl is a typed identity.
-// =============================================================================
+export function define<TData>(
+  input: DefineSvgAnimatedInput<TData> & { resolve: ResolveFn<TData> },
+): AnimatedTemplateModule<TData, "svg">;
+export function define<TData>(
+  input: DefineSvgAnimatedInput<TData>,
+): AnimatedTemplateModule<TData, "svg">;
+export function define<TData>(
+  input: DefineSvgStaticInput<TData>,
+): StaticTemplateModule<TData, "svg">;
+export function define<TData>(
+  input: DefineHtmlAnimatedInput<TData> & { resolve: ResolveFn<TData> },
+): AnimatedTemplateModule<TData, "html">;
+export function define<TData>(
+  input: DefineHtmlAnimatedInput<TData>,
+): AnimatedTemplateModule<TData, "html">;
+export function define<TData>(
+  input: DefineHtmlStaticInput<TData>,
+): StaticTemplateModule<TData, "html">;
+export function define<TData>(input: DefineInput<TData>): MediaDefinition<TData>;
 
-// 1. SVG + animated (static duration)
-export function define<TData, C extends AnimatedConfig = AnimatedConfig>(input: {
-  medium: "svg";
-  config: C;
-  sample?: TData;
-  resolve?: ResolveFn<TData>;
-  render: (ctx: SvgAnimatedRenderContext<TData>) => string;
-}): AnimatedTemplateModule<TData, "svg">;
-
-// 1b. SVG + animated via resolve (duration optional at define-time)
-export function define<TData>(input: {
-  medium: "svg";
-  config: ResolveAnimatedConfig;
-  sample?: TData;
-  resolve: ResolveFn<TData>;
-  render: (ctx: SvgAnimatedRenderContext<TData>) => string;
-}): AnimatedTemplateModule<TData, "svg">;
-
-// 2. SVG + static
-export function define<TData, C extends StaticConfig = StaticConfig>(input: {
-  medium: "svg";
-  config?: C;
-  sample?: TData;
-  resolve?: ResolveFn<TData>;
-  render: (ctx: SvgRenderContext<TData>) => string;
-}): StaticTemplateModule<TData, "svg">;
-
-// 3. HTML + animated (static duration)
-export function define<TData, C extends AnimatedConfig = AnimatedConfig>(input: {
-  medium?: "html";
-  config: C;
-  sample?: TData;
-  resolve?: ResolveFn<TData>;
-  render: (ctx: RenderContext<TData>) => string;
-}): AnimatedTemplateModule<TData, "html">;
-
-// 3b. HTML + animated via resolve (duration optional at define-time)
-export function define<TData>(input: {
-  medium?: "html";
-  config: ResolveAnimatedConfig;
-  sample?: TData;
-  resolve: ResolveFn<TData>;
-  render: (ctx: RenderContext<TData>) => string;
-}): AnimatedTemplateModule<TData, "html">;
-
-// 4. HTML + static
-export function define<TData, C extends StaticConfig = StaticConfig>(input: {
-  medium?: "html";
-  config?: C;
-  sample?: TData;
-  resolve?: ResolveFn<TData>;
-  render: (ctx: ImageRenderContext<TData>) => string;
-}): StaticTemplateModule<TData, "html">;
-
-export function define(input: DefineInput): TemplateModule {
+export function define(input: DefineInput): MediaDefinition {
   const medium: Medium = input.medium ?? "html";
-  const c = input.config;
+  const config = input.config;
   const hasResolve = typeof input.resolve === "function";
-  // Animated when fps is set and duration is known now or will be supplied by resolve.
   const animated =
-    !!c && typeof c.fps === "number" && (c.duration != null || hasResolve);
+    !!config &&
+    typeof config.fps === "number" &&
+    (config.duration != null || hasResolve);
   return {
+    kind: "media",
+    media: medium === "svg" ? "svg" : animated ? "video" : "image",
+    fallbackFormat: medium === "svg" ? "svg" : animated ? "mp4" : "png",
     medium,
     animated,
-    render: input.render as TemplateModule["render"],
-    ...(input.config !== undefined ? { config: input.config } : {}),
+    render: input.render as MediaDefinition["render"],
+    ...(config !== undefined ? { config } : {}),
     ...(input.sample !== undefined ? { sample: input.sample } : {}),
-    ...(hasResolve ? { resolve: input.resolve } : {}),
+    ...(input.resolve !== undefined ? { resolve: input.resolve } : {}),
+    ...(input.editions !== undefined ? { editions: input.editions } : {}),
+    ...(input.variants !== undefined ? { variants: input.variants } : {}),
+    ...("poster" in input && input.poster !== undefined ? { poster: input.poster } : {}),
   };
 }
 
-/** Narrow a template module to animated (fps + duration at authoring time). */
-export function isAnimatedTemplate<TData>(
-  template: TemplateModule<TData>,
-): template is AnimatedTemplateModule<TData> {
-  return template.animated === true;
+interface SharedRecipe<TData, TContext> extends DefinitionExtras<TData, TContext> {
+  nativeModuleSets?: TemplateConfig["nativeModuleSets"];
+  size?: CanvasSize;
+  sample?: TData;
+  resolve?: ResolveFn<TData>;
+  render: (ctx: TContext) => RenderOutput;
+  fonts?: readonly FontInput[];
+  inlineCss?: string[];
+  stylesheets?: string[];
+  tailwind?: boolean | TailwindConfig;
+  readiness?: FrameReadinessPolicy;
+  assets?: Record<string, AssetDeclaration>;
+  background?: BackgroundValue;
+  watermark?: WatermarkValue;
+  audio?: AudioValue;
 }
 
-/** Narrow a template module to static (still / single-frame). */
+export interface VideoInput<TData = JsonObject>
+  extends SharedRecipe<TData, RenderContext<TData>> {
+  duration: Duration;
+  fps?: number;
+  temporal?: TemporalMode;
+  poster?: Duration;
+}
+
+export interface ImageInput<TData = JsonObject>
+  extends SharedRecipe<TData, ImageRenderContext<TData>> {}
+
+export interface SvgInput<TData = JsonObject>
+  extends SharedRecipe<TData, SvgRenderContext<TData>> {}
+
+function recipeConfig(
+  input: SharedRecipe<unknown, unknown>,
+  defaults: CanvasSize,
+): TemplateConfig {
+  const size = input.size ?? defaults;
+  return {
+    width: size.width,
+    height: size.height,
+    ...(input.fonts !== undefined ? { fonts: input.fonts } : {}),
+    ...(input.inlineCss !== undefined ? { inlineCss: input.inlineCss } : {}),
+    ...(input.stylesheets !== undefined ? { stylesheets: input.stylesheets } : {}),
+    ...(input.tailwind !== undefined ? { tailwind: input.tailwind } : {}),
+    ...(input.readiness !== undefined ? { readiness: input.readiness } : {}),
+    ...(input.assets !== undefined ? { assets: input.assets } : {}),
+    ...(input.nativeModuleSets !== undefined ? { nativeModuleSets: input.nativeModuleSets } : {}),
+    ...(input.background !== undefined ? { background: input.background } : {}),
+    ...(input.watermark !== undefined ? { watermark: input.watermark } : {}),
+    ...(input.audio !== undefined ? { audio: input.audio } : {}),
+  };
+}
+
+/** Concise animated-media recipe. Defaults to 1920x1080 at 30 fps. */
+export function video<TData = JsonObject>(input: VideoInput<TData>): VideoDefinition<TData> {
+  const config = {
+    ...recipeConfig(input as SharedRecipe<unknown, unknown>, { width: 1920, height: 1080 }),
+    fps: input.fps ?? 30,
+    duration: input.duration,
+    temporal: input.temporal ?? "once",
+  } satisfies AnimatedConfig;
+  return define({ ...input, medium: "html", config }) as VideoDefinition<TData>;
+}
+
+/** Concise raster still recipe. Defaults to 1920x1080. */
+export function image<TData = JsonObject>(input: ImageInput<TData>): ImageDefinition<TData> {
+  const config = recipeConfig(
+    input as SharedRecipe<unknown, unknown>,
+    { width: 1920, height: 1080 },
+  );
+  return define({ ...input, medium: "html", config }) as ImageDefinition<TData>;
+}
+
+/** Concise vector still recipe. Defaults to 1920x1080. */
+export function svg<TData = JsonObject>(input: SvgInput<TData>): SvgDefinition<TData> {
+  const config = recipeConfig(
+    input as SharedRecipe<unknown, unknown>,
+    { width: 1920, height: 1080 },
+  );
+  return define({ ...input, medium: "svg", config }) as SvgDefinition<TData>;
+}
+
+/** Open Graph still recipe. Defaults to 1200x630. */
+export function ogImage<TData = JsonObject>(input: ImageInput<TData>): ImageDefinition<TData> {
+  const config = recipeConfig(
+    input as SharedRecipe<unknown, unknown>,
+    { width: 1200, height: 630 },
+  );
+  return define({ ...input, medium: "html", config }) as ImageDefinition<TData>;
+}
+
+export function isAnimatedTemplate<TData>(
+  media: MediaDefinition<TData>,
+): media is AnimatedTemplateModule<TData> {
+  return media.animated === true;
+}
+
 export function isStaticTemplate<TData>(
-  template: TemplateModule<TData>,
-): template is StaticTemplateModule<TData> {
-  return template.animated === false;
+  media: MediaDefinition<TData>,
+): media is StaticTemplateModule<TData> {
+  return media.animated === false;
 }

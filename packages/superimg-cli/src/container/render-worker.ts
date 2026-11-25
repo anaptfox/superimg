@@ -1,8 +1,12 @@
 //! Killable container render worker. One job is executed at a time.
 
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { PlaywrightEngine } from "@superimg/node/internal";
-import type { EncodingOptions, RenderLimits } from "@superimg/types";
+import type {
+  EncodingOptions,
+  RenderLimits,
+} from "@superimg/types";
 import { renderFromBundle, type ManifestEntry } from "../render-from-bundle.js";
 import { createRenderPlan } from "@superimg/core/engine";
 import { buildRenderJob } from "../utils/build-render-job.js";
@@ -76,8 +80,8 @@ async function execute(message: Exclude<WorkerRequest, { type: "cancel" }>): Pro
         overrides: {},
       });
       const plan = await createRenderPlan(job, {
+        assetResolver: (name: string) => engine.registerAsset(resolve("assets", name)),
         resolvedAssets,
-        templateDir: "",
         ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),
         signal: controller.signal,
         ...(message.deadlineMs !== undefined ? { deadlineMs: message.deadlineMs } : {}),

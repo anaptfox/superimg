@@ -7,6 +7,7 @@ import {
   youtube,
 } from "./media.js";
 import { CLIP_SYNC_ATTR } from "./video.js";
+import { isMediaElement } from "./tree/h.js";
 
 function attr(html: string, name: string): string | undefined {
   return html.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1];
@@ -20,6 +21,7 @@ describe("std.media.video", () => {
     );
 
     expect(result.html).toContain("<video");
+    expect(isMediaElement(result)).toBe(true);
     expect(result.html).toContain(MEDIA_ATTR);
     expect(result.html).toContain(CLIP_SYNC_ATTR);
     expect(result.html).toContain('data-kind="video"');

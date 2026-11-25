@@ -7,6 +7,10 @@ import { clamp01 } from "./easing.js";
 import { interpolate } from "./interpolate.js";
 
 export interface StackOpts {
+  /** Stable stack id — required for Media IR compile. */
+  id?: string;
+  /** Per-item stable ids (same length as items) — required for Media IR. */
+  itemIds?: readonly string[];
   /** Parent progress 0–1 (typically `d.in("main")`). */
   during: number;
   lead?: number;

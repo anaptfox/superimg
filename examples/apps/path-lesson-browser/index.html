@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Choose a path</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: #142328; color: #f2eee5; font: 16px/1.5 system-ui, sans-serif; }
+      main { width: min(100% - 32px, 980px); margin: 7vh auto; }
+      h1 { margin: 0 0 4px; font-size: clamp(28px, 5vw, 44px); }
+      p { margin: 0 0 22px; color: #a8b8b2; }
+      #player { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #183a43; overflow: hidden; }
+      nav { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+      button { border: 1px solid #55746c; border-radius: 999px; padding: 10px 18px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+      button[aria-pressed="true"] { background: #f2b35f; border-color: #f2b35f; color: #142328; }
+      #route-status { margin-left: auto; color: #a8b8b2; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Choose your explanation</h1>
+      <p>The route is part of the URL. Both exports keep the same question and close at their own scheduled frame.</p>
+      <div id="player"></div>
+      <nav aria-label="Choose an explanation path">
+        <button id="beginner" type="button" aria-pressed="false">Beginner · 40 frames</button>
+        <button id="advanced" type="button" aria-pressed="false">Advanced · 80 frames</button>
+        <output id="route-status" aria-live="polite"></output>
+      </nav>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

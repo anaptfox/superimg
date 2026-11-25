@@ -182,7 +182,7 @@ export function inset(area: Box, pad: InsetPadding = {}): Box {
 
 /**
  * Content box inside a safe-area preset (broadcast, social, title, …).
- * Pair with std.css for flat HTML or use layers `{ safe: "social" }`.
+ * Pair with the Safe primitive or getSafeArea() for insets.
  */
 export function safeBox(
   width: number,

@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * import { easeOutCubic } from 'superimg/stdlib/easing';
+ * import { easeOutCubic } from '@foxworth/superimg/stdlib/easing';
  *
  * const progress = easeOutCubic(0.5); // 0.875
  * ```

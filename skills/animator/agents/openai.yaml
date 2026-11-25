@@ -1,0 +1,7 @@
+interface:
+  display_name: '/animator'
+  short_description: 'Animation design craft for SuperImg video templates — timing, easing, staggering, scene...'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$animator: This animation feels stiff — fix the motion'

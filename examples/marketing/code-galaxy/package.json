@@ -1,0 +1,7 @@
+{
+  "name": "superimg-example-code-galaxy",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@foxworth/superimg": "workspace:*", "three": "0.187.0" },
+  "devDependencies": { "@foxworth/superimg-cli": "workspace:*", "@types/three": "0.187.0" }
+}

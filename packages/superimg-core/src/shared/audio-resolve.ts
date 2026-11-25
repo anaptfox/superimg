@@ -9,7 +9,6 @@ import type {
   ResolvedAudioClip,
   ResolvedAudioMix,
   ResolvedAudioTimeline,
-  ResolvedScene,
   TranscriptWord,
 } from "@superimg/types";
 import { parseDuration } from "./utils.js";
@@ -18,6 +17,12 @@ export interface SceneBoundary {
   id: string;
   startSeconds: number;
   endSeconds: number;
+}
+
+interface FrameSceneBoundary {
+  readonly id: string;
+  readonly startFrame: number;
+  readonly endFrame: number;
 }
 
 export interface ResolveAudioContext {
@@ -197,7 +202,7 @@ function resolveMix(options?: AudioMixOptions): ResolvedAudioMix {
 }
 
 export function sceneBoundariesFromResolved(
-  scenes: readonly ResolvedScene[],
+  scenes: readonly FrameSceneBoundary[],
   fps: number,
 ): SceneBoundary[] {
   return scenes.map((s) => ({

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "algorithm": "sha256",
+  "package": {
+    "name": "@foxworth/boundary",
+    "version": "0.1.3"
+  },
+  "tarball": {
+    "filename": "foxworth-boundary-0.1.3.tgz",
+    "bytes": 230303,
+    "sha256": "sha256:fbada262314d37e81e1c0ff382ec3b7eae9ca92d5fef489f57f83cf82ccb0fb1"
+  },
+  "contentDigest": "sha256:f417eb306e71da74c115f1392fabb1bf2d995889359ecaa714c30b00e06dc2ba"
+}

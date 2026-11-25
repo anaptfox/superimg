@@ -1,7 +1,6 @@
 //! Probe director phase layout from a template without a full render pipeline.
 
-import type { AnyTemplateModule, ComposedTemplate, TemplateModule } from "@superimg/types";
-import { isComposedTemplate } from "@superimg/types";
+import type { AnyTemplateModule, RetainedComposition } from "@superimg/types";
 import {
   createDirector,
   layoutPhases,
@@ -21,27 +20,16 @@ export interface ProbePhasesOptions {
   data?: Record<string, unknown>;
 }
 
-function isComposed(
-  template: AnyTemplateModule | ComposedTemplate,
-): template is ComposedTemplate {
-  return isComposedTemplate(template);
-}
-
 /**
  * Run template.render once with a director wrapper that captures the first
  * phase config passed to ctx.director(...). Returns layoutPhases result, or
  * null if the template never calls director with phases.
  */
 export function probeDirectorPhases(
-  template: AnyTemplateModule | ComposedTemplate,
+  template: AnyTemplateModule,
   opts: ProbePhasesOptions = {},
 ): NormalizedPhase[] | null {
-  if (isComposed(template)) {
-    // Multi-scene compositions don't expose a single director layout at the root.
-    return null;
-  }
-
-  const mod = template as TemplateModule;
+  const mod = template;
   const config = mod.config;
   const fps = opts.fps ?? config?.fps ?? 30;
   let durationSeconds = opts.durationSeconds;
@@ -56,7 +44,8 @@ export function probeDirectorPhases(
   }
   const width = opts.width ?? config?.width ?? 1920;
   const height = opts.height ?? config?.height ?? 1080;
-  const totalFrames = Math.max(1, Math.ceil(durationSeconds * fps));
+  const composition = "composition" in mod ? mod.composition as RetainedComposition | undefined : undefined;
+  const totalFrames = composition?.schedule.totalFrames ?? Math.max(1, Math.ceil(durationSeconds * fps));
   const data = { ...(mod.sample ?? {}), ...(opts.data ?? {}) };
 
   const baseCtx = createRenderContext(
@@ -98,16 +87,14 @@ export function activePhaseAt(
 ): { phase: NormalizedPhase; phaseLocal: number } | null {
   if (phases.length === 0) return null;
   const p = Math.max(0, Math.min(1, progress));
-  const last = phases[phases.length - 1]!;
-  if (p >= 1) {
-    return { phase: last, phaseLocal: 1 };
-  }
   for (const ph of phases) {
-    if (p >= ph.start && p < ph.end) {
+    const containsEnd = p >= 1 && ph.end >= 1;
+    if (p >= ph.start && (p < ph.end || containsEnd)) {
       const span = ph.end - ph.start;
-      const phaseLocal = span <= 0 ? 1 : (p - ph.start) / span;
+      const phaseLocal = span <= 0 ? 1 : Math.min(1, (p - ph.start) / span);
       return { phase: ph, phaseLocal };
     }
   }
+  const last = phases[phases.length - 1]!;
   return { phase: last, phaseLocal: 1 };
 }

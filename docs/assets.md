@@ -29,7 +29,7 @@ my-template/
 ```
 
 ```typescript
-import { define } from 'superimg';
+import { define } from '@foxworth/superimg';
 
 export default define({
   render(ctx) {
@@ -50,7 +50,7 @@ No config needed. `ctx.asset()` returns a URL string for any file in the co-loca
 When you need asset metadata (dimensions, duration, file size), declare assets in `config.assets`. The runtime preloads them and makes metadata available via `ctx.assets`:
 
 ```typescript
-import { define } from 'superimg';
+import { define } from '@foxworth/superimg';
 
 export default define({
   config: {
@@ -59,8 +59,8 @@ export default define({
     fps: 30,
     duration: 5,
     assets: {
-      logo: '/images/logo.png',
-      hero: '/videos/hero.mp4',
+      logo: { url: '/images/logo.png' },
+      hero: { url: '/videos/hero.mp4' },
     },
   },
   render(ctx) {
@@ -78,16 +78,35 @@ export default define({
 
 ## Asset Declaration
 
-Assets can be declared in two forms:
+Assets are explicit URL or owned-byte declarations. Bare path strings are not
+accepted, so the runtime can freeze every dependency during preflight.
 
-### Shorthand (URL string)
+### Source ownership
+
+For CLI check/inspect/export and Node source interactions, declared local asset, audio and font paths
+resolve relative to the selected media source. They must stay inside its owning
+project. The host freezes those files into bytes before calling the value runtime,
+so invoking the command from another directory does not change those resources.
+
+Development preview also resolves local paths from the media source directory.
+It serves declared files through the asset registry and loads local font faces
+alongside browser-loaded Google Fonts.
+
+For browser hosts and imported composition children, supply portable bytes or
+HTTP(S) URLs, or bind an explicit source base when preparing a composition. A
+value passed directly to the runtime has no source filename from which to infer
+relative paths. Browser hosts may supply resolved font CSS through Player load
+options. Import `isMediaElement` alongside the `MediaElement` type from
+`@foxworth/superimg` when accepting a typed media tree in a host.
+
+### URL declaration
 
 ```typescript
 config: {
   assets: {
-    logo: '/images/logo.png',
-    bgVideo: '/videos/background.mp4',
-    music: '/audio/soundtrack.mp3',
+    logo: { url: '/images/logo.png' },
+    bgVideo: { url: '/videos/background.mp4' },
+    music: { url: '/audio/soundtrack.mp3' },
   }
 }
 ```
@@ -97,15 +116,15 @@ The asset type is auto-detected from the file extension:
 - **Videos:** `.mp4`, `.webm`, `.mov`, `.avi`, `.mkv`
 - **Audio:** `.mp3`, `.wav`, `.ogg`, `.aac`, `.m4a`, `.flac`, `.opus`
 
-### Explicit Declaration
+### Bytes declaration
 
-For URLs without extensions or to override auto-detection:
+Use caller-owned bytes when the media program already has the exact content:
 
 ```typescript
 config: {
   assets: {
-    avatar: { src: 'https://api.example.com/avatar', type: 'image' },
-    clip: { src: '/media/clip', type: 'video' },
+    avatar: { url: 'https://api.example.com/avatar', type: 'image' },
+    logo: { bytes: logoBytes, mimeType: 'image/png' },
   }
 }
 ```
@@ -159,7 +178,7 @@ interface AudioAssetMeta {
 
 ```typescript
 render(ctx) {
-  const { std, fps } = ctx;
+  const { std } = ctx;
   const { productImage, promo } = ctx.assets;
 
   // Use image dimensions for layout
@@ -175,7 +194,7 @@ render(ctx) {
       <img src="${productImage.url}"
            style="aspect-ratio: ${productImage.width}/${productImage.height}">
     </div>
-    ${showVideo ? std.video.sync({ src: promo.url, at: ctx.timeline.seconds }, ctx.fps).html : ''}
+    ${showVideo ? std.video.sync({ src: promo.url, at: ctx.timeline.seconds }).html : ''}
   `;
 }
 ```
@@ -187,7 +206,7 @@ render(ctx) {
 For templates where asset URLs come from data (e.g., user-provided images), pass assets as data properties:
 
 ```typescript
-import { define } from 'superimg';
+import { define } from '@foxworth/superimg';
 
 export default define<{
   title: string;
@@ -237,9 +256,9 @@ For predictable renders, declare all assets your template uses:
 ```typescript
 config: {
   assets: {
-    logo: '/images/logo.png',
-    background: '/images/bg.jpg',
-    icon: '/images/icon.svg',
+    logo: { url: '/images/logo.png' },
+    background: { url: '/images/bg.jpg' },
+    icon: { url: '/images/icon.svg' },
   }
 }
 ```
@@ -283,13 +302,13 @@ Headless render cannot rely on `<video autoplay>`. Use `std.video.sync` — it e
 
 ```typescript
 render(ctx) {
-  const { std, fps } = ctx;
+  const { std } = ctx;
   const { intro } = ctx.assets;
 
   const introDone = ctx.timeline.seconds > intro.duration;
   if (introDone) return `<div class="content">...</div>`;
 
-  const clip = std.video.sync({ src: intro.url, at: ctx.timeline.seconds }, fps);
+  const clip = std.video.sync({ src: intro.url, at: ctx.timeline.seconds });
   return clip.html;
 }
 ```

@@ -2,7 +2,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import type { RuntimeStore } from "../../index.browser.js";
+import type { RuntimeStore } from "@superimg/media";
 
 export interface PlayButtonProps {
   /** The player store to control */
@@ -39,7 +39,7 @@ function PauseIcon({ size }: { size: number }) {
 }
 
 /**
- * A play/pause button that syncs with a PlayerStore.
+ * A play/pause button that syncs with a session-backed RuntimeStore.
  *
  * @example
  * ```tsx

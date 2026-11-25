@@ -27,11 +27,13 @@
     "@superimg/core": "workspace:*",
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
+    "dompurify": "^3.4.18",
     "morphdom": "^2.7.8"
   },
   "devDependencies": {
     "@superimg/build-config": "workspace:*",
-    "happy-dom": "^20.10.6",
-    "vitest": "^4.1.9"
+    "happy-dom": "catalog:",
+    "jsdom": "^31.0.0",
+    "vitest": "catalog:"
   }
 }

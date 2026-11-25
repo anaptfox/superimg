@@ -8,7 +8,7 @@
  * director phases · plot progress · equationSteps/Match ·
  * indicate · camera.autoZoom · dual curves
  */
-import { define } from "superimg";
+import { define, Html, googleFont } from "@foxworth/superimg";
 
 /**
  * Percent phases (sum 100%) so director is robust for full video + single-frame stills.
@@ -35,7 +35,7 @@ export default define({
     fps: 30,
     duration: 12,
     background: "#0b1020",
-    fonts: ["IBM+Plex+Sans:wght@400;600"],
+    fonts: [googleFont("IBM+Plex+Sans:wght@400;600")],
     inlineCss: [
       `* { margin: 0; box-sizing: border-box; }`,
       `body { font-family: "IBM Plex Sans", system-ui, sans-serif; background: #0b1020; overflow: hidden; }`,
@@ -80,8 +80,8 @@ export default define({
       );
     }
     if (cosP > 0 || holdP > 0) {
-      // pull back to ~0.25 so both curves fit
-      const back = std.interpolate(Math.max(cosP, holdP), [0, 1], [1, 0.22], "easeInOutCubic");
+      // Return to the authored full-graph view so both curves fit.
+      const back = std.interpolate(Math.max(cosP, holdP), [0, 1], [1, 0], "easeInOutCubic");
       camProgress = back;
     }
     const peakBox = {
@@ -145,14 +145,9 @@ export default define({
       : "";
 
     // Horizontal tangent (slope = 0 at peak) during peak/zoom; fade on match→cos
-    const tanP =
-      peakP > 0
-        ? std.interpolate(peakP, [0, 0.35], [0, 1], "easeOutCubic")
-        : zoomP > 0
-          ? 1
-          : matchP > 0
-            ? 1 - matchP
-            : 0;
+    // Completed phases clamp to 1: multiply the arrival by the later fade,
+    // rather than letting a completed peak branch hide every later phase.
+    const tanP = std.interpolate(peakP, [0, 0.35], [0, 1], "easeOutCubic") * (1 - matchP);
     let tangent = "";
     if (tanP > 0.02) {
       const left = coords.toPixel(peakX - 0.85, peakY);
@@ -166,20 +161,13 @@ export default define({
         stroke="#fbbf24" stroke-width="3" stroke-linecap="round" opacity="${(0.95 * tanP).toFixed(3)}" ${dash}/>`;
     }
 
-    const peakRing =
-      peakP > 0.15 || zoomP > 0
-        ? std.viz.indicate.circle(
-            { x: peakPx.px - 48, y: peakPx.py - 48, width: 96, height: 96 },
-            peakP > 0
-              ? std.interpolate(peakP, [0.15, 0.55], [0, 1], "easeOutCubic")
-              : zoomP > 0
-                ? 0.7
-                : matchP > 0
-                  ? Math.max(0, 0.5 - matchP)
-                  : 0,
-            { color: "#fbbf24", strokeWidth: 2.5 },
-          )
-        : "";
+    const peakRing = peakP > 0.15 && matchP < 1
+      ? `<g opacity="${1 - matchP}">${std.viz.indicate.circle(
+          { x: peakPx.px - 48, y: peakPx.py - 48, width: 96, height: 96 },
+          std.interpolate(peakP, [0.15, 0.55], [0, 1], "easeOutCubic"),
+          { color: "#fbbf24", strokeWidth: 2.5 },
+        )}</g>`
+      : "";
 
     // Equations — name hold fully settled; match only after peak story
     let eqHtml = "";
@@ -221,7 +209,7 @@ export default define({
     // Legend when cos visible
     const legendOp = cosReveal > 0.3 ? std.interpolate(cosReveal, [0.3, 0.6], [0, 1], "easeOutCubic") : 0;
 
-    return `
+    return Html({ id: "sine-derivative", width: "fill", height: "fill", html: `
       <div style="${std.css({
         width,
         height,
@@ -229,6 +217,7 @@ export default define({
         overflow: "hidden",
         background: "#0b1020",
       })}">
+        <!-- Camera moves the graph; explanatory labels stay in screen space. -->
         <div style="${cam.style};width:${width}px;height:${height}px">
           <svg width="${width}" height="${height}" style="position:absolute;inset:0">
             ${grid}
@@ -240,10 +229,6 @@ export default define({
             ${peakRing}
           </svg>
 
-          <div style="position:absolute;top:40px;left:0;right:0;text-align:center;opacity:${titleOp};color:#94a3b8;font-size:17px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600">
-            ${ctx.data.title}
-          </div>
-
           ${
             slopeNoteOp > 0.02
               ? `<div style="position:absolute;left:${peakPx.px + 28}px;top:${peakPx.py - 52}px;opacity:${Math.max(0, slopeNoteOp).toFixed(3)};color:#fde68a;font-size:22px;font-weight:600;white-space:nowrap">
@@ -251,6 +236,12 @@ export default define({
                 </div>`
               : ""
           }
+
+        </div>
+
+          <div style="position:absolute;top:40px;left:0;right:0;text-align:center;opacity:${titleOp};color:#94a3b8;font-size:17px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600">
+            ${std.text.escapeHtml(ctx.data.title)}
+          </div>
 
           ${
             legendOp > 0.02
@@ -264,8 +255,7 @@ export default define({
           <div style="position:absolute;bottom:64px;left:0;right:0;display:flex;justify-content:center;min-height:64px;align-items:center">
             ${eqHtml}
           </div>
-        </div>
       </div>
-    `;
+    ` });
   },
 });

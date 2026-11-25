@@ -1,0 +1,9 @@
+---
+name: superimg-brief
+description: Structure a SuperImg video brief
+---
+
+# /superimg-brief
+
+Load and follow the **superimg-brief** skill. Turn the current request into a
+structured brief (audience, beats, format, tone, must-show facts).

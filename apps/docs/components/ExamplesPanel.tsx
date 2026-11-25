@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/hover-card";
 import { Input } from "@/components/ui/input";
 import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Player } from "superimg/react/player";
+import { Player } from "@foxworth/superimg/react/player";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePlaygroundExample } from "@/lib/playground/example";
 import {
   EXAMPLE_CATEGORIES,
   getExamplesByCategory,
@@ -25,6 +26,24 @@ import {
 interface ExamplesPanelProps {
   onSelectExample: (example: EditorExample) => void;
   activeExampleId?: string;
+}
+
+function ExampleHoverPreview({ example }: { example: EditorExample }) {
+  const { media, assets, assetResolver } = usePlaygroundExample(example, {
+    preview: true,
+  });
+
+  return (
+    <Player
+      media={media ?? undefined}
+      assets={assets}
+      assetResolver={assetResolver}
+      size={{ width: 1920, height: 1080 }}
+      playbackMode="loop"
+      autoPlay
+      style={{ width: "100%", aspectRatio: "16/9" }}
+    />
+  );
 }
 
 export function ExamplesPanel({
@@ -121,14 +140,7 @@ export function ExamplesPanel({
                     </HoverCardTrigger>
                     {!isMobile && (
                       <HoverCardContent side="right" className="w-[320px] p-0">
-                        <Player
-                          code={example.code}
-                          format="horizontal"
-                          playbackMode="loop"
-                          autoPlay
-                          compileDebounceMs={150}
-                          style={{ width: "100%", aspectRatio: "16/9" }}
-                        />
+                        <ExampleHoverPreview example={example} />
                         <div className="p-3 text-sm font-medium">
                           {example.title}
                         </div>

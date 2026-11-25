@@ -1,17 +1,15 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Page } from "playwright";
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sync } from "@superimg/stdlib/video";
 import { video as mediaVideo, youtube as mediaYoutube } from "@superimg/stdlib/media";
-import { PlaywrightFrameRenderer } from "./adapters.js";
+import { PlaywrightRasterizer } from "./adapters.js";
 import type { FrameExtractorBackend } from "./frame-extractor.js";
 import { FrameExtractor } from "./frame-extractor.js";
 
-const countdownMp4 = join(
-  fileURLToPath(new URL(".", import.meta.url)),
-  "../../../examples/marketing/countdown/output.mp4",
-);
+// The static backend only needs an existing local path; it never reads video bytes.
+const fixturePath = fileURLToPath(import.meta.url);
 
 const TINY_PNG = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
@@ -35,14 +33,23 @@ class StaticPngBackend implements FrameExtractorBackend {
 type InjectClipFrames = (html: string) => Promise<string>;
 
 async function injectClips(html: string): Promise<string> {
-  const renderer = new PlaywrightFrameRenderer({} as Page, false, new FrameExtractor(new StaticPngBackend()));
+  const renderer = new PlaywrightRasterizer({} as Page, false, new FrameExtractor(new StaticPngBackend()));
   return (renderer as unknown as { injectClipFrames: InjectClipFrames }).injectClipFrames(html);
 }
 
-describe("PlaywrightFrameRenderer clip injection", () => {
+describe("PlaywrightRasterizer Html scripts", () => {
+  it("re-inserts <script> after innerHTML so export Chromium runs Html() scripts", () => {
+    const src = readFileSync(new URL("./adapters.ts", import.meta.url), "utf8");
+    expect(src).toContain("el.innerHTML = h");
+    expect(src).toContain('el.querySelectorAll("script")');
+    expect(src).toContain("old.replaceWith(s)");
+  });
+});
+
+describe("PlaywrightRasterizer clip injection", () => {
   it("preserves width/height/object-fit style from sync placeholder", async () => {
     const clip = sync(
-      { src: countdownMp4, at: 1, width: 640, height: 360, objectFit: "cover" },
+      { src: fixturePath, at: 1, width: 640, height: 360, objectFit: "cover" },
       30,
     );
     const injected = await injectClips(clip.html);
@@ -52,7 +59,7 @@ describe("PlaywrightFrameRenderer clip injection", () => {
   });
 
   it("strips clip extraction attrs after injection", async () => {
-    const clip = sync({ src: countdownMp4, at: 0.5 }, 30);
+    const clip = sync({ src: fixturePath, at: 0.5 }, 30);
     const injected = await injectClips(clip.html);
 
     expect(injected).not.toContain("data-superimg-clip");
@@ -63,7 +70,7 @@ describe("PlaywrightFrameRenderer clip injection", () => {
 
   it("injects frames for native std.media.video markers", async () => {
     const clip = mediaVideo(
-      { src: countdownMp4, at: 1, width: 640, height: 360, fit: "contain" },
+      { src: fixturePath, at: 1, width: 640, height: 360, fit: "contain" },
       30,
     );
     const injected = await injectClips(clip.html);

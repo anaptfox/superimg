@@ -1,5 +1,9 @@
 //! Package manager detection and command helpers
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { findProjectRoot, findWorkspaceRoot } from "./find-project-root.js";
+
 export type PackageManager = "npm" | "yarn" | "pnpm" | "bun";
 
 interface PackageManagerCommands {
@@ -10,10 +14,10 @@ interface PackageManagerCommands {
 }
 
 const PM_COMMANDS: Record<PackageManager, PackageManagerCommands> = {
-  npm:  { install: "npm install",  add: "npm install superimg",  exec: "npx",       run: "npm run" },
-  yarn: { install: "yarn",         add: "yarn add superimg",     exec: "yarn",      run: "yarn" },
-  pnpm: { install: "pnpm install", add: "pnpm add superimg",    exec: "pnpm exec", run: "pnpm run" },
-  bun:  { install: "bun install",  add: "bun add superimg",     exec: "bunx",      run: "bun run" },
+  npm:  { install: "npm install",  add: "npm install @foxworth/superimg",  exec: "npx",       run: "npm run" },
+  yarn: { install: "yarn",         add: "yarn add @foxworth/superimg",     exec: "yarn",      run: "yarn" },
+  pnpm: { install: "pnpm install", add: "pnpm add @foxworth/superimg",    exec: "pnpm exec", run: "pnpm run" },
+  bun:  { install: "bun install",  add: "bun add @foxworth/superimg",     exec: "bunx",      run: "bun run" },
 } satisfies Record<PackageManager, PackageManagerCommands>;
 
 const PM_ADD_PATTERNS: Record<PackageManager, (pkgs: string[]) => string> = {
@@ -40,13 +44,63 @@ export function detectPackageManager(): PackageManager {
 /**
  * Resolve the package manager to use, with optional override from a CLI flag.
  */
-export function resolvePackageManager(override?: string): PackageManager {
+export function resolvePackageManager(override?: string, cwd = process.cwd()): PackageManager {
   if (override) {
     const lower = override.toLowerCase() as PackageManager;
     if (VALID_PACKAGE_MANAGERS.includes(lower)) return lower;
-    console.warn(`Unknown package manager "${override}". Valid: ${VALID_PACKAGE_MANAGERS.join(", ")}. Falling back to auto-detect.`);
+    throw new Error(`Unknown package manager "${override}". Valid: ${VALID_PACKAGE_MANAGERS.join(", ")}.`);
   }
-  return detectPackageManager();
+
+  let packageRoot: string | null = null;
+  try {
+    packageRoot = findProjectRoot(cwd);
+  } catch {
+    // A fresh standalone target may not exist yet and therefore have no owner.
+  }
+  const workspaceRoot = findWorkspaceRoot(cwd);
+  const packagePin = packageRoot ? readPackageManagerPin(packageRoot) : null;
+  const workspacePin = workspaceRoot && workspaceRoot !== packageRoot
+    ? readPackageManagerPin(workspaceRoot)
+    : null;
+
+  if (packagePin && workspacePin && packagePin !== workspacePin) {
+    throw new Error(`Package manager conflict: ${packageRoot}/package.json declares ${packagePin}, but workspace ${workspaceRoot}/package.json declares ${workspacePin}. Align the packageManager fields or pass --pm explicitly.`);
+  }
+
+  const pinned = packagePin ?? workspacePin;
+  const pinRoot = packagePin ? packageRoot : workspaceRoot;
+  const lockfileRoot = workspaceRoot ?? packageRoot;
+  const lockfileManagers = lockfileRoot ? managersFromLockfiles(lockfileRoot) : [];
+  if (lockfileManagers.length > 1) {
+    throw new Error(`Conflicting package-manager lockfiles in ${lockfileRoot}: ${lockfileManagers.join(", ")}. Keep the intended lockfile or pass --pm explicitly.`);
+  }
+  const lockfileManager = lockfileManagers[0];
+  if (pinned && lockfileManager && pinned !== lockfileManager) {
+    throw new Error(`${pinRoot}/package.json pins ${pinned}, but ${lockfileRoot} contains a ${lockfileManager} lockfile. Align them or pass --pm explicitly.`);
+  }
+
+  return pinned ?? lockfileManager ?? detectPackageManager();
+}
+
+function readPackageManagerPin(root: string): PackageManager | null {
+  try {
+    const value = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).packageManager;
+    if (typeof value !== "string") return null;
+    const name = value.split("@")[0]?.toLowerCase() as PackageManager | undefined;
+    return name && VALID_PACKAGE_MANAGERS.includes(name) ? name : null;
+  } catch {
+    return null;
+  }
+}
+
+const LOCKFILES: ReadonlyArray<readonly [string, PackageManager]> = [
+  ["package-lock.json", "npm"], ["npm-shrinkwrap.json", "npm"],
+  ["yarn.lock", "yarn"], ["pnpm-lock.yaml", "pnpm"],
+  ["bun.lock", "bun"], ["bun.lockb", "bun"],
+];
+
+function managersFromLockfiles(root: string): PackageManager[] {
+  return [...new Set(LOCKFILES.filter(([name]) => existsSync(join(root, name))).map(([, pm]) => pm))];
 }
 
 /**

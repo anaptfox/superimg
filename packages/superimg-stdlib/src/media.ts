@@ -1,5 +1,6 @@
 import { css } from "./css.js";
 import { CLIP_SYNC_ATTR, quantizeVideoTime } from "./video.js";
+import { Html, Video } from "./tree/primitives.js";
 
 export const MEDIA_ATTR = "data-superimg-media";
 export const EXTERNAL_EMBED_ATTR = "data-superimg-external-embed";
@@ -91,13 +92,27 @@ export function video(options: MediaVideoOptions, fps: number): MediaVideoResult
     `style="${style}"`,
   ].filter(Boolean);
 
-  return {
-    kind: "video",
-    time,
-    frameIndex,
-    html: `<video ${attrs.join(" ")}></video>`,
-    style,
-  };
+  const html = `<video ${attrs.join(" ")}></video>`;
+
+  return Object.assign(
+    Video({
+      src,
+      html,
+      fit: objectFit,
+      muted,
+      loop,
+      ...(typeof width === "number" ? { width } : { width: "fill" }),
+      ...(typeof height === "number" ? { height } : { height: "fill" }),
+      ...(poster !== undefined ? { poster } : {}),
+    }),
+    {
+      kind: "video" as const,
+      time,
+      frameIndex,
+      html,
+      style,
+    },
+  );
 }
 
 export function youtube(options: MediaYoutubeOptions, fps: number): MediaYoutubeResult {
@@ -141,15 +156,20 @@ export function youtube(options: MediaYoutubeOptions, fps: number): MediaYoutube
     `style="${style}"`,
   ].filter(Boolean);
 
-  return {
-    kind: "youtube",
-    videoId,
-    time,
-    frameIndex,
-    embedUrl,
-    html: `<iframe ${attrs.join(" ")}></iframe>`,
-    style,
-  };
+  const html = `<iframe ${attrs.join(" ")}></iframe>`;
+
+  return Object.assign(
+    Html({ html, width: "fill", height: "fill" }),
+    {
+      kind: "youtube" as const,
+      videoId,
+      time,
+      frameIndex,
+      embedUrl,
+      html,
+      style,
+    },
+  );
 }
 
 export function extractYoutubeId(input: string): string | null {

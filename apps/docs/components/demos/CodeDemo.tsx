@@ -9,13 +9,13 @@ const InteractiveCodeDemo = dynamic(
 );
 
 interface CodeDemoProps {
-  templateId: string;
+  exampleId: string;
 }
 
-export function CodeDemo({ templateId }: CodeDemoProps) {
+export function CodeDemo({ exampleId }: CodeDemoProps) {
   return (
-    <DeferredDemo label={`Interactive code example: ${templateId}`}>
-      <InteractiveCodeDemo templateId={templateId} />
+    <DeferredDemo label={`Interactive code example: ${exampleId}`}>
+      <InteractiveCodeDemo exampleId={exampleId} />
     </DeferredDemo>
   );
 }

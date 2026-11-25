@@ -1,63 +1,30 @@
 # Hello World Example
 
-An animated title card that fades in, holds, and fades out — a great starting point for learning SuperImg.
+The smallest complete media program: a two-ink riso print where the bars register, the line lands, and the page holds.
 
 ## Quick Start
 
 ```bash
-# Development mode (browser preview with hot reload)
-pnpm dev
-
-# Render a specific preset
-pnpm render --preset youtube   # 1920x1080
-pnpm render --preset reels     # 1080x1920
-
-# Render all presets at once
-pnpm render --all              # Both youtube + reels
+npx superimg check examples/basics/hello-world/hello-world.media.ts --pretty
+npx superimg export examples/basics/hello-world/hello-world.media.ts --for youtube
+npx superimg dev examples/basics/hello-world/hello-world.media.ts
 ```
 
 ## What You'll Learn
 
-This template demonstrates six stdlib functions across three modules:
+- `ctx.director()` with explicit enter, hold, and exit phases
+- `t.motion()` for a staggered slug → title → caption cascade
+- `t.tween()` driving the width of the two ink bars, offset by a beat
+- `Frame` / `Stack` / `Text` / `Fill` layout instead of raw markup
+- Data-driven title and accent ink through `sample`
 
-| Function | What it does here |
-|----------|-------------------|
-| `std.interpolate(p, [0, 1], [a, b], easing)` | Eased interpolation for opacity, position, and line width |
-| `std.math.clamp(val, 0, 1)` | Create timed animation phases (enter/hold/exit) |
-| `std.color.lighten(color, amount)` | Derive a lighter accent for gradient text |
-| `std.color.mix(c1, c2, weight)` | Blend accent with white for a glow effect |
-| `std.color.alpha(color, opacity)` | Semi-transparent accent lines and glow |
-
-It also demonstrates **responsive layout** using `ctx.isPortrait` to adjust font sizes and spacing for different aspect ratios.
-
-## Output Presets
-
-This template defines two output presets via `config.outputs`:
-
-| Preset | Resolution | Aspect Ratio |
-|--------|-----------|--------------|
-| `youtube` | 1920x1080 | 16:9 (landscape) |
-| `reels` | 1080x1920 | 9:16 (portrait) |
+The media program uses its default 1920×1080 canvas. Export can request any destination or custom size. Embed the same program with the Player when you need it live in an app.
 
 ## Customize It
 
-This template uses `sample` inside `define`. Override values by passing data, or edit the sample in the template file:
-
-```js
-export default define({
-  sample: {
-    title: "Hello, SuperImg!",
-    subtitle: "Create stunning videos from code",
-    accentColor: "#667eea",
-  },
-  // ...
-});
-```
-
-Try different accent colors: `#f093fb` (pink), `#4fd1c5` (teal), `#f6ad55` (orange).
+Edit `sample.title` and `sample.accent`, or supply live Player data. To batch-materialize many prints, wrap the media in `collection({ entries, media })`.
 
 ## Next Steps
 
-- [countdown](../countdown) — Countdown timer with particle effects
-- [server-ts](../server-ts) — TypeScript template with full types
-- [assets-demo](../assets-demo) — Backgrounds, audio, and template defaults
+- [Compose Demo](../compose-demo/) — three scenes cut into one short film
+- [Responsive Demo](../responsive-demo/) — one program, two art-directed canvases

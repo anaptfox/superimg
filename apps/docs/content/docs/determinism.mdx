@@ -1,0 +1,47 @@
+# Determinism and non-goals
+
+SuperImg media programs are a **pure function of time**: `render(ctx)` returns a typed media tree for a given frame. The same program + data + progress produces the same tree and lowered output, so seek, inspect, and export stay aligned.
+
+## The model
+
+```
+timeline / progress  →  render(ctx)  →  media tree  →  HTML or SVG
+```
+
+Motion comes from **director**, **stdlib**, and math on `timeline` — not from wall-clock CSS animations or timers that run differently under seek.
+
+## Do
+
+- Use `ctx.director()`, `timeline.progress` / `timeline.seconds`, `std.stack` / `std.carousel` / motion helpers
+- Put defaults in `sample`; supply live `data` at Player load or use a deterministic collection for batch materialization
+- Use `resolve()` when duration/phases depend on data
+- Keep assets local or declared (`ctx.asset`, `config.assets`, `config.fonts`)
+
+## Don’t (footguns)
+
+| Avoid | Why |
+|-------|-----|
+| CSS `@keyframes` / wall-clock `animation` as the motion API | Not seek-stable; Player scrub and frame export diverge |
+| `Date.now()`, unseeded `Math.random()` | Non-reproducible frames |
+| Network fetches inside `render()` | Flaky CI and export |
+| Unitless motion times (`at: 0.2`) | Must be `"0.2s"` / `"30%"` |
+| `ctx.director()` on static image/svg (no fps/duration) | Temporal API on still medium |
+| Scene-local animation driven by `ctx.globalFrame` | Prefer `timeline` / director (globals are for multi-scene compose) |
+
+`superimg check` reports many of these as named issue codes.
+
+## Non-goals (v1 scope)
+
+These are intentional exclusions — not “missing forever,” but **not** the SuperImg wedge:
+
+- Visual Studio → source codemods (Remotion-style visual editor writing files)
+- Primary motion via GSAP / Framer / multi-runtime seek adapters
+- Managed Lambda / hosted render SaaS as the required path (self-host / BYO fleet)
+- After Effects or full NLE parity
+- Scaffold-first workflows as the only onboarding path
+
+## Related
+
+- [Comparison](/docs/comparison) — how this differs from Remotion, HyperFrames, Helios, Motion Canvas
+- [Node API](/docs/node-api) — discovery and atomic export
+- [CLI](/docs/cli) — `check` / `inspect`

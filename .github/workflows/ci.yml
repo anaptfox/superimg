@@ -1,11 +1,12 @@
+# CI is testing-only. Publishing to npm is manual via `just release` /
+# `just publish` from a maintainer machine — never add npm publish steps,
+# tokens, or id-token permissions to any workflow.
 name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
-  release:
-    types: [published]
 
 permissions:
   contents: read
@@ -22,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6.1.1
 
       - uses: actions/setup-node@v4
         with:
@@ -40,6 +41,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium for the test suites
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Validate Turbo graph
         run: |

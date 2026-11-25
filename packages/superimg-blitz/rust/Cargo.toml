@@ -1,0 +1,41 @@
+[package]
+name = "superimg_blitz"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89.0"
+license = "MIT"
+publish = false
+description = "Wasm HTML rasterizer for SuperImg, wrapping published Blitz crates"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Published Blitz 0.3.0-beta.1 (crates.io). Do not path-dep the /tmp clone.
+blitz-dom = { version = "0.3.0-beta.1", default-features = false, features = ["woff", "svg", "incremental"] }
+blitz-html = "0.3.0-beta.1"
+blitz-paint = { version = "0.3.0-beta.1", default-features = false, features = ["svg"] }
+blitz-traits = "0.3.0-beta.1"
+
+# anyrender 0.11 matches published blitz-paint; vello_cpu 0.14 is the matching backend.
+anyrender = "0.11"
+anyrender_vello_cpu = { version = "0.14", default-features = false }
+
+parley = { version = "0.10", default-features = false, features = ["std"] }
+peniko = "0.6"
+png = "0.18"
+base64 = "0.22"
+percent-encoding = "2.3"
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+getrandom_03 = { package = "getrandom", version = "0.3", features = ["wasm_js"] }
+
+[profile.release]
+# Speed over size: hello-world 1080p capture is ~10ms/frame at 3 vs ~100ms at "z".
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

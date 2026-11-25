@@ -10,12 +10,12 @@ describe("ctx.asset()", () => {
   it("returns resolved URL when resolver is provided", () => {
     const resolver = (filename: string) =>
       `http://localhost:3000/assets/opaque-${filename}`;
-    const ctx = createRenderContext(0, 30, 60, 1920, 1080, {}, "default", {}, resolver);
+    const ctx = createRenderContext(0, 30, 60, 1920, 1080, {}, {}, resolver);
     expect(ctx.asset("logo.png")).toBe("http://localhost:3000/assets/opaque-logo.png");
   });
 
   it("is independent from ctx.assets", () => {
-    const ctx = createRenderContext(0, 30, 60, 1920, 1080, {}, "default", {
+    const ctx = createRenderContext(0, 30, 60, 1920, 1080, {}, {
       brandMark: { type: "image" as const, url: "http://example.com/brand.png", mimeType: "image/png", size: 1024, width: 100, height: 100 },
     });
     expect(ctx.asset("brand.png")).toBe("brand.png");

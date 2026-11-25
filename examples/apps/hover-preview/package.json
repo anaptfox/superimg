@@ -11,9 +11,9 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "superimg": "workspace:*"
+    "@foxworth/superimg": "workspace:*"
   },
   "devDependencies": {
-    "vite": "^8.1.0"
+    "vite": "catalog:"
   }
 }

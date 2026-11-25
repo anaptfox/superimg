@@ -3,8 +3,8 @@ import {
   SuperImgError,
   TemplateRuntimeError,
   TemplateCompilationError,
-  type RenderContext,
 } from "@superimg/types";
+import { createRenderContext } from "../../rendering/create-render-context.js";
 import { enrichError } from "../enrich.js";
 import type { RollupError } from "../guards.js";
 
@@ -20,14 +20,14 @@ import { bundleTemplateCodeWithMap } from "../../bundler/bundler.js";
 
 describe("enrichError", () => {
   it("augments an existing SuperImgError with mapped location + codeFrame", async () => {
-    const userSource = `import { define } from "superimg";
+    const userSource = `import { define, Html } from "@foxworth/superimg";
 
 export default define({
   render(ctx) {
-    if (ctx.frame === 0) {
+    if (ctx.timeline.frame === 0) {
       throw new Error("kaboom");
     }
-    return "<div>ok</div>";
+    return Html({ width: "fill", height: "fill", html: "<div>ok</div>" });
   },
 });
 `;
@@ -40,21 +40,7 @@ export default define({
 
     let caught: Error | undefined;
     try {
-      tpl.render({
-        frame: 0,
-        globalFrame: 0,
-        timelineFrame: 0,
-        timelineSeconds: 0,
-        timelineProgress: 0,
-        globalTimeSeconds: 0,
-        fps: 30,
-        totalFrames: 1,
-        width: 100,
-        height: 100,
-        sample: {},
-        outputName: "test",
-        assets: {},
-      } as RenderContext);
+      tpl.render(createRenderContext(0, 30, 1, 100, 100, {}));
     } catch (e) {
       caught = e as Error;
     }
@@ -142,14 +128,14 @@ export default define({
     // Build a real bundle so we have a real sourcemap, then synthesize a stack
     // whose top frame is a `blob:` URL pointing at a known generated position.
     const { bundleTemplateCodeWithMap } = await import("../../bundler/bundler.js");
-    const userSource = `import { define } from "superimg";
+    const userSource = `import { define, Html } from "@foxworth/superimg";
 
 export default define({
   render(ctx) {
-    if (ctx.frame === 0) {
+    if (ctx.timeline.frame === 0) {
       throw new Error("from blob");
     }
-    return "<div>x</div>";
+    return Html({ width: "fill", height: "fill", html: "<div>x</div>" });
   },
 });
 `;

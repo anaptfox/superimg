@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "study": "aster-basin",
+  "method": "low resonant filtered movement and modal buoy tones",
+  "seed": "345abcde",
+  "sampleRate": 48000,
+  "samplesPerFrame": 1600,
+  "channels": 2,
+  "bitDepth": 16,
+  "sampleCount": 2400000,
+  "durationSeconds": 50,
+  "loop": false,
+  "peak": 0.72,
+  "rms": 0.0371360159784022,
+  "sha256": "8b2f0e0db06b22476ae614dfba03ef2cd45519d2e9b4ea6938103d4bdd08d740",
+  "cues": [
+    {
+      "id": "modal-buoy",
+      "seconds": 25,
+      "kind": "buoy",
+      "frequency": 440,
+      "sample": 1200000
+    }
+  ]
+}

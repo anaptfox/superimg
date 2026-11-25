@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Emit dist/platform-manifest.json for Gumbo fetch + hash verification.
+ * Emit dist/platform-manifest.json for host fetch + hash verification.
  *
  * Usage:
  *   node generate-platform-manifest.mjs [superimgRoot]
@@ -9,23 +9,31 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { collectSourceImports } from "./scan-imports.mjs";
 
 const ROOT = resolve(process.argv[2] ?? process.cwd());
 const DIST = join(ROOT, "dist");
 const PKG = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
 
-const LINE_IMPORT_RE =
-  /^import\s+(?:type\s+)?(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+|)['"]([^'"]+)['"]/;
-
 const PLATFORM_ROOTS = {
-  edge: "index.edge.js",
+  charts: "charts.js",
+  edge: "runtime.edge.js",
+  html: "runtime/html.js",
+  browser: "runtime.browser.js",
+  browserExport: "browser-export.js",
   player: "player.js",
+  playerDom: "player/dom.js",
+  interactiveDefine: "interactive/define.js",
+  interactivePlayer: "interactive/player.js",
+  interactiveReact: "react/interactive.js",
+  inspection: "inspection.js",
+  inspectionBoundary: "inspection/boundary.js",
   reactHook: "react/compile.js",
   compiler: "bundler-browser.js",
 };
 
 // These chunks are loaded on demand by stdlib-capabilities.ts. They are not
-// reachable through the static Player closure, but Gumbo still needs their
+// reachable through the static Player closure, but hosts still need their
 // complete relative-import graph and hashes when it mirrors the browser runtime.
 const CAPABILITY_ROOTS = {
   code: "chunks/browser/code.js",
@@ -50,11 +58,7 @@ function walkRelativeGraph(entryRel, seen = new Set()) {
   seen.add(entryRel);
 
   const src = readFileSync(abs, "utf8");
-  for (const line of src.split("\n")) {
-    const trimmed = line.trimStart();
-    const match = trimmed.match(LINE_IMPORT_RE);
-    if (!match) continue;
-    const spec = match[1];
+  for (const spec of collectSourceImports(src)) {
     if (!spec.startsWith("./") && !spec.startsWith("../")) continue;
     const nextAbs = resolve(dirname(abs), spec);
     if (!nextAbs.startsWith(DIST) || !nextAbs.endsWith(".js")) continue;
@@ -97,7 +101,19 @@ const allFiles = new Set([
 const manifest = {
   version: PKG.version,
   edge: closures.edge,
+  html: closures.html,
+  browser: closures.browser,
+  browserExport: closures.browserExport,
   player: closures.player,
+  playerDom: closures.playerDom,
+  interactiveDefine: closures.interactiveDefine,
+  interactivePlayer: closures.interactivePlayer,
+  interactiveReact: closures.interactiveReact,
+  inspection: closures.inspection,
+  inspectionBoundary: {
+    files: closures.inspectionBoundary,
+    externals: ["@foxworth/boundary", "@foxworth/boundary/program"],
+  },
   reactHook: closures.reactHook,
   compiler: {
     files: closures.compiler,

@@ -87,6 +87,28 @@ describe("director — phase normalization", () => {
     const t = s(0.5, { enter: "2000ms", hold: "6000ms", exit: "2000ms" });
     expect(t.active).toBe("hold");
   });
+
+  it("keeps overlapping second windows for acts and cues", () => {
+    const duration = 12.6;
+    const at = (seconds: number) => createDirector(
+      { timeline: makeTimeline(seconds / duration, duration) },
+      { acts: { title: [0, 3], happy: [0.8, duration] }, cues: { hop: [1, 1.45] } },
+    );
+    const early = at(1.2);
+    const phases = early.phases as unknown as { length: number } & Record<string, { name: string; kind?: string; startSec: number; endSec: number }>;
+    expect(early.active).toBe("title");
+    expect(phases.title?.kind).toBe("act");
+    expect(phases.hop?.kind).toBe("cue");
+    expect(phases.hop?.startSec).toBeCloseTo(1, 5);
+    expect(phases.happy?.startSec).toBeCloseTo(0.8, 5);
+    expect(Array.from({ length: phases.length }, (_, index) => phases[index]?.name)).toEqual(["title", "happy", "hop"]);
+    expect(at(1).span("hop", "outCubic")).toBe(0);
+    expect(at(1.45).span("hop", "outCubic")).toBe(1);
+    const raw = (1.225 - 1) / 0.45;
+    expect(at(1.225).span([1, 1.45])).toBeCloseTo(raw, 5);
+    expect(at(1.225).span([1, 1.45], "outCubic")).toBeGreaterThan(raw);
+    expect(at(6.3).tween({ from: 0, to: 10, ease: "linear", during: [0, duration] })).toBeCloseTo(5, 4);
+  });
 });
 
 describe("director — probes", () => {
@@ -145,9 +167,17 @@ describe("director — motion enter/exit", () => {
     expect(m.phase).toBe("steady");
   });
 
-  it("opacity ~0 at sp=1 (fully exited)", () => {
+  it("last act holds by default (opacity 1 at sp=1)", () => {
     const t = s(1);
     const m = t.motion();
+    expect(m.opacity).toBeCloseTo(1, 3);
+    expect(m.exit).toBe(0);
+    expect(m.phase).toBe("steady");
+  });
+
+  it("exit: true restores a fade through the last phase", () => {
+    const t = s(1);
+    const m = t.motion({ exit: true });
     expect(m.opacity).toBeCloseTo(0, 3);
     expect(m.exit).toBe(1);
     expect(m.phase).toBe("after");
@@ -159,6 +189,20 @@ describe("director — motion enter/exit", () => {
     expect(m.opacity).toBeCloseTo(1, 3);
     expect(m.exit).toBe(0);
     expect(m.phase).toBe("steady");
+  });
+
+  it("during the last phase holds", () => {
+    const t = s(1);
+    const m = t.motion({ during: "exit" });
+    expect(m.opacity).toBeCloseTo(1, 3);
+    expect(m.exit).toBe(0);
+  });
+
+  it("during a non-terminal phase still auto-exits", () => {
+    const t = s(1);
+    const m = t.motion({ during: "enter" });
+    expect(m.exit).toBe(1);
+    expect(m.opacity).toBeCloseTo(0, 3);
   });
 
   it("honours the `during` phase", () => {
@@ -200,7 +244,7 @@ describe("director — motion enter/exit", () => {
 
   it("exit pose defaults to mirror of enter start", () => {
     const t = s(1);
-    const m = t.motion({ y: 30 });
+    const m = t.motion({ y: 30, exit: true });
     expect(m.transform).toContain("translateY(-30px)");
   });
 
@@ -278,10 +322,10 @@ describe("director — motion enter/exit", () => {
 
   it("omakase: auto exit finishes before end of exit phase", () => {
     // exit phase 85%–100%; 75% of that → exit window ends at 96.25%
-    const almostDone = s(0.97).motion({ for: "100%" });
+    const almostDone = s(0.97).motion({ for: "100%", exit: true });
     expect(almostDone.exit).toBe(1);
     // Early in exit phase, still exiting
-    const earlyExit = s(0.88).motion({ for: "100%" });
+    const earlyExit = s(0.88).motion({ for: "100%", exit: true });
     expect(earlyExit.exit).toBeGreaterThan(0);
     expect(earlyExit.exit).toBeLessThan(1);
   });
@@ -507,5 +551,63 @@ describe("director.clip", () => {
     expect(outer.active).toBe(true);
     expect(inner.active).toBe(true);
     expect(inner.progress).toBeCloseTo(0.5, 5);
+  });
+});
+
+describe("director — beats()", () => {
+  const phases = { hook: "20%", app: "60%", cta: "20%" };
+
+  it("returns settled name/local inside a beat", () => {
+    // app is 0.2–0.8; three beats; mid of first beat ≈ 0.3 scene
+    const beat = s(0.3, phases).beats({
+      during: "app",
+      of: ["board", "handoff", "insights"] as const,
+      cross: "8%",
+    });
+    expect(beat.crossing).toBe(false);
+    if (beat.crossing) throw new Error("expected settled");
+    expect(beat.name).toBe("board");
+    expect(beat.local).toBeGreaterThan(0.4);
+    expect(beat.local).toBeLessThan(0.6);
+    expect(beat.index).toBe(0);
+  });
+
+  it("cross is the exit of a beat", () => {
+    // first beat of app occupies 0.2–0.4; last 8% of that beat starts at 0.384
+    const beat = s(0.392, phases).beats({
+      during: "app",
+      of: ["board", "handoff", "insights"] as const,
+      cross: "8%",
+    });
+    expect(beat.crossing).toBe(true);
+    if (!beat.crossing) throw new Error("expected crossing");
+    expect(beat.from).toBe("board");
+    expect(beat.to).toBe("handoff");
+    expect(beat.mix).toBeGreaterThan(0);
+    expect(beat.mix).toBeLessThan(1);
+    expect(beat.index).toBe(0);
+  });
+
+  it("does not expose a pageFrac field", () => {
+    const beat = s(0.5, phases).beats({
+      during: "app",
+      of: ["board", "handoff", "insights"],
+    });
+    expect("pageFrac" in beat).toBe(false);
+  });
+
+  it("rejects an empty beat list", () => {
+    expect(() => s(0.5, phases).beats({ of: [] })).toThrow(/at least one beat/);
+  });
+
+  it("does not cross out of the last beat", () => {
+    const beat = s(0.79, phases).beats({
+      during: "app",
+      of: ["board", "handoff", "insights"] as const,
+      cross: "8%",
+    });
+    expect(beat.crossing).toBe(false);
+    if (beat.crossing) throw new Error("expected settled");
+    expect(beat.name).toBe("insights");
   });
 });

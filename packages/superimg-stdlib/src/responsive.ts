@@ -49,6 +49,14 @@ export interface ResponsiveOptions<T> {
  * }, ctx);
  */
 export function responsive<T>(
+  options: ResponsiveOptions<T> & { default: T },
+  ctx: RenderContext
+): T;
+export function responsive<T>(
+  options: ResponsiveOptions<T>,
+  ctx: RenderContext
+): T | undefined;
+export function responsive<T>(
   options: ResponsiveOptions<T>,
   ctx: RenderContext
 ): T | undefined {
@@ -83,8 +91,16 @@ export function responsive<T>(
  * const padding = r({ portrait: [64, 48], square: [28, 28], default: [44, 44] });
  * ```
  */
-export function createResponsive(
-  ctx: RenderContext
-): <T>(options: ResponsiveOptions<T>) => T | undefined {
-  return <T>(options: ResponsiveOptions<T>) => responsive(options, ctx);
+export interface ResponsiveSelector {
+  <T>(options: ResponsiveOptions<T> & { default: T }): T;
+  <T>(options: ResponsiveOptions<T>): T | undefined;
+}
+
+export function createResponsive(ctx: RenderContext): ResponsiveSelector {
+  function select<T>(options: ResponsiveOptions<T> & { default: T }): T;
+  function select<T>(options: ResponsiveOptions<T>): T | undefined;
+  function select<T>(options: ResponsiveOptions<T>): T | undefined {
+    return responsive(options, ctx);
+  }
+  return select;
 }

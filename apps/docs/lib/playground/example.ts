@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { isComposedTemplate, type TemplateModule, type ComposedTemplate } from "superimg/react";
-import { useCompiledTemplate } from "superimg/react/compile";
+import type { MediaDefinition } from "@foxworth/superimg/react";
+import { useCompiledMedia } from "@foxworth/superimg/react/compile";
 import type { EditorExample } from "@/lib/video/examples";
 import {
   hasConfigAssets,
@@ -10,7 +10,7 @@ import {
 } from "./host";
 
 export function hasPrebuiltBundle(example: EditorExample | undefined): boolean {
-  return !!(example?.bundledUrl || example?.bundled);
+  return !!example?.bundledUrl;
 }
 
 /** Editor: WASM when live-editing demos or no prebuilt bundle. */
@@ -37,13 +37,10 @@ export function exampleNeedsPreBundle(code: string): boolean {
 }
 
 export function templateDuration(
-  template: TemplateModule | ComposedTemplate | null,
+  template: MediaDefinition | null,
   fallback = 5,
 ): number {
   if (!template) return fallback;
-  if (isComposedTemplate(template)) {
-    return template.totalFrames / template.fps;
-  }
   const declared = template.config?.duration;
   return typeof declared === "number" ? declared : fallback;
 }
@@ -74,21 +71,20 @@ export function usePlaygroundExample(
         !!codeUrl ||
         (hasPrebuiltBundle(example) && !wasmCompile)));
 
-  const { template, compiling, error } = useCompiledTemplate({
+  const { media, compiling, error } = useCompiledMedia({
     code,
     codeUrl,
-    bundled: example?.bundled,
     bundledUrl: example?.bundledUrl,
     wasmCompile,
     enabled,
   });
 
   const assets = useMemo(
-    () => resolvePlaygroundAssets(template?.config?.assets),
-    [template?.config?.assets],
+    () => resolvePlaygroundAssets(media?.config?.assets),
+    [media?.config?.assets],
   );
 
-  const duration = templateDuration(template, example?.playground?.duration ?? 5);
+  const duration = templateDuration(media, example?.playground?.duration ?? 5);
 
   const missingBundle =
     !!example &&
@@ -96,7 +92,7 @@ export function usePlaygroundExample(
     !hasPrebuiltBundle(example);
 
   return {
-    template,
+    media,
     compiling,
     error,
     assets,

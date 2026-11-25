@@ -14,13 +14,94 @@
     "./internal": {
       "import": "./dist/internal.js",
       "types": "./dist/internal.d.ts"
+    },
+    "./runtime": {
+      "import": "./dist/runtime.js",
+      "types": "./dist/runtime.d.ts"
+    },
+    "./project": {
+      "import": "./dist/project.js",
+      "types": "./dist/project.d.ts"
+    },
+    "./source": {
+      "import": "./dist/source.js",
+      "types": "./dist/source.d.ts"
+    },
+    "./review": {
+      "import": "./dist/review.js",
+      "types": "./dist/review.d.ts"
+    },
+    "./review-clock": {
+      "import": "./dist/review-clock.js",
+      "types": "./dist/review-clock.d.ts"
+    },
+    "./plate": {
+      "import": "./dist/plate.js",
+      "types": "./dist/plate.d.ts"
+    },
+    "./thumbnail": {
+      "import": "./dist/thumbnail.js",
+      "types": "./dist/thumbnail.d.ts"
+    },
+    "./narration": {
+      "import": "./dist/narration.js",
+      "types": "./dist/narration.d.ts"
+    },
+    "./transcription": {
+      "types": "./dist/transcription.d.ts",
+      "import": "./dist/transcription.js"
+    },
+    "./media-preparation": {
+      "types": "./dist/media-preparation.d.ts",
+      "import": "./dist/media-preparation.js"
+    },
+    "./project-tools": {
+      "import": "./dist/project-tools.js",
+      "types": "./dist/project-tools.d.ts"
+    },
+    "./arrangement": {
+      "types": "./dist/arrangement.d.ts",
+      "import": "./dist/arrangement.js"
+    },
+    "./edit": {
+      "types": "./dist/edit.d.ts",
+      "import": "./dist/edit.js"
+    },
+    "./baseline": {
+      "types": "./dist/baseline.d.ts",
+      "import": "./dist/baseline.js"
+    },
+    "./source-evaluate": {
+      "types": "./dist/source-evaluate.d.ts",
+      "import": "./dist/source-evaluate.js"
+    },
+    "./source-check": {
+      "types": "./dist/source-check.d.ts",
+      "import": "./dist/source-check.js"
+    },
+    "./source-inspect": {
+      "types": "./dist/source-inspect.d.ts",
+      "import": "./dist/source-inspect.js"
+    },
+    "./review/advanced": {
+      "types": "./dist/review/advanced.d.ts",
+      "import": "./dist/review/advanced.js"
+    },
+    "./edit-errors": {
+      "types": "./dist/edit-errors.d.ts",
+      "import": "./dist/edit-errors.js"
+    },
+    "./source-analysis": {
+      "types": "./dist/source-analysis.d.ts",
+      "import": "./dist/source-analysis.js"
     }
   },
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
     "test": "vitest run",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "typecheck": "node ../../scripts/typecheck-native.mjs -p tsconfig.json --noEmit"
   },
   "files": [
     "dist"
@@ -28,11 +109,21 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
+    "@foxworth/superimg-script": "workspace:*",
+    "@superimg/core": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
     "@superimg/playwright": "workspace:*",
-    "@superimg/types": "workspace:*"
+    "@superimg/types": "workspace:*",
+    "mediabunny": "catalog:",
+    "@mediabunny/server": "catalog:",
+    "@mediabunny/dts": "catalog:",
+    "sharp": "catalog:",
+    "oxc-parser": "catalog:",
+    "rolldown": "catalog:",
+    "@superimg/interactive": "workspace:*"
   },
   "devDependencies": {
     "@superimg/build-config": "workspace:*",
-    "vitest": "^4.1.9"
+    "vitest": "catalog:"
   }
 }

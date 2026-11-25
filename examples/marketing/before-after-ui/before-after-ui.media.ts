@@ -1,11 +1,16 @@
-import { define, type RenderContext } from "superimg";
+// Before / After (UI) — a drafting sheet with two pinned specimens.
+// Film: graph paper, hairline ink, red pen. The markup under test is authored
+// in this file, so nothing is fetched at render time.
+// Two transitions, both implemented: `wipe` overdraws one box, `split` pins two.
 
-export type TransitionStyle = "wipe" | "split" | "flip" | "slide";
+import { video, Frame, Fill, Stack, Text, Html, type RenderContext, googleFont } from "@foxworth/superimg";
+
+export type TransitionStyle = "wipe" | "split";
 
 export interface UIContent {
   html: string;
-  css?: string;
-  label?: string;
+  css: string;
+  label: string;
 }
 
 export interface BeforeAfterUIData extends Record<string, unknown> {
@@ -13,193 +18,300 @@ export interface BeforeAfterUIData extends Record<string, unknown> {
   after: UIContent;
   title: string;
   transition: TransitionStyle;
-  theme: "light" | "dark";
   accentColor: string;
 }
 
-const TIMING = {
-  titleFadeIn: { start: 0, end: 0.1 },
-  transition: { start: 0.3, end: 0.7 },
-  fadeOut: { start: 0.9, end: 1.0 },
-};
+const PAPER = "#F4F1E8";
+const PAPER_EDGE = "#E7E2D4";
+const INK = "#1D2430";
+const GRAPHITE = "#6C7480";
+const GRID = "rgba(38,84,140,0.11)";
+const GRID_FINE = "rgba(38,84,140,0.05)";
 
-function renderUIWindow(
-  content: UIContent,
-  baseFontSize: number,
-  theme: { cardBg: string; border: string; headerBg: string; mutedText: string; text: string }
-): string {
-  return `
-    <div style="
-      display:flex;
-      flex-direction:column;
-      width:100%;
-      height:100%;
-      background:${theme.cardBg};
-      border-radius:${baseFontSize * 0.5}px;
-      overflow:hidden;
-      box-shadow:0 20px 50px rgba(0,0,0,0.3);
-      border:1px solid ${theme.border};
-    ">
-      <div style="
-        height:${baseFontSize * 1.4}px;
-        background:${theme.headerBg};
-        display:flex;
-        align-items:center;
-        padding:0 ${baseFontSize * 0.6}px;
-        gap:${baseFontSize * 0.4}px;
-        border-bottom:1px solid ${theme.border};
-      ">
-        <div style="display:flex;gap:${baseFontSize * 0.25}px;">
-          <div style="width:${baseFontSize * 0.35}px;height:${baseFontSize * 0.35}px;border-radius:50%;background:#ff5f56;"></div>
-          <div style="width:${baseFontSize * 0.35}px;height:${baseFontSize * 0.35}px;border-radius:50%;background:#ffbd2e;"></div>
-          <div style="width:${baseFontSize * 0.35}px;height:${baseFontSize * 0.35}px;border-radius:50%;background:#27ca40;"></div>
-        </div>
-        <div style="
-          font-size:${baseFontSize * 0.5}px;
-          color:${theme.mutedText};
-          margin-left:${baseFontSize * 0.5}px;
-          font-family:ui-sans-serif,system-ui,sans-serif;
-        ">Preview</div>
-      </div>
-      <div style="
-        flex:1;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        background:${theme.cardBg};
-        position:relative;
-        overflow:hidden;
-      ">
-        ${content.css ? `<style>${content.css}</style>` : ""}
-        <div style="transform: scale(1.5);">${content.html}</div>
-      </div>
+const LEGACY_CSS = `
+.ba-legacy { font-family: "Times New Roman", Times, serif; color: #000; }
+.ba-legacy table { border-collapse: collapse; }
+.ba-legacy td { padding: 4px 6px; font-size: 15px; }
+.ba-legacy input {
+  font: 14px "Times New Roman", serif; padding: 2px 4px; width: 190px;
+  border: 2px inset #d6d3ce; background: #fff;
+}
+.ba-legacy .go {
+  font: 13px "Times New Roman", serif; padding: 3px 12px;
+  border: 2px outset #d6d3ce; background: #d6d3ce;
+}
+.ba-legacy .note { font-size: 12px; color: #a00; }
+`;
+
+const LEGACY_HTML = `
+<div class="ba-legacy">
+  <table>
+    <tr><td>Email address:</td><td><input value="you@example.com"></td></tr>
+    <tr><td>Plan:</td><td><input value="Standard"></td></tr>
+    <tr><td></td><td><button class="go">Submit Form</button></td></tr>
+  </table>
+  <div class="note">* All fields are required.</div>
+</div>
+`;
+
+const MODERN_CSS = `
+.ba-modern {
+  font-family: ui-sans-serif, system-ui, sans-serif; color: #10161f;
+  width: 340px; padding: 22px; border-radius: 14px; background: #fff;
+  box-shadow: 0 1px 2px rgba(16,22,31,.06), 0 12px 28px rgba(16,22,31,.10);
+  border: 1px solid #e8ebef;
+}
+.ba-modern h4 { margin: 0 0 14px; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+.ba-modern label { display: block; font-size: 12px; font-weight: 600; color: #667085; margin-bottom: 5px; }
+.ba-modern .field { margin-bottom: 14px; }
+.ba-modern input {
+  width: 100%; box-sizing: border-box; font: 14px ui-sans-serif, system-ui, sans-serif;
+  padding: 9px 11px; border-radius: 8px; border: 1px solid #d6dbe2; background: #fbfcfd;
+}
+.ba-modern .go {
+  width: 100%; font: 600 14px ui-sans-serif, system-ui, sans-serif; color: #fff;
+  padding: 11px 14px; border: 0; border-radius: 9px; background: #10161f;
+}
+.ba-modern .hint { margin-top: 10px; font-size: 12px; color: #98a2b3; text-align: center; }
+`;
+
+const MODERN_HTML = `
+<div class="ba-modern">
+  <h4>Start your trial</h4>
+  <div class="field"><label>Email</label><input value="you@example.com"></div>
+  <div class="field"><label>Plan</label><input value="Standard — $19/mo"></div>
+  <button class="go">Create account</button>
+  <div class="hint">No card required for 14 days.</div>
+</div>
+`;
+
+function specimen(content: UIContent, scale: number, tint: string, ticks: string): string {
+  return `<div style="position:absolute;inset:0;background:#fff;border:1px solid ${INK}22;box-shadow:0 10px 26px rgba(29,36,48,0.10);overflow:hidden;">
+    <style>${content.css}</style>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+      <div style="transform:scale(${scale.toFixed(3)});transform-origin:50% 50%;">${content.html}</div>
     </div>
-  `;
+    <div style="position:absolute;inset:0;background:${tint};pointer-events:none;"></div>
+    ${ticks}
+  </div>`;
 }
 
-export default define<BeforeAfterUIData>({
+const TICK_CORNERS = ["left:0;top:0", "right:0;top:0", "left:0;bottom:0", "right:0;bottom:0"];
+
+function cornerTicks(color: string, opacity: number): string {
+  const arm = 22;
+  const marks = TICK_CORNERS.map(
+    (anchor) =>
+      `<div style="position:absolute;${anchor};width:${arm}px;height:2px;background:${color};"></div>
+       <div style="position:absolute;${anchor};width:2px;height:${arm}px;background:${color};"></div>`,
+  ).join("");
+  return `<div style="position:absolute;inset:-1px;opacity:${opacity.toFixed(3)};pointer-events:none;">${marks}</div>`;
+}
+
+export default video<BeforeAfterUIData>({
+  duration: "6s",
+  poster: "4.6s",
+  fonts: [googleFont("Archivo:wght@600;800"), googleFont("DM+Mono:wght@400;500")],
   sample: {
-    title: "Modern UI Components",
-    before: { 
-      html: "<button style='padding:10px 20px; background:#eee; border:1px solid #ccc; border-radius:4px; font-family:sans-serif;'>Click Me</button>",
-      label: "LEGACY HTML"
-    },
-    after: { 
-      html: "<div style='padding:12px 24px; background:linear-gradient(to right, #3b82f6, #2563eb); color:white; border-radius:8px; font-weight:600; font-family:sans-serif; box-shadow:0 4px 12px rgba(37, 99, 235, 0.3); cursor:pointer;'>Action Button</div>",
-      label: "MODERN COMPONENT"
-    },
+    title: "Sign-up form",
+    before: { html: LEGACY_HTML, css: LEGACY_CSS, label: "Rev A — 2011" },
+    after: { html: MODERN_HTML, css: MODERN_CSS, label: "Rev B — today" },
     transition: "wipe",
-    theme: "dark",
-    accentColor: "#10b981",
+    accentColor: "#C2382B",
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "4s",
+  variants: {
+    split: { transition: "split" },
   },
   render(ctx: RenderContext<BeforeAfterUIData>) {
-    const { std, width, height, timeline, data } = ctx;
-    const { title, transition, theme: themeKey, accentColor } = data;
+    const { std, width, height, data } = ctx;
+    const { title, before, after, transition, accentColor } = data;
 
-    const isDark = themeKey === "dark";
-    const bgGradient = isDark 
-      ? `linear-gradient(135deg, #0f172a 0%, #1e293b 100%)`
-      : `linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)`;
-    
-    const textColor = isDark ? "#ffffff" : "#0f172a";
-    const mutedColor = isDark ? "#94a3b8" : "#64748b";
-    const cardBg = isDark ? "#0f172a" : "#ffffff";
-    const border = isDark ? "#334155" : "#e2e8f0";
-    const headerBg = isDark ? "#1e293b" : "#f1f5f9";
+    const t = ctx.director({
+      lay: "15%",
+      read: "19%",
+      pull: "28%",
+      settle: "26%",
+      out: "12%",
+    });
 
-    const theme = { text: textColor, cardBg, border, headerBg, mutedText: mutedColor };
+    const layP = t.in("lay");
+    const pullP = t.in("pull");
+    const settleP = t.in("settle");
+    const outP = t.in("out");
 
-    const titleProgress = std.interpolate(timeline.progress, [TIMING.titleFadeIn.start, TIMING.titleFadeIn.end], [0, 1], "easeOutCubic");
-    const transitionProgress = std.interpolate(timeline.progress, [TIMING.transition.start, TIMING.transition.end], [0, 1], "easeInOutCubic");
-    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeOutCubic");
+    const swap =
+      settleP > 0 || outP > 0
+        ? 1
+        : std.interpolate(pullP, [0, 1], [0, 1], "easeInOutCubic");
 
-    const globalOpacity = 1 - fadeOutProgress;
+    const sheetMotion = t.motion({
+      id: "sheet",
+      during: "lay",
+      at: "0%",
+      for: "80%",
+      y: 30,
+      scale: 0.985,
+    });
+    const titleMotion = t.motion({ id: "title", during: "lay", at: "8%", for: "62%", y: 14 });
 
-    const baseFontSize = Math.min(width, height) * 0.045;
-    const headerHeight = title ? height * 0.15 : 0;
-    const labelHeight = baseFontSize * 2.5;
-    const contentPadding = width * 0.1;
-    const contentWidth = width - contentPadding * 2;
-    const contentHeight = height - headerHeight - labelHeight - contentPadding;
+    const fade = 1 - std.interpolate(outP, [0, 1], [0, 1], "easeInCubic");
 
-    const beforeLabel = data.before.label || "BEFORE";
-    const afterLabel = data.after.label || "AFTER";
+    const pad = Math.round(width * 0.07);
+    const headH = Math.round(height * 0.15);
+    const footH = Math.round(height * 0.1);
+    const stageW = width - pad * 2;
+    const stageH = height - headH - footH - Math.round(height * 0.06);
 
-    const contentTop = headerHeight + labelHeight * 0.5;
+    let artHtml: string;
 
-    let contentHtml = "";
-
-    if (transition === "wipe") {
-      const wipePosition = transitionProgress * 100;
-      contentHtml = `
-      <div style="position:absolute;top:${contentTop}px;left:${contentPadding}px;width:${contentWidth}px;height:${contentHeight}px;overflow:hidden;">
-        <div style="position:absolute;inset:0;clip-path:inset(0 ${wipePosition}% 0 0);">${renderUIWindow(data.before, baseFontSize, theme)}</div>
-        <div style="position:absolute;inset:0;clip-path:inset(0 0 0 ${100 - wipePosition}%);">${renderUIWindow(data.after, baseFontSize, theme)}</div>
-        <div style="position:absolute;top:0;bottom:0;left:${wipePosition}%;width:4px;background:${accentColor};transform:translateX(-50%);box-shadow:0 0 30px ${accentColor};opacity:${transitionProgress > 0 && transitionProgress < 1 ? 1 : 0};z-index:10;"></div>
-      </div>
-      <div style="position:absolute;top:${headerHeight}px;left:${contentPadding}px;height:${labelHeight}px;display:flex;align-items:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${mutedColor};letter-spacing:0.15em;opacity:${1 - transitionProgress};">${beforeLabel}</div>
-      <div style="position:absolute;top:${headerHeight}px;right:${contentPadding}px;height:${labelHeight}px;display:flex;align-items:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${accentColor};letter-spacing:0.15em;opacity:${transitionProgress};">${afterLabel}</div>
-    `;
-    } else if (transition === "split") {
-      const splitGap = baseFontSize;
-      const halfWidth = (contentWidth - splitGap) / 2;
-      contentHtml = `
-      <div style="position:absolute;top:${contentTop}px;left:${contentPadding}px;width:${contentWidth}px;height:${contentHeight}px;display:flex;gap:${splitGap}px;">
-        <div style="flex:1;transform:scale(${0.95 + (1 - transitionProgress) * 0.05});opacity:${0.6 + (1 - transitionProgress) * 0.4};">${renderUIWindow(data.before, baseFontSize, theme)}</div>
-        <div style="flex:1;transform:scale(${0.95 + transitionProgress * 0.05});opacity:${0.6 + transitionProgress * 0.4};">${renderUIWindow(data.after, baseFontSize, theme)}</div>
-      </div>
-      <div style="position:absolute;top:${headerHeight}px;left:${contentPadding}px;width:${halfWidth}px;height:${labelHeight}px;display:flex;align-items:center;justify-content:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${mutedColor};letter-spacing:0.15em;">${beforeLabel}</div>
-      <div style="position:absolute;top:${headerHeight}px;right:${contentPadding}px;width:${halfWidth}px;height:${labelHeight}px;display:flex;align-items:center;justify-content:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${accentColor};letter-spacing:0.15em;">${afterLabel}</div>
-    `;
+    if (transition === "split") {
+      const gap = Math.round(stageW * 0.05);
+      const half = Math.round((stageW - gap) / 2);
+      const boxH = Math.round(Math.min(stageH, half * 0.72));
+      const top = Math.round((stageH - boxH) / 2);
+      const veil = (on: number) => `rgba(244,241,232,${(0.52 * (1 - on)).toFixed(3)})`;
+      artHtml = `<div style="position:absolute;inset:0;">
+        <div style="position:absolute;left:0;top:${top}px;width:${half}px;height:${boxH}px;">
+          ${specimen(before, 1, veil(1 - swap), cornerTicks(accentColor, 1 - swap))}
+        </div>
+        <div style="position:absolute;left:${half + gap}px;top:${top}px;width:${half}px;height:${boxH}px;">
+          ${specimen(after, 1, veil(swap), cornerTicks(accentColor, swap))}
+        </div>
+        <div style="position:absolute;left:${(half + gap / 2 - 1).toFixed(1)}px;top:${top}px;width:2px;height:${boxH}px;background:${INK}22;"></div>
+      </div>`;
     } else {
-      // Default to wipe for simplicity in this specialized template or add more later
-      const wipePosition = transitionProgress * 100;
-      contentHtml = `
-      <div style="position:absolute;top:${contentTop}px;left:${contentPadding}px;width:${contentWidth}px;height:${contentHeight}px;overflow:hidden;">
-        <div style="position:absolute;inset:0;clip-path:inset(0 ${wipePosition}% 0 0);">${renderUIWindow(data.before, baseFontSize, theme)}</div>
-        <div style="position:absolute;inset:0;clip-path:inset(0 0 0 ${100 - wipePosition}%);">${renderUIWindow(data.after, baseFontSize, theme)}</div>
-        <div style="position:absolute;top:0;bottom:0;left:${wipePosition}%;width:4px;background:${accentColor};transform:translateX(-50%);box-shadow:0 0 30px ${accentColor};opacity:${transitionProgress > 0 && transitionProgress < 1 ? 1 : 0};z-index:10;"></div>
-      </div>
-      <div style="position:absolute;top:${headerHeight}px;left:${contentPadding}px;height:${labelHeight}px;display:flex;align-items:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${mutedColor};letter-spacing:0.15em;opacity:${1 - transitionProgress};">${beforeLabel}</div>
-      <div style="position:absolute;top:${headerHeight}px;right:${contentPadding}px;height:${labelHeight}px;display:flex;align-items:center;font-size:${baseFontSize * 0.7}px;font-weight:700;color:${accentColor};letter-spacing:0.15em;opacity:${transitionProgress};">${afterLabel}</div>
-    `;
+      const boxW = Math.round(Math.min(stageW, stageH * 1.5));
+      const boxH = Math.round(Math.min(stageH, boxW * 0.6));
+      const left = Math.round((stageW - boxW) / 2);
+      const top = Math.round((stageH - boxH) / 2);
+      const cut = boxW * swap;
+      const moving = swap > 0.001 && swap < 0.999;
+      artHtml = `<div style="position:absolute;inset:0;">
+        <div style="position:absolute;left:${left}px;top:${top}px;width:${boxW}px;height:${boxH}px;">
+          ${specimen(before, 1, "transparent", "")}
+        </div>
+        <div style="position:absolute;left:${left}px;top:${top}px;width:${boxW}px;height:${boxH}px;clip-path:inset(0 ${(boxW - cut).toFixed(1)}px 0 0);">
+          ${specimen(after, 1, "transparent", "")}
+        </div>
+        <div style="position:absolute;left:${left}px;top:${top}px;width:${boxW}px;height:${boxH}px;">
+          ${cornerTicks(accentColor, swap)}
+        </div>
+        <div style="position:absolute;left:${(left + cut - 1).toFixed(1)}px;top:${(top - 14).toFixed(0)}px;width:2px;height:${boxH + 28}px;background:${accentColor};opacity:${moving ? 1 : 0};"></div>
+        <div style="position:absolute;left:${(left + cut - 6).toFixed(1)}px;top:${(top - 22).toFixed(0)}px;width:12px;height:12px;background:${accentColor};opacity:${moving ? 1 : 0};transform:rotate(45deg);"></div>
+      </div>`;
     }
 
-    return `
-    <div style="
-      width:${width}px;
-      height:${height}px;
-      background:${bgGradient};
-      font-family:ui-sans-serif,system-ui,sans-serif;
-      position:relative;
-      overflow:hidden;
-      opacity:${globalOpacity};
-    ">
-      ${title ? `
-        <div style="
-          position:absolute;
-          top:0;
-          left:0;
-          right:0;
-          height:${headerHeight}px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          padding:0 ${contentPadding}px;
-          opacity:${titleProgress};
-          transform:translateY(${(1 - titleProgress) * -20}px);
-        ">
-          <h1 style="font-size:${baseFontSize * 1.3}px;font-weight:800;color:${textColor};text-align:center;margin:0;letter-spacing:-0.02em;">${title}</h1>
-        </div>
-      ` : ""}
-      ${contentHtml}
-    </div>
-  `;
+    const penRule = Math.round(stageW * 0.22 * std.clamp01(layP * 1.4));
+    const arrowFill = Math.round(140 * swap);
+
+    return Frame(
+      { id: "desk", width: "fill", height: "fill" },
+      Fill({
+        gradient: {
+          kind: "linear",
+          angle: 160,
+          stops: [`${PAPER} 0%`, `${PAPER_EDGE} 100%`],
+        },
+      }),
+      Html({
+        id: "graph",
+        html: `<div style="position:absolute;inset:0;background-image:
+          linear-gradient(${GRID} 1px, transparent 1px),
+          linear-gradient(90deg, ${GRID} 1px, transparent 1px),
+          linear-gradient(${GRID_FINE} 1px, transparent 1px),
+          linear-gradient(90deg, ${GRID_FINE} 1px, transparent 1px);
+          background-size: 96px 96px, 96px 96px, 16px 16px, 16px 16px;"></div>`,
+      }),
+      Frame(
+        {
+          id: "sheet",
+          x: pad,
+          y: Math.round(height * 0.04),
+          width: stageW,
+          height: height - Math.round(height * 0.08),
+          style: { opacity: fade },
+          motion: sheetMotion,
+        },
+        Stack(
+          { direction: "column", width: stageW, height: headH, justify: "center", gap: 10 },
+          Stack(
+            { direction: "row", width: stageW, justify: "space-between", align: "center" },
+            Text(
+              {
+                variant: "title",
+                size: Math.round(height * 0.05),
+                weight: 800,
+                color: INK,
+                fontFamily: "'Archivo', system-ui, sans-serif",
+                letterSpacing: -1,
+                motion: titleMotion,
+              },
+              title,
+            ),
+            Text(
+              {
+                variant: "label",
+                size: 18,
+                weight: 500,
+                color: GRAPHITE,
+                fontFamily: "'DM Mono', ui-monospace, monospace",
+                letterSpacing: 4,
+              },
+              transition === "split" ? "SHEET 02 · PAIR" : "SHEET 01 · OVERDRAW",
+            ),
+          ),
+          Frame({
+            width: Math.max(1, penRule),
+            height: 3,
+            fill: accentColor,
+            style: { opacity: penRule > 1 ? 1 : 0 },
+          }),
+        ),
+        Html({ id: "stage", x: 0, y: headH, width: stageW, height: stageH, html: artHtml }),
+        Frame({ id: "footer", y: headH + stageH, width: stageW, height: footH },
+        Stack(
+          {
+            direction: "row",
+            width: stageW,
+            height: footH,
+            align: "center",
+            gap: 18,
+            style: { opacity: 0.4 + layP * 0.6 },
+          },
+          Text(
+            {
+              variant: "caption",
+              size: 20,
+              weight: 500,
+              color: swap < 0.5 ? INK : GRAPHITE,
+              fontFamily: "'DM Mono', ui-monospace, monospace",
+              letterSpacing: 3,
+            },
+            before.label.toUpperCase(),
+          ),
+          Frame(
+            { width: 140, height: 3, fill: `${GRAPHITE}44` },
+            Frame({
+              width: Math.max(1, arrowFill),
+              height: 3,
+              fill: accentColor,
+              style: { opacity: arrowFill > 1 ? 1 : 0 },
+            }),
+          ),
+          Text(
+            {
+              variant: "caption",
+              size: 20,
+              weight: 500,
+              color: swap < 0.5 ? GRAPHITE : accentColor,
+              fontFamily: "'DM Mono', ui-monospace, monospace",
+              letterSpacing: 3,
+            },
+            after.label.toUpperCase(),
+          ),
+        ),
+        ),
+      ),
+    );
   },
 });

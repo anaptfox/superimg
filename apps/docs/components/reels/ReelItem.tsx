@@ -3,16 +3,14 @@
 "use client";
 
 import { useRef, useEffect, forwardRef, useImperativeHandle, memo, useCallback } from "react";
-import { Player, type PlayerRef } from "superimg/react/player";
-import type { PlayerInput, FormatOption } from "superimg/react";
+import { Player, type PlayerRef } from "@foxworth/superimg/react/player";
+import type { CanvasSize, PlayerInput } from "@foxworth/superimg/react";
 import { useVisibility } from "./useVisibility";
 
 export interface ReelItemData {
   id: string | number;
-  /** Template module (use this OR code, not both) */
-  template?: PlayerInput;
-  /** Raw code string (use this OR template, not both) */
-  code?: string;
+  /** Browser-safe media program. */
+  template: PlayerInput;
   [key: string]: unknown;
 }
 
@@ -22,7 +20,7 @@ export interface ReelItemProps {
   isActive: boolean;
   isNearby: boolean;
   isHorizontal?: boolean;
-  format?: FormatOption;
+  size?: CanvasSize;
   renderOverlay?: (
     item: ReelItemData,
     index: number,
@@ -48,7 +46,7 @@ export const ReelItem = memo(forwardRef<ReelItemRef, ReelItemProps>(
       isActive,
       isNearby,
       isHorizontal = false,
-      format = "vertical",
+      size = { width: 1080, height: 1920 },
       renderOverlay,
       onVisibilityChange,
       onProgress,
@@ -76,7 +74,7 @@ export const ReelItem = memo(forwardRef<ReelItemRef, ReelItemProps>(
             player.play();
           } else {
             player.pause();
-            player.seekFrame(0);
+            void player.seek({ frame: 0 });
           }
         } catch {
           // Player not ready yet, ignore
@@ -116,7 +114,7 @@ export const ReelItem = memo(forwardRef<ReelItemRef, ReelItemProps>(
         reset: () => {
           if (playerRef.current?.isReady) {
             playerRef.current.pause();
-            playerRef.current.seekFrame(0);
+            void playerRef.current.seek({ frame: 0 });
           }
         },
         playerRef: playerRef.current,
@@ -151,9 +149,8 @@ export const ReelItem = memo(forwardRef<ReelItemRef, ReelItemProps>(
         {/* Always render Player to prevent flicker - hide with CSS when not nearby */}
         <Player
           ref={playerRef}
-          template={item.template}
-          code={item.code}
-          format={format}
+          media={item.template}
+          size={size}
           playbackMode="loop"
           loadMode="lazy"
           autoPlay={isActive}

@@ -3,22 +3,12 @@
 export { useMediaQuery, useIsMobile } from "./useMediaQuery.js";
 export { useCompiler, type UseCompilerReturn } from "./useCompiler.js";
 export {
-  useCompiledTemplate,
-  clearTemplateCache,
-  getTemplateCacheSize,
-  type UseCompiledTemplateOptions,
-  type UseCompiledTemplateReturn,
-} from "./useCompiledTemplate.js";
-export {
-  usePlaygroundCatalog,
-  type PlaygroundCatalogEntry,
-  type PlaygroundCategory,
-  type PlaygroundCategoryId,
-  type PlaygroundManifest,
-  type PlaygroundMeta,
-  type UsePlaygroundCatalogOptions,
-  type UsePlaygroundCatalogReturn,
-} from "./usePlaygroundCatalog.js";
+  useCompiledMedia,
+  clearMediaCache,
+  getMediaCacheSize,
+  type UseCompiledMediaOptions,
+  type UseCompiledMediaReturn,
+} from "./useCompiledMedia.js";
 export {
   usePlaygroundExport,
   type UsePlaygroundExportOptions,
@@ -39,6 +29,3 @@ export {
 export { useExport, type UseExportReturn } from "./useExport.js";
 export { useTimeline, type UseTimelineReturn } from "./useTimeline.js";
 export { useCheckpoints, type UseCheckpointsReturn } from "./useCheckpoints.js";
-
-// Re-export FormatOption and resolveFormat from the browser package
-export { resolveFormat, type FormatOption } from "../../index.browser.js";

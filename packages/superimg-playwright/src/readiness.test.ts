@@ -74,12 +74,14 @@ function installFrameDom(opts: {
 
   const children = opts.labels.map(({ tag, label }) => ({
     tagName: tag.toUpperCase(),
+    localName: tag.toLowerCase(),
     getAttribute: (name: string) => (name === WAIT_ATTR ? label : null),
   }));
 
   const root = {
+    getAttribute: () => null,
     querySelectorAll: (sel: string) => {
-      if (sel.includes("data-superimg-wait")) {
+      if (sel === "*" || sel.includes("data-superimg-wait")) {
         return children as unknown as NodeListOf<HTMLElement>;
       }
       if (sel === "img") return [] as unknown as NodeListOf<HTMLImageElement>;
@@ -96,13 +98,15 @@ function installFrameDom(opts: {
 
   (globalThis as { HTMLImageElement: unknown }).HTMLImageElement = FakeHTMLImageElement;
   (globalThis as { HTMLVideoElement: unknown }).HTMLVideoElement = FakeHTMLVideoElement;
-  (globalThis as { window: { __superimgReady: typeof opts.ready } }).window = {
+  (globalThis as unknown as { window: { __superimgReady: typeof opts.ready } }).window = {
     __superimgReady: opts.ready,
   };
-  (globalThis as {
-    document: { getElementById: (id: string) => typeof root | null };
+  (globalThis as unknown as {
+    document: { getElementById: (id: string) => typeof root | null; defaultView: unknown; querySelectorAll: () => never[] };
   }).document = {
     getElementById: (id: string) => (id === "frame" ? root : null),
+    defaultView: (globalThis as { window?: unknown }).window,
+    querySelectorAll: () => [],
   };
 
   return () => {

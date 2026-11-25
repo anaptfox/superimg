@@ -25,7 +25,7 @@ export function TemplatesPanelSection() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-12 text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Start from a template
+            Start from an example
           </h2>
           <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
             Production-ready templates for social content, marketing videos,

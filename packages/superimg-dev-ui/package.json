@@ -10,22 +10,27 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "typecheck": "node ../../scripts/typecheck-native.mjs -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "files": [
     "dist"
   ],
   "sideEffects": true,
   "dependencies": {
+    "@foxworth/superimg": "workspace:*",
     "@superimg/browser-export": "workspace:*",
     "@superimg/core": "workspace:*",
     "@superimg/player": "workspace:*",
     "@superimg/stdlib": "workspace:*",
-    "@superimg/types": "workspace:*"
+    "@superimg/types": "workspace:*",
+    "mediabunny": "catalog:"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.1",
-    "tailwindcss": "^4.3.1",
-    "vite": "^8.1.0"
+    "@tailwindcss/vite": "catalog:",
+    "tailwindcss": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }

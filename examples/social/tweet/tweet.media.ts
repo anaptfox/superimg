@@ -1,9 +1,9 @@
 // Tweet — one post, typeset full-bleed like X's own brand campaigns.
 // Demonstrates: resolve() + layoutTimeline (content-scaled duration),
 // director beats with a designed exit, std.text.type/cursor (pure typewriter),
-// responsive outputs (16:9 / 1:1 / 9:16), zero-network sample data.
+// responsive editions (16:9 / 1:1 / 9:16), zero-network sample data.
 
-import { define, layoutTimeline, type RenderContext } from "superimg";
+import { define, Html, layoutTimeline, type RenderContext } from "@foxworth/superimg";
 import {
   avatarHtml,
   brandWatermark,
@@ -84,10 +84,10 @@ function estimate(data: TweetVideoData) {
   // Typewriter is read while it types; line reveal needs reading time after it.
   // The text is settled (readable) through the media + metrics beats too, so
   // only the remainder of max(0.8s, words÷3) lands in the hold.
-  const readSec = 0.8 + wordCount(text) / 3;
+  const readSec = 0.8 + wordCount(text + " " + (data.quote?.text ?? "")) / 3;
   const settledBeforeHold = (hasMedia ? 0.55 : 0) + (hasMetrics ? 1.1 : 0);
   const holdSec =
-    reveal === "type" || !hasText ? 1.7 : clamp(readSec - settledBeforeHold, 1.7, 8);
+    Math.max(1.7, readSec - settledBeforeHold - (reveal === "type" ? textSec : 0));
 
   const segments: Record<string, number> = { author: 0.7 };
   if (hasText) segments.text = textSec;
@@ -107,9 +107,14 @@ function estimate(data: TweetVideoData) {
 }
 
 export default define<TweetVideoData>({
+  editions: {
+    landscape: { size: { width: 1920, height: 1080 } },
+    square: { size: { width: 1080, height: 1080 } },
+    story: { size: { width: 1080, height: 1920 } },
+  },
   sample: {
     author: { name: "Maya Chen", handle: "mayabuilds", verified: "blue" },
-    text: "Just shipped my first video rendered entirely from HTML and CSS. No keyframes, no timeline — just code that returns a frame.",
+    text: "Shipped my first video that's just a program. No timeline, no keyframes — the same authored frame on every run.",
     createdAt: "2026-07-12T15:30:00.000Z",
     stats: { replies: 1200, reposts: 340, likes: 8400, views: 210000 },
     theme: "dark",
@@ -124,11 +129,6 @@ export default define<TweetVideoData>({
     fps: 30,
     duration: "6s", // AST fallback; resolve() overrides from content
     fonts: SOCIAL_FONTS,
-    outputs: {
-      landscape: { width: 1920, height: 1080 },
-      square: { width: 1080, height: 1080 },
-      story: { width: 1080, height: 1920 },
-    },
     inlineCss: [
       `* { margin: 0; padding: 0; box-sizing: border-box; }
        body { font-family: ${FONT_FAMILY}; overflow: hidden; }`,
@@ -253,15 +253,23 @@ export default define<TweetVideoData>({
       : "";
 
     // ---- metrics rail (count-up settles ~0.2s before the beat ends) ----
-    const countUp = (v: number | undefined) =>
+    const countUp = (key: string, v: number | undefined) =>
       typeof v === "number" && est.hasMetrics
-        ? Math.floor(t.tween(0, v, { during: "metrics", at: "0.1s", for: "0.9s", easing: "easeOutQuart" }))
+        ? Math.floor(
+            t.tween(0, v, {
+              id: `metric.${key}`,
+              during: "metrics",
+              at: "0.1s",
+              for: "0.9s",
+              easing: "easeOutQuart",
+            }),
+          )
         : (v ?? 0);
     const values = {
-      replies: countUp(stats.replies),
-      reposts: countUp(stats.reposts),
-      likes: countUp(stats.likes),
-      views: countUp(stats.views),
+      replies: countUp("replies", stats.replies),
+      reposts: countUp("reposts", stats.reposts),
+      likes: countUp("likes", stats.likes),
+      views: countUp("views", stats.views),
     };
     const metricsHtml = metricsRow(stats, values, metrics, tk, std, {
       iconSize: Math.round(28 * s),
@@ -301,7 +309,7 @@ export default define<TweetVideoData>({
       opacity: 1 - exitP,
       transform: `translateY(${exitP * 10}px)`,
     });
-    return `<div style="${std.css({
+    return Html({ id: "single-post", width: "fill", height: "fill", html: `<div style="${std.css({
       width,
       height,
       background: canvasBackground(tk, std, 0),
@@ -325,6 +333,6 @@ export default define<TweetVideoData>({
         </div>
         ${footerHtml}
       </div>
-    </div>`;
+    </div>` });
   },
 });

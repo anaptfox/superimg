@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+
+import { createBenchmarkRun, sha256 } from "./run-support.mjs";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "..", "..");
@@ -44,6 +46,7 @@ function entryClosure(root, entry) {
   return {
     entry,
     files: files.map((file) => relative(root, file)),
+    inputs: files.map(file => ({ path: relative(repoRoot, file), sha256: sha256(readFileSync(file)) })),
     rawBytes: combined.length,
     gzipBytes: gzipSync(combined).length,
   };
@@ -74,6 +77,7 @@ async function measureDocs() {
           rawBytes: row.firstLoadUncompressedJsBytes,
           gzipBytes: chunks.reduce((total, chunk) => total + gzipSync(chunk).length, 0),
           chunks: row.firstLoadChunkPaths.length,
+          inputs: row.firstLoadChunkPaths.map((path, index) => ({ path, sha256: sha256(chunks[index]) })),
         },
       ];
     }),
@@ -93,11 +97,12 @@ async function measureExamples() {
   for (const url of urls) {
     const bytes = await readFile(join(docsRoot, "public", url.replace(/^\//, "")));
     const id = url.split("/")[3] ?? "unknown";
-    bundles.push({ id, rawBytes: bytes.length, gzipBytes: gzipSync(bytes).length });
+    bundles.push({ id, url, sha256: sha256(bytes), rawBytes: bytes.length, gzipBytes: gzipSync(bytes).length });
   }
   bundles.sort((a, b) => a.gzipBytes - b.gzipBytes);
   const gzipValues = bundles.map((bundle) => bundle.gzipBytes);
   return {
+    artifacts: bundles,
     count: bundles.length,
     totalRawBytes: bundles.reduce((total, bundle) => total + bundle.rawBytes, 0),
     totalGzipBytes: bundles.reduce((total, bundle) => total + bundle.gzipBytes, 0),
@@ -112,8 +117,10 @@ function assertBudget(errors, label, actual, limit) {
   if (actual > limit) errors.push(`${label}: ${actual} > ${limit}`);
 }
 
+const run = await createBenchmarkRun({ kind: "catalog", packageRoot, repoRoot, harness: new URL(import.meta.url), workload: { kind: "structural-artifact", gzip: "default gzipSync", entries: ["player", "reactPlayer", "reactCompile", "reactSession"] }, buildPaths: ["packages/superimg/dist", "apps/docs/.next/diagnostics/route-bundle-stats.json", "apps/docs/public/examples"] });
+try {
 const result = {
-  schemaVersion: 1,
+  schemaVersion: 0,
   recordedAt: new Date().toISOString(),
   environment: { node: process.version, platform: `${process.platform}-${process.arch}`, warm: true },
   bundles: await measureBundles(),
@@ -121,12 +128,7 @@ const result = {
   examples: await measureExamples(),
 };
 
-const resultDir = join(packageRoot, ".results");
-await mkdir(resultDir, { recursive: true });
-await writeFile(
-  join(resultDir, "catalog.json"),
-  `${JSON.stringify(result, null, 2)}\n`,
-);
+await run.checkpoint(result);
 console.log(JSON.stringify(result, null, 2));
 
 if (check) {
@@ -148,7 +150,11 @@ if (check) {
   assertBudget(errors, "examples.max.gzipBytes", result.examples.max?.gzipBytes ?? 0, budgets.examples.maxGzipBytes);
   if (errors.length > 0) {
     console.error(`Performance budgets failed:\n- ${errors.join("\n- ")}`);
-    process.exit(1);
+    throw new Error("Structural artifact budgets failed; see retained result");
   }
   console.log("Performance budgets passed.");
 }
+
+await run.complete({ ...result, measurement: "structural artifact size inventory; catalog percentiles describe the full measured artifact population, not machine latency" });
+console.error(`Evidence: ${run.directory}`);
+} catch (error) { await run.fail(error); throw error; }

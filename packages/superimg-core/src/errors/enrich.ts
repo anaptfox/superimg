@@ -2,6 +2,7 @@
 
 import {
   SuperImgError,
+  isSuperImgError,
   TemplateCompilationError,
   TemplateRuntimeError,
   ValidationError,
@@ -177,13 +178,27 @@ export function enrichError(
       ? err
       : new Error(typeof err === "string" ? err : JSON.stringify(err));
 
-  if (err instanceof SuperImgError) {
-    if (!err.location || !err.codeFrame) {
-      const located = locateFromError(err, ctx);
-      if (!err.location && located.location) err.location = located.location;
-      if (!err.codeFrame && located.codeFrame) err.codeFrame = located.codeFrame;
+  if (isSuperImgError(err)) {
+    // Independently bundled public packages have distinct constructor identities.
+    // Normalize foreign/serialized errors so toJSON is always available, while
+    // preserving same-module identity and the original diagnostic contract.
+    const diagnostic = { message: err.message, code: err.code, details: err.details, suggestion: err.suggestion, docsUrl: err.docsUrl };
+    const enriched = err instanceof SuperImgError ? err : new SuperImgError(
+      typeof diagnostic.message === "string" ? diagnostic.message : e.message,
+      diagnostic.code, diagnostic.details, diagnostic.suggestion, diagnostic.docsUrl,
+    );
+    if (enriched !== err) {
+      enriched.name = err.name;
+      if (typeof err.stack === "string") enriched.stack = err.stack;
+      if (err.location !== undefined) enriched.location = err.location;
+      if (err.codeFrame !== undefined) enriched.codeFrame = err.codeFrame;
     }
-    return err;
+    if (!enriched.location || !enriched.codeFrame) {
+      const located = locateFromError(enriched, ctx);
+      if (!enriched.location && located.location) enriched.location = located.location;
+      if (!enriched.codeFrame && located.codeFrame) enriched.codeFrame = located.codeFrame;
+    }
+    return enriched;
   }
 
   const located = locateFromError(e, ctx);

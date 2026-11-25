@@ -5,13 +5,15 @@
 **/.cache
 **/coverage
 
-output
+**/output
+**/.superimg
+.private
+.env
+.env.*
 .git
 .github
 .vscode
 .idea
-
-apps/docs
 
 *.log
 *.mp4

@@ -1,16 +1,21 @@
-//! SuperImg React compile hooks — browser template compilation only.
-//! Import from "superimg/react/compile" when you need useCompiledTemplate / useCompiler
-//! without pulling the full Player + mediabunny barrel from "superimg/react".
+//! SuperImg React authoring-shell compile hooks (playground / docs).
+//! Not a host compiler API. Hosts compile `*.media.ts` with their own
+//! Rolldown/OXC and pass values into player/runtime.
 "use client";
 
+export {
+  Player as CompilingPlayer,
+  type PlayerProps as CompilingPlayerProps,
+  type PlayerRef as CompilingPlayerRef,
+} from "./components/Player.js";
 export { useCompiler, type UseCompilerReturn } from "./hooks/useCompiler.js";
 export {
-  useCompiledTemplate,
-  clearTemplateCache,
-  getTemplateCacheSize,
-  type UseCompiledTemplateOptions,
-  type UseCompiledTemplateReturn,
-} from "./hooks/useCompiledTemplate.js";
+  useCompiledMedia,
+  clearMediaCache,
+  getMediaCacheSize,
+  type UseCompiledMediaOptions,
+  type UseCompiledMediaReturn,
+} from "./hooks/useCompiledMedia.js";
 export {
   checkBrowserCompileSupport,
   type BrowserCompileSupport,
@@ -18,12 +23,8 @@ export {
 
 export type {
   RenderContext,
-  TemplateModule,
+  MediaDefinition,
   TemplateConfig,
   CompileError,
   CompileResult,
-  ComposedTemplate,
-  ResolvedScene,
 } from "@superimg/types";
-
-export { isComposedTemplate } from "@superimg/types";

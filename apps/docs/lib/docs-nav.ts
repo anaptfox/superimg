@@ -8,27 +8,41 @@ export interface NavSection {
   items: NavItem[]
 }
 
+/**
+ * User-facing docs IA: Author (default) · Embed · Extend.
+ * Every slug must have content/docs/<slug>.mdx.
+ */
 export const docsNav: NavSection[] = [
   {
-    title: 'Overview',
+    title: 'Author',
     items: [
       { title: 'Introduction', slug: 'introduction' },
       { title: 'Getting Started', slug: 'getting-started' },
-      { title: 'How It Works', slug: 'how-it-works' },
-    ],
-  },
-  {
-    title: 'Guides',
-    items: [
+      { title: 'Concepts', slug: 'concepts' },
       { title: 'Animation Basics', slug: 'animation' },
-      { title: 'Timing With Director And Cues', slug: 'timing' },
+      { title: 'Timing With Director And Tracks', slug: 'timing' },
+      { title: 'Data And Formats', slug: 'data-and-formats' },
+      { title: 'CLI', slug: 'cli' },
+      { title: 'Determinism', slug: 'determinism' },
+      { title: 'Comparison', slug: 'comparison' },
     ],
   },
   {
-    title: 'Reference',
+    title: 'Embed',
     items: [
-      { title: 'CLI', slug: 'cli' },
       { title: 'Player', slug: 'player' },
+      { title: 'Browser Inspection', slug: 'inspection' },
+      { title: 'Embed In Apps', slug: 'embed-in-apps' },
+      { title: 'Interactive Scenes', slug: 'semantic-scenes' },
+      { title: 'Interactive Guides', slug: 'scene-guide' },
+    ],
+  },
+  {
+    title: 'Extend',
+    items: [
+      { title: 'How It Works', slug: 'how-it-works' },
+      { title: 'Surfaces', slug: 'package-surface' },
+      { title: 'Runtime & Interactions', slug: 'node-api' },
     ],
   },
 ]

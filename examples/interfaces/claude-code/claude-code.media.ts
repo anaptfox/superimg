@@ -1,4 +1,4 @@
-import { define, layoutTimeline, type RenderContext } from "superimg";
+import { define, Html, layoutTimeline, type RenderContext } from "@foxworth/superimg";
 
 /** Diff line inside an edit event. */
 export interface ClaudeCodeDiffLine {
@@ -109,6 +109,8 @@ export function buildTimeline(data: ClaudeCodeData) {
   for (let i = 0; i < data.events.length; i++) {
     segments[`event_${i}`] = estimateEventSeconds(data.events[i]!);
   }
+  // Leave the last result readable even when the final event is a short tool call.
+  segments.hold = 1.6;
   return layoutTimeline(segments);
 }
 
@@ -287,9 +289,9 @@ const SAMPLE_EVENTS: ClaudeCodeEvent[] = [
 
 export default define<ClaudeCodeData>({
   sample: {
-    windowTitle: "fox@homestead: ~/code/gumbo — claude",
+    windowTitle: "dev@workstation: ~/projects/product-demo — claude",
     version: "2.1.4",
-    cwd: "/Users/fox/code/gumbo",
+    cwd: "/workspace/product-demo",
     tip: "Use # to memorize shortcuts and preferences in CLAUDE.md",
     prompt: "refactor the auth middleware to use the new session store",
     inputPlaceholder: 'Try "run the auth tests and fix what breaks"',
@@ -332,7 +334,7 @@ export default define<ClaudeCodeData>({
       easing: "easeOutCubic",
     });
     const submitted = t.in("submit") > 0.05;
-    const blink = timeline.seconds % 1.06 < 0.53 ? 1 : 0;
+    const blink = std.text.cursor(timeline.seconds, 1 / 1.06) ? 1 : 0;
     // Hide composer/status until the window has settled (boot ≥ 55%).
     const settled = t.in("boot") >= 0.55 || t.in("type") > 0 || t.in("submit") > 0;
 
@@ -418,7 +420,7 @@ export default define<ClaudeCodeData>({
         <span>${escapeHtml(data.statusRight)}</span>
       </div>`;
 
-    return `
+    return Html({ id: "claude-code-terminal", width: "fill", height: "fill", html: `
       <style>
         * { box-sizing: border-box; }
         .mono {
@@ -479,6 +481,6 @@ export default define<ClaudeCodeData>({
           </div>
         </main>
       </div>
-    `;
+    ` });
   },
 });

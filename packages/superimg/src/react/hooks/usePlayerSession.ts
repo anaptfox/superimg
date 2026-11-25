@@ -8,13 +8,8 @@ import {
   useSyncExternalStore,
   type RefObject,
 } from "react";
-import type {
-  EncodingOptions,
-  FormatOption,
-  RuntimeStore,
-  TemplateModule,
-  ComposedTemplate,
-} from "../../index.browser.js";
+import type { RuntimeStore } from "@superimg/media";
+import type { CanvasSize, EncodingOptions, MediaDefinition } from "@superimg/types";
 import type { PlayerRef } from "../components/Player.js";
 import type { ExportOptions } from "../components/ExportDialog.js";
 import { usePlaygroundExport } from "./usePlaygroundExport.js";
@@ -26,9 +21,9 @@ import {
 export interface UsePlayerSessionOptions {
   /** `unknown` breaks assignability of a template's own `render(ctx: RenderContext<TData>)`. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  template: TemplateModule<any> | ComposedTemplate | null;
+  media: MediaDefinition<any> | null;
   data?: Record<string, unknown>;
-  format?: FormatOption;
+  size?: CanvasSize;
   duration?: number;
   fps?: number;
   encoding?: EncodingOptions;
@@ -40,8 +35,8 @@ export interface UsePlayerSessionReturn {
   store: RuntimeStore | null;
   /** Pass to Player `onStore` */
   onStore: (store: RuntimeStore | null) => void;
-  format: FormatOption;
-  setFormat: (format: FormatOption) => void;
+  size: CanvasSize | undefined;
+  setSize: (size: CanvasSize | undefined) => void;
   isPlaying: boolean;
   currentFrame: number;
   totalFrames: number;
@@ -57,23 +52,24 @@ export interface UsePlayerSessionReturn {
 }
 
 export function usePlayerSession({
-  template,
+  media,
   data = {},
-  format: initialFormat = "horizontal",
+  size: initialSize,
+  duration,
   fps,
   encoding,
 }: UsePlayerSessionOptions): UsePlayerSessionReturn {
   const playerRef = useRef<PlayerRef>(null);
   const [store, setStore] = useState<RuntimeStore | null>(null);
-  const [format, setFormat] = useState<FormatOption>(initialFormat);
+  const [size, setSize] = useState<CanvasSize | undefined>(initialSize);
 
   const onStore = useCallback((next: RuntimeStore | null) => {
     setStore(next);
   }, []);
 
   useEffect(() => {
-    setFormat(initialFormat);
-  }, [initialFormat]);
+    setSize(initialSize);
+  }, [initialSize]);
 
   const state = useSyncExternalStore(
     (onChange) => subscribeToPlayerRefStore(playerRef, onChange),
@@ -82,8 +78,10 @@ export function usePlayerSession({
   );
 
   const { exporting, exportProgress, exportMp4, download } = usePlaygroundExport({
-    template,
+    media,
     data,
+    ...(size !== undefined ? { size } : {}),
+    ...(duration !== undefined ? { duration } : {}),
     ...(fps !== undefined ? { fps } : {}),
     ...(encoding !== undefined ? { encoding } : {}),
   });
@@ -97,7 +95,7 @@ export function usePlayerSession({
   }, []);
 
   const seekFrame = useCallback((frame: number) => {
-    playerRef.current?.seekFrame(frame);
+    void playerRef.current?.seek({ frame });
   }, []);
 
   const progress =
@@ -109,8 +107,8 @@ export function usePlayerSession({
     playerRef,
     store,
     onStore,
-    format,
-    setFormat,
+    size,
+    setSize,
     isPlaying: state.isPlaying,
     currentFrame: state.currentFrame,
     totalFrames: state.totalFrames,

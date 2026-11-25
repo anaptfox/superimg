@@ -1,4 +1,6 @@
-import { define, type RenderContext } from "superimg/browser";
+import { define, type RenderContext } from "@foxworth/superimg";
+import { Html, Frame, Stack, Text } from "@foxworth/superimg";
+import { layout, defineChart, barY, scaleBand, scaleLinear } from "@foxworth/superimg/charts";
 
 // Getting Started: Hello World with fade-in effect
 export const helloWorldTemplate = define({
@@ -15,7 +17,7 @@ export const helloWorldTemplate = define({
     const textOpacity = std.interpolate(textProgress, [0, 1], [0, 1], "easeOutCubic");
     const textScale = std.interpolate(textProgress, [0, 1], [0.8, 1], "easeOutCubic");
 
-    return `
+    return Html({ width: "fill", height: "fill", html: `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
       <div style="
         width:${width}px;
@@ -35,7 +37,7 @@ export const helloWorldTemplate = define({
           text-shadow:0 2px 10px rgba(0,0,0,0.2);
         ">Hello, World!</div>
       </div>
-    `;
+    ` });
   },
 });
 
@@ -82,7 +84,7 @@ export const countdownTemplate = define({
       })
       .join("");
 
-    return `
+    return Html({ width: "fill", height: "fill", html: `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
       <div style="
         width:${width}px;
@@ -101,7 +103,7 @@ export const countdownTemplate = define({
           ${unitsHtml}
         </div>
       </div>
-    `;
+    ` });
   },
 });
 
@@ -120,7 +122,7 @@ export const testimonialTemplate = define({
     const cardY = std.interpolate(timeline.progress, [0, 0.5], [20, 0], "easeOutCubic");
     const quoteOpacity = std.math.clamp((timeline.progress - 0.2) * 2.5, 0, 1);
 
-    return `
+    return Html({ width: "fill", height: "fill", html: `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
       <div style="
         width:${width}px;
@@ -151,54 +153,21 @@ export const testimonialTemplate = define({
           </p>
         </div>
       </div>
-    `;
+    ` });
   },
 });
 
-// Data: Animated bar chart (viz.charts.bar)
+// Data: chart geometry and guides resolve together into inspectable vectors.
 export const chartTemplate = define({
-  config: {
-    fps: 30,
-    duration: 3,
-    width: 320,
-    height: 180,
-  },
+  config: { fps: 30, duration: 3, width: 320, height: 180 },
   render(ctx: RenderContext) {
-    const  { timeline, std, width, height } = ctx;
-    const viz = std.viz;
-
-    const bars = [
-      { label: "Mon", value: 75 },
-      { label: "Tue", value: 45 },
-      { label: "Wed", value: 90 },
-      { label: "Thu", value: 60 },
-      { label: "Fri", value: 100 },
-    ];
-
-    const coords = viz.createCoords({
-      width,
-      height,
-      xRange: [0, 5],
-      yRange: [0, 100],
-      padding: { top: 36, bottom: 28, left: 20, right: 20 },
-    });
-
-    const barsEl = viz.charts.bar(coords, bars, {
-      animate: "grow",
-      progress: timeline.progress,
-      colors: ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444"],
-      showLabels: true,
-      barRadius: 4,
-      labelFontSize: 9,
-    });
-
-    const titleOp = std.math.clamp(timeline.progress * 3, 0, 1);
-
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <rect width="${width}" height="${height}" fill="#0f172a"/>
-  <text x="${width / 2}" y="22" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="600" fill="#ffffff" opacity="${titleOp.toFixed(3)}">Weekly Activity</text>
-  ${barsEl}
-</svg>`;
+    const { timeline, width, height } = ctx;
+    const rows = [{id:"Mon",value:75},{id:"Tue",value:45},{id:"Wed",value:90},{id:"Thu",value:60},{id:"Fri",value:100}];
+    const chart = layout(defineChart({ focus:false,
+      marks:[barY(rows,{id:"activity",key:"id",x:"id",y:"value",fill:"#60a5fa"})],
+      scales:{x:{scale:scaleBand().domain(rows.map(d=>d.id)).padding(.2),axis:{tickLabels:{fontSize:9}}},y:{scale:scaleLinear().domain([0,100]),grid:true,axis:{ticks:{count:3},tickLabels:{fontSize:9}}}},
+    }),{id:"showcase-activity",width:width-24,height:height-44,theme:{foreground:"#f8fafc",muted:"#94a3b8",grid:"#334155",background:"#0f172a",palette:["#60a5fa"]},motion:{barsGrow:Math.min(1,timeline.progress*1.5)}});
+    return Frame({width,height,fill:"#0f172a"},Stack({width:"fill",height:"fill",pad:12,gap:8},Text({size:14,color:"#f8fafc",weight:600},"Weekly activity"),chart.artwork));
   },
 });
 
@@ -223,7 +192,7 @@ export const vectorTemplate = define({
     const orbitY = 90 + Math.sin(orbitProgress * Math.PI * 2) * 24;
     const pathOffset = std.interpolate(orbitProgress, [0, 1], [220, 0], "easeOutCubic");
 
-    return `
+    return Html({ width: "fill", height: "fill", html: `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
       <div style="
         width:${width}px;
@@ -269,7 +238,7 @@ export const vectorTemplate = define({
           />
         </svg>
       </div>
-    `;
+    ` });
   },
 });
 
@@ -292,7 +261,7 @@ export const terminalTemplate = define({
     const showCursor = std.text.cursor(timeline.seconds);
     const outputOpacity = std.math.clamp((timeline.progress - 0.5) * 3, 0, 1);
 
-    return `
+    return Html({ width: "fill", height: "fill", html: `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
       <div style="
         width:${width}px;
@@ -320,6 +289,6 @@ export const terminalTemplate = define({
           </div>
         </div>
       </div>
-    `;
+    ` });
   },
 });

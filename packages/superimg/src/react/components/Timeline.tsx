@@ -10,7 +10,8 @@ import {
   type CSSProperties,
 } from "react";
 import { useTimeline, type UseTimelineReturn } from "../hooks/useTimeline.js";
-import type { RuntimeStore, Checkpoint } from "../../index.browser.js";
+import type { RuntimeStore } from "@superimg/media";
+import type { Checkpoint } from "@superimg/types";
 
 export interface TimelineProps {
   /** Imperative API ref (React 19 ref-as-prop) */

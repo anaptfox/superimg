@@ -15,9 +15,9 @@ export const BLOG_POSTS: BlogPostMeta[] = [
     date: "2026-02-22",
     author: "SuperImg Team",
     description:
-      "Programmatic media without a timeline editor. Write TypeScript that returns HTML — render to MP4, GIF, PNG, or SVG. Open source and LLM-friendly.",
+      "Write a media program once — play it live in your app, export to video, GIF, still, or SVG. Open source and LLM-friendly.",
     distributionTitle:
-      "SuperImg – programmatic media as TypeScript functions (HTML in, MP4/GIF/PNG out)",
+      "SuperImg – TypeScript media programs that play live and export anywhere",
   },
 ];
 

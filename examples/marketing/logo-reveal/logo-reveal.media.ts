@@ -1,176 +1,157 @@
-import { define, type RenderContext } from "superimg";
+// Logo Reveal — a printed brand intro: cobalt stock, bone type, ochre rule.
+// Two reveals, both real: `press` prints the wordmark under a sweeping bar,
+// `cut` splits it at the rule and closes the seam. Nothing else is claimed.
 
-export type RevealStyle = "zoom" | "fade" | "glitch" | "particles" | "typewriter" | "split";
+import { video, Frame, Fill, Stack, Text, type MediaElement, googleFont } from "@foxworth/superimg";
 
-export interface LogoRevealVideoData extends Record<string, unknown> {
-  logoUrl: string | null;
-  logoText: string | null;
+export type RevealStyle = "press" | "cut";
+
+export interface LogoRevealData extends Record<string, unknown> {
+  logoText: string;
   tagline: string | null;
   style: RevealStyle;
-  theme: "light" | "dark" | "custom";
-  backgroundColor: string | null;
   accentColor: string;
 }
 
-function generateParticles(count: number, seed: number) {
-  const particles: { x: number; y: number; size: number; delay: number }[] = [];
-  for (let i = 0; i < count; i++) {
-    const angle = (i / count) * Math.PI * 2 + seed;
-    const distance = 50 + (i % 5) * 30;
-    particles.push({
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance,
-      size: 2 + (i % 4) * 2,
-      delay: (i % 8) * 0.05,
-    });
-  }
-  return particles;
-}
+const FIELD = "#173F8A";
+const FIELD_DEEP = "#0E2A63";
+const BONE = "#F1EADA";
 
-export default define<LogoRevealVideoData>({
+export default video<LogoRevealData>({
+  duration: "4.5s",
+  poster: "3.4s",
+  fonts: [googleFont("Archivo:wght@700;800"), googleFont("DM+Mono:wght@500")],
   sample: {
     logoText: "ACME",
-    logoUrl: null,
     tagline: "Building the future",
-    style: "zoom",
-    theme: "dark",
-    backgroundColor: null,
-    accentColor: "#3b82f6",
+    style: "press",
+    accentColor: "#E0A32E",
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "4s",
+  variants: {
+    cut: { style: "cut" },
   },
-  render(ctx: RenderContext<LogoRevealVideoData>) {
-    const { std, width, height, timeline, data } = ctx;
-    const { logoUrl, logoText, tagline, style, theme, backgroundColor, accentColor } = data;
-
-    const bgColor =
-      theme === "custom" && backgroundColor
-        ? backgroundColor
-        : theme === "dark"
-          ? "#0a0a0a"
-          : "#ffffff";
-    const textColor = theme === "dark" || theme === "custom" ? "#ffffff" : "#0a0a0a";
+  render(ctx) {
+    const { std, width, height, data } = ctx;
+    const { logoText, tagline, style, accentColor } = data;
 
     const t = ctx.director({
-      buildUp: "0.6s",
-      reveal: "1.4s",
-      settle: "0.4s",
-      tagline: "0.6s",
-      hold: "0.6s",
-      outro: "0.4s",
+      reveal: "26%",
+      land: "10%",
+      tag: "14%",
+      hold: "38%",
+      out: "12%",
     });
-    const buildUpP = t.tween(0, 1, { during: "buildUp", easing: "easeOutCubic" });
+
     const revealP = t.in("reveal");
-    const settleP = t.tween(0, 1, { during: "settle", easing: "easeOutCubic" });
-    const taglineP = t.tween(0, 1, { during: "tagline", easing: "easeOutCubic" });
-    const holdP = t.in("hold");
-    const fadeP = t.tween(0, 1, { during: "outro", easing: "easeOutCubic" });
+    const settleP = t.in("land");
+    const tagP = t.in("tag");
+    const outP = t.in("out");
 
-    const globalOp = 1 - fadeP;
-    const fontSize = Math.min(width, height) * 0.08;
-    const logoSize = Math.min(width, height) * 0.35;
+    const mark = logoText.toUpperCase();
+    const bandW = Math.round(width * 0.74);
+    const glyph = Math.min(height * 0.26, (bandW * 0.94) / Math.max(1, mark.length * 0.66));
+    const bandH = Math.round(glyph * 1.24);
 
-    let logoTransform = "";
-    let logoOpacity = 1;
-    let effectsHtml = "";
+    // Reveal runs 0 → 1 across the reveal phase; settle only adds the landing.
+    const revealed = revealP >= 1 || settleP > 0 || tagP > 0 || t.in("hold") > 0 || outP > 0;
+    const p = revealed ? 1 : revealP;
 
-    const logoImg = logoUrl
-      ? `<img src="${logoUrl}" style="width:${logoSize}px;height:${logoSize}px;object-fit:contain;" />`
-      : logoText
-        ? `<span style="font-size:${fontSize * 1.5}px;font-weight:900;color:${textColor};letter-spacing:-0.02em;">${logoText}</span>`
-        : "";
+    const lockupScale = std.spring(0.985, 1, std.clamp01(settleP / 0.8), "snappy");
+    const fade = 1 - std.interpolate(outP, [0, 1], [0, 1], "easeInCubic");
+    const lift = std.interpolate(outP, [0, 1], [0, -22], "easeInCubic");
 
-    if (style === "zoom") {
-      const zoomP = std.interpolate(revealP, [0, 1], [0, 1], "easeOutBack");
-      const scale = 0.3 + zoomP * 0.7;
-      const overshoot = revealP < 1 ? 0 : (1 - settleP) * 0.05;
-      logoTransform = `scale(${scale + overshoot})`;
-      logoOpacity = Math.min(1, revealP * 2);
-      if (revealP > 0.3 && revealP < 0.8) {
-        const burstP = (revealP - 0.3) / 0.5;
-        effectsHtml = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><div style="width:${logoSize * (1 + burstP * 2)}px;height:${logoSize * (1 + burstP * 2)}px;border-radius:50%;border:2px solid ${accentColor};opacity:${1 - burstP};"></div></div>`;
-      }
-    } else if (style === "fade") {
-      logoOpacity = std.interpolate(revealP, [0, 1], [0, 1], "easeOutCubic");
-      const floatY = (1 - revealP) * 20;
-      logoTransform = `translateY(${floatY}px)`;
-    } else if (style === "glitch") {
-      const glitchP = revealP;
-      logoOpacity = glitchP > 0.3 ? 1 : glitchP * 3;
-      const glitchActive = glitchP > 0.1 && glitchP < 0.7;
-      const glitchX = glitchActive ? Math.sin(glitchP * 50) * 10 * (1 - glitchP) : 0;
-      const glitchY = glitchActive ? Math.cos(glitchP * 40) * 5 * (1 - glitchP) : 0;
-      logoTransform = `translate(${glitchX}px, ${glitchY}px)`;
-      if (glitchActive) {
-        const splitAmount = (1 - glitchP) * 8;
-        effectsHtml = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;mix-blend-mode:screen;"><div style="position:absolute;transform:translateX(${-splitAmount}px);opacity:0.5;filter:hue-rotate(-60deg);">${logoImg}</div><div style="position:absolute;transform:translateX(${splitAmount}px);opacity:0.5;filter:hue-rotate(60deg);">${logoImg}</div></div>`;
-      }
-    } else if (style === "particles") {
-      const particleP = std.interpolate(revealP, [0, 1], [0, 1], "easeOutExpo");
-      logoOpacity = particleP;
-      logoTransform = `scale(${0.8 + particleP * 0.2})`;
-      const particles = generateParticles(20, 0);
-      const particlesHtml = particles
-        .map((p) => {
-          const pProgress = Math.max(0, (revealP - p.delay) / (1 - p.delay));
-          const eased = std.interpolate(pProgress, [0, 1], [0, 1], "easeOutExpo");
-          const x = p.x * (1 - eased);
-          const y = p.y * (1 - eased);
-          const opacity = pProgress > 0.8 ? (1 - pProgress) * 5 : 1;
-          return `<div style="position:absolute;width:${p.size}px;height:${p.size}px;background:${accentColor};border-radius:50%;transform:translate(${x}px, ${y}px);opacity:${opacity * (1 - fadeP)};"></div>`;
-        })
-        .join("");
-      effectsHtml = `<div style="position:absolute;top:50%;left:50%;pointer-events:none;">${particlesHtml}</div>`;
-    } else if (style === "typewriter") {
-      if (logoText) {
-        const charCount = logoText.length;
-        const visibleChars = Math.floor(revealP * charCount);
-        const displayText = logoText.substring(0, visibleChars);
-        const cursor = revealP < 1 ? "|" : "";
-        logoOpacity = 1;
-        logoTransform = "";
-        effectsHtml = `<div style="font-size:${fontSize * 1.5}px;font-weight:900;font-family:monospace;color:${textColor};letter-spacing:0.05em;">${displayText}<span style="opacity:${Math.floor(timeline.progress * 10) % 2};">${cursor}</span></div>`;
-      } else {
-        logoOpacity = std.interpolate(revealP, [0, 1], [0, 1], "easeOutCubic");
-      }
-    } else if (style === "split") {
-      const splitP = std.interpolate(revealP, [0, 1], [0, 1], "easeOutExpo");
-      logoOpacity = splitP;
-      const splitAmount = (1 - splitP) * 100;
-      effectsHtml = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;"><div style="position:absolute;clip-path:inset(0 50% 0 0);transform:translateX(${-splitAmount}px);opacity:${splitP};">${logoImg}</div><div style="position:absolute;clip-path:inset(0 0 0 50%);transform:translateX(${splitAmount}px);opacity:${splitP};">${logoImg}</div></div>`;
+    // Keep the wordmark in the tree so check/inspect can see and measure it.
+    const wordmark = (id: string) => Text({
+      id, maxWidth: bandW, variant: "display",
+      fontFamily: "'Archivo', system-ui, sans-serif", weight: 800,
+      size: glyph, lineHeight: bandH / glyph, letterSpacing: -glyph * 0.035,
+      color: BONE, align: "center",
+    }, mark);
+
+    let band: MediaElement;
+    if (style === "cut") {
+      const open = std.interpolate(p, [0, 1], [0, 1], "easeOutExpo");
+      const drop = (1 - open) * glyph * 0.55;
+      const seam = Math.round(bandW * std.clamp01(p * 1.6));
+      band = Frame({ id: "cut", width: bandW, height: bandH, overflow: "hidden" },
+        Frame({ width: bandW, height: bandH, style: { clipPath: "inset(0 0 50% 0)", transform: `translateY(${-drop}px)` } }, wordmark("mark-top")),
+        Frame({ width: bandW, height: bandH, style: { clipPath: "inset(50% 0 0 0)", transform: `translateY(${drop}px)` } }, wordmark("mark-bottom")),
+        Fill({ id: "seam", x: (bandW - seam) / 2, y: bandH / 2 - 1, width: Math.max(1, seam), height: 2, color: accentColor,
+          style: { opacity: seam > 0 ? 1 - std.clamp01((p - 0.7) / 0.3) : 0 } }),
+      );
+    } else {
+      const sweep = std.interpolate(p, [0, 1], [0, 1], "easeInOutQuart");
+      const barW = Math.round(bandW * 0.14);
+      const edge = -barW + sweep * (bandW + barW);
+      const printed = Math.max(0, Math.min(bandW, edge));
+      const barFade = 1 - std.clamp01((p - 0.86) / 0.14);
+      band = Frame({ id: "press", width: bandW, height: bandH, overflow: "hidden" },
+        Frame({ width: bandW, height: bandH, style: { clipPath: `inset(0 ${bandW - printed}px 0 0)` } }, wordmark("mark")),
+        Fill({ id: "roller", x: edge, width: barW, height: bandH, color: BONE, style: { opacity: barFade } }),
+        Fill({ id: "edge", x: edge + barW, width: 2, height: bandH, color: accentColor, style: { opacity: barFade } }),
+      );
     }
 
-    const holdPulse = holdP > 0 ? 1 + Math.sin(holdP * Math.PI * 4) * 0.01 : 1;
-    const showMainLogo = style !== "typewriter" || !logoText;
-    const showSplitLogo = style === "split";
+    const ruleW = Math.round(bandW * 0.34 * std.interpolate(tagP, [0, 1], [0, 1], "easeOutCubic"));
+    const tagY = std.interpolate(tagP, [0, 1], [14, 0], "easeOutCubic");
 
-    const logoHtml =
-      showMainLogo && !showSplitLogo
-        ? `<div style="transform:${logoTransform} scale(${holdPulse});opacity:${logoOpacity};">${logoImg}</div>`
-        : "";
-
-    const taglineHtml = tagline
-      ? `<div style="position:absolute;bottom:${height * 0.2}px;left:0;right:0;text-align:center;opacity:${taglineP};transform:translateY(${(1 - taglineP) * 15}px);"><span style="font-size:${fontSize * 0.4}px;color:${textColor};opacity:0.8;letter-spacing:0.1em;text-transform:uppercase;">${tagline}</span></div>`
-      : "";
-
-    const glowOpacity = buildUpP > 0 && revealP < 0.5 ? buildUpP * 0.6 : 0;
-
-    return `
-    <div style="width:${width}px;height:${height}px;background:${bgColor};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;opacity:${globalOp};">
-
-      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center, ${accentColor}30 0%, transparent 50%);opacity:${glowOpacity + (revealP > 0.5 ? 0.1 : 0)};"></div>
-
-      ${effectsHtml}
-
-      ${logoHtml}
-
-      ${taglineHtml}
-
-    </div>
-  `;
+    return Frame(
+      { id: "stage", width: "fill", height: "fill" },
+      Fill({
+        gradient: {
+          kind: "radial",
+          at: "50% 42%",
+          size: "110% 110%",
+          stops: [`${FIELD} 0%`, `${FIELD_DEEP} 100%`],
+        },
+      }),
+      Fill({
+        id: "press-grain",
+        style: { backgroundImage: "radial-gradient(rgba(241,234,218,0.055) 1.1px, transparent 1.2px)", backgroundSize: "11px 11px" },
+      }),
+      Stack(
+        {
+          id: "lockup",
+          width: "fill",
+          height: "fill",
+          direction: "column",
+          align: "center",
+          justify: "center",
+          gap: Math.round(glyph * 0.26),
+          style: {
+            opacity: fade,
+            transform: `translateY(${lift.toFixed(2)}px) scale(${lockupScale.toFixed(4)})`,
+          },
+        },
+        Frame(
+          { id: "band", width: bandW, height: bandH, overflow: "hidden" },
+          band,
+        ),
+        Frame({
+          width: Math.max(1, ruleW),
+          height: 2,
+          fill: accentColor,
+          style: { opacity: ruleW > 1 ? 1 : 0 },
+        }),
+        tagline
+          ? Text(
+              {
+                variant: "caption",
+                size: Math.round(glyph * 0.15),
+                weight: 500,
+                color: `${BONE}CC`,
+                fontFamily: "'DM Mono', ui-monospace, monospace",
+                letterSpacing: Math.round(glyph * 0.045),
+                align: "center",
+                style: {
+                  opacity: tagP,
+                  transform: `translateY(${tagY.toFixed(2)}px)`,
+                },
+              },
+              tagline.toUpperCase(),
+            )
+          : null,
+      ),
+    );
   },
 });

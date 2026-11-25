@@ -1,37 +1,49 @@
-import { join } from "node:path";
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+//! Provider-neutral OCI deploy: package → assemble runtime → image build → optional push.
+//! No Wrangler, Cloudflare registry, or provider resource creation.
+
+import { join, dirname, resolve as pathResolve } from "node:path";
+import {
+  mkdirSync,
+  writeFileSync,
+  existsSync,
+  rmSync,
+} from "node:fs";
+import { fileURLToPath } from "node:url";
 import { execa } from "execa";
-import { bundleTemplateWithMap } from "@superimg/core/bundler";
-import { parseTemplate } from "../utils/template-config.js";
+import {
+  materializeDeployPlan,
+  planDeploy,
+} from "@superimg/adapters/providers";
+import type { DeployRuntimeProfile } from "@superimg/types";
 import { discoverVideos } from "../utils/discover-videos.js";
-import { loadTemplate, renderTemplate } from "../../deploy/template-utils.js";
-import type { ManifestEntry } from "../../render-from-bundle.js";
+import { packageTemplates } from "../../package/package-templates.js";
+import { assembleOciRuntime } from "../../deploy/assemble-oci-runtime.js";
 
 export interface DeployOptions {
-  worker?: string;
+  /** Image reference, e.g. ghcr.io/org/superimg-render:latest */
+  image?: string;
   dryRun?: boolean;
-  verify?: boolean;
+  push?: boolean;
+  profile?: DeployRuntimeProfile;
+  withFfmpeg?: boolean;
 }
-
-/** Snapshot persisted alongside generated artifacts. */
-interface DeployState {
-  workerUrl: string;
-  image: string;
-  deployedAt: string;
-}
-
-export async function deployCommand(templateArg: string | undefined, options: DeployOptions) {
+export async function deployCommand(
+  _templateArg: string | undefined,
+  options: DeployOptions,
+) {
   const cwd = process.cwd();
   const outDir = join(cwd, ".superimg-deploy");
-
-  // ── Preflight ──────────────────────────────────────────────────────────────
+  const profile: DeployRuntimeProfile =
+    options.profile ?? (options.withFfmpeg ? "node-media" : "node");
 
   log("Checking prerequisites...");
-
-  await exec("docker", ["info"], "Docker daemon not running — start Docker Desktop and retry.");
-  await exec("wrangler", ["whoami"], "Not authenticated with Cloudflare — run `wrangler login` first.");
-
-  // ── Bundle all templates → manifest ───────────────────────────────────────
+  if (!options.dryRun) {
+    await exec(
+      "docker",
+      ["info"],
+      "Docker daemon not running — start Docker and retry.",
+    );
+  }
 
   log("Discovering templates...");
   const discovered = discoverVideos(cwd);
@@ -39,87 +51,153 @@ export async function deployCommand(templateArg: string | undefined, options: De
     fatal("No *.media.ts files found in the current directory.");
   }
 
-  log(`Bundling ${discovered.length} template(s)...`);
-  const manifest: Record<string, ManifestEntry> = {};
-
-  for (const video of discovered) {
-    const bundle = await bundleTemplateWithMap(video.entrypoint);
-    const parsed = await parseTemplate(video.entrypoint);
-    manifest[video.name] = { bundle, parsed };
-  }
-
-  // ── Resolve Playwright version for Dockerfile ──────────────────────────────
-
-  const pkgJson = JSON.parse(readFileSync(join(cwd, "package.json"), "utf-8"));
-  const playwrightVersion = resolvePlaywrightVersion(pkgJson) ?? "1.57.0";
-
-  const workerName = options.worker ?? pkgJson.name?.replace(/[^a-z0-9-]/g, "-") ?? "superimg";
-  const image = `registry.cloudflare.com/${workerName}:latest`;
-  const compatDate = new Date().toISOString().slice(0, 10);
-
-  // ── Generate artifacts ─────────────────────────────────────────────────────
-
+  // Fresh context
+  rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
-  const dockerfile = renderTemplate(loadTemplate("Dockerfile.template"), {
-    PLAYWRIGHT_VERSION: playwrightVersion,
+  // 1) Package templates into content-addressed store (inside build context)
+  log(`Packaging ${discovered.length} template(s)...`);
+  const packagesDir = join(outDir, "packages");
+  const packaged = await packageTemplates({
+    cwd,
+    outRoot: packagesDir,
+    entries: discovered.map((d) => ({
+      name: d.name,
+      entrypoint: d.entrypoint,
+    })),
   });
 
-  const workerSrc = renderTemplate(loadTemplate("worker.ts.template"), {});
-
-  const wranglerToml = renderTemplate(loadTemplate("wrangler.toml.template"), {
-    WORKER_NAME: workerName,
-    COMPAT_DATE: compatDate,
-    IMAGE: image,
+  // 2) Assemble container runtime (dist/container.js + package.json for npm install)
+  log("Assembling container runtime into deploy context...");
+  const cliDist = resolveCliDistDir();
+  const assembled = assembleOciRuntime({
+    outDir,
+    cliDistDir: cliDist,
   });
+  log(
+    `  runtime: ${assembled.files.length} dist modules → ${join(outDir, "dist")}`,
+  );
 
-  writeFileSync(join(outDir, "Dockerfile"), dockerfile);
-  writeFileSync(join(outDir, "worker.ts"), workerSrc);
-  writeFileSync(join(outDir, "wrangler.toml"), wranglerToml);
-  writeFileSync(join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2));
+  // 3) Generate Dockerfile + runtime-manifest
+  const imageRef = options.image ?? `superimg-render:${profile}`;
+  const slash = imageRef.lastIndexOf(":");
+  const imageName =
+    slash > 0 && !imageRef.slice(slash + 1).includes("/")
+      ? imageRef.slice(0, slash)
+      : imageRef;
+  const tag =
+    slash > 0 && !imageRef.slice(slash + 1).includes("/")
+      ? imageRef.slice(slash + 1)
+      : "latest";
+
+  const plan = planDeploy({
+    profile,
+    imageName,
+    tag,
+    nodeVersion: assembled.nodeVersion,
+    playwrightVersion: assembled.playwrightVersion,
+    withFfmpeg: options.withFfmpeg ?? profile === "node-media",
+  });
+  const files = materializeDeployPlan(plan);
+
+  for (const [rel, contents] of Object.entries(files)) {
+    writeFileSync(join(outDir, rel), contents);
+  }
+
+  // Package catalog for operators
+  writeFileSync(
+    join(outDir, "packages-index.json"),
+    JSON.stringify(
+      {
+        schemaVersion: 0,
+        packages: packaged.map((p) => ({
+          sourceId: p.sourceId,
+          packageHash: p.packageHash,
+          path: p.relativePath,
+        })),
+      },
+      null,
+      2,
+    ),
+  );
 
   if (options.dryRun) {
-    log("Dry run — artifacts written to .superimg-deploy/. Skipping build and deploy.");
-    log(`  Dockerfile    → ${join(outDir, "Dockerfile")}`);
-    log(`  worker.ts     → ${join(outDir, "worker.ts")}`);
-    log(`  wrangler.toml → ${join(outDir, "wrangler.toml")}`);
-    log(`  manifest.json → ${join(outDir, "manifest.json")} (${Object.keys(manifest).length} templates)`);
+    log(
+      `Dry run — OCI build context written to .superimg-deploy/ (profile=${profile}).`,
+    );
+    log(`  package.json + dist/ (${assembled.files.length} modules)`);
+    log(`  packages/ (${packaged.length} packages)`);
+    for (const rel of Object.keys(files)) {
+      log(`  ${rel.padEnd(24)} → ${join(outDir, rel)}`);
+    }
+    for (const note of plan.notes) log(`  note: ${note}`);
     return;
   }
 
-  // ── Docker build + push ────────────────────────────────────────────────────
+  // 4) Build image from outDir context (includes runtime + packages)
+  const fullImage = `${imageName}:${tag}`;
+  log(`[1/2] Building container image ${fullImage}...`);
+  await execStream("docker", [
+    "build",
+    "-t",
+    fullImage,
+    "-f",
+    join(outDir, "Dockerfile"),
+    outDir,
+  ]);
 
-  log(`[1/3] Building container image ${image}...`);
-  await execStream("docker", ["build", "-t", image, "-f", join(outDir, "Dockerfile"), cwd]);
+  // 5) Optional push
+  if (options.push) {
+    log(`[2/2] Pushing ${fullImage}...`);
+    await execStream("docker", ["push", fullImage]);
+  } else {
+    log(`[2/2] Skipping push (pass --push to publish ${fullImage}).`);
+  }
 
-  log(`[2/3] Pushing image...`);
-  await execStream("docker", ["push", image]);
-
-  // ── Wrangler deploy ────────────────────────────────────────────────────────
-
-  log(`[3/3] Deploying Worker...`);
-  await execStream("wrangler", ["deploy", "--config", join(outDir, "wrangler.toml")]);
-
-  // ── Persist state ──────────────────────────────────────────────────────────
-
-  const workerUrl = `https://${workerName}.workers.dev`;
-  const state: DeployState = { workerUrl, image, deployedAt: new Date().toISOString() };
+  const state = {
+    image: fullImage,
+    profile,
+    packaged: packaged.map((p) => ({
+      sourceId: p.sourceId,
+      packageHash: p.packageHash,
+    })),
+    deployedAt: new Date().toISOString(),
+  };
   writeFileSync(join(cwd, "superimg.deploy.json"), JSON.stringify(state, null, 2));
 
-  // ── Done ───────────────────────────────────────────────────────────────────
-
-  log(`\nDeployed! Render endpoint:`);
-  log(`  ${workerUrl}/render`);
-  log(`\nTest it:`);
-  log(`  curl -X POST ${workerUrl}/render \\`);
-  log(`    -H 'Content-Type: application/json' \\`);
-  log(`    -d '{"template":"${Object.keys(manifest)[0]}"}' \\`);
-  log(`    -o output.mp4`);
-  log(`\nTail logs:`);
-  log(`  wrangler tail ${workerName}`);
+  log(`\nOCI image ready: ${fullImage} (profile=${profile})`);
+  log(`Packages: ${packaged.map((p) => p.sourceId).join(", ")}`);
+  log(`Run: docker run --rm -p 8080:8080 ${fullImage}`);
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+function resolveCliDistDir(): string {
+  // Prefer built dist next to this package
+  const here = dirname(fileURLToPath(import.meta.url));
+  // dist/cli/commands/deploy.js → dist/  OR  src/cli/commands → ../../dist
+  const candidates = [
+    pathResolve(here, "../.."),
+    pathResolve(here, "../../../dist"),
+    join(cwdMonorepoRoot(), "packages/superimg-cli/dist"),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(join(dir, "container.js"))) return dir;
+  }
+  fatal(
+    "Could not find packages/superimg-cli/dist/container.js — run: pnpm --filter @foxworth/superimg-cli build",
+  );
+}
+
+function cwdMonorepoRoot(): string {
+  // Walk up from process.cwd() looking for packages/superimg-cli
+  let dir = process.cwd();
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(dir, "packages/superimg-cli/package.json"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return process.cwd();
+}
 
 function log(msg: string) {
   process.stdout.write(msg + "\n");
@@ -130,7 +208,6 @@ function fatal(msg: string): never {
   process.exit(1);
 }
 
-/** Run a command, fail fast with a human message on non-zero exit. */
 async function exec(cmd: string, args: string[], failMessage: string) {
   try {
     await execa(cmd, args, { stdio: "pipe" });
@@ -139,20 +216,10 @@ async function exec(cmd: string, args: string[], failMessage: string) {
   }
 }
 
-/** Run a command streaming output to stdout. */
 async function execStream(cmd: string, args: string[]) {
   const proc = execa(cmd, args, { stdio: ["ignore", "inherit", "inherit"] });
   const result = await proc;
   if (result.exitCode !== 0) {
     fatal(`${cmd} exited with code ${result.exitCode}`);
   }
-}
-
-/** Extract the pinned playwright version from package.json peerDependencies or dependencies. */
-function resolvePlaywrightVersion(pkg: Record<string, unknown>): string | null {
-  const peers = (pkg.peerDependencies ?? {}) as Record<string, string>;
-  const deps = (pkg.dependencies ?? {}) as Record<string, string>;
-  const raw = peers["playwright"] ?? peers["playwright-core"] ?? deps["playwright"] ?? deps["playwright-core"];
-  if (!raw) return null;
-  return raw.replace(/^[\^~>=]+/, "").split(".").slice(0, 2).join(".");
 }

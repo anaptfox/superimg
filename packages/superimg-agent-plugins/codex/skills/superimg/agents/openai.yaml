@@ -1,0 +1,7 @@
+interface:
+  display_name: '/superimg'
+  short_description: 'Create deterministic video, image, SVG, Open Graph, collection, responsive, interactive...'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$superimg: Create a 6s launch video template'

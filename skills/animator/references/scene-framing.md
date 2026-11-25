@@ -24,9 +24,9 @@ For 9:16 social (TikTok / Reels / Shorts), additionally dead zones:
 | Engagement buttons | right ~14% |
 
 Net effect: design 9:16 content as a centered vertical column roughly
-`x ∈ [8%, 84%]`, `y ∈ [14%, 80%]`. With `std.layers`, pass
-`safe: "broadcast"` on content layers; for flat HTML compute insets from
-`width`/`height` (`ctx.isPortrait` tells you which regime you're in).
+`x ∈ [8%, 84%]`, `y ∈ [14%, 80%]`. Wrap copy in `Safe({ preset: "broadcast" })`;
+for `h()` flex islands compute insets from `width`/`height` (`ctx.isPortrait`
+tells you which regime you're in).
 
 ### Focal hierarchy
 
@@ -35,8 +35,9 @@ Net effect: design 9:16 content as a centered vertical column roughly
 - Motion outranks size and color in the attention hierarchy. A 20px moving
   dot beats a full-bleed static image. Assign motion only to what you're
   currently "saying".
-- **Negative space is load-bearing**: 40–60% of a good motion-graphics frame
-  is empty. It's where the eye rests and where the next element enters from.
+- **Negative space supports hierarchy**, but its amount depends on the scene.
+  A detailed environment may fill the frame; check subject separation and
+  readability at the intended size instead of imposing an empty-space quota.
 - Rule of thirds: put focal elements on third-lines/intersections for
   multi-element scenes. Dead-center is correct for single-subject hero
   moments and most 9:16 content.
@@ -46,7 +47,7 @@ Net effect: design 9:16 content as a centered vertical column roughly
 
 ## Scene structure: establish → develop → resolve
 
-Every scene, regardless of length:
+For a scene with a functional entrance, hold and exit, one possible timing is:
 
 ```typescript
 const t = ctx.director({ enter: "20%", hold: "62%", exit: "18%" });
@@ -55,13 +56,11 @@ const t = ctx.director({ enter: "20%", hold: "62%", exit: "18%" });
 1. **Establish (15–25%)** — staged, staggered entrances teach the layout.
    Background/frame first, then focal element, then supports. The viewer
    should know where to look before the content starts working.
-2. **Develop (50–70%)** — the scene does its job. Held composition; text is
-   read; the diagram animates its point; values count up. Ambient motion only
-   (2–5px oscillation, slow drift). This is where amateurs over-animate —
-   resist.
-3. **Resolve (15–20%)** — designed exits, ~25% faster than entrances, usually
-   reversing entrance direction or exiting *toward* the next scene's entrance
-   direction.
+2. **Develop (50–70%)** — the scene does its job: text is read, a subject acts,
+   a diagram changes, or the camera moves. Use the time and movement the action
+   needs while keeping its subject readable.
+3. **Resolve (15–20%)** — when a transition needs an exit, direct it toward the
+   next beat. A final state can hold, and a continuous action need not exit.
 
 For absolute-time control use seconds phases (`{ enter: "0.8s", ... }`);
 percentages keep the shape stable when duration changes.
@@ -75,7 +74,7 @@ const t = ctx.director({ setup: "2s", payoff: "3s", outro: "1s" });
 const setup = t.clip({ during: "setup" });
 if (setup.active) {
   const local = setup.director({ enter: "25%", hold: "60%", exit: "15%" });
-  // each beat gets its own establish/develop/resolve
+  // choose the local phases required by this beat
 }
 ```
 
@@ -84,14 +83,14 @@ if (setup.active) {
 - **The 3-second rule:** something visually meaningful changes every 3–5s —
   a new element, a state change, a cut. Not necessarily a new scene.
 - Typical explainer scene: **3–8s**. Social/short-form beat: **1.5–4s**.
-- A static frame with nothing changing loses attention after ~4s.
+- Judge a still hold by its purpose and audience; a complex image can reward a longer look.
 - **Vary scene lengths.** Alternate quick punchy beats with slower
   informative ones. Uniform pacing is monotonous; fast sections make slow
   sections feel deliberate, and vice versa.
 - **Text sets the floor:** a scene can't be shorter than its text's reading
   time — `max(0.8s, words ÷ 3 s)` *settled*, entrance/exit excluded, plus
   ≥ 0.5s after the last text settles before it exits.
-- Motion budget: moving pixels ≤ ⅓ of scene runtime. Holds make hits land.
+- Text/card explainers budget moving pixels around ⅓ of scene runtime. Camera travel and process demonstrations use the time their action needs; keep the subject readable throughout.
 
 ## Transitions between scenes
 
@@ -100,11 +99,11 @@ The six motion-graphics staples, mapped to SuperImg:
 | Transition | When | SuperImg |
 |---|---|---|
 | **Hard cut** | topic change; the default — underrated | adjacent scenes in `compose()`, no transition |
-| **Wipe / push** | continuation; content sweeps frame | `std.reveal.wipe` / `curtain` / `split` on `L.fx()`, or `compose()` `slide-*` enters |
+| **Wipe / push** | continuation; content sweeps frame | `std.reveal.wipe` / `curtain` / `split` as overlay nodes, or `compose()` `slide-*` enters |
 | **Zoom-through** | diving into detail | scale the outgoing scene's focal element past frame; next scene starts wide |
-| **Morph** | strongest connective tissue; A's shape becomes B's element | `std.svg.morph` across a handoff, or matched shapes + `L.handoff()` |
+| **Morph** | strongest connective tissue; A's shape becomes B's element | `std.svg.morph` across a handoff, or matched shapes |
 | **Match cut** | rhyme between scenes | outgoing and incoming elements share position/size/motion across the cut |
-| **Element hand-off** | one element persists, world swaps | `std.reveal.handoffLocal` / `L.handoff()` |
+| **Element hand-off** | one element persists, world swaps | `std.reveal.handoffLocal` as an overlay node |
 
 Rules:
 
@@ -134,7 +133,7 @@ if (ctx.isPortrait) { /* stacked column layout, tighter safe area */ }
 - 9:16 — vertical stacking, centered column, bigger type (viewers are
   closer to phone screens), respect platform dead zones.
 - 1:1 — centered radial compositions work best.
-- Declare `config.outputs` presets rather than duplicating templates.
+- Make the root render responsive; reserve editions for exact-aspect art direction.
 
 ## Color & contrast in motion
 

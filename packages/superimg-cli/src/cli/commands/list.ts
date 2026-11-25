@@ -1,21 +1,70 @@
-//! List command - thin CLI wrapper over listVideos
+//! List command — CLI projections of discovery and source-description receipts.
 
-import { listVideos } from "../../list-videos.js";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { formatError } from "@superimg/core/errors";
+import {
+  MEDIA_INTERACTION_IDS,
+  type MediaSourceDescription,
+} from "@foxworth/superimg-interactions";
 import { findProjectRoot } from "../utils/find-project-root.js";
-import { discoverVideos } from "../utils/discover-videos.js";
+import { extractShortName } from "../utils/discover-videos.js";
+import {
+  createCliMediaInteractionSession,
+  type CliMediaInteractionSession,
+} from "../utils/media-interactions.js";
 
-export async function listCommand(options: { json?: boolean; shallow?: boolean } = {}) {
-  if (options.shallow) {
-    const videos = discoverVideos(findProjectRoot());
-    const paths = videos.map((video) => video.relativePath);
-    console.log(options.json ? JSON.stringify(paths, null, 2) : paths.join("\n"));
-    return;
-  }
+interface ListedMedia {
+  readonly name: string;
+  readonly shortName: string;
+  readonly relativePath: string;
+  readonly entrypoint: string;
+  readonly hasLocalConfig: boolean;
+  readonly medium: "html" | "svg";
+  readonly animated: boolean;
+  readonly kind: "video" | "loop" | "image" | "svg" | "interactive";
+  readonly temporal?: "once" | "loop";
+  readonly width: number;
+  readonly height: number;
+  readonly fps: number;
+  readonly duration: number;
+  readonly config: string;
+  readonly collection?: { readonly entries: "static" | "provider" };
+  readonly variants?: readonly { readonly id: string }[];
+  readonly editions?: readonly {
+    readonly id: string;
+    readonly width: number;
+    readonly height: number;
+  }[];
+  readonly fonts?: readonly string[];
+}
 
-  let videos: Awaited<ReturnType<typeof listVideos>>;
+export async function listCommand(
+  options: { json?: boolean; shallow?: boolean } = {},
+): Promise<void> {
+  let projectRoot: string;
+  let videos: Awaited<ReturnType<typeof describeProjectMedia>>;
   try {
-    videos = await listVideos();
+    projectRoot = findProjectRoot();
+    const session = createCliMediaInteractionSession(projectRoot);
+    try {
+      const discovery = await session.mount.dispatch({
+        interactionId: MEDIA_INTERACTION_IDS.discover,
+        input: {},
+      }, {});
+      if (options.shallow) {
+        const paths = discovery.sources.map((source) => source.relativePath);
+        console.log(options.json ? JSON.stringify(paths, null, 2) : paths.join("\n"));
+        return;
+      }
+      videos = await describeProjectMedia(
+        projectRoot,
+        session.mount,
+        discovery.sources,
+      );
+    } finally {
+      await session.dispose();
+    }
   } catch (err) {
     const formatted = formatError(err);
     if (options.json) {
@@ -27,15 +76,15 @@ export async function listCommand(options: { json?: boolean; shallow?: boolean }
   }
 
   if (options.json) {
-    const { buildManifest } = await import("../../integration/manifest.js");
-    const manifest = await buildManifest(process.cwd());
-    console.log(JSON.stringify(manifest, null, 2));
+    console.log(JSON.stringify({ schemaVersion: 0, media: videos }, null, 2));
     return;
   }
 
   if (videos.length === 0) {
     console.log("\n  No templates found.");
-    console.log("  Create a *.media.ts file, or run 'superimg init' to scaffold.\n");
+    console.log(
+      "  Create a *.media.ts file, or copy one from monorepo examples/ (superimg init --example hello-world).\n",
+    );
     return;
   }
 
@@ -47,7 +96,9 @@ export async function listCommand(options: { json?: boolean; shallow?: boolean }
 
   const rows = videos.map((v) => ({
     shortName: v.shortName,
-    type: typeLabel(v.medium, v.animated),
+    type: v.collection
+      ? `collection·${typeLabel(v.medium, v.animated)}`
+      : v.kind === "interactive" ? "interactive" : typeLabel(v.medium, v.animated),
     config: v.config ?? "—",
     path: v.relativePath,
   }));
@@ -65,4 +116,103 @@ export async function listCommand(options: { json?: boolean; shallow?: boolean }
   }
 
   console.log("\n");
+}
+
+async function describeProjectMedia(
+  projectRoot: string,
+  mount: CliMediaInteractionSession["mount"],
+  sources: readonly {
+    sourceId: string;
+    relativePath: string;
+    sourceKind: "media-module" | "collection";
+  }[],
+): Promise<ListedMedia[]> {
+  return Promise.all(sources.map(async (source) => {
+    try {
+      const description = await mount.dispatch({
+        interactionId: MEDIA_INTERACTION_IDS.describe,
+        input: { source: source.relativePath },
+      }, {});
+      return projectDescription(projectRoot, description);
+    } catch {
+      return failedDescription(projectRoot, source);
+    }
+  }));
+}
+
+function projectDescription(
+  projectRoot: string,
+  description: MediaSourceDescription,
+): ListedMedia {
+  const entrypoint = join(projectRoot, description.relativePath);
+  const directory = dirname(entrypoint);
+  const base = {
+    name: description.sourceId,
+    shortName: extractShortName(description.relativePath),
+    relativePath: description.relativePath,
+    entrypoint,
+    hasLocalConfig: existsSync(join(directory, "_config.ts")),
+  };
+  const kind = description.sourceKind === "interactive"
+    ? "interactive" as const
+    : description.media === "svg"
+      ? "svg" as const
+      : !description.animated
+        ? "image" as const
+        : description.temporal === "loop"
+          ? "loop" as const
+          : "video" as const;
+  return {
+    ...base,
+    medium: description.medium ?? "html" as const,
+    animated: description.animated,
+    kind,
+    ...((description.temporal === "once" || description.temporal === "loop")
+      ? { temporal: description.temporal }
+      : {}),
+    width: description.canvas.width,
+    height: description.canvas.height,
+    fps: description.fps,
+    duration: description.duration,
+    config: description.sourceKind === "interactive"
+      ? "interactive"
+      : `${description.canvas.width}x${description.canvas.height}${description.animated ? ` ${description.fps}fps` : ""}`,
+    ...(description.sourceKind === "collection"
+      ? { collection: { entries: description.collectionEntries ?? "provider" } }
+      : {}),
+    ...(description.variantIds.length
+      ? { variants: description.variantIds.map((id) => ({ id })) }
+      : {}),
+    ...(description.editions.length
+      ? { editions: description.editions.map((edition) => ({ ...edition })) }
+      : {}),
+    ...(description.fonts.length ? { fonts: [...description.fonts] } : {}),
+  };
+}
+
+function failedDescription(
+  projectRoot: string,
+  source: {
+    sourceId: string;
+    relativePath: string;
+    sourceKind: "media-module" | "collection";
+  },
+): ListedMedia {
+  const entrypoint = join(projectRoot, source.relativePath);
+  const directory = dirname(entrypoint);
+  return {
+    name: source.sourceId,
+    shortName: extractShortName(source.relativePath),
+    relativePath: source.relativePath,
+    entrypoint,
+    hasLocalConfig: existsSync(join(directory, "_config.ts")),
+    medium: "html" as const,
+    animated: false,
+    kind: "image" as const,
+    width: 1920,
+    height: 1080,
+    fps: 1,
+    duration: 1,
+    config: "⚠ parse failed",
+  };
 }

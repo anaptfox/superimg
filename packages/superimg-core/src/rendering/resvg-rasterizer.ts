@@ -4,6 +4,8 @@
 //! `resvg-rasterizer.edge.ts` or `resvg-rasterizer.node.ts`.
 
 import { Resvg } from "@resvg/resvg-wasm";
+import { SuperImgError } from "@superimg/types";
+import { assertNativeFont } from "./font-format.js";
 import type {
   Medium,
   Rasterizer,
@@ -59,22 +61,60 @@ export interface RasterizeSvgOptions {
   background?: string;
   /** Fallback family when an element specifies none. */
   defaultFontFamily?: string;
+  /**
+   * DPI for physical SVG units (default 96). Higher values improve print-style
+   * units without changing `fitTo: width` pixel target when width is set.
+   */
+  dpi?: number;
+  /**
+   * Optional zoom supersample before width fit. Prefer increasing `width` for
+   * Retina masters so the size contract stays explicit.
+   */
+  zoom?: number;
 }
+
+import { countSvgTextElements } from "./svg-text-scan.js";
+export { countSvgTextElements } from "./svg-text-scan.js";
 
 /**
  * Rasterize an SVG string to PNG bytes. `ensureInit()` must have resolved
  * first (the async `rasterize()` wrapper does this for you).
  *
  * System fonts are never loaded (determinism + build⟷edge parity); supply
- * `fontBuffers` for any text. Without them, text is dropped.
+ * `fontBuffers` for any text. Text with no font buffers throws
+ * `SVG_TEXT_NO_FONT` instead of rasterizing a PNG that silently drops glyphs.
+ *
+ * Size contract: default `fitTo: { mode: "width", value: opts.width }` is
+ * preserved. Quality flags (shape/text/image rendering) apply without
+ * changing the width fit semantics.
  */
 export function rasterizeSvgSync(svg: string, opts: RasterizeSvgOptions): Uint8Array {
+  const fontBuffers = opts.fontBuffers ?? [];
+  for (const font of fontBuffers) assertNativeFont(font);
+  const textElements = countSvgTextElements(svg);
+  if (textElements > 0 && fontBuffers.length === 0) {
+    throw new SuperImgError(
+      `SVG contains ${textElements} text element${textElements === 1 ? "" : "s"} but no font buffers were provided, so resvg would drop every glyph`,
+      "SVG_TEXT_NO_FONT",
+      { textElements },
+      "Pass font bytes (fontBuffers) or declare fonts on the media definition.",
+    );
+  }
+  const fitTo =
+    opts.zoom !== undefined && opts.zoom > 0
+      ? { mode: "zoom" as const, value: opts.zoom }
+      : { mode: "width" as const, value: opts.width };
   const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: opts.width },
+    dpi: opts.dpi ?? 96,
+    fitTo,
+    // geometricPrecision / optimizeQuality (resvg-wasm enum ints)
+    shapeRendering: 2,
+    textRendering: 1,
+    imageRendering: 0,
     ...(opts.background !== undefined ? { background: opts.background } : {}),
     font: {
       loadSystemFonts: false,
-      fontBuffers: opts.fontBuffers ?? [],
+      fontBuffers,
       ...(opts.defaultFontFamily !== undefined
         ? { defaultFontFamily: opts.defaultFontFamily }
         : {}),

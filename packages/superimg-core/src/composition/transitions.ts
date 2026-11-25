@@ -38,7 +38,7 @@ import {
   easeInBounce,
   easeOutBounce,
   easeInOutBounce,
-} from "@superimg/stdlib";
+} from "@superimg/stdlib/easing";
 
 /** Lookup map for easing functions by name */
 const EASING_MAP = {

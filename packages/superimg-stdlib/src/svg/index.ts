@@ -22,7 +22,18 @@ export type { TextPathOptions } from "./textPath";
 export * as bezier from "./bezier";
 export * as gradient from "./gradient";
 export type { SvgGradientResult, SvgLinearGradientOpts, SvgRadialGradientOpts } from "./gradient";
-export { measureText, wrapText, fitText } from "./measure";
-export type { MeasureOptions, TextMetrics, LineBox } from "./measure";
+export { measureText, wrapText, fitText, createTextMeasurer, fontFamilyList } from "./measure";
+export type {
+  MeasureOptions,
+  TextMetrics,
+  LineBox,
+  TextMeasurer,
+  TextMeasureRequest,
+  TextMeasurement,
+  MetricFontFace,
+} from "./measure";
+export { parseFontMetrics } from "./font-metrics";
+export { decodeWoff1ToSfnt, inflateZlibOrDeflate, isWoff1, isWoff2 } from "./woff";
+export type { FontMetrics } from "./font-metrics";
 export * as rough from "./rough";
 export type { RoughOpts, RoughFillStyle } from "./rough";

@@ -15,6 +15,8 @@ export default tseslint.config(
       "packages/superimg-codex-plugin/**",
       "packages/*/.generated/**",
       "packages/*/.build/**",
+      "packages/superimg-blitz/pkg/**",
+      "packages/superimg-blitz/rust/target/**",
       "**/*.config.ts",
       "**/vitest*.ts",
     ],

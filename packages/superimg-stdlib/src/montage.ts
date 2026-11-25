@@ -2,7 +2,7 @@ import { tween } from "./tween.js";
 import type { EasingName } from "./easing.js";
 import { kenBurns } from "./backgrounds.js";
 import { css } from "./css.js";
-import { clamp } from "./math.js";
+import { clamp } from "./math-basic.js";
 
 export interface MontageOptions {
   images: string[];

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-160 -50 320 100">
+  <title>Contact shadow on the bench plane — lift is an edit of rx/opacity</title>
+  <defs>
+    <filter id="penumbra-blur" x="-50%" y="-100%" width="200%" height="300%"><feGaussianBlur stdDeviation="10"/></filter>
+    <filter id="core-blur" x="-50%" y="-100%" width="200%" height="300%"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+  <ellipse id="penumbra" cx="-8" cy="0" rx="120" ry="24" fill="#24140b" opacity="0.38" filter="url(#penumbra-blur)"/>
+  <ellipse id="contact" cx="0" cy="0" rx="72" ry="13" fill="#170c06" opacity="0.6" filter="url(#core-blur)"/>
+</svg>

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -10,18 +10,23 @@ import { chromium } from "playwright";
 import { rolldown } from "rolldown";
 import sharp from "sharp";
 
+import { createBenchmarkRun, evaluateCeilings, summarize, assertCompatibleBaseline } from "./run-support.mjs";
+import { captureMarkerEvidence, waitForAcceptedMarker, waitForFailedMarker } from "./hmr-acceptance.mjs";
+
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "..", "..");
+if (process.argv.includes("--resources")) {
+  await import("./measure-runtime-resources.mjs");
+  process.exit(0);
+}
+if (process.argv.includes("--runtime")) {
+  const { runRuntimeBenchmark } = await import("./runtime-browser.mjs");
+  await runRuntimeBenchmark(process.argv.slice(2), { packageRoot, repoRoot });
+  process.exit(0);
+}
 const check = process.argv.includes("--check");
 const budgets = JSON.parse(await readFile(join(packageRoot, "performance-budgets.json"), "utf8"));
 
-function percentile(values, q) {
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.floor((sorted.length - 1) * q)] ?? 0;
-}
-function summary(values) {
-  return { samples: values.length, p50: +percentile(values, .5).toFixed(2), p95: +percentile(values, .95).toFixed(2) };
-}
 async function freePort() {
   return new Promise((resolvePort, reject) => {
     const server = createServer();
@@ -34,9 +39,12 @@ async function freePort() {
   });
 }
 async function browserBundle() {
-  const bundle = await rolldown({ input: join(packageRoot, "fixtures/browser-entry.ts") });
+  const bundle = await rolldown({
+    input: join(packageRoot, "fixtures/browser-entry.ts"),
+    transform: { define: { __SUPERIMG_RUNTIME_BENCH__: "false" } },
+  });
   try {
-    const generated = await bundle.generate({ format: "iife", name: "SuperImgBench", minify: true });
+    const generated = await bundle.generate({ format: "iife", name: "SuperImgBench", minify: true, codeSplitting: false });
     return generated.output[0].code;
   } finally {
     await bundle.close();
@@ -64,15 +72,21 @@ function comparePixels(a, b, threshold) {
   };
 }
 
+const run = await createBenchmarkRun({ kind: "browser", packageRoot, repoRoot, harness: new URL(import.meta.url), harnessFiles: [new URL("./hmr-acceptance.mjs", import.meta.url), new URL("../fixtures/browser-entry.ts", import.meta.url), new URL("../fixtures/browser-capture.ts", import.meta.url)], workload: { viewport: { width: 640, height: 480, dpr: 1 }, captureSamples: 20, hmrSamples: 5, browser: "installed Chromium; normal CPU", inspectionSurface: "dev-preview", hmrEvidence: "one guarded viewport PNG per accepted marker; same-byte media crop; stale syntax-failure diagnostics" }, buildPaths: (await readdir(join(repoRoot, "packages"))).map(name => `packages/${name}/dist`) });
+let browser;
+let page;
+try {
 const launchStarted = performance.now();
-const browser = await chromium.launch();
+browser = await chromium.launch();
+if (run.baseline) assertCompatibleBaseline({ identity: run.identity, browserVersion: browser.version() }, run.baseline);
 console.error("browser: chromium launched");
 const chromiumLaunchMs = performance.now() - launchStarted;
-const page = await browser.newPage({ viewport: { width: 640, height: 480 }, deviceScaleFactor: 1 });
+page = await browser.newPage({ viewport: { width: 640, height: 480 }, deviceScaleFactor: 1 });
 const browserCode = await browserBundle();
 const setupBenchPage = async () => {
   await page.goto('data:text/html,<div id="player"></div><div id="fixture" style="width:320px;height:180px"></div>', { waitUntil: "load" });
   await page.addScriptTag({ content: browserCode });
+  await page.waitForFunction(() => typeof window.__superimgBench?.benchmarkPlayer === "function");
 };
 await setupBenchPage();
 
@@ -88,6 +102,7 @@ for (let attempt = 0; attempt < 3; attempt += 1) {
 }
 if (!player) throw new Error("Player benchmark did not produce a result");
 const snapdom = await page.evaluate(() => window.__superimgBench.benchmarkSnapdom(10));
+await run.checkpoint({ browserVersion: browser.version(), playerRaw: player, snapdomRaw: snapdom });
 console.error("browser: player and SnapDOM measured");
 const captureMs = [];
 for (let i = 0; i < 20; i += 1) {
@@ -122,43 +137,77 @@ if (svgMarkup) {
   parity.resvgSvg = { width: 320, height: 180, ...comparePixels(resvgRaw, playwrightRaw, budgets.parity.channelThreshold) };
 }
 console.error("browser: Resvg parity measured");
+await run.checkpoint({ chromiumLaunchMs, headlessCaptureRaw: captureMs, parity });
 
-// End-to-end HMR: edit a temporary *.media.ts, receive the dev-server reload,
-// re-bundle it, and wait until the browser presents the new marker.
+// End-to-end HMR ends only when the real preview accepts matching compiled
+// source and presents the marker inside its committed media iframe.
 const hmrMs = [];
+const hmrCapturedMs = [];
+const hmrScreenshotMs = [];
+const hmrAccepted = [];
+let hmrRecovery;
 const fixtureRoot = await mkdtemp(join(tmpdir(), "superimg-hmr-"));
+const hmrEvidenceDirectory = join(run.directory, "hmr");
 let devServer;
+let hmrPage;
 try {
   await mkdir(join(fixtureRoot, "videos"), { recursive: true });
   await writeFile(join(fixtureRoot, "package.json"), '{"type":"module"}\n');
   const templatePath = join(fixtureRoot, "videos/bench.media.ts");
-  const source = (marker) => `import { define } from "superimg"; export default define({config:{width:320,height:180,fps:30,duration:1},render(){return '<div data-bench-marker="${marker}">${marker}</div>'}});`;
+  const source = (marker) => `import { define, Frame, Fill, Html } from "@foxworth/superimg"; export default define({config:{width:320,height:180,fps:30,duration:1},render(){return Frame({width:"fill",height:"fill"},Fill({color:"#f4f1ea"}),Html({width:"fill",height:"fill",html:'<div data-bench-marker="${marker}" style="width:100%;height:100%;display:grid;place-items:center;font:32px Arial;color:#111827">${marker}</div>'}))}});`;
   await writeFile(templatePath, source("marker-0"));
   const previousCwd = process.cwd();
-  process.chdir(fixtureRoot);
-  const { startDevServer } = await import(join(repoRoot, "packages/superimg-cli/dist/server.js"));
-  devServer = await startDevServer(templatePath, { port: await freePort() });
-  process.chdir(previousCwd);
+  try {
+    process.chdir(fixtureRoot);
+    const { startDevServer } = await import("@foxworth/superimg-cli/dev-server");
+    devServer = await startDevServer(templatePath, { port: await freePort() });
+  } finally { process.chdir(previousCwd); }
   console.error("browser: HMR server started");
-  const hmrPage = await browser.newPage({ viewport: { width: 640, height: 480 } });
+  hmrPage = await browser.newPage({ viewport: { width: 640, height: 480 }, deviceScaleFactor: 1 });
   await hmrPage.goto(devServer.url);
-  const waitForBundleMarker = (marker) => hmrPage.waitForFunction(async (value) => {
-    const code = await fetch('/api/template?bench=' + Date.now()).then((response) => response.text());
-    if (!code.includes(value)) return false;
-    document.body.textContent = value;
-    return true;
-  }, marker, { timeout: 10_000, polling: 10 });
-  await waitForBundleMarker("marker-0");
+  const baseline = await waitForAcceptedMarker(hmrPage, "marker-0");
+  const baselinePixels = await captureMarkerEvidence(hmrPage, "marker-0", { directory: hmrEvidenceDirectory, expectedSource: baseline.after.source });
+  hmrAccepted.push({ ...baseline, pixels: baselinePixels });
+  await run.checkpoint({ hmrRaw: hmrMs, hmrAccepted });
+  if (baselinePixels.status !== "accepted") throw new Error(`Baseline HMR capture rejected: ${baselinePixels.reportPath}`);
   for (let i = 1; i <= 5; i += 1) {
     const marker = `marker-${i}`;
     const started = performance.now();
     await writeFile(templatePath, source(marker));
-    await waitForBundleMarker(marker);
+    const accepted = await waitForAcceptedMarker(hmrPage, marker);
     hmrMs.push(performance.now() - started);
+    const pixels = await captureMarkerEvidence(hmrPage, marker, { directory: hmrEvidenceDirectory, expectedSource: accepted.after.source, editStarted: started });
+    hmrAccepted.push({ ...accepted, pixels });
+    await run.checkpoint({ hmrRaw: hmrMs, hmrCapturedRaw: hmrCapturedMs, hmrScreenshotRaw: hmrScreenshotMs, hmrAccepted });
+    if (pixels.status !== "accepted") throw new Error(`HMR capture rejected: ${pixels.reportPath}`);
+    if (pixels.media.sha256 === hmrAccepted.at(-2).pixels.media.sha256) throw new Error(`Accepted ${marker} did not change captured media pixels`);
+    hmrCapturedMs.push(pixels.timings.editToCapturedMs);
+    hmrScreenshotMs.push(pixels.timings.screenshotMs);
+    await run.checkpoint({ hmrRaw: hmrMs, hmrCapturedRaw: hmrCapturedMs, hmrScreenshotRaw: hmrScreenshotMs, hmrAccepted });
   }
-  await hmrPage.close();
+  const retainedSource = hmrAccepted.at(-1).after.source;
+  await writeFile(templatePath, 'export default video({ render( {');
+  let failed;
+  try { failed = await waitForFailedMarker(hmrPage, "marker-5", retainedSource); }
+  catch (error) { await run.checkpoint({ hmrFailureWait: { evidence: error.evidence, ...error.failureWait } }); throw error; }
+  if (JSON.stringify(failed.after.source) !== JSON.stringify(retainedSource) || failed.visibleMarker !== "marker-5") throw new Error("Syntax error did not retain the last accepted visible media");
+  const stalePixels = await captureMarkerEvidence(hmrPage, "marker-5", { directory: hmrEvidenceDirectory, name: "syntax-failure", expectedSource: retainedSource, diagnostic: true });
+  hmrRecovery = { failed, stalePixels, retainedSource };
+  await run.checkpoint({ hmrRecovery });
+  if (stalePixels.status !== "diagnostic") throw new Error(`Stale HMR diagnostic capture rejected: ${stalePixels.reportPath}`);
+  const recoveryStarted = performance.now();
+  await writeFile(templatePath, source("marker-recovered"));
+  const recovered = await waitForAcceptedMarker(hmrPage, "marker-recovered");
+  const recoveryAcceptedMs = performance.now() - recoveryStarted;
+  if (JSON.stringify(recovered.after.source) === JSON.stringify(retainedSource)) throw new Error("Recovered preview kept the old source identity");
+  const recoveredPixels = await captureMarkerEvidence(hmrPage, "marker-recovered", { directory: hmrEvidenceDirectory, expectedSource: recovered.after.source, editStarted: recoveryStarted });
+  hmrRecovery = { ...hmrRecovery, recovered, recoveredPixels, editToAcceptedMs: recoveryAcceptedMs };
+  await run.checkpoint({ hmrRecovery });
+  if (recoveredPixels.status !== "accepted") throw new Error(`Recovered HMR capture rejected: ${recoveredPixels.reportPath}`);
+  if (recoveredPixels.media.sha256 === hmrAccepted.at(-1).pixels.media.sha256) throw new Error("Recovered source did not change captured media pixels");
   console.error("browser: HMR measured");
 } finally {
+  await hmrPage?.close();
   await devServer?.close();
   await rm(fixtureRoot, { recursive: true, force: true });
 }
@@ -171,43 +220,60 @@ for (let i = 0; i < 300; i += 1) {
 }
 const stressRssGrowthMb = Math.max(0, (process.memoryUsage().rss - rssBefore) / 1048576);
 await browser.close();
+browser = undefined;
 
 const result = {
-  schemaVersion: 1,
+  schemaVersion: 0,
   recordedAt: new Date().toISOString(),
   environment: { node: process.version, platform: `${process.platform}-${process.arch}`, browser: "chromium" },
   chromiumLaunchMs: +chromiumLaunchMs.toFixed(2),
-  player: { firstFrameMs: +player.firstFrameMs.toFixed(2), scrub: summary(player.scrubMs) },
-  snapdom: { coldMs: +snapdom.coldMs.toFixed(2), warm: summary(snapdom.warmMs) },
-  headlessCapture: summary(captureMs),
-  hmr: summary(hmrMs),
+  player: { firstFrameMs: +player.firstFrameMs.toFixed(2), scrub: summarize(player.scrubMs) },
+  snapdom: { coldMs: +snapdom.coldMs.toFixed(2), warm: summarize(snapdom.warmMs) },
+  headlessCapture: summarize(captureMs),
+  hmr: { ...summarize(hmrMs), endpoint: "edit to accepted visible marker; excludes screenshot work", captured: { ...summarize(hmrCapturedMs), endpoint: "edit to guarded viewport screenshot completion; crop/file work follows" }, viewportScreenshot: summarize(hmrScreenshotMs), accepted: hmrAccepted, recovery: hmrRecovery },
   stress: { frames: 300, rssGrowthMb: +stressRssGrowthMb.toFixed(2) },
   parity,
+  correctness: { passed: true, checks: ["Player and SnapDOM operations completed", "guarded accepted HMR pixels changed for every source edit", "failed edit retained stale pixels", "recovery accepted new source and pixels", "300 capture operations completed"] },
+  measurement: "real browser host wall-clock stages; raw samples/median/range; p95 omitted below 100 samples",
+  budgetKeys: "Legacy *P95Ms limits use quick maximum when the sample count is below 100",
 };
-await mkdir(join(packageRoot, ".results"), { recursive: true });
-await writeFile(join(packageRoot, ".results/browser.json"), `${JSON.stringify(result, null, 2)}\n`);
+await run.checkpoint(result);
 console.log(JSON.stringify(result, null, 2));
 
 if (check) {
-  const errors = [];
-  const assert = (label, actual, limit) => { if (actual > limit) errors.push(`${label}: ${actual} > ${limit}`); };
-  assert("Chromium launch", result.chromiumLaunchMs, budgets.browser.chromiumLaunchMs);
-  assert("player first frame", result.player.firstFrameMs, budgets.browser.playerFirstFrameP95Ms);
-  assert("player scrub p95", result.player.scrub.p95, budgets.browser.playerScrubP95Ms);
-  assert("SnapDOM warm p95", result.snapdom.warm.p95, budgets.browser.snapdomWarmP95Ms);
-  assert("headless capture p50", result.headlessCapture.p50, budgets.browser.headlessCaptureP50Ms);
-  assert("headless capture p95", result.headlessCapture.p95, budgets.browser.headlessCaptureP95Ms);
-  assert("HMR p95", result.hmr.p95, budgets.browser.hmrP95Ms);
-  assert("stress RSS growth", result.stress.rssGrowthMb, budgets.browser.maxStressRssGrowthMb);
+  const upper = stats => stats.p95 ?? stats.max;
+  const tailLabel = stats => stats.p95 === undefined ? "quick maximum (legacy p95 ceiling)" : "p95";
+  const timing = [
+    ["Chromium launch", result.chromiumLaunchMs, budgets.browser.chromiumLaunchMs],
+    ["player first frame", result.player.firstFrameMs, budgets.browser.playerFirstFrameP95Ms],
+    [`player scrub ${tailLabel(result.player.scrub)}`, upper(result.player.scrub), budgets.browser.playerScrubP95Ms],
+    [`SnapDOM warm ${tailLabel(result.snapdom.warm)}`, upper(result.snapdom.warm), budgets.browser.snapdomWarmP95Ms],
+    ["headless capture p50", result.headlessCapture.p50, budgets.browser.headlessCaptureP50Ms],
+    [`headless capture ${tailLabel(result.headlessCapture)}`, upper(result.headlessCapture), budgets.browser.headlessCaptureP95Ms],
+    [`HMR ${tailLabel(result.hmr)}`, upper(result.hmr), budgets.browser.hmrP95Ms],
+  ];
+  const parityChecks = [];
   for (const [kind, metric] of Object.entries(result.parity)) {
-    assert(`${kind} mean channel delta`, metric.meanChannelDelta, budgets.parity.maxMeanChannelDelta);
-    assert(`${kind} differing pixel ratio`, metric.differingPixelRatio, budgets.parity.maxDifferingPixelRatio);
-    if (metric.width !== 320 || metric.height !== 180) errors.push(`${kind}: dimensions ${metric.width}x${metric.height}`);
-    if (kind === "alpha" && metric.alphaMismatchPixels !== 0) errors.push(`alpha: ${metric.alphaMismatchPixels} alpha pixels differ`);
+    parityChecks.push([`${kind} mean channel delta`, metric.meanChannelDelta, budgets.parity.maxMeanChannelDelta]);
+    parityChecks.push([`${kind} differing pixel ratio`, metric.differingPixelRatio, budgets.parity.maxDifferingPixelRatio]);
+    parityChecks.push([`${kind} width error`, Math.abs(metric.width - 320), 0], [`${kind} height error`, Math.abs(metric.height - 180), 0]);
+    if (kind === "alpha") parityChecks.push(["alpha mismatched pixels", metric.alphaMismatchPixels, 0]);
   }
+  result.correctness.parity = evaluateCeilings(parityChecks);
+  result.correctness.passed = result.correctness.parity.passed;
+  result.budgets = { timing: evaluateCeilings(timing), resources: evaluateCeilings([["stress RSS growth", result.stress.rssGrowthMb, budgets.browser.maxStressRssGrowthMb]]) };
+  await run.checkpoint(result);
+  const errors = [result.correctness.parity, ...Object.values(result.budgets)].flatMap(group => group.checks.filter(item => !item.passed).map(item => `${item.label}: ${item.actual} > ${item.limit}`));
   if (errors.length) {
     console.error(`Browser performance/parity budgets failed:\n- ${errors.join("\n- ")}`);
-    process.exit(1);
+    throw new Error("Browser budgets/parity failed; see retained result");
   }
   console.log("Browser performance and parity budgets passed.");
 }
+
+await run.complete({ ...result, measurement: "real browser host wall-clock stages; raw samples/median/range; p95 omitted below 100 samples", budgetKeys: "Legacy *P95Ms limits use quick maximum when the sample count is below 100" });
+console.error(`Evidence: ${run.directory}`);
+} catch (error) {
+  try { if (page && !page.isClosed()) await page.screenshot({ path: join(run.directory, "failure.png") }); } catch { /* Failure diagnostics cannot replace the original failure. */ }
+  await run.fail(error); throw error;
+} finally { await browser?.close(); }

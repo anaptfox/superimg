@@ -1,0 +1,30 @@
+# Embed in Apps
+
+Use the passive Player for deterministic media and `InteractivePlayer` for a singular explorable experience.
+
+## Passive media
+
+```ts
+import { Player } from "@foxworth/superimg/player";
+
+const player = new Player(element);
+await player.load(template, { data: selectedProduct });
+```
+
+The host can replace live data without creating collection semantics. Collections are a server-side materialization feature; only selected entry data should be sent to a local preview.
+
+For a page story or pointer scrub, pass `drive: "scroll"` or `drive: "pointer"`. See [Player](/docs/player). Do not put `drive` on `InteractivePlayer`.
+
+## Interactive media
+
+```tsx
+import { InteractivePlayer } from "@foxworth/superimg/react/interactive";
+
+<InteractivePlayer media={lesson} data={selectedLesson} />
+```
+
+Interactive media programs are singular. The host supplies live data, while guide layout, scene actions, hit targets, and navigation remain in the interactive package.
+
+## Offline delivery
+
+Use the schema-0 server/adapters APIs for discovery and export. Receipts are URL-free and contain hashes, paths, media coordinates, and rendition metadata—never deployment URLs or raw collection data.

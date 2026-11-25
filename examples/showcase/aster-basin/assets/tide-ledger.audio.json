@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "study": "tide-ledger",
+  "durationSeconds": 18,
+  "sampleRate": 48000,
+  "samplesPerFrame": 1600,
+  "sampleCount": 864000,
+  "channels": 2,
+  "bitDepth": 16,
+  "method": "Linear sample remapping of original frozen Atlas score with40ms chapter ramps; original buoy tail layered at arrival",
+  "source": {
+    "path": "score.wav",
+    "sha256": "8b2f0e0db06b22476ae614dfba03ef2cd45519d2e9b4ea6938103d4bdd08d740",
+    "sourceSamples": 2400000
+  },
+  "sha256": "95a31784b8aa0d2fa813c677f3fcae69e838b0b9b1fc3b6e22f974f5a950b9ae",
+  "pcmSha256": "8b792c33c57d9875f5bec1e1bfb12a3c74ffcbea5d9a09ff094551c326fc9a29",
+  "gain": 1,
+  "peak": 0.719970703125,
+  "rms": 0.047162437334464076,
+  "modelTimeMap": [
+    {
+      "start": 0,
+      "end": 1,
+      "from": 1,
+      "to": 1,
+      "id": "bed"
+    },
+    {
+      "start": 1,
+      "end": 4,
+      "from": 2,
+      "to": 6,
+      "id": "first-quay"
+    },
+    {
+      "start": 4,
+      "end": 6,
+      "from": 6,
+      "to": 10,
+      "id": "port"
+    },
+    {
+      "start": 6,
+      "end": 8,
+      "from": 10,
+      "to": 13,
+      "id": "present"
+    },
+    {
+      "start": 8,
+      "end": 11,
+      "from": 16,
+      "to": 25,
+      "id": "route"
+    },
+    {
+      "start": 11,
+      "end": 13.5,
+      "from": 30,
+      "to": 35,
+      "id": "raised"
+    },
+    {
+      "start": 13.5,
+      "end": 14,
+      "from": 36,
+      "to": 37,
+      "id": "return"
+    },
+    {
+      "start": 14,
+      "end": 16,
+      "from": 37.03333333333333,
+      "to": 41.5,
+      "id": "open"
+    },
+    {
+      "start": 16,
+      "end": 18,
+      "from": 42.6,
+      "to": 50,
+      "id": "traces"
+    }
+  ],
+  "cues": [
+    {
+      "id": "quay-gather",
+      "seconds": 1,
+      "sample": 48000,
+      "sourceSeconds": 2
+    },
+    {
+      "id": "port-growth",
+      "seconds": 4,
+      "sample": 192000,
+      "sourceSeconds": 6
+    },
+    {
+      "id": "route",
+      "seconds": 8,
+      "sample": 384000,
+      "sourceSeconds": 16
+    },
+    {
+      "id": "buoy-arrival",
+      "seconds": 11,
+      "sample": 528000,
+      "sourceSeconds": 25,
+      "sourceDuration": 1.8,
+      "duration": 1.8,
+      "timeScale": 1
+    },
+    {
+      "id": "raised-shore",
+      "seconds": 11,
+      "sample": 528000,
+      "sourceSeconds": 30
+    },
+    {
+      "id": "open-shore",
+      "seconds": 14,
+      "sample": 672000,
+      "sourceSeconds": 37.03333333333333
+    },
+    {
+      "id": "erosion",
+      "seconds": 16,
+      "sample": 768000,
+      "sourceSeconds": 42.6
+    }
+  ],
+  "listening": "unverified"
+}

@@ -6,7 +6,8 @@
   "description": "Compiled build configuration and package verification tools for SuperImg",
   "scripts": {
     "build": "tsdown tsdown.base.ts bundle-deps.ts --format esm --dts --out-dir dist --clean && node scripts/copy-runtime.mjs",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "node --test scan-imports.test.mjs"
   },
   "exports": {
     "./bundle-deps": {
@@ -18,7 +19,10 @@
     "./check-platform-self-contained": "./dist/check-platform-self-contained.mjs",
     "./check-workerd-compat": "./dist/check-workerd-compat.mjs",
     "./generate-platform-manifest": "./dist/generate-platform-manifest.mjs",
-    "./scan-imports": "./dist/scan-imports.mjs",
+    "./scan-imports": {
+      "types": "./dist/scan-imports.d.mts",
+      "import": "./dist/scan-imports.mjs"
+    },
     "./tsdown": {
       "types": "./dist/tsdown.base.d.mts",
       "import": "./dist/tsdown.base.mjs"
@@ -32,6 +36,9 @@
     "superimg-generate-platform-manifest": "./dist/generate-platform-manifest.mjs"
   },
   "devDependencies": {
-    "tsdown": "^0.22.3"
+    "tsdown": "catalog:"
+  },
+  "dependencies": {
+    "es-module-lexer": "3.0.4"
   }
 }

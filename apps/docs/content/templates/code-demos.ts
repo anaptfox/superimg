@@ -1,7 +1,7 @@
 // Compilable template code strings used by the CodeDemo MDX component.
 // The code shown in the UI is the same code that gets compiled and rendered.
 
-export const INTRO_TEMPLATE = `import { define } from "superimg";
+export const INTRO_TEMPLATE = `import { define, Html } from "@foxworth/superimg";
 
 export default define({
   render(ctx) {
@@ -10,7 +10,7 @@ export default define({
     const opacity = std.interpolate(timeline.progress, [0, 0.333], [0, 1], "easeOutCubic");
     const scale = std.interpolate(timeline.progress, [0, 1], [0.8, 1], "easeOutCubic");
 
-    return \`
+    return Html({ width: "fill", height: "fill", html: \`
       <div style="
         width: \${width}px;
         height: \${height}px;
@@ -28,11 +28,11 @@ export default define({
           transform: scale(\${scale});
         ">Hello, World!</h1>
       </div>
-    \`;
+    \` });
   },
 });`;
 
-export const EASING_TEMPLATE = `import { define } from "superimg";
+export const EASING_TEMPLATE = `import { define, Html } from "@foxworth/superimg";
 
 export default define({
   config: { duration: 3 },
@@ -45,7 +45,7 @@ export default define({
     const opacity = std.interpolate(progress, [0, 1], [0, 1], "easeOutCubic");
     const y = std.interpolate(progress, [0, 1], [30, 0], "easeOutCubic");
 
-    return \`
+    return Html({ width: "fill", height: "fill", html: \`
       <div style="
         width: \${width}px;
         height: \${height}px;
@@ -63,11 +63,11 @@ export default define({
           margin: 0;
         ">Smooth motion</h1>
       </div>
-    \`;
+    \` });
   },
 });`;
 
-export const DATA_TEMPLATE = `import { define } from "superimg";
+export const DATA_TEMPLATE = `import { define, Html } from "@foxworth/superimg";
 
 export default define({
   sample: {
@@ -83,7 +83,7 @@ export default define({
     const opacity = std.interpolate(progress, [0, 1], [0, 1], "easeOutCubic");
     const y = std.interpolate(progress, [0, 1], [30, 0], "easeOutCubic");
 
-    return \`
+    return Html({ width: "fill", height: "fill", html: \`
       <div style="
         width: \${width}px;
         height: \${height}px;
@@ -109,12 +109,12 @@ export default define({
           margin-top: 16px;
         ">\${subtitle}</p>
       </div>
-    \`;
+    \` });
   },
 });`;
 
 // Same as "Your First Template" in Getting Started doc
-export const GETTING_STARTED_TEMPLATE = `import { define } from "superimg";
+export const GETTING_STARTED_TEMPLATE = `import { define, Html } from "@foxworth/superimg";
 
 export interface TemplateData {
   title: string;
@@ -145,14 +145,14 @@ export default define<TemplateData>({
       height,
       background: \`linear-gradient(135deg, hsl(\${hue},65%,14%), hsl(\${hue + 45},75%,8%))\`,
     }, std.css.center());
-    return \`
+    return Html({ width: "fill", height: "fill", html: \`
       <div style="\${bgStyle}">
         <div style="\${std.css({ textAlign: "center", opacity, transform: "translateY(" + y + "px)" })}">
           <div style="font-size:64px; font-weight:700; letter-spacing:-2px;">\${data.title}</div>
           <div class="tagline">\${data.subtitle}</div>
         </div>
       </div>
-    \`;
+    \` });
   },
 });`;
 

@@ -5,7 +5,7 @@ SuperImg mixes multiple audio clips into the final MP4/WebM. Timeline config is 
 ## Clip model
 
 ```typescript
-import type { AudioClip, AudioTimeline } from "superimg";
+import type { AudioClip, AudioTimeline } from "@foxworth/superimg";
 
 // Single bed (shorthand)
 audio: {
@@ -36,7 +36,7 @@ audio: {
 | `trim.in` / `trim.out` | Source window inside the file |
 | `duration` | How long the clip plays on the timeline |
 | `role` | `music` \| `voice` \| `sfx` \| `ambient` — drives defaults and ducking |
-| `transcript` | Word timings on voice clips for `std.cue.transcript()` |
+| `transcript` | Word timings on voice clips for `ctx.track({ words })` |
 
 `config.audio` accepts `AudioClip`, `AudioClip[]`, or `AudioTimeline`.
 
@@ -53,16 +53,17 @@ Resolved output is passed to the encoder as `ResolvedAudioTimeline` (48 kHz ster
 
 ## Compose + per-scene audio
 
-Use global `config.audio` for beds and `scene(..., { audio })` for chapter narration:
+Use global `config.audio` for beds and each `compose()` scene's `audio` for chapter narration:
 
 ```typescript
-import { compose, scene } from "superimg";
+import { compose } from "@foxworth/superimg";
 
 export default compose(
   [
-    scene(hook, { id: "hook", duration: "8s" }),
-    scene(chapter, {
+    { id: "hook", template: hook, duration: "8s" },
+    {
       id: "ch1",
+      template: chapter,
       duration: "45s",
       audio: {
         id: "ch1-vo",
@@ -70,8 +71,8 @@ export default compose(
         role: "voice",
         transcript: ch1Words,
       },
-    }),
-    scene(outro, { id: "outro", duration: "6s" }),
+    },
+    { id: "outro", template: outro, duration: "6s" },
   ],
   {
     config: {
@@ -88,10 +89,10 @@ Scene clips without `at` or `atScene` default to `atScene: scene.id`.
 
 ## Syncing visuals to audio
 
-Use `std.cue.transcript()` with word timings from the same clip (or your `sample` data):
+Use `ctx.track()` with word timings from the same clip (or your `sample` data):
 
 ```typescript
-const transcript = std.cue.transcript(data.words, ctx.timeline.seconds);
+const transcript = ctx.track({ id: "voiceover", words: data.words }).transcript();
 const word = transcript.current();
 ```
 
@@ -99,10 +100,13 @@ For compose scenes, `timeline.seconds` is local to the chapter — match transcr
 
 ## Read-model API
 
-`buildTimelineModel(template, resolvedAudio)` returns a `TimelineModel` with video and per-role audio lanes. Intended for dev tooling and agents inspecting placement — not required for rendering.
+`timelineFromMediaIR(ir)` from `@foxworth/superimg/ir` projects a resolved Media IR into scene, audio and other display lanes. Pass `{ audioLanes: "role", includeHiddenAudio: false }` to group visible audio clips by role. This read model is for inspection and timeline interfaces; rendering uses authored media and resolved audio.
 
-See [Building a Timeline](./building-a-timeline.md) for the full read-model shape.
+Each lane item has a stable IR ID and a half-open frame range. Use
+`seekFrameForTimelineItem(item)` from the same entry point to seek to an item.
+Audio items retain their exact start and end times in seconds when the IR
+supplies them.
 
-## Breaking change (0.0.21+)
+## Audio clip contract
 
-The legacy `AudioOptions` shape (`audio: { src, volume, fadeIn: 0.5 }` with numeric fades and bare path strings) is removed. Migrate to `AudioClip` with `id`, `role`, and duration strings (`"0.5s"`).
+Declare audio as `AudioClip` values with stable `id` and `role` fields. Timing values use explicit duration strings such as `"0.5s"`, and asset paths belong in each clip's `src` field.

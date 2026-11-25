@@ -3,6 +3,7 @@
 
 import { createRenderPlan, executeRenderPlan } from "@superimg/core/engine";
 import { PlaywrightEngine } from "@superimg/node/internal";
+import { resolve } from "node:path";
 import type {
   EncodingOptions,
   RenderEngine,
@@ -36,7 +37,7 @@ export interface RenderFromBundleOptions extends RenderExecutionOptions {
 
 /**
  * Render a pre-bundled template to video bytes.
- * No esbuild, no path resolution, no companion data loading — all resolved at deploy time.
+ * Bundling, path resolution, and companion data loading are resolved at deploy time.
  */
 export async function renderFromBundle(
   entry: ManifestEntry,
@@ -50,8 +51,10 @@ export async function renderFromBundle(
     if (ownsEngine) await raceWithExecution(engine.init(), options);
 
     const assetUrlResolver = (filePath: string) => engine.registerAsset(filePath);
+    const assetResolver = (name: string) =>
+      assetUrlResolver(resolve("assets", name));
 
-    const { job, resolvedAssets, explicitOverrides } = buildRenderJob({
+    const { job: baseJob, resolvedAssets, explicitOverrides } = buildRenderJob({
       parsed: entry.parsed,
       templateBundle: entry.bundle,
       templateDir: "",
@@ -62,6 +65,7 @@ export async function renderFromBundle(
         ...(options.encoding !== undefined ? { encoding: options.encoding } : {}),
       },
     });
+    const job = baseJob;
 
     const { renderer, encoder } = engine.createAdapters({
       ...(job.encoding !== undefined ? { encoding: job.encoding } : {}),
@@ -69,9 +73,8 @@ export async function renderFromBundle(
     });
 
     const plan = await createRenderPlan(job, {
-      assetUrlResolver,
+      assetResolver,
       resolvedAssets,
-      templateDir: "",
       ...(options.startFrame !== undefined ? { startFrame: options.startFrame } : {}),
       ...(options.endFrame !== undefined ? { endFrame: options.endFrame } : {}),
       ...(explicitOverrides !== undefined ? { explicitOverrides } : {}),

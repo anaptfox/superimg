@@ -1,0 +1,31 @@
+{
+  "name": "@superimg/scene-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Living Canvas \u2014 an interactive semantic scene exhibit for SuperImg",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3010 --strictPort",
+    "build": "node ../../scripts/typecheck-native.mjs --noEmit && vite build",
+    "preview": "vite preview --port 3010 --strictPort",
+    "test": "vitest run --config vitest.config.ts",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "typecheck": "node ../../scripts/typecheck-native.mjs --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@foxworth/superimg": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "playwright": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

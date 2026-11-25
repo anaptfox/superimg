@@ -9,7 +9,6 @@ export * as indicate from "./indicate.js";
 export * as scale from "./scale.js";
 export * as charts from "./charts/index.js";
 export * as project3d from "./project3d.js";
-export * as three from "./three.js";
 export {
   lottie,
   durationFrames as lottieDurationFrames,

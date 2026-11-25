@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scroll a lesson route</title>
+    <style>
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body { margin: 0; background: #142328; color: #f2eee5; font: 16px/1.5 system-ui, sans-serif; }
+      main { width: min(100% - 32px, 980px); margin: 7vh auto; }
+      h1 { margin: 0 0 4px; font-size: clamp(28px, 5vw, 44px); }
+      p { margin: 0 0 18px; color: #a8b8b2; }
+      nav { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+      button { border: 1px solid #55746c; border-radius: 999px; padding: 10px 18px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+      button[aria-pressed="true"] { background: #f2b35f; border-color: #f2b35f; color: #142328; }
+      #route-status { margin-left: auto; color: #a8b8b2; }
+      /* The drive maps the section's full scroll travel to timeline progress.
+         Keep the section tall enough that 90% of document scroll reaches the
+         final scheduled act across normal viewport sizes. */
+      #scroll-section { height: 240vh; margin-top: 24px; }
+      #player { position: sticky; top: 10vh; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #183a43; }
+      .scroll-cue { position: sticky; top: calc(10vh + min(56.25vw, 551px) + 18px); padding-top: 14px; color: #a8b8b2; pointer-events: none; }
+      footer { padding: 6vh 0 12vh; color: #a8b8b2; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Scroll through a chosen explanation</h1>
+      <p>Choose one lesson route, then scroll the pinned frame to move through its timeline.</p>
+      <nav aria-label="Choose an explanation path">
+        <button id="beginner" type="button" aria-pressed="false">Beginner</button>
+        <button id="advanced" type="button" aria-pressed="false">Advanced</button>
+        <output id="route-status" aria-live="polite">Loading route…</output>
+      </nav>
+      <section id="scroll-section" aria-label="Scroll-driven lesson">
+        <div id="player"></div>
+        <div class="scroll-cue">Keep scrolling to continue · scroll back to review</div>
+      </section>
+      <footer>At the end of this section the lesson reaches its closing frame. Reduced-motion settings hold at the opening frame.</footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

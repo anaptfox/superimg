@@ -10,7 +10,7 @@ import { builtinModules } from "node:module";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { profiles } from "./bundle-deps.mjs";
-import { collectLineImports, isCommentLine } from "./scan-imports.mjs";
+import { collectSourceImports } from "./scan-imports.mjs";
 
 const args = process.argv.slice(2);
 let profileName = "superimg";
@@ -30,7 +30,7 @@ if (!policy) {
   process.exit(1);
 }
 
-const { alwaysBundle, neverBundle } = policy;
+const { alwaysBundle, neverBundle, facadeExternals = [] } = policy;
 const ROOT = resolve(rootArg ?? process.cwd());
 const DIST = join(ROOT, "dist");
 const PKG_PATH = join(ROOT, "package.json");
@@ -88,13 +88,7 @@ function collectDistExternals() {
   const specs = new Set();
   for (const file of walkJs(DIST)) {
     const src = readFileSync(file, "utf8");
-    for (const line of src.split("\n")) {
-      const trimmed = line.trimStart();
-      if (isCommentLine(trimmed)) continue;
-      const found = new Set();
-      collectLineImports(trimmed, found);
-      for (const spec of found) addExternal(specs, spec);
-    }
+    for (const spec of collectSourceImports(src)) addExternal(specs, spec);
   }
   return specs;
 }
@@ -105,6 +99,7 @@ const declared = new Set([
   ...Object.keys(pkg.peerDependencies ?? {}),
   ...Object.keys(pkg.optionalDependencies ?? {}),
 ]);
+const externallyProvided = new Set([...declared, ...facadeExternals]);
 
 const errors = [];
 const warnings = [];
@@ -115,7 +110,7 @@ const neverRoots = new Set(
 
 for (const root of [...neverRoots].sort()) {
   if (root.startsWith("@superimg/")) continue;
-  if (!declared.has(root)) {
+  if (!externallyProvided.has(root)) {
     errors.push(`neverBundle includes "${root}" but it is not declared in package.json`);
   }
 }
@@ -131,7 +126,7 @@ for (const spec of [...distExternals].sort()) {
   const root = topLevel(spec);
 
   if (root.startsWith("@superimg/")) continue;
-  if (root === "superimg") continue;
+  if (root === "@foxworth/superimg") continue;
 
   if (matchesAny(spec, alwaysBundle)) {
     errors.push(
@@ -145,7 +140,7 @@ for (const spec of [...distExternals].sort()) {
     continue;
   }
 
-  if (!declared.has(root)) {
+  if (!externallyProvided.has(root)) {
     errors.push(`dist imports "${spec}" (neverBundle) but "${root}" is missing from package.json`);
   }
 }
@@ -171,12 +166,13 @@ if (warnings.length) {
 // this automatically covers shared chunks (dist/chunks/*) without hardcoding them.
 if (profileName === "superimg") {
   const NODE_IMPORT_RE = /(?:^|\n)\s*import\s+[^'"]*['"]node:/;
-  const REL_IMPORT_RE =
-    /^(?:import|export)\s+(?:type\s+)?(?:(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?|\w+)\s+from\s+|)['"](\.[^'"]+)['"]/;
   const BROWSER_CLIENT_ENTRIES = [
-    "index.browser.js",
-    "bundler-browser.js",
+    "runtime.browser.js",
+    "runtime/html.js",
     "player.js",
+    "inspection.js",
+    "inspection/boundary.js",
+    "bundler-browser.js",
     "react/index.js",
     "react/player.js",
     "react/compile.js",
@@ -184,8 +180,8 @@ if (profileName === "superimg") {
   ];
 
   const DEFAULT_PREVIEW_ENTRIES = [
-    "index.browser.js",
     "player.js",
+    "inspection.js",
     "react/index.js",
     "react/player.js",
   ];
@@ -197,6 +193,7 @@ if (profileName === "superimg") {
     /@superimg\/browser-export/,
     /\bmediabunny\b/,
     /@zumer\/snapdom/,
+    /@foxworth\/boundary/,
   ];
 
   function walkClientGraph(rel, seen) {
@@ -208,10 +205,9 @@ if (profileName === "superimg") {
     if (NODE_IMPORT_RE.test(src)) {
       errors.push(`${rel} must not import node: builtins (browser client graph)`);
     }
-    for (const line of src.split("\n")) {
-      const m = line.trimStart().match(REL_IMPORT_RE);
-      if (!m) continue;
-      const next = resolve(dirname(abs), m[1]);
+    for (const specifier of collectSourceImports(src)) {
+      if (!specifier.startsWith(".")) continue;
+      const next = resolve(dirname(abs), specifier);
       if (!next.startsWith(DIST) || !next.endsWith(".js")) continue;
       walkClientGraph(next.slice(DIST.length + 1), seen);
     }
@@ -227,7 +223,7 @@ if (profileName === "superimg") {
     for (const pattern of FORBIDDEN_IN_PREVIEW) {
       if (pattern.test(src)) {
         errors.push(
-          `${rel} must not reference ${pattern} (default preview graph — use @superimg/browser-export or superimg/bundler opt-in entries)`,
+          `${rel} must not reference ${pattern} (default player graph — use @foxworth/superimg/runtime for export work)`,
         );
       }
     }

@@ -1,19 +1,56 @@
 import { describe, expect, it } from "vitest";
-import { define } from "@superimg/types";
+import { define, type JsonObject } from "@superimg/types";
 import {
   createImageRenderContext,
   createRenderContext,
   createSvgRenderContext,
   resolveRuntimeTemplateInfo,
 } from "../index.js";
-import type { AnyTemplateModule } from "@superimg/types";
+import { boxedHtml, boxedSvg } from "./__test-utils__/index.js";
 
 describe("runtime template info", () => {
+  it("preserves portable explicit font faces alongside Google declarations and authored CSS", () => {
+    const info = resolveRuntimeTemplateInfo(define({
+      config: {
+        fonts: [
+          { family: "Inter", weight: 400, src: new Uint8Array([0, 1, 0, 0]) },
+          { family: "Inter", weight: 700, style: "italic", src: new Uint8Array([79, 84, 84, 79]).buffer },
+          { family: "Remote", src: "https://example.com/font?v=2" },
+          { family: "Server", src: "./assets/font.ttf" },
+          { kind: "google", spec: " Roboto:wght@400 " },
+        ],
+        inlineCss: ["body{color:red}"],
+      },
+      render: () => boxedHtml("<div />"),
+    }));
+    expect(info.fonts).toEqual(["Roboto:wght@400"]);
+    expect(info.fontCss).toEqual([
+      '@font-face{font-family:"Inter";font-style:normal;font-weight:400;src:url("data:font/ttf;base64,AAEAAA==") format("truetype");font-display:block}',
+      '@font-face{font-family:"Inter";font-style:italic;font-weight:700;src:url("data:font/otf;base64,T1RUTw==") format("opentype");font-display:block}',
+      '@font-face{font-family:"Remote";font-style:normal;font-weight:400;src:url("https://example.com/font?v=2");font-display:block}',
+    ]);
+    expect(info.inlineCss).toEqual(["body{color:red}"]);
+  });
+
+  it.each([
+    ["wOFF", "font/woff", "woff"],
+    ["wOF2", "font/woff2", "woff2"],
+    ["ttcf", "font/collection", "collection"],
+  ])("embeds %s bytes with the corresponding browser format", (signature, mime, format) => {
+    const bytes = new Uint8Array([99, ...Array.from(signature, (char) => char.charCodeAt(0)), 99]);
+    const info = resolveRuntimeTemplateInfo(define({
+      config: { fonts: [{ family: "Subset", src: bytes.subarray(1, 5) }] },
+      render: () => boxedHtml("<div />"),
+    }));
+    expect(info.fontCss[0]).toContain(`data:${mime};base64,`);
+    expect(info.fontCss[0]).toContain(`format("${format}")`);
+  });
+
   it("resolves still image defaults without temporal frames", () => {
-    const template = define({
+    const template = define<JsonObject>({
       sample: { title: "default" },
       config: { width: 1200, height: 630 },
-      render: () => "<div />",
+      render: () => boxedHtml("<div />"),
     });
 
     const info = resolveRuntimeTemplateInfo(template, { data: { title: "override" } });
@@ -29,18 +66,18 @@ describe("runtime template info", () => {
 
   it("resolves static-SVG, animated, and video timing consistently", () => {
     // Static SVG: declares only duration (for CSS) — not animated.
-    const svg = define({ medium: "svg",
+    const svg = define<JsonObject>({ medium: "svg",
       config: { width: 400, height: 300, duration: 2 },
-      render: () => "<svg />",
+      render: () => boxedSvg(""),
     });
     // Animated HTML (formerly "gif") — fps + duration ⇒ N frames.
-    const animatedShort = define({
+    const animatedShort = define<JsonObject>({
       config: { width: 320, height: 180, fps: 12, duration: 2 },
-      render: () => "<div />",
+      render: () => boxedHtml("<div />"),
     });
-    const video = define({
+    const video = define<JsonObject>({
       config: { width: 640, height: 360, fps: 24, duration: 2 },
-      render: () => "<div />",
+      render: () => boxedHtml("<div />"),
     });
 
     expect(resolveRuntimeTemplateInfo(svg)).toMatchObject({
@@ -67,9 +104,9 @@ describe("runtime template info", () => {
   });
 
   it("parses static SVG duration strings for CSS animation metadata", () => {
-    const svg = define({ medium: "svg",
+    const svg = define<JsonObject>({ medium: "svg",
       config: { width: 400, height: 300, duration: "2500ms" },
-      render: () => "<svg />",
+      render: () => boxedSvg(""),
     });
 
     expect(resolveRuntimeTemplateInfo(svg)).toMatchObject({
@@ -84,10 +121,10 @@ describe("runtime template info", () => {
 
 describe("sample field in resolveRuntimeTemplateInfo", () => {
   it("uses template.sample as default data when no options.data is provided", () => {
-    const template = define({
+    const template = define<JsonObject>({
       sample: { title: "from sample" },
       config: { width: 800, height: 600 },
-      render: () => "<div />",
+      render: () => boxedHtml("<div />"),
     });
 
     const info = resolveRuntimeTemplateInfo(template);
@@ -96,10 +133,10 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("options.data fully overrides template.sample", () => {
-    const template = define({
+    const template = define<JsonObject>({
       sample: { title: "sample value", extra: "keep" },
       config: { width: 800, height: 600 },
-      render: () => "<div />",
+      render: () => boxedHtml("<div />"),
     });
 
     const info = resolveRuntimeTemplateInfo(template, { data: { title: "override" } });
@@ -109,10 +146,10 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("merges sample and options.data — sample provides base, options.data overrides", () => {
-    const template = define({
+    const template = define<JsonObject>({
       sample: { title: "default title", color: "#000" },
       config: { width: 1920, height: 1080, fps: 30, duration: 2 },
-      render: () => "<div />",
+      render: () => boxedHtml("<div />"),
     });
 
     const info = resolveRuntimeTemplateInfo(template, {
@@ -124,9 +161,9 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("produces empty data object when neither sample nor options.data is supplied", () => {
-    const template = define({
+    const template = define<JsonObject>({
       config: { width: 400, height: 400 },
-      render: () => "<div />",
+      render: () => boxedHtml("<div />"),
     });
 
     const info = resolveRuntimeTemplateInfo(template);
@@ -135,10 +172,10 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("works correctly for gif templates with sample", () => {
-    const template = define({
+    const template = define<JsonObject>({
       sample: { text: "animated" },
       config: { width: 320, height: 180, fps: 10, duration: 1 },
-      render: () => "<div />",
+      render: () => boxedHtml("<div />"),
     });
 
     const info = resolveRuntimeTemplateInfo(template);
@@ -148,10 +185,10 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("works correctly for svg templates with sample", () => {
-    const template = define({ medium: "svg",
+    const template = define<JsonObject>({ medium: "svg",
       sample: { label: "svg sample" },
       config: { width: 400, height: 300 },
-      render: () => "<svg />",
+      render: () => boxedSvg(""),
     });
 
     const info = resolveRuntimeTemplateInfo(template);
@@ -161,13 +198,10 @@ describe("sample field in resolveRuntimeTemplateInfo", () => {
   });
 
   it("handles a template without a sample field (no own property)", () => {
-    // Build a raw module object that truly lacks the sample property
-    const template: AnyTemplateModule = {
-      medium: "html",
-      animated: false,
+    const template = define<JsonObject>({
       config: { width: 200, height: 200 },
-      render: () => "<div />",
-    };
+      render: () => boxedHtml("<div />"),
+    });
 
     const info = resolveRuntimeTemplateInfo(template);
 

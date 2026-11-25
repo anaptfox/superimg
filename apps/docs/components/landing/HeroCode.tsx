@@ -4,7 +4,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 
-const HERO_CODE = `import { define } from 'superimg'
+const HERO_CODE = `import { define, Html } from '@foxworth/superimg'
 
 export default define({
   sample: {
@@ -28,7 +28,7 @@ export default define({
     const textProgress = std.math.clamp(timeline.progress / 0.4, 0, 1)
     const opacity = std.interpolate(textProgress, [0, 1], [0, 1], 'easeOutCubic')
 
-    return \`
+    return Html({ width: "fill", height: "fill", html: \`
       <div style="\${std.css({
         width, height,
         background: \`linear-gradient(135deg,
@@ -41,7 +41,7 @@ export default define({
             color:\${data.accentColor}">\${data.highlight}</div>
         </div>
       </div>
-    \`
+    \` })
   },
 })`;
 

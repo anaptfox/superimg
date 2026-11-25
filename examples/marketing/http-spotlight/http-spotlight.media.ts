@@ -1,44 +1,25 @@
-import { define, type RenderContext } from "superimg";
-import { highlight } from "superimg/stdlib/code";
-import {
-  type HttpMethod,
-  METHOD_COLORS,
-  getStatusColor,
-  prettyJson,
-  streamCode,
-} from "../../_http-helpers";
+// HTTP Spotlight — an endpoint sold like a billboard, not debugged like a log.
+// Film: ink field, one citron slab, Swiss grid, tabular numbers.
+// Deliberately not a request/response code diff — see developer/http-trace for that.
 
-/** Radiating sparkles burst, used for the response moment. */
-function sparkles(count: number, progress: number, accentColor: string): string {
-  let html = "";
-  for (let i = 0; i < count; i++) {
-    const ang = (i / count) * Math.PI * 2;
-    const dist = 100 + progress * 200;
-    const x = 50 + Math.cos(ang) * dist * (progress * 0.5 + 0.5);
-    const y = 50 + Math.sin(ang) * dist * (progress * 0.5 + 0.5);
-    const sc = 1 - progress * 0.5;
-    const op = 1 - progress;
-    html += `<div style="position:absolute;left:${x}%;top:${y}%;transform:translate(-50%,-50%) scale(${sc});width:4px;height:4px;background:${accentColor};border-radius:50%;box-shadow:0 0 10px ${accentColor},0 0 20px ${accentColor};opacity:${op};"></div>`;
-  }
-  return html;
-}
+import { video, Frame, Fill, Stack, Text, Html, type RenderContext, googleFont } from "@foxworth/superimg";
+import { type HttpMethod } from "../../_http-helpers";
 
 export interface ApiBrand {
   name: string;
-  logoSvg?: string;
-  domain?: string;
-  accentColor?: string;
+  domain: string;
+  accentColor: string;
 }
 
 export interface SpotlightMetric {
   label: string;
   value: string;
-  delta?: string;
+  delta: string;
 }
 
 export interface SpotlightCta {
   text: string;
-  url?: string;
+  url: string;
 }
 
 export interface HttpSpotlightData extends Record<string, unknown> {
@@ -50,67 +31,62 @@ export interface HttpSpotlightData extends Record<string, unknown> {
   responseStatus: number;
   responseStatusText: string;
   responseBody: string;
-  metric?: SpotlightMetric;
-  cta?: SpotlightCta;
+  metric: SpotlightMetric;
+  cta: SpotlightCta;
 }
 
-const PALETTE = {
-  bg: "#0a0a0f",
-  panel: "#13131a",
-  panelBorder: "rgba(255,255,255,0.06)",
-  text: "#f5f5f7",
-  muted: "#8b8b95",
-  codeBg: "#16161e",
-} as const;
+const INK = "#0C0C0B";
+const INK_SOFT = "#17171A";
+const CHALK = "#F3F1EA";
+const GREY = "#8C8C86";
 
-const DEFAULT_ACCENT = "#7c3aed";
+/** Top-level keys of a JSON body, in source order. Never throws on bad input. */
+function bodyKeys(body: string, limit: number): Array<{ key: string; value: string }> {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+    return Object.entries(parsed as Record<string, unknown>)
+      .slice(0, limit)
+      .map(([key, value]) => ({
+        key,
+        value: typeof value === "string" ? value : String(value),
+      }));
+  } catch {
+    return [];
+  }
+}
 
-const TIMING = {
-  titleCard: { start: 0.0, end: 0.12 },
-  layoutIn: { start: 0.12, end: 0.25 },
-  requestIn: { start: 0.2, end: 0.4 },
-  arrow: { start: 0.4, end: 0.5 },
-  responseSlam: { start: 0.5, end: 0.58 },
-  responseStream: { start: 0.5, end: 0.82 },
-  sparkleBurst: { start: 0.5, end: 0.78 },
-  metricIn: { start: 0.78, end: 0.88 },
-  ctaIn: { start: 0.86, end: 0.97 },
-};
+/** "32ms" → count the number, keep the unit. */
+function countUp(value: string, progress: number): string {
+  const match = /^(\d+(?:\.\d+)?)(.*)$/.exec(value.trim());
+  if (!match) return value;
+  const target = Number(match[1]);
+  const decimals = match[1]!.includes(".") ? 1 : 0;
+  return `${(target * progress).toFixed(decimals)}${match[2]}`;
+}
 
-export default define<HttpSpotlightData>({
+export default video<HttpSpotlightData>({
+  duration: "6.5s",
+  poster: "5.4s",
+  fonts: [googleFont("Archivo:wght@600;700;800"), googleFont("JetBrains+Mono:wght@400;500;700")],
   sample: {
-    apiBrand: {
-      name: "Acme",
-      domain: "api.acme.dev",
-      accentColor: "#7c3aed",
-    },
+    apiBrand: { name: "Acme", domain: "api.acme.dev", accentColor: "#DDFF4F" },
     summary: "One call. Zero setup.",
     method: "POST",
     endpoint: "/v1/checkout/sessions",
-    requestBody: JSON.stringify(
-      { customer: "cus_4f8a", amount: 4900, currency: "usd" },
-      null,
-      2,
-    ),
+    requestBody: JSON.stringify({ customer: "cus_4f8a", amount: 4900, currency: "usd" }, null, 2),
     responseStatus: 201,
     responseStatusText: "Created",
     responseBody: JSON.stringify(
-      { id: "cs_test_a1B2", url: "https://pay.acme.dev/cs_test_a1B2", expiresAt: 1735689600 },
+      { id: "cs_test_a1B2", url: "pay.acme.dev/cs_test_a1B2", expiresAt: 1735689600 },
       null,
       2,
     ),
-    metric: { label: "p99", value: "32ms", delta: "3× faster than v1" },
-    cta: { text: "Try it →", url: "acme.dev/docs" },
-  },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "5s",
-    fonts: ["JetBrains+Mono:wght@400;500;600", "Inter:wght@400;500;600;700;800"],
+    metric: { label: "p99 latency", value: "32ms", delta: "3× faster than v1" },
+    cta: { text: "Try it", url: "acme.dev/docs" },
   },
   render(ctx: RenderContext<HttpSpotlightData>) {
-    const { std, width, height, timeline, data } = ctx;
+    const { std, width, height, data } = ctx;
     const {
       apiBrand,
       summary,
@@ -124,175 +100,364 @@ export default define<HttpSpotlightData>({
       cta,
     } = data;
 
-    const accent = apiBrand.accentColor || DEFAULT_ACCENT;
-    const methodColor = METHOD_COLORS[method] ?? "#8b8b95";
-    const statusColor = getStatusColor(responseStatus);
-    const isSuccess = responseStatus >= 200 && responseStatus < 300;
+    const accent = apiBrand.accentColor;
 
-    const titleP = std.interpolate(timeline.progress, [TIMING.titleCard.start, TIMING.titleCard.end], [0, 1]);
-    const layoutP = std.interpolate(timeline.progress, [TIMING.layoutIn.start, TIMING.layoutIn.end], [0, 1]);
-    const reqP = std.interpolate(timeline.progress, [TIMING.requestIn.start, TIMING.requestIn.end], [0, 1]);
-    const arrowP = std.interpolate(timeline.progress, [TIMING.arrow.start, TIMING.arrow.end], [0, 1]);
-    const slamP = std.interpolate(timeline.progress, [TIMING.responseSlam.start, TIMING.responseSlam.end], [0, 1]);
-    const streamP = std.interpolate(timeline.progress, [TIMING.responseStream.start, TIMING.responseStream.end], [0, 1]);
-    const sparkleP = std.interpolate(timeline.progress, [TIMING.sparkleBurst.start, TIMING.sparkleBurst.end], [0, 1]);
-    const metricP = std.interpolate(timeline.progress, [TIMING.metricIn.start, TIMING.metricIn.end], [0, 1]);
-    const ctaP = std.interpolate(timeline.progress, [TIMING.ctaIn.start, TIMING.ctaIn.end], [0, 1]);
+    const t = ctx.director({
+      stamp: "16%",
+      claim: "16%",
+      proof: "22%",
+      count: "18%",
+      close: "28%",
+    });
 
-    // Title card → header morph: title visible immediately (front-loaded hook),
-    // gracefully fades out as the layout assembles.
-    const titleHeroOp = 1 - layoutP;
-    const titleHeroScale = std.spring(1.04, 1, Math.min(1, titleP * 1.6), "gentle");
-    const headerOp = std.interpolate(layoutP, [0, 1], [0, 1], "easeOutCubic");
+    const stampP = t.in("stamp");
+    const claimP = t.in("claim");
+    const proofP = t.in("proof");
+    const countP = t.in("count");
+    const closeP = t.in("close");
 
-    // Panels slide up
-    const panelY = std.interpolate(layoutP, [0, 1], [40, 0], "easeOutCubic");
-    const panelOp = std.interpolate(layoutP, [0, 1], [0, 1], "easeOutCubic");
+    const mono = "'JetBrains Mono', ui-monospace, monospace";
+    const sans = "'Archivo', system-ui, sans-serif";
 
-    // Request body fades in whole (not type-out)
-    const reqOp = std.interpolate(reqP, [0, 1], [0, 1], "easeOutCubic");
+    const pad = Math.round(width * 0.055);
+    const slabW = Math.round(width * 0.33);
+    const slabX = width - slabW;
+    const colW = slabX - pad * 2;
 
-    // Arrow draw + traveling dot
-    const arrowDashTotal = 100;
-    const arrowDashOffset = (1 - arrowP) * arrowDashTotal;
-    const dotProgress = arrowP > 0.4 ? (arrowP - 0.4) / 0.6 : 0;
-    const dotX = 8 + dotProgress * 80; // svg viewBox is 0-100 wide
+    // The citron slab drops from the top edge and stays put.
+    const slabDrop = std.interpolate(stampP, [0, 1], [0, 1], "easeOutExpo");
+    const slabH = Math.max(1, Math.round(height * slabDrop));
 
-    // Status slam-in
-    const statusScale = std.spring(0.4, 1, slamP, "playful");
-    const statusOp = std.interpolate(slamP, [0, 1], [0, 1], "easeOutCubic");
-    const statusGlow = std.interpolate(slamP, [0, 1], [0, 32], "easeOutCubic");
-    const responseBodyOp = std.interpolate(slamP, [0, 1], [0, 1], "easeOutCubic");
+    const brandMotion = t.motion({ id: "brand", during: "stamp", at: "24%", for: "60%", y: -14 });
+    const chipPop = std.spring(0.78, 1, std.clamp01(stampP / 0.85), "snappy");
+    const chipOp = std.clamp01(stampP * 2.2);
 
-    // Metric
-    const metricY = std.interpolate(metricP, [0, 1], [20, 0], "easeOutCubic");
-    const metricOp = std.interpolate(metricP, [0, 1], [0, 1], "easeOutCubic");
+    const claimShift = std.interpolate(claimP, [0, 1], [26, 0], "easeOutExpo");
+    const claimOp = std.clamp01(claimP * 1.8);
 
-    // CTA
-    const ctaX = std.interpolate(ctaP, [0, 1], [40, 0], "easeOutCubic");
-    const ctaOp = std.interpolate(ctaP, [0, 1], [0, 1], "easeOutCubic");
+    const reqKeys = bodyKeys(requestBody, 3);
+    const resKeys = bodyKeys(responseBody, 3);
+    const chipIn = std.stagger.ms(Math.max(1, resKeys.length), proofP, {
+      windowSeconds: t.clip({ during: "proof" }).durationSeconds,
+      eachMs: 70,
+      capMs: 280,
+    });
 
-    // Request: appears whole (devs read JSON fast — front-loaded design).
-    const reqHl = requestBody
-      ? highlight(prettyJson(requestBody), { lang: "json", theme: "dark-plus" })
-      : "";
-    // Response: streams in LLM-style — natural cadence, blinking cursor at the
-    // leading edge. This is the storytelling moment of the video.
-    const resStream = responseBody
-      ? streamCode(std, prettyJson(responseBody), streamP, {
-          lang: "json",
-          theme: "dark-plus",
-          variance: 0.75,
-          time: timeline,           accentColor: accent,
-        })
-      : null;
+    const statusPop = std.spring(0.7, 1, std.clamp01(proofP / 0.5), "playful");
+    const statusOp = std.clamp01(proofP * 3);
 
-    const sparklesHtml =
-      isSuccess && sparkleP > 0 && sparkleP < 1
-        ? `<div style="position:absolute;inset:0;pointer-events:none;">${sparkles(18, sparkleP, accent)}</div>`
-        : "";
+    const counted = countP > 0 || closeP > 0;
+    const countEase = counted
+      ? std.interpolate(closeP > 0 ? 1 : countP, [0, 1], [0, 1], "easeOutExpo")
+      : 0;
+    const metricLabelOp = std.clamp01((proofP > 0.5 ? (proofP - 0.5) * 2 : 0) + countP * 2);
 
-    const brandHtml = `
-      <div style="display:flex;align-items:center;gap:12px;">
-        ${apiBrand.logoSvg ? `<div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:${accent};">${apiBrand.logoSvg}</div>` : `<div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,${accent},${accent}88);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:white;">${apiBrand.name.charAt(0)}</div>`}
-        <div style="display:flex;flex-direction:column;gap:2px;line-height:1.1;">
-          <div style="font-size:18px;font-weight:700;color:${PALETTE.text};">${apiBrand.name}</div>
-          ${apiBrand.domain ? `<div style="font-size:13px;color:${PALETTE.muted};font-family:'JetBrains Mono',monospace;">${apiBrand.domain}</div>` : ""}
-        </div>
-      </div>
-    `;
+    const ctaSlide = std.interpolate(closeP, [0, 1], [1, 0], "easeOutExpo");
+    const ctaOp = std.clamp01(closeP * 2.4);
+    const ctaW = Math.round(colW * 0.52);
 
-    return `
-    <style>
-      * { box-sizing: border-box; }
-      pre.shiki { margin:0; padding:0; background:transparent !important; font-family:'JetBrains Mono','SF Mono',monospace; font-size:22px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
-      pre.shiki code { background:transparent !important; }
-      .tabular { font-variant-numeric: tabular-nums; }
-      body { margin:0; }
-    </style>
-    <div style="position:relative;width:${width}px;height:${height}px;background:radial-gradient(ellipse at 50% 30%, ${accent}1f 0%, ${PALETTE.bg} 60%);font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:${PALETTE.text};overflow:hidden;">
+    const endpointSize = Math.round(
+      Math.min(height * 0.055, (colW * 0.86) / Math.max(1, endpoint.length * 0.56)),
+    );
 
-      ${
-        titleHeroOp > 0.01
-          ? `
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;opacity:${titleHeroOp};transform:scale(${titleHeroScale});">
-          <div style="font-size:88px;font-weight:800;letter-spacing:-2px;line-height:1.05;max-width:1400px;">${summary}</div>
-          <div style="margin-top:32px;display:flex;align-items:center;gap:16px;">
-            <div style="background:${methodColor};color:white;font-weight:700;font-size:24px;padding:10px 20px;border-radius:10px;">${method}</div>
-            <div style="font-size:32px;font-family:'JetBrains Mono',monospace;color:${PALETTE.text};">${endpoint}</div>
-          </div>
-        </div>
-      `
-          : ""
-      }
+    const chipHtml = resKeys
+      .map((entry, i) => {
+        const p = chipIn[i] ?? 0;
+        const y = std.interpolate(p, [0, 1], [16, 0], "easeOutCubic");
+        return `<div style="display:flex;align-items:baseline;gap:14px;padding:14px 20px;border:1px solid ${CHALK}22;background:${INK_SOFT};opacity:${p.toFixed(3)};transform:translateY(${y.toFixed(2)}px);">
+        <span style="font-family:${mono};font-size:19px;color:${GREY};letter-spacing:1px;">${std.text.escapeHtml(entry.key)}</span>
+        <span style="font-family:${mono};font-size:23px;font-weight:500;color:${CHALK};">${std.text.escapeHtml(std.text.truncate(entry.value, 26, "…"))}</span>
+      </div>`;
+      })
+      .join("");
 
-      <div style="position:absolute;inset:0;padding:48px 60px;display:flex;flex-direction:column;gap:24px;opacity:${headerOp};">
-        <header style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;">
-          ${brandHtml}
-          <div style="display:flex;align-items:center;gap:14px;">
-            <div style="background:${methodColor};color:white;font-weight:700;font-size:20px;padding:8px 16px;border-radius:8px;">${method}</div>
-            <div style="font-size:24px;font-family:'JetBrains Mono',monospace;color:${PALETTE.text};">${endpoint}</div>
-          </div>
-        </header>
+    const sendLine = reqKeys.length
+      ? `{ ${reqKeys.map((entry) => entry.key).join(", ")} }`
+      : "no body";
 
-        <div style="font-size:32px;font-weight:600;color:${PALETTE.text};letter-spacing:-0.5px;">${summary}</div>
+    // Swiss grid: every block owns an explicit box, nothing hugs.
+    const rowH = 64;
+    const claimSize = Math.round(height * 0.105);
+    const slabPad = Math.round(slabW * 0.12);
+    const slabInner = slabW - slabPad * 2;
+    const metricSize = Math.round(Math.min(height * 0.19, slabInner / Math.max(1, metric.value.length * 0.68)));
 
-        <main style="flex:1;display:flex;gap:32px;align-items:center;min-height:0;opacity:${panelOp};transform:translateY(${panelY}px);">
+    return Frame(
+      { id: "board", width: "fill", height: "fill" },
+      Fill({ color: INK }),
+      Fill({ id: "rules", style: { backgroundImage: `linear-gradient(90deg, ${CHALK}0A 1px, transparent 1px)`, backgroundSize: `${Math.round(width / 12)}px 100%` } }),
+      Frame({ x: slabX, y: 0, width: slabW, height: slabH, fill: accent }),
+      Frame({ x: slabX - 2, y: 0, width: 2, height: slabH, fill: `${accent}66` }),
 
-          <section style="flex:1;display:flex;flex-direction:column;gap:10px;min-width:0;">
-            <div style="font-size:13px;font-weight:600;color:${PALETTE.muted};text-transform:uppercase;letter-spacing:1.5px;">Request</div>
-            <div style="background:${PALETTE.codeBg};border:1px solid ${PALETTE.panelBorder};border-radius:14px;padding:28px;overflow:hidden;opacity:${reqOp};">
-              ${reqHl || `<div style="color:${PALETTE.muted};font-style:italic;">No body</div>`}
-            </div>
-          </section>
+      Frame(
+        {
+          id: "brand",
+          x: pad,
+          y: Math.round(height * 0.075),
+          width: 520,
+          height: 56,
+          motion: brandMotion,
+        },
+        Frame(
+          { width: 52, height: 52, fill: accent },
+          Text(
+            {
+              variant: "title",
+              size: 28,
+              weight: 800,
+              color: INK,
+              fontFamily: sans,
+              align: "center",
+              style: { lineHeight: "52px" },
+            },
+            apiBrand.name.charAt(0).toUpperCase(),
+          ),
+        ),
+        Frame(
+          { x: 68, y: 2, width: 440, height: 26 },
+          Text({ variant: "title", size: 22, weight: 700, color: CHALK, fontFamily: sans }, apiBrand.name),
+        ),
+        Frame(
+          { x: 68, y: 30, width: 440, height: 22 },
+          Text({ variant: "caption", size: 16, weight: 400, color: GREY, fontFamily: mono }, apiBrand.domain),
+        ),
+      ),
 
-          <div style="display:flex;align-items:center;justify-content:center;width:100px;">
-            <svg width="100" height="40" viewBox="0 0 100 40" style="overflow:visible;">
-              <defs>
-                <filter id="dotGlow">
-                  <feGaussianBlur stdDeviation="3" />
-                </filter>
-              </defs>
-              <line x1="8" y1="20" x2="88" y2="20" stroke="${PALETTE.muted}" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${arrowDashTotal}" stroke-dashoffset="${arrowDashOffset}" />
-              <polyline points="76,10 88,20 76,30" fill="none" stroke="${PALETTE.muted}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="${arrowP > 0.6 ? (arrowP - 0.6) / 0.4 : 0}" />
-              ${
-                dotProgress > 0 && dotProgress < 1
-                  ? `<circle cx="${dotX}" cy="20" r="6" fill="${accent}" opacity="0.7" filter="url(#dotGlow)" /><circle cx="${dotX}" cy="20" r="3" fill="${accent}" />`
-                  : ""
-              }
-            </svg>
-          </div>
+      Frame(
+        { id: "endpoint", x: pad, y: Math.round(height * 0.2), width: colW, height: rowH },
+        Frame(
+          {
+            width: 108,
+            height: 48,
+            fill: accent,
+            style: {
+              opacity: chipOp,
+              transform: `scale(${chipPop.toFixed(4)})`,
+              transformOrigin: "0% 50%",
+            },
+          },
+          Text(
+            {
+              variant: "label",
+              size: 26,
+              weight: 800,
+              color: INK,
+              fontFamily: mono,
+              align: "center",
+              letterSpacing: 1,
+              style: { lineHeight: "48px" },
+            },
+            method,
+          ),
+        ),
+        Frame(
+          { x: 130, y: 6, width: colW - 130, height: 40 },
+          Text(
+            {
+              variant: "title",
+              size: endpointSize,
+              weight: 500,
+              color: CHALK,
+              fontFamily: mono,
+              style: { opacity: chipOp },
+            },
+            endpoint,
+          ),
+        ),
+      ),
 
-          <section style="flex:1;display:flex;flex-direction:column;gap:10px;min-width:0;position:relative;">
-            <div style="display:flex;align-items:center;gap:12px;min-height:36px;">
-              <div style="font-size:13px;font-weight:600;color:${PALETTE.muted};text-transform:uppercase;letter-spacing:1.5px;">Response</div>
-              ${
-                slamP > 0
-                  ? `<div class="tabular" style="background:${statusColor}1a;color:${statusColor};font-weight:700;font-size:18px;padding:6px 14px;border-radius:8px;border:1px solid ${statusColor}66;opacity:${statusOp};transform:scale(${statusScale});box-shadow:0 0 ${statusGlow}px ${accent}66;">${responseStatus} ${responseStatusText}</div>`
-                  : ""
-              }
-              ${
-                metricP > 0 && metric
-                  ? `<div class="tabular" style="display:flex;align-items:baseline;gap:8px;background:rgba(255,255,255,0.04);padding:6px 14px;border-radius:8px;border:1px solid ${PALETTE.panelBorder};opacity:${metricOp};transform:translateY(${metricY}px);"><span style="font-size:11px;color:${PALETTE.muted};text-transform:uppercase;letter-spacing:1px;">${metric.label}</span><span style="font-size:18px;font-weight:700;color:${PALETTE.text};font-family:'JetBrains Mono',monospace;">${metric.value}</span>${metric.delta ? `<span style="font-size:13px;color:${accent};font-weight:600;">${metric.delta}</span>` : ""}</div>`
-                  : ""
-              }
-            </div>
-            <div style="background:${PALETTE.codeBg};border:1px solid ${slamP > 0 ? statusColor + "44" : PALETTE.panelBorder};border-radius:14px;padding:28px;overflow:hidden;opacity:${responseBodyOp};box-shadow:${slamP > 0 ? `inset 0 0 0 1px ${statusColor}22` : "none"};">
-              ${resStream ? resStream.html : `<div style="color:${PALETTE.muted};font-style:italic;">No body</div>`}
-            </div>
-            ${sparklesHtml}
-          </section>
+      Frame(
+        {
+          id: "claim",
+          x: pad,
+          y: Math.round(height * 0.29),
+          width: colW,
+          height: claimSize * 2.3,
+          style: {
+            opacity: claimOp,
+            transform: `translateY(${claimShift.toFixed(2)}px)`,
+          },
+        },
+        Text(
+          {
+            variant: "display",
+            size: claimSize,
+            weight: 800,
+            color: CHALK,
+            fontFamily: sans,
+            letterSpacing: -4,
+            lineHeight: 1.04,
+            maxWidth: colW,
+          },
+          summary,
+        ),
+      ),
 
-        </main>
+      Frame(
+        {
+          id: "send",
+          x: pad,
+          y: Math.round(height * 0.53),
+          width: colW,
+          height: 32,
+          style: { opacity: claimOp * 0.85 },
+        },
+        Text(
+          { variant: "caption", size: 18, weight: 400, color: GREY, fontFamily: mono, letterSpacing: 3 },
+          "YOU SEND",
+        ),
+        Frame(
+          { x: 150, y: 0, width: colW - 150, height: 30 },
+          Text({ variant: "caption", size: 20, weight: 500, color: `${CHALK}CC`, fontFamily: mono }, sendLine),
+        ),
+      ),
 
-        ${
-          ctaP > 0 && cta
-            ? `<footer style="display:flex;justify-content:flex-end;align-items:center;gap:16px;opacity:${ctaOp};transform:translateX(${ctaX}px);">${cta.url ? `<div style="font-size:14px;color:${PALETTE.muted};font-family:'JetBrains Mono',monospace;">${cta.url}</div>` : ""}<div style="display:inline-flex;align-items:center;gap:8px;background:${accent};color:white;font-weight:700;font-size:18px;padding:14px 24px;border-radius:12px;box-shadow:0 8px 32px ${accent}66;">${cta.text}</div></footer>`
-            : `<div style="height:60px;"></div>`
-        }
-      </div>
+      Frame(
+        {
+          id: "status",
+          x: pad,
+          y: Math.round(height * 0.62),
+          width: colW,
+          height: 48,
+          style: { opacity: statusOp },
+        },
+        Frame(
+          {
+            width: 250,
+            height: 44,
+            fill: accent,
+            style: { transform: `scale(${statusPop.toFixed(4)})`, transformOrigin: "0% 50%" },
+          },
+          Text(
+            {
+              variant: "label",
+              size: 22,
+              weight: 700,
+              color: INK,
+              fontFamily: mono,
+              align: "center",
+              style: { lineHeight: "44px" },
+            },
+            `${responseStatus} ${responseStatusText.toUpperCase()}`,
+          ),
+        ),
+        Frame(
+          { x: 272, y: 12, width: 240, height: 24 },
+          Text(
+            { variant: "caption", size: 18, weight: 400, color: GREY, fontFamily: mono, letterSpacing: 3 },
+            "YOU GET",
+          ),
+        ),
+      ),
 
-    </div>
-    `;
+      Html({
+        id: "chips",
+        x: pad,
+        y: Math.round(height * 0.7),
+        width: colW,
+        height: 86,
+        html: `<div style="display:flex;gap:14px;">${chipHtml}</div>`,
+      }),
+
+      Frame(
+        {
+          id: "cta",
+          x: pad,
+          y: height - Math.round(height * 0.115),
+          width: colW,
+          height: 74,
+          overflow: "hidden",
+          style: { opacity: ctaOp },
+        },
+        Frame(
+          {
+            width: ctaW,
+            height: 74,
+            fill: accent,
+            style: { transform: `translateX(${(-ctaSlide * (ctaW + pad)).toFixed(1)}px)` },
+          },
+          Frame(
+            { x: 28, y: 20, width: ctaW - 56, height: 36 },
+            Text(
+              { variant: "title", size: 27, weight: 800, color: INK, fontFamily: sans, letterSpacing: -0.5 },
+              cta.text,
+            ),
+            Text(
+              {
+                variant: "caption",
+                size: 19,
+                weight: 500,
+                color: `${INK}B0`,
+                fontFamily: mono,
+                align: "right",
+              },
+              cta.url,
+            ),
+          ),
+        ),
+      ),
+
+      Frame(
+        {
+          id: "slab-copy",
+          x: slabX + slabPad,
+          y: Math.round(height * 0.28),
+          width: slabInner,
+          height: Math.round(height * 0.5),
+          style: { opacity: metricLabelOp },
+        },
+        Text(
+          {
+            variant: "label",
+            size: 21,
+            weight: 700,
+            color: `${INK}CC`,
+            fontFamily: mono,
+            letterSpacing: 4,
+          },
+          metric.label.toUpperCase(),
+        ),
+        Frame(
+          { x: 0, y: 42, width: slabInner, height: Math.round(metricSize * 1.05) },
+          Text(
+            {
+              variant: "display",
+              size: metricSize,
+              weight: 800,
+              color: INK,
+              fontFamily: sans,
+              letterSpacing: -6,
+              lineHeight: 1,
+              style: { fontVariantNumeric: "tabular-nums" },
+            },
+            countUp(metric.value, countEase),
+          ),
+        ),
+        Frame({
+          x: 0,
+          y: Math.round(metricSize * 1.05) + 60,
+          width: Math.max(1, Math.round(slabInner * countEase)),
+          height: 3,
+          fill: INK,
+          style: { opacity: countEase > 0.02 ? 0.6 : 0 },
+        }),
+        Frame(
+          { x: 0, y: Math.round(metricSize * 1.05) + 82, width: slabInner, height: 90 },
+          Text(
+            {
+              variant: "caption",
+              size: 24,
+              weight: 700,
+              color: `${INK}CC`,
+              fontFamily: sans,
+              maxWidth: slabInner,
+              lineHeight: 1.25,
+              style: { opacity: countEase },
+            },
+            metric.delta,
+          ),
+        ),
+      ),
+    );
   },
 });

@@ -3,12 +3,12 @@
 "use client";
 
 import { useEffect } from "react";
-import type { EncodingOptions, TemplateModule } from "@superimg/types";
+import type { EncodingOptions, MediaDefinition } from "@superimg/types";
 import { usePlaygroundExport } from "../hooks/usePlaygroundExport.js";
 import type { ExportLayerState } from "./export-layer-state.js";
 
 export interface PlayerExportLayerProps {
-  template: TemplateModule | null;
+  media: MediaDefinition | null;
   data: Record<string, unknown>;
   fps?: number;
   encoding?: EncodingOptions;
@@ -16,14 +16,14 @@ export interface PlayerExportLayerProps {
 }
 
 export function PlayerExportLayer({
-  template,
+  media,
   data,
   fps,
   encoding,
   onChange,
 }: PlayerExportLayerProps) {
   const exportState = usePlaygroundExport({
-    template,
+    media,
     data,
     ...(fps !== undefined ? { fps } : {}),
     ...(encoding !== undefined ? { encoding } : {}),

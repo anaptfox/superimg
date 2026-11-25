@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { kenBurns } from "./backgrounds.js";
+import { isMediaElement } from "./tree/h.js";
 
 describe("backgrounds.kenBurns", () => {
   const src = "https://example.com/photo.jpg";
@@ -9,6 +10,7 @@ describe("backgrounds.kenBurns", () => {
     expect(result.zoom).toBeCloseTo(1, 5);
     expect(result.html).toContain(`url(${src})`);
     expect(result.html).toContain("scale(1)");
+    expect(isMediaElement(result)).toBe(true);
   });
 
   it("ends at zoomTo when progress is 1", () => {

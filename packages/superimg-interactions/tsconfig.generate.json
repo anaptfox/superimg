@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "scripts/generate-artifacts.ts",
+    "src/artifacts.ts",
+    "src/compiled.ts",
+    "src/schemas.ts",
+    "src/edit/**/*.ts",
+    "src/render/**/*.ts"
+  ]
+}

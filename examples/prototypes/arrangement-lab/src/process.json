@@ -1,0 +1,46 @@
+{
+  "pattern": "mechanism-strip",
+  "spec": {
+    "question": "How does accepted content become an artifact?",
+    "workRemoved": "Tracing the handoff between stages",
+    "evidence": "derived",
+    "nodes": [
+      {
+        "id": "content",
+        "label": "Content"
+      },
+      {
+        "id": "validate",
+        "label": "Validate"
+      },
+      {
+        "id": "render",
+        "label": "Render"
+      }
+    ],
+    "edges": [
+      {
+        "from": "content",
+        "to": "validate",
+        "claim": "derived"
+      },
+      {
+        "from": "validate",
+        "to": "render",
+        "claim": "derived"
+      }
+    ],
+    "layout": {
+      "kind": "pipeline",
+      "order": [
+        "content",
+        "validate",
+        "render"
+      ]
+    },
+    "size": {
+      "width": 1080,
+      "height": 720
+    }
+  }
+}

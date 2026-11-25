@@ -1,0 +1,63 @@
+# Data and Formats
+
+## Singular media data
+
+`sample` supplies preview/default data. A host may supply live data to the Player. `resolve({ data })` may compute data-dependent duration or other media-owned runtime values.
+
+## Collections
+
+Use collections for episodes, cards, product images, certificates, personalized videos, and social catalogs:
+
+```ts
+import { collection, video, Frame, Stack, Text } from "@foxworth/superimg";
+import { loadClips } from "./clips.server";
+
+interface Clip { id: string; title: string }
+
+export default collection({
+  entries: loadClips,
+  media: video<Clip>({
+    duration: "12s",
+    render(ctx) {
+      return Frame(
+        { width: "fill", height: "fill" },
+        Stack(
+          { width: "fill", height: "fill", align: "center", justify: "center" },
+          Text({ variant: "display" }, ctx.data.title),
+        ),
+      );
+    },
+  }),
+});
+```
+
+`entries` accepts a readonly array or a zero-argument sync/async provider returning a complete array. A string `id` is used automatically. Otherwise provide a required string-valued key or `(entry) => string`.
+
+IDs must be trimmed, non-empty, path-safe, unique, and free of case-fold collisions. Entry data must be deeply JSON-compatible and use finite numbers.
+
+## Formats and sizes
+
+Helpers supply fallbacks: video → MP4, image/OG → PNG, SVG → SVG. Delivery is selected during export:
+
+```bash
+superimg export episodes --for youtube
+superimg export cards --for instagram-square --for 1200x630.png
+```
+
+The built-in organic catalog includes YouTube, Instagram square, TikTok, LinkedIn, Facebook, X, Pinterest, Threads, and Reddit. `WIDTHxHEIGHT[.format]` keeps custom sizes first-class.
+
+| Destination id | Recommended canvas |
+|----------------|--------------------|
+| `youtube` | 1920×1080 |
+| `instagram-square` | 1080×1080 |
+| `tiktok` | 1080×1920 |
+| `linkedin` | 1920×1080 |
+| `facebook` | 1080×1080 |
+| `x` | 1280×720 |
+| `pinterest` | 1000×1500 |
+| `threads` | 1080×1350 |
+| `reddit` | 1080×1080 |
+
+The registry records `checkedAt`, source provenance, supported media, encoding defaults, and whether each value is a platform requirement or a SuperImg recommendation. Import it from `@foxworth/superimg/destinations` when building a selector.
+
+Animated-to-still export requires an explicit poster or time. Static-to-video export is rejected.

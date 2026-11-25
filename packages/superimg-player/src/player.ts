@@ -1,170 +1,113 @@
 //! Player - high-level browser controller over MediaSession
 
-import {
-  applyTemplateResolve,
-  CheckpointResolver,
-  sessionOptionsFromResolve,
-} from "@superimg/core";
-import {
-  createMediaSession,
-  type MediaFrameResult,
-  type MediaSession,
-  type PreResolvedFonts,
-  type RuntimeInput,
-  type RuntimeRenderedPayload,
-  type RuntimeState,
-  type RuntimeStore,
+import type { CheckpointResolver, NormalizedCue } from "@superimg/core/player-core";
+import type {
+  MediaFrameResult,
+  MediaSession,
+  RuntimeState,
+  RuntimeStore,
 } from "@superimg/media";
-import { getPreset } from "@superimg/stdlib/presets";
+import type { PlayerAudioController } from "./player-audio.js";
+import { DriveController } from "./player-drive.js";
 import { HoverController } from "./player-hover.js";
-import { createPlayerStore, type PlayerStore } from "./state.js";
-import { createRuntimeStoreAdapter } from "./runtime-store-adapter.js";
-import {
-  isComposedTemplate,
-  SuperImgError,
-  type AssetMeta,
-  type Checkpoint,
-  type ComposedTemplate,
-  type HoverBehavior,
-  type LoadMode,
-  type Marker,
-  type PlaybackMode,
-  type ResolvedScene,
-  type TemplateModule,
+import type {
+  Checkpoint,
+  DriveSource,
+  HoverBehavior,
+  Marker,
+  MediaIR,
+  PlaybackMode,
+  JsonObject,
+  CompositionSchedule,
+  ResolveBreakdown,
+  ResolveCueFinding,
 } from "@superimg/types";
+import {
+  loadErrorResult,
+  openPlayerSession,
+  prepareSessionLoad,
+  resolveMediaIRForSession,
+  supersededLoadResult,
+} from "./player-load.js";
+import { LatestLoadTransaction } from "./load-transaction.js";
+import {
+  addCheckpoint as navAddCheckpoint,
+  getCurrentCheckpoint as navGetCurrentCheckpoint,
+  goToCheckpoint as navGoToCheckpoint,
+  listCheckpoints,
+  nextCheckpoint as navNextCheckpoint,
+  prevCheckpoint as navPrevCheckpoint,
+  removeCheckpoint as navRemoveCheckpoint,
+  type PlayerNavHost,
+} from "./player-nav.js";
+import {
+  createCheckpointResolver,
+  wireMediaSessionEvents,
+} from "./player-session.js";
+import {
+  assertMediaIRMatchesRuntime,
+  assertAcceptedSeek,
+  PlayerNotReadyError,
+  toRenderedPayload,
+  type LoadOptions,
+  type LoadResult,
+  type PlayerEvents,
+  type PlayerInput,
+  type PlayerOptions,
+  type PlayerUpdate,
+  type PlayerPresentation,
+  type PlayerPerformanceSnapshot,
+} from "./player-types.js";
 
-/** Simple format aliases that map to stdlib presets */
-const SIMPLE_ALIASES: Record<string, string> = {
-  vertical: "instagram.video.reel",
-  horizontal: "youtube.video.long",
-  square: "instagram.video.feed",
-} as const;
-
-/**
- * Format option: simple alias, stdlib preset path, or custom dimensions.
- */
-export type FormatOption =
-  | "vertical"
-  | "horizontal"
-  | "square"
-  | string
-  | { width: number; height: number };
-
-export function resolveFormat(format: FormatOption): { width: number; height: number } {
-  if (typeof format === "object") return format;
-
-  const presetPath = SIMPLE_ALIASES[format] ?? format;
-  const preset = getPreset(presetPath);
-  if (!preset) {
-    throw new Error(`Unknown format: ${format}`);
-  }
-  return { width: preset.width, height: preset.height };
-}
-
-export interface PlayerOptions {
-  /** Container element or CSS selector */
-  container: string | HTMLElement;
-  /** Format for rendering - simple alias, stdlib preset path, or custom dimensions */
-  format?: FormatOption;
-  /** Playback mode when video ends (default: "once") */
-  playbackMode?: PlaybackMode;
-  /** When the caller should load the template (default: "eager") */
-  loadMode?: LoadMode;
-  /** Behavior on hover (default: "none") */
-  hoverBehavior?: HoverBehavior;
-  /** Delay before hover playback triggers, in milliseconds (default: 200) */
-  hoverDelayMs?: number;
-}
-
-export interface LoadOptions {
-  /** Runtime data merged over template defaults */
-  data?: Record<string, unknown>;
-  /** Explicit markers for checkpoint navigation */
-  markers?: Marker[];
-  /** Runtime asset metadata */
-  assets?: Record<string, AssetMeta>;
-  /** Resolve co-located asset filenames to URLs */
-  assetResolver?: (filename: string) => string;
-  /** Host-resolved fonts; suppresses Google Fonts resolution of `config.fonts` */
-  fonts?: PreResolvedFonts;
-}
-
-export type LoadResult =
-  | {
-      status: "success";
-      totalFrames: number;
-      duration: number;
-      width: number;
-      height: number;
-      fps: number;
-    }
-  | {
-      status: "error";
-      errorType: "compilation" | "validation" | "network";
-      message: string;
-      suggestion: string;
-      details?: Record<string, unknown>;
-    };
-
-export type PlayerInput = RuntimeInput;
-
-export interface PlayerUpdate {
-  data?: Record<string, unknown>;
-  format?: FormatOption;
-  width?: number;
-  height?: number;
-  fps?: number;
-  duration?: number;
-  assets?: Record<string, AssetMeta>;
-  assetResolver?: (filename: string) => string;
-}
-
-export interface PlayerEvents {
-  frame: (frame: number, totalFrames: number) => void;
-  rendered: (payload: RuntimeRenderedPayload) => void;
-  play: () => void;
-  pause: () => void;
-  ended: () => void;
-  ready: () => void;
-  error: (error: Error) => void;
-  checkpoint: (checkpoint: Checkpoint) => void;
-  scenechange: (scene: ResolvedScene) => void;
-}
-
-class PlayerNotReadyError extends SuperImgError {
-  constructor(operation: string) {
-    super(
-      `Player not ready for operation: ${operation}`,
-      "PLAYER_NOT_READY",
-      { operation },
-      `Call load() and wait for it to complete before calling ${operation}().`,
-      "https://superimg.dev/docs/player"
-    );
-    this.name = "PlayerNotReadyError";
-  }
-}
+export type {
+  PlayerOptions,
+  LoadOptions,
+  LoadResult,
+  PlayerInput,
+  PlayerUpdate,
+  PlayerEvents,
+  PlayerPresentation,
+  PlayerPerformanceSnapshot,
+} from "./player-types.js";
 
 export class Player {
   private container: HTMLElement;
   private session: MediaSession | null = null;
-  private playerStore: PlayerStore | null = null;
-  private runtimeStore: RuntimeStore | null = null;
-  private sessionDisposer: (() => void) | null = null;
+  private resolveCues: ((fps: number, duration: number) => readonly NormalizedCue[]) | null = null;
+  private stage: HTMLElement | null = null;
   private sessionEventDisposers: Array<() => void> = [];
-  private template: PlayerInput | null = null;
   private checkpointResolverInstance: CheckpointResolver | null = null;
   private checkpointCache: Checkpoint[] | null = null;
   private markerList: Marker[] = [];
-  private format: FormatOption | undefined;
+  private resolvedCueFindings: readonly ResolveCueFinding[] = [];
+  private resolvedBreakdown: ResolveBreakdown | null = null;
+  private size: import("@superimg/types").CanvasSize | undefined;
   private options: {
     playbackMode: PlaybackMode;
-    loadMode: LoadMode;
     hoverBehavior: HoverBehavior;
     hoverDelayMs: number;
+    hoverLeaveBehavior: "pause" | "reset";
+    playerMode: "render-only" | "dev";
+    drive?: DriveSource;
+    audio: boolean;
   };
+  private audioController: PlayerAudioController | null = null;
+  private audioMuted = false;
+  private audioVolume = 1;
+  private driveController: DriveController | null = null;
+  private gestureActive = false;
+  private driveSuspensions = 0;
+  private generation = 0;
+  private disposed = false;
+  private compositionSchedule: CompositionSchedule | null = null;
   private events: Partial<{ [K in keyof PlayerEvents]: Set<PlayerEvents[K]> }> = {};
   private hoverController!: HoverController;
   private lastCheckpointId: string | null = null;
+  private _mediaIR: MediaIR | null = null;
+  /** True when the host set playbackMode explicitly (do not override from temporal). */
+  private explicitPlaybackMode = false;
+  /** Only the newest prepared candidate may commit. */
+  private readonly loadTransaction = new LatestLoadTransaction();
 
   constructor(options: PlayerOptions) {
     if (typeof options.container === "string") {
@@ -175,192 +118,378 @@ export class Player {
       this.container = options.container;
     }
 
-    this.format = options.format;
+    this.size = options.size;
+    this.explicitPlaybackMode = options.playbackMode !== undefined;
     this.options = {
       playbackMode: options.playbackMode ?? "once",
-      loadMode: options.loadMode ?? "eager",
       hoverBehavior: options.hoverBehavior ?? "none",
       hoverDelayMs: options.hoverDelayMs ?? 200,
+      hoverLeaveBehavior: options.hoverLeaveBehavior ?? "pause",
+      playerMode: options.playerMode ?? "render-only",
+      audio: options.audio ?? true,
+      ...(options.drive !== undefined ? { drive: options.drive } : {}),
     };
+    this.audioMuted = options.muted ?? false;
+    this.audioVolume = Math.max(0, Math.min(1, options.volume ?? 1));
+
+    if (options.drive && options.hoverBehavior === "preview-scrub") {
+      console.warn(
+        '[superimg] hoverBehavior "preview-scrub" is overridden by drive. Set hoverBehavior: "none".',
+      );
+    }
 
     this.hoverController = new HoverController(
       this.container,
-      { behavior: this.options.hoverBehavior, delayMs: this.options.hoverDelayMs },
-      () => (this.session && this.playerStore ? this : null)
+      {
+        behavior: this.options.hoverBehavior,
+        delayMs: this.options.hoverDelayMs,
+        leaveBehavior: this.options.hoverLeaveBehavior,
+      },
+      () => (this.session ? {
+        play: () => this.play(), pause: () => this.pause(), seek: (to) => this.seekFromInput(to),
+      } : null),
     );
     this.hoverController.install();
   }
 
   async load(input: PlayerInput, options: LoadOptions = {}): Promise<LoadResult> {
-    try {
-      this.teardownPlayback();
-      this.markerList = options.markers ?? [];
-      this.lastCheckpointId = null;
+    if (this.disposed) throw new Error("Player is disposed");
+    const outcome = await this.loadTransaction.run({
+      // Prepare + validate the next session *before* tearing down so a failed
+      // load keeps the last valid preview (Studio compile-error contract).
+      prepare: async (scope) => {
+        let nextSession: Awaited<ReturnType<typeof openPlayerSession>> | null = null;
+        let nextStage: HTMLElement | null = null;
+        const bufferedEvents: Array<
+          | { type: "rendered"; result: MediaFrameResult }
+          | { type: "ready" }
+        > = [];
+        const candidateDisposers: Array<() => void> = [];
+        const disposeCandidateEvents = () => {
+          for (const dispose of candidateDisposers.splice(0)) dispose();
+        };
+        scope.defer(disposeCandidateEvents);
+        scope.defer(() => nextStage?.remove());
+        scope.defer(() => nextSession?.dispose());
 
-      const dimensions = this.format ? resolveFormat(this.format) : {};
-
-      // Pre-render resolve (once per load). Format dimensions act as explicit overrides.
-      let sessionInput: PlayerInput = input;
-      let sessionData = options.data;
-      let sessionDuration: number | undefined;
-      let sessionFps: number | undefined;
-      let sessionWidth: number | undefined;
-      let sessionHeight: number | undefined;
-
-      if (
-        input &&
-        typeof input === "object" &&
-        "render" in input &&
-        typeof (input as TemplateModule).render === "function" &&
-        !isComposedTemplate(input)
-      ) {
-        const applied = await applyTemplateResolve(input as TemplateModule, {
-          ...(options.data !== undefined ? { data: options.data } : {}),
-          ...(options.assets !== undefined ? { assets: options.assets } : {}),
-          ...(options.assetResolver !== undefined
-            ? { assetResolver: options.assetResolver }
-            : {}),
+        const prepared = await prepareSessionLoad(input, options, this.size);
+        const playerMode = options.playerMode ?? this.options.playerMode ?? "render-only";
+        let nextPlaybackMode = this.options.playbackMode;
+        // temporal: "loop" ⇒ looping preview unless host set playbackMode explicitly
+        if (!this.explicitPlaybackMode) {
+          const mod = prepared.sessionInput as { config?: { temporal?: string } };
+          nextPlaybackMode = mod?.config?.temporal === "loop" ? "loop" : "once";
+        }
+        nextSession = await openPlayerSession(
+          prepared,
+          options,
+          playerMode,
+          nextPlaybackMode,
+        );
+        const initialState = nextSession.getState();
+        // Validate IR against the *new* session before discarding the old one.
+        const nextMediaIR = resolveMediaIRForSession(options, {
+          width: initialState.width,
+          height: initialState.height,
+          fps: initialState.fps,
+          totalFrames: initialState.totalFrames,
         });
-        const session = sessionOptionsFromResolve(applied, {
-          formatDims: dimensions,
-          ...(options.markers !== undefined ? { extraMarkers: options.markers } : {}),
-        });
-        sessionInput = session.template as PlayerInput;
-        sessionData = session.data;
-        sessionDuration = session.durationSeconds;
-        sessionFps = session.fps;
-        sessionWidth = session.width;
-        sessionHeight = session.height;
-        this.markerList = session.markers;
-      }
 
-      this.template = sessionInput;
-      this.session = await createMediaSession(sessionInput, {
-        ...dimensions,
-        ...(sessionWidth !== undefined ? { width: sessionWidth } : {}),
-        ...(sessionHeight !== undefined ? { height: sessionHeight } : {}),
-        ...(sessionFps !== undefined ? { fps: sessionFps } : {}),
-        ...(sessionDuration !== undefined ? { duration: sessionDuration } : {}),
-        ...(sessionData !== undefined ? { data: sessionData } : {}),
-        ...(options.assets !== undefined ? { assets: options.assets } : {}),
-        ...(options.assetResolver !== undefined ? { assetResolver: options.assetResolver } : {}),
-        ...(options.fonts !== undefined ? { fonts: options.fonts } : {}),
-        playbackMode: this.options.playbackMode,
-        playback: "native",
-      });
-      const initialState = this.session.getState();
-      this.rebuildCheckpointResolver();
+        // Paint into a hidden candidate surface. The host's current frame (and
+        // any SSR poster beneath it) remains untouched until readiness commits.
+        candidateDisposers.push(
+          nextSession.on("rendered", (result) => {
+            bufferedEvents.push({ type: "rendered", result });
+          }),
+          nextSession.on("ready", () => {
+            bufferedEvents.push({ type: "ready" });
+          }),
+        );
+        const candidateReady = nextSession.ready();
+        // mount() rejects the same readiness promise before rethrowing. Attach a
+        // handler now so a failed first paint cannot surface as an
+        // unhandled rejection while load() returns its structured error.
+        void candidateReady.catch(() => undefined);
+        nextStage = createPlayerStage();
+        nextStage.style.visibility = "hidden";
+        this.container.appendChild(nextStage);
+        await nextSession.mount(nextStage);
+        await candidateReady;
+        disposeCandidateEvents();
+        let nextAudioController: PlayerAudioController | null = null;
+        const authoredAudio = (prepared.sessionInput as { config?: { audio?: import("@superimg/types").AudioValue } })?.config?.audio;
+        if (this.options.audio && authoredAudio !== undefined) {
+          const { createPlayerAudioController } = await import("./player-audio.js");
+          nextAudioController = createPlayerAudioController({
+            audio: authoredAudio,
+            fps: initialState.fps,
+            durationSeconds: initialState.duration,
+            ...(options.assetResolver !== undefined ? { assetResolver: options.assetResolver } : {}),
+            muted: this.audioMuted,
+            volume: this.audioVolume,
+          });
+          scope.defer(() => nextAudioController?.dispose());
+        }
+        return {
+          prepared,
+          session: nextSession,
+          stage: nextStage,
+          mediaIR: nextMediaIR,
+          playbackMode: nextPlaybackMode,
+          audioController: nextAudioController,
+          bufferedEvents,
+        };
+      },
+      commit: (candidate) => {
+        // Commit only after prepare, IR validation, mount, and first paint.
+        candidate.stage.style.visibility = "visible";
+        this.teardownPlayback();
+        this.options.playbackMode = candidate.playbackMode;
+        this.audioController = candidate.audioController;
+        this.lastCheckpointId = null;
+        this.markerList = candidate.prepared.markers;
+        this.resolvedCueFindings = candidate.prepared.cueFindings ? Object.freeze([...candidate.prepared.cueFindings]) : [];
+        this.resolvedBreakdown = candidate.prepared.breakdown ?? null;
+        this.session = candidate.session;
+        this.resolveCues = candidate.prepared.resolveCues;
+        this.generation++;
+        this.compositionSchedule = candidate.prepared.sessionInput.composition?.schedule ?? null;
+        this.stage = candidate.stage;
+        this._mediaIR = candidate.mediaIR;
+        this.rebuildCheckpointResolver();
+        this.emit("presentation", this.getPresentation());
 
-      this.playerStore = createPlayerStore(
-        { fps: initialState.fps, duration: initialState.duration },
-        {
-          onPlay: () => {
-            this.session?.play();
-          },
-          onPause: () => {
-            this.session?.pause();
-          },
-          onFrameChange: (frame) => {
-            void this.session?.seekFrame(frame).catch((error) => this.emit("error", error));
-          },
-        },
-        this.checkpointResolverInstance ?? undefined
-      );
-      this.sessionDisposer = this.session.subscribe(() => this.syncStoreFromSession());
-      this.runtimeStore = createRuntimeStoreAdapter(this.playerStore, () => this.session);
-      this.wireSessionEvents(this.session);
-      await this.session.mount(this.container);
-      await this.session.ready();
-      this.playerStore.getState().setReady(true);
-      this.syncStoreFromSession();
+        for (const event of candidate.bufferedEvents) {
+          if (event.type === "rendered") {
+            this.emit("rendered", toRenderedPayload(event.result));
+            const total = this.session.getState().totalFrames;
+            this.handleRenderedFrame(event.result.frame, total);
+          } else {
+            this.emit("ready");
+          }
+        }
+        this.wireSessionEvents(this.session);
+        this.installDrive();
 
-      const sessionState = this.session.getState();
-
-      return {
-        status: "success",
-        totalFrames: sessionState.totalFrames,
-        duration: sessionState.duration,
-        width: sessionState.width,
-        height: sessionState.height,
-        fps: sessionState.fps,
-      };
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.emit("error", err);
-      return {
-        status: "error",
-        errorType: "validation",
-        message: err.message,
-        suggestion: "Verify the template was created with define().",
-        details: { error: err.name },
-      };
-    }
+        const sessionState = this.session.getState();
+        return {
+          status: "success" as const,
+          cues: this.getCues(),
+          totalFrames: sessionState.totalFrames,
+          duration: sessionState.duration,
+          width: sessionState.width,
+          height: sessionState.height,
+          fps: sessionState.fps,
+          ...(candidate.prepared.cueFindings !== undefined ? { cueFindings: this.resolvedCueFindings } : {}),
+          ...(candidate.prepared.breakdown !== undefined ? { breakdown: candidate.prepared.breakdown } : {}),
+        };
+      },
+    });
+    if (outcome.status === "committed") return outcome.value;
+    if (outcome.status === "superseded") return supersededLoadResult();
+    const err = outcome.error instanceof Error ? outcome.error : new Error(String(outcome.error));
+    this.emit("error", err);
+    return loadErrorResult(outcome.error);
   }
 
-  update(update: PlayerUpdate): void {
+  async update(update: PlayerUpdate): Promise<void> {
     const session = this.requireSession("update");
     const next = { ...update };
-    if (next.format) {
-      this.format = next.format;
-      const dimensions = resolveFormat(next.format);
-      next.width = dimensions.width;
-      next.height = dimensions.height;
-      delete next.format;
+    const size = next.size ? { ...next.size } : undefined;
+    if (next.size) {
+      next.width = next.size.width;
+      next.height = next.size.height;
+      delete next.size;
     }
-    session.update(next);
+    await session.update(next);
+    if (size && this.session === session) this.size = size;
     this.rebuildCheckpointResolver();
-
-    if (this.playerStore) {
-      const state = session.getState();
-      this.playerStore.getState().updateConfig({ fps: state.fps, duration: state.duration });
-      this.syncStoreFromSession();
-    }
   }
 
   render(frame?: number): Promise<void> {
     const target = frame ?? this.currentFrame;
-    return this.requireSession("render").renderFrame(target).then(() => undefined);
+    return this.requireSession("render").renderFrame(target).then((result) => { assertAcceptedSeek(result, target); });
   }
 
   play(): void {
-    this.requireStore("play").getState().play();
+    const session = this.requireSession("play");
+    session.play();
+    this.audioController?.play(this.currentTimeSeconds);
   }
 
   pause(): void {
-    this.requireStore("pause").getState().pause();
+    this.requireSession("pause").pause();
+    this.audioController?.pause();
   }
 
-  seekFrame(frame: number): void {
-    this.requireStore("seekFrame").getState().setFrame(frame);
+  async seek(to: { frame: number } | { progress: number } | { seconds: number }): Promise<void> {
+    const session = this.requireSession("seek");
+    const result = "frame" in to ? await session.seekFrame(to.frame)
+      : "seconds" in to ? await session.seekTimeSeconds(to.seconds)
+        : await session.seekProgress(to.progress);
+    assertAcceptedSeek(result, "frame" in to ? to.frame : undefined);
+    this.audioController?.seek(result.frame / this.fps, this.isPlaying);
   }
 
-  seekProgress(progress: number): void {
-    const store = this.requireStore("seekProgress");
-    const s = store.getState();
-    const frame = Math.floor(progress * Math.max(0, s.totalFrames - 1));
-    s.setFrame(frame);
+  /** Mute or unmute WebAudio preview playback. */
+  setMuted(muted: boolean): void {
+    this.audioMuted = muted;
+    this.audioController?.setMuted(muted);
   }
 
-  seekTimeSeconds(seconds: number): void {
-    this.seekFrame(Math.floor(seconds * this.fps));
+  /** Set WebAudio preview master volume (0..1). */
+  setVolume(volume: number): void {
+    this.audioVolume = Math.max(0, Math.min(1, volume));
+    this.audioController?.setVolume(this.audioVolume);
+  }
+
+  get isMuted(): boolean { return this.audioMuted; }
+  get volume(): number { return this.audioVolume; }
+
+  beginGestureSeek(): void {
+    this.gestureActive = true;
+    this.hoverController.suppress(true);
+    this.requireSession("beginGestureSeek").beginScrub();
+  }
+
+  endGestureSeek(): void {
+    this.gestureActive = false;
+    this.session?.endScrub();
+    this.hoverController.suppress(this.driveSuspensions > 0);
+  }
+
+  private installDrive(): void {
+    this.driveController?.dispose();
+    this.driveController = null;
+    if (this.stage) this.stage.style.pointerEvents = "";
+    const source = this.options.drive;
+    if (!source) return;
+    this.options.playbackMode = "once";
+    this.pause();
+    if (this.driveSuspensions > 0) return;
+    if (source === "pointer" && this.stage) this.stage.style.pointerEvents = "none";
+    this.driveController = new DriveController(this.container, source, () => {
+      if (!this.session) return null;
+      const player = this;
+      return {
+        seek: (to) => this.seekFromInput(to),
+        get currentProgress() { return player.currentProgress; },
+        get totalFrames() { return player.totalFrames; },
+        beginGestureSeek: () => this.beginGestureSeek(),
+        endGestureSeek: () => this.endGestureSeek(),
+      };
+    });
+    this.driveController.install();
   }
 
   getState(): RuntimeState {
-    return this.getRuntimeStore().getState();
+    return this.requireSession("getState").getState();
+  }
+
+  getPerformance(): PlayerPerformanceSnapshot | null {
+    const snapshot = this.session?.getPerformance();
+    return snapshot ? Object.freeze({ generation: this.generation, ...snapshot }) : null;
+  }
+
+  /** Refresh after a host/ancestor transform that ResizeObserver cannot observe. */
+  refreshGeometry(): void {
+    this.requireSession("refreshGeometry").refreshGeometry();
+  }
+
+  getPresentation(): PlayerPresentation {
+    return Object.freeze({
+      generation: this.generation,
+      ...(this.session?.getPresentation() ?? {
+        requestedFrame: null, accepted: null, isReady: false, isPending: false, disposed: this.disposed,
+      }),
+    });
+  }
+
+  /** Cues from the accepted load, expressed on the accepted clock. Reload after data changes to resolve new cues. */
+  getCues(): readonly NormalizedCue[] {
+    const state = this.session?.getState();
+    return state && this.resolveCues ? this.resolveCues(state.fps, state.duration) : [];
+  }
+
+  getCompositionSchedule(): CompositionSchedule | null { return this.compositionSchedule; }
+
+  /** Script/film diagnostics published by `resolve()`. */
+  getCueFindings(): readonly ResolveCueFinding[] { return this.resolvedCueFindings; }
+
+  /** Per-shot cast & prop breakdown published by `resolve()`. */
+  getBreakdown(): ResolveBreakdown | null { return this.resolvedBreakdown; }
+
+  getDriveKind(): DriveSource | null { return this.options.drive ?? null; }
+
+  /** Suspend input ownership until every lease is released, including across reloads. */
+  suspendDrive(): () => void {
+    if (this.disposed) throw new Error("Player is disposed");
+    this.driveSuspensions++;
+    this.driveController?.dispose();
+    this.driveController = null;
+    if (this.stage) this.stage.style.pointerEvents = "";
+    this.hoverController.suppress(true);
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.driveSuspensions--;
+      if (this.disposed || this.driveSuspensions > 0) return;
+      this.hoverController.suppress(false);
+      if (this.session) this.installDrive();
+    };
+  }
+
+  /** Invalidate an invisible candidate when host preparation starts a newer selection. */
+  cancelPendingLoad(): void { this.loadTransaction.invalidate(); }
+
+  private seekFromInput(to: { frame: number } | { progress: number } | { seconds: number }): void {
+    void this.seek(to).catch((error: unknown) => {
+      if (this.disposed || (error as { code?: string })?.code === "PLAYER_PRESENTATION_SUPERSEDED") return;
+      this.emit("error", error instanceof Error ? error : new Error(String(error)));
+    });
+  }
+
+  /** Host mount element, exposed for optional host-driven composition bridges. */
+  get hostElement(): HTMLElement {
+    return this.container;
   }
 
   subscribe(listener: () => void): () => void {
-    return this.requireStore("subscribe").subscribe(listener);
+    return this.requireSession("subscribe").subscribe(listener);
   }
 
-  getRuntimeStore(): RuntimeStore {
-    if (!this.runtimeStore) throw new PlayerNotReadyError("getRuntimeStore");
-    return this.runtimeStore;
+  /** The session-backed store used by React and development controls. */
+  get store(): RuntimeStore {
+    return this.requireSession("store").asStore();
   }
 
-  /** Zustand store for vanilla UI controls (timeline, shortcuts, dev-ui). */
-  get store(): PlayerStore {
-    return this.requireStore("store");
+  /** Media IR attached at load (if provided). */
+  get mediaIR(): MediaIR | null {
+    return this._mediaIR;
+  }
+
+  /**
+   * Attach or clear Media IR after load. Validates canvas/clock against current session.
+   */
+  setMediaIR(ir: MediaIR | null): void {
+    if (!ir) {
+      this._mediaIR = null;
+      return;
+    }
+    const state = this.session?.getState();
+    if (!state) throw new PlayerNotReadyError("setMediaIR");
+    assertMediaIRMatchesRuntime(
+      ir,
+      {
+        width: state.width,
+        height: state.height,
+        fps: state.fps,
+        totalFrames: state.totalFrames,
+      },
+      "MediaIR clock/canvas does not match resolved template",
+    );
+    this._mediaIR = ir;
   }
 
   get playbackMode(): PlaybackMode {
@@ -368,8 +497,9 @@ export class Player {
   }
 
   set playbackMode(mode: PlaybackMode) {
+    this.explicitPlaybackMode = true;
     this.options.playbackMode = mode;
-    this.session?.update({ playbackMode: mode });
+    void this.session?.update({ playbackMode: mode }).catch((error) => this.emit("error", error));
   }
 
   on<K extends keyof PlayerEvents>(event: K, callback: PlayerEvents[K]): () => void {
@@ -390,235 +520,130 @@ export class Player {
     this.events[event]?.delete(callback as never);
   }
 
-  seekScene(indexOrId: number | string): void {
-    const template = this.requireComposedTemplate("seekScene");
-    const scene =
-      typeof indexOrId === "number"
-        ? template.getScene(indexOrId)
-        : template.getSceneById(indexOrId);
-    if (scene) this.seekFrame(scene.startFrame);
-  }
-
-  nextScene(): void {
-    const scene = this.currentScene;
-    const template = this.requireComposedTemplate("nextScene");
-    if (!scene) return;
-    const next = template.getScene(scene.index + 1);
-    if (next) this.seekFrame(next.startFrame);
-  }
-
-  previousScene(): void {
-    const scene = this.currentScene;
-    const template = this.requireComposedTemplate("previousScene");
-    if (!scene) return;
-    const previous = template.getScene(scene.index - 1);
-    if (previous) this.seekFrame(previous.startFrame);
-  }
-
   getCheckpoints(): Checkpoint[] {
-    return [...this.getCheckpointList()];
-  }
-
-  private getCheckpointList(): readonly Checkpoint[] {
-    if (this.checkpointCache) return this.checkpointCache;
-    const checkpoints = this.checkpointResolverInstance?.getAll() ?? [];
-    const sceneCheckpoints =
-      this.template && isComposedTemplate(this.template) ? this.template.getCheckpoints() : [];
-    this.checkpointCache = [...sceneCheckpoints, ...checkpoints].sort((a, b) => a.frame - b.frame);
-    return this.checkpointCache;
+    return [...listCheckpoints(this.navHost())];
   }
 
   getCurrentCheckpoint(): Checkpoint | undefined {
-    const frame = this.currentFrame;
-    let current: Checkpoint | undefined;
-    for (const checkpoint of this.getCheckpointList()) {
-      if (checkpoint.frame <= frame) current = checkpoint;
-      else break;
-    }
-    return current;
+    return navGetCurrentCheckpoint(this.navHost());
   }
 
   goToCheckpoint(id: string): void {
-    const checkpoint = this.getCheckpointList().find((item) => item.id === id);
-    if (checkpoint) this.seekFrame(checkpoint.frame);
+    navGoToCheckpoint(this.navHost(), id);
   }
 
   nextCheckpoint(): void {
-    const checkpoint = this.getCheckpointList().find((item) => item.frame > this.currentFrame);
-    if (checkpoint) this.seekFrame(checkpoint.frame);
+    navNextCheckpoint(this.navHost());
   }
 
   prevCheckpoint(): void {
-    let previous: Checkpoint | undefined;
-    for (const checkpoint of this.getCheckpointList()) {
-      if (checkpoint.frame >= this.currentFrame) break;
-      previous = checkpoint;
-    }
-    if (previous) this.seekFrame(previous.frame);
+    navPrevCheckpoint(this.navHost());
   }
 
   addCheckpoint(
     id: string,
     frame: number = this.currentFrame,
-    options?: { label?: string; metadata?: Record<string, unknown> }
+    options?: { label?: string; metadata?: JsonObject },
   ): Checkpoint {
-    const resolver = this.requireCheckpointResolver("addCheckpoint");
-    const checkpoint = resolver.add(id, frame, options);
-    this.checkpointCache = null;
-    return checkpoint;
+    return navAddCheckpoint(this.navHost(), id, frame, options);
   }
 
   removeCheckpoint(id: string): boolean {
-    const removed = this.checkpointResolverInstance?.remove(id) ?? false;
-    if (removed) this.checkpointCache = null;
-    return removed;
+    return navRemoveCheckpoint(this.navHost(), id);
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.generation++;
+    this.loadTransaction.invalidate();
+    this.driveController?.dispose();
+    this.driveController = null;
     this.teardownPlayback();
     this.hoverController.dispose();
-    this.session?.dispose();
-    this.session = null;
-    this.template = null;
     this.checkpointResolverInstance = null;
     this.checkpointCache = null;
+    this.compositionSchedule = null;
+    this.resolveCues = null;
+    this.emit("presentation", this.getPresentation());
     this.events = {};
   }
 
-  get isReady(): boolean {
-    return this.playerStore?.getState().isReady ?? false;
-  }
-
-  get isPlaying(): boolean {
-    return this.playerStore?.getState().isPlaying ?? false;
-  }
-
-  get currentFrame(): number {
-    return this.playerStore?.getState().currentFrame ?? 0;
-  }
-
-  get totalFrames(): number {
-    return this.playerStore?.getState().totalFrames ?? 0;
-  }
-
-  get fps(): number {
-    return this.playerStore?.getState().fps ?? 30;
-  }
-
+  get isReady(): boolean { return this.session?.getState().isReady ?? false; }
+  get isPlaying(): boolean { return this.session?.getState().isPlaying ?? false; }
+  get currentFrame(): number { return this.session?.getState().currentFrame ?? 0; }
+  get totalFrames(): number { return this.session?.getState().totalFrames ?? 0; }
+  get fps(): number { return this.session?.getState().fps ?? 30; }
   get currentProgress(): number {
     const total = this.totalFrames;
     return total > 1 ? this.currentFrame / (total - 1) : 0;
   }
-
-  get currentTimeSeconds(): number {
-    return this.currentFrame / this.fps;
-  }
-
-  get totalDurationSeconds(): number {
-    return this.playerStore?.getState().duration ?? 0;
-  }
-
-  get renderWidth(): number {
-    return this.session?.getState().width ?? 0;
-  }
-
-  get renderHeight(): number {
-    return this.session?.getState().height ?? 0;
-  }
-
-  get scenes(): readonly ResolvedScene[] {
-    return this.template && isComposedTemplate(this.template) ? this.template.scenes : [];
-  }
-
-  get currentScene(): ResolvedScene | null {
-    if (!this.template || !isComposedTemplate(this.template)) return null;
-    return this.template.getSceneAtFrame(this.currentFrame);
-  }
-
+  get currentTimeSeconds(): number { return this.currentFrame / this.fps; }
+  get totalDurationSeconds(): number { return this.session?.getState().duration ?? 0; }
+  get renderWidth(): number { return this.session?.getState().width ?? 0; }
+  get renderHeight(): number { return this.session?.getState().height ?? 0; }
   get checkpointResolver(): CheckpointResolver | null {
     return this.checkpointResolverInstance;
   }
 
+  private navHost(): PlayerNavHost {
+    const self = this;
+    return {
+      get currentFrame() { return self.currentFrame; },
+      seekFrame: (frame) => self.seekFromInput({ frame }),
+      get checkpointResolverInstance() { return self.checkpointResolverInstance; },
+      get checkpointCache() { return self.checkpointCache; },
+      set checkpointCache(v) { self.checkpointCache = v; },
+      requireCheckpointResolver: (op) => self.requireCheckpointResolver(op),
+    };
+  }
+
   private handlePlaybackEnd(): void {
-    if (this.options.playbackMode === "loop") {
-      this.playerStore!.getState().setFrame(0);
-      this.session?.play();
-      return;
-    }
-    this.playerStore!.getState().pause();
+    this.audioController?.pause();
     this.emit("ended");
   }
 
   private teardownPlayback(): void {
-    this.sessionDisposer?.();
-    this.sessionDisposer = null;
+    this.audioController?.dispose();
+    this.audioController = null;
     for (const dispose of this.sessionEventDisposers) dispose();
     this.sessionEventDisposers = [];
-    this.playerStore = null;
-    this.runtimeStore = null;
     this.session?.dispose();
     this.session = null;
+    this.stage?.remove();
+    this.stage = null;
   }
 
   private wireSessionEvents(session: MediaSession): void {
-    this.sessionEventDisposers.push(session.on("ready", () => {
-      this.playerStore?.getState().setReady(true);
-      this.emit("ready");
-    }));
-    this.sessionEventDisposers.push(session.on("rendered", (result) => {
-      this.emit("rendered", toRenderedPayload(result));
-      const total = this.playerStore?.getState().totalFrames ?? session.getState().totalFrames;
-      this.emit("frame", result.frame, total);
-      this.emitCheckpoint(result.frame);
-    }));
-    this.sessionEventDisposers.push(session.on("play", () => this.emit("play")));
-    this.sessionEventDisposers.push(session.on("pause", () => this.emit("pause")));
-    this.sessionEventDisposers.push(session.on("ended", () => this.handlePlaybackEnd()));
-    this.sessionEventDisposers.push(session.on("error", (error) => this.emit("error", error)));
-    this.sessionEventDisposers.push(session.on("scenechange", (scene) => this.emit("scenechange", scene)));
+    this.sessionEventDisposers.push(
+      session.on("presentation", () => this.emit("presentation", this.getPresentation())),
+      ...wireMediaSessionEvents(session, {
+        onReady: () => {
+          this.emit("ready");
+        },
+        onRendered: (frame, total) => this.handleRenderedFrame(frame, total),
+        onPlay: () => this.emit("play"),
+        onPause: () => this.emit("pause"),
+        onEnded: () => this.handlePlaybackEnd(),
+        onError: (error) => this.emit("error", error),
+        getTotalFrames: () => this.session?.getState().totalFrames ?? 0,
+        emitRendered: (payload) => this.emit("rendered", payload),
+      }),
+    );
+  }
+
+  private handleRenderedFrame(frame: number, total: number): void {
+    this.emit("frame", frame, total);
+    this.emitCheckpoint(frame);
   }
 
   private rebuildCheckpointResolver(): void {
     this.checkpointCache = null;
-    const state = this.session?.getState();
-    if (!state) {
-      this.checkpointResolverInstance = null;
-      return;
-    }
-    this.checkpointResolverInstance = new CheckpointResolver(
-      this.markerList,
-      state.totalFrames,
-      state.fps
-    );
-  }
-
-  private syncStoreFromSession(): void {
-    if (!this.session || !this.playerStore) return;
-    const sessionState = this.session.getState();
-    const current = this.playerStore.getState();
-    const next = {
-      isReady: sessionState.isReady,
-      isPlaying: sessionState.isPlaying,
-      currentFrame: sessionState.currentFrame,
-      totalFrames: sessionState.totalFrames,
-      fps: sessionState.fps,
-      duration: sessionState.duration,
-    };
-    if (
-      current.isReady === next.isReady &&
-      current.isPlaying === next.isPlaying &&
-      current.currentFrame === next.currentFrame &&
-      current.totalFrames === next.totalFrames &&
-      current.fps === next.fps &&
-      current.duration === next.duration
-    ) {
-      return;
-    }
-    this.playerStore.setState(next);
+    this.checkpointResolverInstance = createCheckpointResolver(this.session, this.markerList);
   }
 
   private emitCheckpoint(frame: number): void {
-    const checkpoint = this.getCheckpointList().find((item) => item.frame === frame);
+    const checkpoint = listCheckpoints(this.navHost()).find((item) => item.frame === frame);
     if (!checkpoint || checkpoint.id === this.lastCheckpointId) return;
     this.lastCheckpointId = checkpoint.id;
     this.emit("checkpoint", checkpoint);
@@ -629,34 +654,24 @@ export class Player {
     return this.session;
   }
 
-  private requireStore(operation: string): PlayerStore {
-    if (!this.playerStore) throw new PlayerNotReadyError(operation);
-    return this.playerStore;
-  }
-
   private requireCheckpointResolver(operation: string): CheckpointResolver {
     if (!this.checkpointResolverInstance) throw new PlayerNotReadyError(operation);
     return this.checkpointResolverInstance;
   }
 
-  private requireComposedTemplate(operation: string): ComposedTemplate {
-    if (!this.template || !isComposedTemplate(this.template)) {
-      throw new PlayerNotReadyError(operation);
-    }
-    return this.template;
-  }
-
-  private emit<K extends keyof PlayerEvents>(event: K, ...args: Parameters<PlayerEvents[K]>): void {
+  private emit<K extends keyof PlayerEvents>(
+    event: K,
+    ...args: Parameters<PlayerEvents[K]>
+  ): void {
     this.events[event]?.forEach((callback) => {
       (callback as (...a: Parameters<PlayerEvents[K]>) => void)(...args);
     });
   }
 }
 
-function toRenderedPayload(result: MediaFrameResult): RuntimeRenderedPayload {
-  return {
-    frame: result.frame,
-    html: result.html,
-    compositeHtml: result.compositeHtml,
-  };
+function createPlayerStage(): HTMLElement {
+  const stage = document.createElement("div");
+  stage.setAttribute("data-superimg-player-stage", "1");
+  stage.style.cssText = "position:absolute;inset:0;width:100%;height:100%;min-height:1px;";
+  return stage;
 }

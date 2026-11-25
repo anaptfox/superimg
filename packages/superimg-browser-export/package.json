@@ -14,13 +14,19 @@
     "./encoder": {
       "import": "./dist/encoder.js",
       "types": "./dist/encoder.d.ts"
+    },
+    "./runtime": {
+      "import": "./dist/runtime.js",
+      "types": "./dist/runtime.d.ts"
     }
   },
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "typecheck": "node ../../scripts/typecheck-native.mjs -p tsconfig.json --noEmit"
   },
   "files": [
     "dist"
@@ -28,15 +34,22 @@
   "sideEffects": false,
   "license": "MIT",
   "dependencies": {
+    "@mediabunny/dts": "catalog:",
     "@superimg/core": "workspace:*",
     "@superimg/media": "workspace:*",
     "@superimg/types": "workspace:*",
-    "@zumer/snapdom": "^2.15.0",
-    "mediabunny": "^1.49.0"
+    "@zumer/snapdom": "catalog:",
+    "@zumer/snapdom-pdf": "1.0.1",
+    "@zumer/snapdom-plugins": "5.0.0",
+    "@zumer/snapdom-vector": "1.0.0",
+    "mediabunny": "catalog:"
   },
   "devDependencies": {
     "@superimg/build-config": "workspace:*",
-    "happy-dom": "^20.10.6",
-    "vitest": "^4.1.9"
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "@vitest/ui": "catalog:",
+    "happy-dom": "catalog:",
+    "vitest": "catalog:"
   }
 }

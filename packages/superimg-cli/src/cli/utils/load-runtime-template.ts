@@ -1,7 +1,7 @@
 //! Bundle + compile + resolve a template for runtime-true inspect/info.
 
 import { dirname } from "node:path";
-import { bundleTemplateWithMap } from "@superimg/core/bundler";
+import { bundleMediaProgram } from "@superimg/core/bundler";
 import {
   applyTemplateResolve,
   compileTemplate,
@@ -35,9 +35,9 @@ export async function loadRuntimeTemplate(
   resolvedPath: string,
   options: { data?: Record<string, unknown> } = {},
 ): Promise<LoadedRuntimeTemplate> {
-  const templateBundle = await bundleTemplateWithMap(resolvedPath);
-  const compiled = compileTemplate(templateBundle.code);
-  if (compiled.error || !compiled.template) {
+  const templateBundle = await bundleMediaProgram(resolvedPath);
+  const compiled = compileTemplate(templateBundle);
+  if (compiled.error || !compiled.media) {
     throw compiled.error ?? new Error("Template compilation failed");
   }
 
@@ -49,7 +49,7 @@ export async function loadRuntimeTemplate(
   }
   const cascadingConfig = await loadCascadingConfig(resolvedPath, projectRoot);
 
-  const applied = await applyTemplateResolve(compiled.template, {
+  const applied = await applyTemplateResolve(compiled.media, {
     ...(options.data !== undefined ? { data: options.data } : {}),
   });
   const template = applied.template;
@@ -72,7 +72,10 @@ export async function loadRuntimeTemplate(
   } else {
     // Match resolveRenderConfig default when nothing is set
     const fallback = resolveRenderConfig({
-      templateConfig: runtimeCfg as Parameters<typeof resolveRenderConfig>[0]["templateConfig"],
+      templateConfig:
+        runtimeCfg as NonNullable<
+          Parameters<typeof resolveRenderConfig>[0]["templateConfig"]
+        >,
       cascadingConfig: cascading,
     });
     durationSeconds = fallback.duration;
@@ -87,7 +90,7 @@ export async function loadRuntimeTemplate(
     cascading.height ??
     1080;
 
-  const totalFrames = Math.max(1, Math.ceil(durationSeconds * fps));
+  const totalFrames = compiled.media.composition?.schedule.totalFrames ?? Math.max(1, Math.ceil(durationSeconds * fps));
 
   return {
     template,

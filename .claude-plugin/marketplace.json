@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "superimg",
+  "description": "SuperImg — programmatic media framework. TypeScript media programs → destination-ready video, image, GIF, and SVG bundles.",
+  "owner": {
+    "name": "anaptfox",
+    "url": "https://github.com/anaptfox"
+  },
+  "plugins": [
+    {
+      "name": "superimg",
+      "description": "Full SuperImg media lifecycle: brief, design, build, motion craft, review, multi-format variants, ship.",
+      "source": "./",
+      "category": "developer-tools",
+      "tags": ["video", "animation", "superimg", "media"],
+      "keywords": ["mp4", "reel", "motion", "templates"]
+    }
+  ]
+}

@@ -12,19 +12,24 @@
 
 import { readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import {
-  collectLineImports,
-  isCommentLine,
-  LINE_IMPORT_RE,
-} from "./scan-imports.mjs";
+import { collectSourceImports } from "./scan-imports.mjs";
 
 const ROOT = resolve(process.argv[2] ?? process.cwd());
 const DIST = join(ROOT, "dist");
 
 /** Platform closure entry points (relative to dist/). */
 const PLATFORM_ROOTS = {
-  edge: "index.edge.js",
+  charts: "charts.js",
+  edge: "runtime.edge.js",
+  html: "runtime/html.js",
+  browser: "runtime.browser.js",
+  browserExport: "browser-export.js",
   player: "player.js",
+  playerDom: "player/dom.js",
+  interactivePlayer: "interactive/player.js",
+  interactiveReact: "react/interactive.js",
+  inspection: "inspection.js",
+  inspectionBoundary: "inspection/boundary.js",
   reactHook: "react/compile.js",
   compiler: "bundler-browser.js",
   capabilityCode: "chunks/browser/code.js",
@@ -45,6 +50,8 @@ const ALLOWED = [
 /** The dynamic bundler legitimately externalizes @rolldown/browser. */
 const ALLOWED_BY_ROOT = {
   compiler: [(spec) => spec === "@rolldown/browser"],
+  reactHook: [(spec) => spec === "@rolldown/browser"],
+  inspectionBoundary: [(spec) => spec === "@foxworth/boundary" || spec.startsWith("@foxworth/boundary/")],
 };
 
 function isRelative(spec) {
@@ -64,21 +71,11 @@ function scanClosure(rootRel) {
     }
     seen.add(rel);
 
-    const src = readFileSync(abs, "utf8");
-    for (const line of src.split("\n")) {
-      const trimmed = line.trimStart();
-      if (isCommentLine(trimmed)) continue;
+    const imports = collectSourceImports(readFileSync(abs, "utf8"));
+    for (const spec of imports) record(spec, rel);
 
-      const found = new Set();
-      collectLineImports(trimmed, found);
-      for (const spec of found) record(spec, rel);
-    }
-
-    // Recurse into relative .js imports only.
-    for (const line of src.split("\n")) {
-      const m = line.trimStart().match(LINE_IMPORT_RE);
-      if (!m) continue;
-      const spec = m[1];
+    // Recurse into relative .js imports, re-exports, and dynamic imports.
+    for (const spec of imports) {
       if (!isRelative(spec)) continue;
       const next = resolve(dirname(abs), spec);
       if (!next.startsWith(DIST) || !next.endsWith(".js")) continue;
@@ -125,7 +122,7 @@ if (errors.length) {
   for (const e of errors) console.error(`    ${e}`);
   console.error(
     "\n  Platform closures may import only react/react-dom (+ jsx/client subpaths), " +
-      "@resvg/resvg-wasm, and @rolldown/browser (compiler only).\n" +
+      "@resvg/resvg-wasm, @rolldown/browser (compiler surfaces), and @foxworth/boundary (optional inspection adapter).\n" +
       "  Add the offending package to platformAlwaysBundle in @superimg/build-config/bundle-deps.",
   );
   process.exit(1);

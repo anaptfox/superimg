@@ -1,0 +1,12 @@
+{
+  "name": "superimg",
+  "version": "0.1.1-media-library.20261022.1",
+  "description": "Perceptual arrangements that externalize identifiable human work. Not a video template pack.",
+  "skills": "./skills",
+  "commands": "./commands",
+  "author": {
+    "name": "anaptfox",
+    "url": "https://github.com/anaptfox"
+  },
+  "homepage": "https://superimg.app"
+}

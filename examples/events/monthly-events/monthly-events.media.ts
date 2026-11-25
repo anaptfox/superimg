@@ -1,6 +1,10 @@
-import { define } from "superimg";
+// A month of meetups — the actual month grid, filled one date at a time.
+// UTC calendar arithmetic derives weekdays from the month and year, including
+// empty months and Gregorian leap years; event labels never shift the grid.
 
-interface TechlahomEvent {
+import { video, Frame, Stack, Text, Fill, type RenderContext, googleFont } from "@foxworth/superimg";
+
+export interface MonthlyEvent {
   date: string;
   day: string;
   time: string;
@@ -10,7 +14,72 @@ interface TechlahomEvent {
   color: string;
 }
 
-export default define({
+export interface MonthlyEventsData extends Record<string, unknown> {
+  month: string;
+  year: string;
+  hookLine1: string;
+  hookLine2: string;
+  tagline: string;
+  cta: string;
+  ctaUrl: string;
+  events: MonthlyEvent[];
+}
+
+const SAND = "#E8E2D4";
+const ESPRESSO = "#241E18";
+const DOW = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const MONTH_DAYS: Record<string, number> = {
+  jan: 31, feb: 28, mar: 31, apr: 30, may: 31, jun: 30,
+  jul: 31, aug: 31, sep: 30, oct: 31, nov: 30, dec: 31,
+};
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+
+function dayNumber(date: string): number {
+  const m = /(\d{1,2})/.exec(date);
+  return m ? Number(m[1]) : 1;
+}
+
+export function daysInMonth(month: string, year: string): number {
+  const key = month.slice(0, 3).toLowerCase();
+  const base = MONTH_DAYS[key] ?? 31;
+  const y = Number(year);
+  if (key === "feb" && y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) return 29;
+  return base;
+}
+
+/** Gregorian weekday in UTC, independent of the viewer's locale/time zone. */
+export function firstWeekdayOfMonth(month: string, year: string): number {
+  const monthIndex = Object.keys(MONTH_DAYS).indexOf(month.slice(0, 3).toLowerCase());
+  const monthStart = new Date(0);
+  monthStart.setUTCFullYear(Number(year), Math.max(0, monthIndex), 1);
+  return monthStart.getUTCDay();
+}
+
+export default video<MonthlyEventsData>({
+  duration: "15s",
+  fps: 30,
+  poster: "13.8s",
+  fonts: [googleFont("Inter:wght@400;500;600;700;800"), googleFont("IBM Plex Mono:wght@400;500;600")],
+  audio: {
+    id: "bed",
+    src: "../../_assets/lofi-bg.mp3",
+    role: "music",
+    volume: 0.6,
+    fadeIn: "0.5s",
+    fadeOut: "1.5s",
+    loop: true,
+  },
+  inlineCss: [
+    "* { margin: 0; padding: 0; box-sizing: border-box; }",
+    "body { overflow: hidden; font-family: Inter, system-ui, sans-serif; }",
+  ],
+
+  editions: {
+    landscape: { size: { width: 1920, height: 1080 } },
+    square: { size: { width: 1080, height: 1080 } },
+    story: { size: { width: 1080, height: 1920 } },
+  },
+
   sample: {
     month: "March",
     year: "2026",
@@ -19,209 +88,435 @@ export default define({
     tagline: "Find your people.",
     cta: "All free. All welcome.",
     ctaUrl: "meetup.com/techlahoma",
-    techlahomaSvg: "https://www.techlahoma.org/wp-content/uploads/2024/09/cropped-techlahoma_horizontaltext-white.png",
-    backgroundImage: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1920",
-
     events: [
-      { date: "Mar 4", day: "TUE", time: "11 AM", group: "OKC Coffee & Code", title: "Coworking Session", location: "8th Street Market", color: "#f65858" },
-      { date: "Mar 7", day: "FRI", time: "6:30 PM", group: "Tulsa Web Devs", title: "React 19 Deep Dive", location: "36 Degrees North", color: "#3b82f6" },
-      { date: "Mar 12", day: "WED", time: "6 PM", group: "OKC Python", title: "Intro to FastAPI", location: "Tailwind HQ", color: "#10b981" },
-      { date: "Mar 18", day: "TUE", time: "7 PM", group: "Techlahoma Foundation", title: "Monthly Board Meeting", location: "Virtual", color: "#8b5cf6" },
-      { date: "Mar 25", day: "TUE", time: "6 PM", group: "OKC Design+Dev", title: "Design Systems Workshop", location: "Starspace46", color: "#f59e0b" },
-    ] as TechlahomEvent[],
+      { date: "Mar 4", day: "WED", time: "11 AM", group: "OKC Coffee & Code", title: "Coworking Session", location: "8th Street Market", color: "#D0463B" },
+      { date: "Mar 7", day: "SAT", time: "6:30 PM", group: "Tulsa Web Devs", title: "React 19 Deep Dive", location: "36 Degrees North", color: "#1F6F8B" },
+      { date: "Mar 12", day: "THU", time: "6 PM", group: "OKC Python", title: "Intro to FastAPI", location: "Tailwind HQ", color: "#2F7D4F" },
+      { date: "Mar 18", day: "WED", time: "7 PM", group: "Techlahoma Foundation", title: "Monthly Board Meeting", location: "Virtual", color: "#6C4BB6" },
+      { date: "Mar 25", day: "WED", time: "6 PM", group: "OKC Design+Dev", title: "Design Systems Workshop", location: "Starspace46", color: "#C77C1E" },
+    ],
   },
 
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "15s",
-    fonts: ["Inter:wght@400;500;600;700;800"],
-    audio: {
-      id: "bed",
-      src: "../../_assets/lofi-bg.mp3",
-      role: "music",
-      volume: 0.6,
-      fadeIn: "0.5s",
-      fadeOut: "1.5s",
-      loop: true,
-    },
-    outputs: {
-      landscape: { width: 1920, height: 1080 },
-      square: { width: 1080, height: 1080 },
-      story: { width: 1080, height: 1920 },
-    },
-    inlineCss: [`
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Inter', sans-serif; overflow: hidden; }
-    `],
-  },
+  render(ctx: RenderContext<MonthlyEventsData>) {
+    const { std, width, height, data, isPortrait, isSquare } = ctx;
+    const { month, year, hookLine1, hookLine2, tagline, cta, ctaUrl } = data;
+    const events = data.events ?? [];
+    const n = events.length;
 
-  render(ctx) {
-    const { std, width, height, data } = ctx;
-    const { month, year, hookLine1, hookLine2, tagline, cta, ctaUrl, techlahomaSvg, backgroundImage, events } = data;
+    const wide = !isPortrait && !isSquare;
+    function pick<T>(o: { portrait: T; square: T; wide: T }): T {
+      return isPortrait ? o.portrait : isSquare ? o.square : o.wide;
+    }
+    const s = Math.min(width, height) / 1080;
+    const px = (v: number) => Math.round(v * s);
 
-    const r = std.createResponsive(ctx);
+    const t = ctx.director({ open: "18%", fill: "44%", sweep: "14%", cta: "24%" });
+    const open = t.in("open");
+    const sweep = t.in("sweep");
+    const ctaP = t.in("cta");
 
-    // === TIMELINE PHASES ===
-    // hook: 2s, events: 9s, recap: 2.5s, outro: 1.5s
-    const t = ctx.director({
-      hook: "2.0s",
-      events: "9.0s",
-      recap: "2.5s",
-      outro: "1.5s"
-    });
+    // ---- calendar maths --------------------------------------------------
+    const total = daysInMonth(month, year);
+    const firstWeekday = firstWeekdayOfMonth(month, year);
+    const rows = Math.ceil((firstWeekday + total) / 7);
+    const eventByDay = new Map<number, number>();
+    events.forEach((e, i) => eventByDay.set(dayNumber(e.date), i));
 
-    // Ken Burns background (shared)
-    const bg = std.backgrounds.kenBurns({
-      src: backgroundImage,
-      progress: ctx.timeline.progress,
-      zoomTo: 1.12,
-      overlay: "rgba(0, 0, 0, 0.6)",
-    });
+    // ---- the walk through the month --------------------------------------
+    const beat = n > 0 ? t.beats({ during: "fill", of: events.map((_, i) => `e${i}`), cross: "16%" }) : undefined;
+    const focus = beat
+      ? beat.crossing
+        ? beat.index + std.interpolate(beat.mix, [0, 1], [0, 1], "easeInOutCubic")
+        : beat.index
+      : 0;
+    const walking = t.in("fill") > 0 && sweep <= 0;
 
-    // === RECAP PHASE ===
-    if (t.active === "recap") {
-      const recapP = t.in("recap");
-      const recapBg = std.backgrounds.kenBurns({ src: backgroundImage, progress: ctx.timeline.progress, zoomTo: 1.12, overlay: "rgba(0, 0, 0, 0.7)" });
+    // ---- layout ----------------------------------------------------------
+    const padX = pick({ portrait: px(64), square: px(56), wide: px(88) });
+    const padY = pick({ portrait: px(72), square: px(56), wide: px(64) });
+    const headerH = pick({ portrait: px(230), square: px(164), wide: px(184) });
+    const gap = px(9);
+    const gridW = wide ? Math.round(width * 0.57) : width - padX * 2;
+    const cellW = Math.floor((gridW - gap * 6) / 7);
+    const cellH = pick({ portrait: px(104), square: px(64), wide: px(100) });
+    const gridX = padX;
+    const gridY = padY + headerH;
+    const dowH = px(30);
+    const footerY = height - padY - px(34);
 
-      // Stagger rows using director
-      const recapRows = events.map((event: TechlahomEvent, i: number) => {
-        const anim = t.motion({ during: "recap", at: `${((0.1/2.5 + i * 0.08/2.5) * 100).toFixed(1)}%`, for: `${((0.3/2.5) * 100).toFixed(1)}%`, y: 20 });
-        
-        const rowHeight = r({ portrait: 72, square: 56, default: 64 });
-        const dateBadgeWidth = r({ portrait: 60, square: 48, default: 56 });
-        const groupFontSize = r({ portrait: 22, square: 16, default: 20 });
-        const timeFontSize = r({ portrait: 18, square: 14, default: 16 });
-        const containerWidth = r({ portrait: "92%", square: "85%", default: "70%" });
-        const rowPadding = r({ portrait: "12px 16px", default: "10px 14px" });
-        const rowGap = r({ portrait: 16, default: 12 });
-        const dayFontSize = r({ portrait: 10, default: 8 });
-        const dateFontSize = r({ portrait: 22, default: 18 });
+    const railX = wide ? gridX + gridW + px(72) : padX;
+    const railW = wide ? width - railX - padX : width - padX * 2;
+    const railY = wide ? gridY : gridY + dowH + px(14) + rows * (cellH + gap) + pick({ portrait: px(40), square: px(28), wide: px(40) });
+    const railH = wide
+      ? dowH + px(14) + rows * (cellH + gap)
+      : Math.max(px(200), footerY - railY - px(40));
 
-        return `
-          <div style="${std.css({
-            display: "flex", alignItems: "center", gap: rowGap, padding: rowPadding,
-            background: "rgba(0, 0, 0, 0.8)", borderLeft: `4px solid ${event.color}`, borderRadius: 8,
-            opacity: anim.opacity, transform: `translateY(${anim.y}px)`,
-          })}">
-            <div style="${std.css({
-              width: dateBadgeWidth, height: dateBadgeWidth, background: event.color, borderRadius: 8,
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            })}">
-              <div style="${std.css({ fontSize: dayFontSize, fontWeight: 700, color: "#fff", letterSpacing: "0.1em" })}">${event.day}</div>
-              <div style="${std.css({ fontSize: dateFontSize, fontWeight: 800, color: "#fff", lineHeight: 1 })}">${event.date.split(" ")[1]}</div>
-            </div>
-            <div style="${std.css({ flex: 1, fontSize: groupFontSize, fontWeight: 600, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" })}">${event.group}</div>
-            <div style="${std.css({ fontSize: timeFontSize, fontWeight: 500, color: "rgba(255,255,255,0.8)", whiteSpace: "nowrap" })}">${event.time}</div>
-          </div>
-        `;
-      }).join("");
+    // ---- header ----------------------------------------------------------
+    const titleIn = t.motion({ id: "cal.title", during: "open", at: "0%", for: "46%", y: px(22), exit: false });
+    const hookIn = t.motion({ id: "cal.hook", during: "open", at: "18%", for: "46%", y: px(16), exit: false });
 
-      return `
-        <div style="${std.css({ width, height, position: "relative", overflow: "hidden" })}">
-          ${recapBg.html}
-          <div style="${std.css({ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: r({ portrait: 32, default: 40 }) })}">
-            <div style="${std.css({ width: r({ portrait: "92%", default: "70%" }), maxWidth: 960, display: "flex", flexDirection: "column", gap: 12 })}">
-              ${recapRows}
-            </div>
-          </div>
-        </div>
-      `;
+    const header = Frame(
+      { x: padX, y: padY, width: width - padX * 2, height: headerH },
+      Frame(
+        { x: 0, y: 0, width: Math.round(width * 0.6), height: px(96), style: titleIn },
+        Text(
+          {
+            variant: "display",
+            size: pick({ portrait: px(96), square: px(82), wide: px(104) }),
+            weight: 800,
+            letterSpacing: px(-4),
+            lineHeight: 1,
+            color: ESPRESSO,
+          },
+          `${month.toUpperCase()} ${year}`,
+        ),
+      ),
+      Frame({
+        x: 0,
+        y: pick({ portrait: px(118), square: px(96), wide: px(118) }),
+        width: gridW,
+        height: px(4),
+        fill: ESPRESSO,
+        style: {
+          transformOrigin: "left center",
+          transform: `scaleX(${std.interpolate(open, [0.12, 0.7], [0, 1], "easeInOutCubic").toFixed(3)})`,
+        },
+      }),
+      Frame(
+        {
+          x: 0,
+          y: pick({ portrait: px(140), square: px(116), wide: px(138) }),
+          width: Math.round(width * 0.6),
+          height: px(40),
+          style: hookIn,
+        },
+        Text(
+          { variant: "title", size: px(30), weight: 600, letterSpacing: px(-0.4), color: std.color.alpha(ESPRESSO, 0.62) },
+          `${hookLine1} ${hookLine2}`,
+        ),
+      ),
+    );
+
+    // ---- weekday rail ----------------------------------------------------
+    const dowRow = DOW.map((d, i) =>
+      Frame(
+        { x: i * (cellW + gap), y: 0, width: cellW, height: dowH },
+        Text(
+          {
+            variant: "label",
+            size: px(15),
+            weight: 600,
+            letterSpacing: px(2.4),
+            fontFamily: MONO,
+            color: std.color.alpha(ESPRESSO, std.interpolate(open, [0.1 + i * 0.04, 0.4 + i * 0.04], [0, 0.58], "easeOutCubic")),
+          },
+          d,
+        ),
+      ),
+    );
+
+    // ---- the grid --------------------------------------------------------
+    const cells = [];
+    for (let d = 1; d <= total; d++) {
+      const idx = firstWeekday + d - 1;
+      const col = idx % 7;
+      const row = Math.floor(idx / 7);
+      const ei = eventByDay.get(d);
+      const cellIn = std.interpolate(open, [0.16 + idx * 0.009, 0.5 + idx * 0.009], [0, 1], "easeOutCubic");
+      const landed = ei === undefined ? 0 : std.interpolate(focus - ei, [-0.9, 0], [0, 1], "easeOutCubic");
+      const near = ei === undefined ? 0 : Math.max(0, 1 - Math.abs(focus - ei) * 1.6);
+      const lit = ei === undefined ? 0 : walking ? near : Math.max(0, landed) * 0.42;
+      const color = ei === undefined ? ESPRESSO : events[ei]!.color;
+      const bg =
+        ei === undefined
+          ? std.color.alpha(ESPRESSO, 0.045 * cellIn)
+          : std.interpolateColor(lit, [0, 1], [std.color.alpha(color, 0.16 * landed), color]);
+      const numColor =
+        ei === undefined
+          ? std.color.alpha(ESPRESSO, 0.34 * cellIn)
+          : std.interpolateColor(lit, [0, 1], [std.color.alpha(ESPRESSO, 0.75), SAND]);
+
+      cells.push(
+        Frame(
+          {
+            x: col * (cellW + gap),
+            y: dowH + px(14) + row * (cellH + gap),
+            width: cellW,
+            height: cellH,
+            radius: px(5),
+            fill: bg,
+            style: {
+              opacity: cellIn,
+              transformOrigin: "center center",
+              transform: `translateY(${((1 - cellIn) * px(10)).toFixed(1)}px) scale(${(1 + 0.05 * near).toFixed(3)})`,
+              boxShadow:
+                ei === undefined
+                  ? `inset 0 0 0 1px ${std.color.alpha(ESPRESSO, 0.07 * cellIn)}`
+                  : `inset 0 0 0 ${px(2)}px ${std.color.alpha(color, 0.45 + 0.45 * lit)}, 0 ${px(10)}px ${px(
+                      24,
+                    )}px ${std.color.alpha(color, 0.3 * lit)}`,
+            },
+          },
+          Frame(
+            { x: px(11), y: px(9), width: cellW - px(20), height: px(24) },
+            Text(
+              { variant: "label", size: px(19), weight: 600, fontFamily: MONO, color: numColor },
+              String(d),
+            ),
+          ),
+          ...(ei === undefined
+            ? []
+            : [
+                Frame({
+                  x: px(11),
+                  y: cellH - px(16),
+                  width: cellW - px(22),
+                  height: px(6),
+                  radius: px(3),
+                  fill: std.interpolateColor(lit, [0, 1], [color, SAND]),
+                  style: {
+                    transformOrigin: "left center",
+                    transform: `scaleX(${Math.max(0, landed).toFixed(3)})`,
+                  },
+                }),
+              ]),
+        ),
+      );
     }
 
-    // === OUTRO PHASE ===
-    if (t.active === "outro") {
-      const outroP = t.in("outro");
-      const logoWidth = r({ portrait: 500, square: 400, default: 480 });
+    const grid = Frame(
+      { x: gridX, y: gridY, width: gridW, height: dowH + px(14) + rows * (cellH + gap) },
+      ...dowRow,
+      ...cells,
+    );
 
-      const ctaAnim = t.motion({ during: "outro", at: `${((0.2/1.5) * 100).toFixed(1)}%`, for: `${((0.3/1.5) * 100).toFixed(1)}%`, y: 20 });
-      const logoAnim = t.motion({ during: "outro", at: "0%", for: `${((0.16/1.5) * 100).toFixed(1)}%`, scale: 0.1 });
-      const fadeOut = t.tween(0, 1, { during: "outro", at: `${((0.6/1.5) * 100).toFixed(1)}%`, for: `${((0.4/1.5) * 100).toFixed(1)}%`, easing: "easeInCubic" });
+    // ---- detail rail -----------------------------------------------------
+    const cur = n > 0 ? events[Math.min(n - 1, Math.round(focus))]! : undefined;
+    const curIdx = n > 0 ? Math.min(n - 1, Math.round(focus)) : 0;
+    const railFade = 1 - std.interpolate(sweep, [0, 0.55], [0, 1], "easeInOutCubic");
+    const cardEnter = beat && !beat.crossing ? std.interpolate(beat.local, [0, 0.16], [0, 1], "easeOutCubic") : 1;
+    const railIn = std.interpolate(t.in("open"), [0.4, 1], [0, 1], "easeOutCubic");
+    const railTop = wide ? px(150) : isSquare ? px(6) : Math.max(px(6), Math.round((railH - px(320)) / 2));
+    // Square reserves a compact information rail even when the month has six rows.
+    const dateY = isSquare ? px(28) : px(44);
+    const groupY = isSquare ? px(72) : px(104);
+    const eventTitleY = isSquare ? px(104) : px(146);
+    const eventTitleH = pick({ portrait: px(150), square: px(70), wide: px(170) });
+    const eventMetaY = isSquare ? px(188) : px(176) + eventTitleH;
 
-      return `
-        <div style="${std.css({ width, height, background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: r({ portrait: 48, default: 32 }), opacity: 1 - fadeOut })}">
-          <div style="${std.css({ fontSize: r({ portrait: 36, default: 32 }), fontWeight: 600, color: "#fff" })};${ctaAnim.style}">${cta}</div>
-          <img src="${techlahomaSvg}" style="${std.css({ width: logoWidth })};${logoAnim.style}" />
-          <div style="${std.css({ fontSize: r({ portrait: 28, default: 24 }), fontWeight: 500, color: "rgba(255,255,255,0.7)" })};${ctaAnim.style}">${ctaUrl}</div>
-        </div>
-      `;
-    }
+    const detail = cur
+      ? Frame(
+          {
+            x: railX,
+            y: railY,
+            width: railW,
+            height: railH,
+            style: { opacity: railFade * railIn * (walking || t.in("fill") > 0 ? 1 : 0.001) },
+          },
+          Frame({
+            x: 0,
+            y: 0,
+            width: px(4),
+            height: railH,
+            fill: std.color.alpha(cur.color, 0.35),
+          }),
+          Frame({
+            x: 0,
+            y: Math.round((railH / Math.max(1, n)) * curIdx),
+            width: px(4),
+            height: Math.round(railH / Math.max(1, n)),
+            fill: cur.color,
+            style: { transition: "none" },
+          }),
+          Frame(
+            {
+              x: px(34),
+              y: railTop,
+              width: railW - px(34),
+              height: railH - px(12),
+              style: {
+                opacity: cardEnter,
+                transform: `translateY(${std.interpolate(cardEnter, [0, 1], [px(18), 0]).toFixed(1)}px)`,
+              },
+            },
+            Frame(
+              { x: 0, y: 0, width: railW - px(34), height: px(22) },
+              Text(
+                { variant: "label", size: px(15), weight: 600, letterSpacing: px(3), fontFamily: MONO, color: std.color.alpha(ESPRESSO, 0.45) },
+                `${String(curIdx + 1).padStart(2, "0")} / ${String(n).padStart(2, "0")}`,
+              ),
+            ),
+            Frame(
+              { x: 0, y: dateY, width: railW - px(34), height: px(46) },
+              Text(
+                { variant: "title", size: isSquare ? px(30) : px(38), weight: 800, letterSpacing: px(-1), color: cur.color },
+                `${cur.date.toUpperCase()} · ${cur.day}`,
+              ),
+            ),
+            Frame(
+              { x: 0, y: groupY, width: railW - px(34), height: px(26) },
+              Text(
+                { variant: "label", size: isSquare ? px(17) : px(19), weight: 600, letterSpacing: px(1.6), color: std.color.alpha(ESPRESSO, 0.6) },
+                cur.group,
+              ),
+            ),
+            Frame(
+              { x: 0, y: eventTitleY, width: railW - px(34), height: eventTitleH },
+              Text(
+                {
+                  variant: "display",
+                  size: pick({ portrait: px(52), square: px(34), wide: px(54) }),
+                  weight: 800,
+                  letterSpacing: px(-1.6),
+                  lineHeight: 1.08,
+                  color: ESPRESSO,
+                  maxWidth: railW - px(40),
+                },
+                cur.title,
+              ),
+            ),
+            Frame({
+              x: 0,
+              y: eventTitleY + eventTitleH,
+              width: px(74),
+              height: px(3),
+              fill: std.color.alpha(ESPRESSO, 0.25),
+            }),
+            Frame(
+              {
+                x: 0,
+                y: eventMetaY,
+                width: railW - px(34),
+                height: px(28),
+              },
+              Text(
+                { variant: "body", size: isSquare ? px(18) : px(22), weight: 500, fontFamily: MONO, color: std.color.alpha(ESPRESSO, 0.62) },
+                `${cur.time} · ${cur.location}`,
+              ),
+            ),
+          ),
+        )
+      : undefined;
 
-    // === HOOK PHASE ===
-    if (t.active === "hook") {
-      const hook1P = t.tween(0, 1, { during: "hook", at: "0%", for: `${((0.6/2) * 100).toFixed(1)}%`});
-      const hook2P = t.tween(0, 1, { during: "hook", at: `${((0.9/2) * 100).toFixed(1)}%`, for: `${((0.5/2) * 100).toFixed(1)}%`});
-      // Start early enough that the tagline finishes typing before the hook phase ends at 2s
-      const taglineP = t.tween(0, 1, { during: "hook", at: `${((1.4/2) * 100).toFixed(1)}%`, for: `${((0.5/2) * 100).toFixed(1)}%`});
-      
-      const hook1Visible = std.text.type(hookLine1, hook1P).visible;
-      const hook2Visible = std.text.type(hookLine2, hook2P).visible;
-      const taglineVisible = std.text.type(tagline, taglineP).visible;
+    // ---- closing rail ----------------------------------------------------
+    const closeIn = std.interpolate(sweep, [0.55, 1], [0, 1], "easeOutCubic");
+    const ctaIn = std.interpolate(ctaP, [0.05, 0.5], [0, 1], "easeOutCubic");
+    const closing = Frame(
+      {
+        x: railX,
+        y: railY,
+        width: railW,
+        height: railH,
+        style: { opacity: closeIn },
+      },
+      Frame(
+        { x: 0, y: railTop, width: railW, height: px(300) },
+        Frame(
+          { x: 0, y: 0, width: railW, height: pick({ portrait: px(210), square: px(130), wide: px(230) }) },
+          Text(
+            {
+              variant: "display",
+              size: pick({ portrait: px(82), square: px(52), wide: px(64) }),
+              weight: 800,
+              letterSpacing: px(-2.4),
+              lineHeight: 1.06,
+              color: ESPRESSO,
+              maxWidth: railW,
+              style: { transform: `translateY(${std.interpolate(closeIn, [0, 1], [px(20), 0]).toFixed(1)}px)` },
+            },
+            tagline,
+          ),
+        ),
+        Frame({
+          x: 0,
+          y: pick({ portrait: px(210), square: px(130), wide: px(230) }),
+          width: px(84),
+          height: px(4),
+          fill: std.color.alpha(ESPRESSO, 0.3),
+          style: { transformOrigin: "left center", transform: `scaleX(${closeIn.toFixed(3)})` },
+        }),
+        n > 0 ? Frame(
+          {
+            x: 0,
+            y: pick({ portrait: px(250), square: px(166), wide: px(270) }),
+            width: railW,
+            height: px(18),
+            style: { opacity: ctaIn },
+          },
+          Stack(
+            { direction: "row", gap: px(9), align: "center", height: px(18) },
+            ...events.map((e) =>
+              Frame({ width: px(34), height: px(9), radius: px(5), fill: e.color }),
+            ),
+          ),
+        ) : undefined,
+      ),
+    );
 
-      return `
-        <div style="${std.css({ width, height, position: "relative", overflow: "hidden" })}">
-          ${bg.html}
-          <div style="${std.css({ position: "relative", width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 16 })}">
-            <div style="${std.css({ fontSize: r({ portrait: 72, default: 64 }), fontWeight: 800, color: "#fff" })}">${hook1Visible}</div>
-            <div style="${std.css({ fontSize: r({ portrait: 72, default: 64 }), fontWeight: 800, color: "#fff" })}">${hook2Visible}</div>
-            <div style="${std.css({ fontSize: r({ portrait: 32, default: 28 }), fontWeight: 500, color: "rgba(255,255,255,0.8)", marginTop: 16 })}">${taglineVisible}</div>
-          </div>
-        </div>
-      `;
-    }
+    // ---- persistent footer ----------------------------------------------
+    const footerIn = std.interpolate(open, [0.5, 1], [0, 1], "easeOutCubic");
+    const footer = Frame(
+      { x: padX, y: footerY, width: width - padX * 2, height: px(34), style: { opacity: footerIn } },
+      Frame({
+        x: 0,
+        y: 0,
+        width: width - padX * 2,
+        height: px(2),
+        fill: std.color.alpha(ESPRESSO, 0.14),
+        style: { transformOrigin: "left center", transform: `scaleX(${footerIn.toFixed(3)})` },
+      }),
+      Frame(
+        { x: 0, y: px(14), width: Math.round(width * 0.4), height: px(24) },
+        Text(
+          {
+            variant: "label",
+            size: px(19),
+            weight: 600,
+            letterSpacing: px(1.2),
+            fontFamily: MONO,
+            color: std.color.alpha(ESPRESSO, 0.7),
+          },
+          ctaUrl,
+        ),
+      ),
+      Frame(
+        {
+          x: Math.round((width - padX * 2) * 0.62),
+          y: px(14),
+          width: Math.round(width * 0.38),
+          height: px(24),
+          style: { opacity: std.interpolate(ctaP, [0, 0.4], [0.45, 1], "easeOutCubic") },
+        },
+        Text(
+          { variant: "label", size: px(19), weight: 600, letterSpacing: px(1.6), color: std.color.alpha(ESPRESSO, 0.7) },
+          cta,
+        ),
+      ),
+    );
 
-    // === EVENTS PHASE ===
-    const eventCards = events.map((event: TechlahomEvent, i: number) => {
-      // Stagger events across the 9s phase
-      // Each card enters over 0.7s, holds, then fades out 0.5s before the next
-      // card's beat. Exit windows are absolute scene fractions (15s scene,
-      // events phase starts at 2s).
-      const exitStart = (2 + (i + 1) * (1 / events.length) * 0.9 * 9) / 15;
-      const cardAnim = t.motion({
-        during: "events",
-        at: `${((i * (1/events.length) * 0.8) * 100).toFixed(1)}%`,
-        for: `${((0.7/9) * 100).toFixed(1)}%`,
-        scale: 0.05,
-        y: 60,
-        exit: { window: [exitStart, exitStart + 0.5 / 15], y: 0, scale: 1 }
-      });
-
-      if (!cardAnim.visible) return "";
-
-      const cardWidth = r({ portrait: "88%", square: "80%", default: "70%" });
-      const dateBadgeSize = r({ portrait: 80, square: 60, default: 70 });
-
-      return `
-        <div style="${std.css({
-          position: "absolute", width: cardWidth, maxWidth: 900, background: "rgba(0, 0, 0, 0.85)",
-          borderRadius: 16, padding: "24px 28px", display: "flex", alignItems: "center", gap: 20,
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)", borderLeft: `4px solid ${event.color}`,
-        })};${cardAnim.style}">
-          <div style="${std.css({
-            width: dateBadgeSize, height: dateBadgeSize, background: event.color, borderRadius: 12,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0,
-          })}">
-            <div style="${std.css({ fontSize: r({ portrait: 14, default: 11 }), fontWeight: 700, color: "#fff" })}">${event.day}</div>
-            <div style="${std.css({ fontSize: r({ portrait: 28, default: 22 }), fontWeight: 800, color: "#fff", lineHeight: 1 })}">${event.date.split(" ")[1]}</div>
-          </div>
-          <div style="${std.css({ flex: 1, display: "flex", flexDirection: "column", gap: 6 })}">
-            <div style="${std.css({ fontSize: r({ portrait: 28, default: 24 }), fontWeight: 700, color: event.color })}">${event.group}</div>
-            <div style="${std.css({ fontSize: r({ portrait: 36, default: 32 }), fontWeight: 600, color: "#fff", lineHeight: 1.2 })}">${event.title}</div>
-            <div style="${std.css({ fontSize: r({ portrait: 24, default: 22 }), fontWeight: 400, color: "rgba(255,255,255,0.7)" })}">${event.location}</div>
-          </div>
-          <div style="${std.css({ padding: "8px 16px", background: "rgba(255,255,255,0.1)", borderRadius: 8, fontSize: r({ portrait: 20, default: 18 }), fontWeight: 600, color: "#fff", whiteSpace: "nowrap" })}">${event.time}</div>
-        </div>
-      `;
-    }).join("");
-
-    return `
-      <div style="${std.css({ width, height, position: "relative", overflow: "hidden" })}">
-        ${bg.html}
-        <div style="${std.css({ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" })}">
-          ${eventCards}
-        </div>
-      </div>
-    `;
+    return Frame(
+      { id: "stage", width, height },
+      Fill({ color: SAND }),
+      Fill({
+        gradient: {
+          kind: "radial",
+          at: "18% 8%",
+          size: "90% 80%",
+          stops: ["rgba(255,255,255,0.5)", "rgba(255,255,255,0.12)", "transparent"],
+        },
+      }),
+      Fill({
+        gradient: {
+          kind: "linear",
+          angle: "160deg",
+          stops: ["transparent", "transparent 58%", "rgba(36,30,24,0.07)"],
+        },
+      }),
+      header,
+      grid,
+      ...(detail ? [detail] : []),
+      closing,
+      footer,
+    );
   },
 });

@@ -108,7 +108,7 @@ std.spring(from, to, progress, { stiffness: 170, damping: 26, mass: 1 });
 ```typescript
 const t = ctx.director({ enter: "0.6s", hold: "3.2s", exit: "0.5s" });
 const card = t.motion({ y: 24 });           // easeOutCubic in, easeInCubic out
-return `<div style="${card.style}">…</div>`;
+return Frame({ motion: card }, Text("…"));
 ```
 
 **Anticipation dip** (rise that dips first):

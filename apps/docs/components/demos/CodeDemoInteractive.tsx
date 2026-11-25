@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Player } from "superimg/react/player";
-import { useCompiledTemplate } from "superimg/react/compile";
+import { Player } from "@foxworth/superimg/react/player";
+import { useCompiledMedia } from "@foxworth/superimg/react/compile";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
@@ -17,14 +17,14 @@ const VIEWS: { id: View; label: string }[] = [
 ];
 
 interface CodeDemoInteractiveProps {
-  templateId: string;
+  exampleId: string;
 }
 
-export function CodeDemoInteractive({ templateId }: CodeDemoInteractiveProps) {
+export function CodeDemoInteractive({ exampleId }: CodeDemoInteractiveProps) {
   const [view, setView] = useState<View>("split");
-  const demo = CODE_DEMOS[templateId];
+  const demo = CODE_DEMOS[exampleId];
   const extensions = useMemo(() => [javascript({ typescript: true })], []);
-  const { template, compiling } = useCompiledTemplate({
+  const { media, compiling } = useCompiledMedia({
     code: demo?.code ?? "",
     enabled: !!demo?.code,
   });
@@ -32,14 +32,14 @@ export function CodeDemoInteractive({ templateId }: CodeDemoInteractiveProps) {
   if (!demo) {
     return (
       <div className="not-prose my-8 flex items-center justify-center rounded-xl bg-muted p-8 text-sm text-muted-foreground">
-        CodeDemo: template &quot;{templateId}&quot; not found
+        CodeDemo: example &quot;{exampleId}&quot; not found
       </div>
     );
   }
 
   const showCode = view === "split" || view === "code";
   const showVideo = view === "split" || view === "video";
-  const isLoading = compiling || !template;
+  const isLoading = compiling || !media;
 
   return (
     <div className="not-prose my-8 -mx-6 lg:-mx-24">
@@ -105,8 +105,8 @@ export function CodeDemoInteractive({ templateId }: CodeDemoInteractiveProps) {
               <div className="relative flex flex-1 items-center justify-center bg-[#0d0d0d] p-4">
                 {isLoading && <div className="absolute inset-0 animate-pulse bg-white/5" />}
                 <Player
-                  template={template ?? undefined}
-                  format="horizontal"
+                  media={media ?? undefined}
+                  size={{ width: 1920, height: 1080 }}
                   playbackMode="loop"
                   loadMode="eager"
                   autoPlay

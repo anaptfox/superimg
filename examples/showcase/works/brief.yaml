@@ -1,0 +1,38 @@
+audience: TypeScript library authors, infrastructure engineers, and developer-tool builders
+goal: Show that SuperImg makes authored media an inspectable function with explicit time and delivery.
+format: multi
+length_seconds: 36
+beats:
+  - name: function
+    seconds: 5
+    visual: Oversized type and a precisely assembled blue tile; a function signature anchors the frame.
+    text: Media. As a function.
+  - name: source
+    seconds: 9
+    visual: Readable executable TypeScript beside the same tile rendered through the actual media tree.
+    text: Write the scene.
+  - name: time
+    seconds: 8
+    visual: Three explicit frame samples; a playhead jumps between them and returns to the same frame.
+    text: Time is an input.
+  - name: delivery
+    seconds: 8
+    visual: A source definition branches into landscape, square, and portrait compositions.
+    text: Author once. Direct each format.
+  - name: close
+    seconds: 6
+    visual: Large SuperImg wordmark and the real library import on a quiet black frame.
+    text: Build media like software.
+must_show:
+  - A real video() and Frame/Fill/Text authoring example.
+  - Repeated frame input produces the same authored tile state.
+  - Export chooses dimensions and format separately from the authored scene.
+tone: Precise, architectural, restrained. Short eased entrances and long readable holds. Silent by design.
+palette: ['#08090B', '#F4F4F1', '#147DFF', '#90959E']
+destinations: [youtube, instagram-square, 1080x1920.mp4]
+constraints:
+  - No benchmark numbers or pixel-parity claims.
+  - No external images, fonts, network assets, CSS keyframes, or wall-clock animation.
+  - Native tree primitives and director timing; exact square edition and responsive portrait layout.
+  - CLI/MCP integration is exercised by the host; this film does not claim that unverified integration exists.
+next: superimg-review

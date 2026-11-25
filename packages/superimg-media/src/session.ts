@@ -1,42 +1,44 @@
+//! MediaSession is the single browser playback authority: one clock, one state,
+//! one evaluator, and one presenter.
+
 import {
-  createRuntime,
-  type PreResolvedFonts,
-  type RuntimeInput,
-  type RuntimeOptions,
-  type RuntimeRenderedPayload,
-  type RuntimeUpdate,
-  type WebRuntime,
-} from "./dom-runtime.js";
-import {
-  prepareStdlibForTemplate,
-  resolveRuntimeTemplateInfo,
+  createPreparedStdlibForTemplate,
+  type PreparedStdlib,
   type RuntimeTemplate,
-} from "@superimg/core";
-import { getPreset } from "@superimg/stdlib/presets";
-import type { AssetMeta, Medium, PlaybackMode, ResolvedScene } from "@superimg/types";
+} from "@superimg/core/player-core";
+import type { AssetMeta, CanvasSize } from "@superimg/types";
 import { MediaClock, type MediaClockState, type MediaPlaybackMode } from "./clock.js";
-import type { DomPresenter } from "./dom-presenter.js";
+import { IframePresenter, type DomPresenter } from "./dom-presenter.js";
+import {
+  FrameEvaluator,
+  type EvaluatedFrame,
+  type FrameEvaluatorOptions,
+} from "./frame-evaluator.js";
 import { buildMediaGraph, type MediaGraph } from "./graph.js";
+import { syncPlateMedia } from "./plate-sync.js";
+import {
+  RuntimePerformanceProbe,
+  type FramePerformanceSample,
+  type RuntimePerformanceOptions,
+  type RuntimePerformanceSnapshot,
+} from "./performance.js";
+import type { PlayerMode } from "./player-policy.js";
 import { DomMediaSurface, type MediaSurface, type MediaSurfaceMountOptions } from "./surface.js";
-
-const FORMAT_ALIASES: Record<string, string> = {
-  vertical: "instagram.video.reel",
-  horizontal: "youtube.video.long",
-  square: "instagram.video.feed",
-};
-
-export type FormatOption =
-  | "vertical"
-  | "horizontal"
-  | "square"
-  | string
-  | { width: number; height: number };
+import type {
+  PreResolvedFonts,
+  RuntimeInput,
+  RuntimeStore,
+  RuntimeUpdate,
+  RuntimeState,
+  RuntimeAcceptedPresentation,
+  RuntimePresentation,
+} from "./runtime-contract.js";
 
 export type MediaSessionPlayback = "native" | "deterministic";
 
 export interface MediaSessionOptions {
   data?: Record<string, unknown>;
-  format?: FormatOption;
+  size?: CanvasSize;
   width?: number;
   height?: number;
   fps?: number;
@@ -46,14 +48,21 @@ export interface MediaSessionOptions {
   fonts?: PreResolvedFonts;
   playback?: MediaSessionPlayback;
   playbackMode?: MediaPlaybackMode;
-  outputName?: string;
-  allowScripts?: boolean;
+  /** Product seam: production render-only or trusted development islands. */
+  playerMode?: PlayerMode;
+  /** Internal adapter seam used by browser and presenter contract tests. */
   presenter?: DomPresenter;
+  /** Internal host hook for semantics associated with the evaluated request. */
+  captureSemantic?: FrameEvaluatorOptions["captureSemantic"];
+  /** Internal host validation for a candidate clock, before publication. */
+  validateClock?: (clock: { fps: number; duration: number }) => void;
+  /** Opt-in bounded numeric diagnostics; never retains HTML or user data. */
+  performance?: RuntimePerformanceOptions;
 }
 
 export interface MediaSessionUpdate {
   data?: Record<string, unknown>;
-  format?: FormatOption;
+  size?: CanvasSize;
   width?: number;
   height?: number;
   fps?: number;
@@ -64,26 +73,12 @@ export interface MediaSessionUpdate {
   playbackMode?: MediaPlaybackMode;
 }
 
-export interface MediaSessionState {
-  medium: Medium;
-  animated: boolean;
-  isReady: boolean;
-  isPlaying: boolean;
-  currentFrame: number;
-  totalFrames: number;
-  fps: number;
-  duration: number;
-  width: number;
-  height: number;
-  progress: number;
+export interface MediaSessionState extends RuntimeState {
   graph: MediaGraph;
   surface: MediaSurface | null;
 }
 
-export interface MediaFrameResult {
-  frame: number;
-  html: string;
-  compositeHtml: string;
+export interface MediaFrameResult extends RuntimeAcceptedPresentation {
   graph: MediaGraph;
   stale?: boolean;
 }
@@ -91,11 +86,11 @@ export interface MediaFrameResult {
 export interface MediaSessionEvents {
   ready: () => void;
   rendered: (result: MediaFrameResult) => void;
+  presentation: (presentation: RuntimePresentation) => void;
   play: () => void;
   pause: () => void;
   ended: () => void;
   error: (error: Error) => void;
-  scenechange: (scene: ResolvedScene) => void;
 }
 
 type Listener = () => void;
@@ -104,97 +99,137 @@ export async function createMediaSession(
   template: RuntimeInput,
   options: MediaSessionOptions = {},
 ): Promise<MediaSession> {
-  await prepareStdlibForTemplate(template as RuntimeTemplate);
-  return new MediaSession(template, options);
+  const preparedStdlib = await createPreparedStdlibForTemplate(template as RuntimeTemplate);
+  let captureSemantic = options.captureSemantic;
+  if (!captureSemantic && template.composition) {
+    const { interactiveCompositionRuntimes } = await import("@superimg/core/player-composition");
+    const entries = interactiveCompositionRuntimes(template);
+    if (entries.length) captureSemantic = () => Object.fromEntries(entries.map(({ path, runtime }) => [path, runtime.getSnapshot()]));
+  }
+  return new MediaSession(template, { ...options, ...(captureSemantic ? { captureSemantic } : {}) }, preparedStdlib);
 }
 
 export class MediaSession {
-  private readonly template: RuntimeInput;
   private options: MediaSessionOptions;
-  private runtime: WebRuntime | null = null;
-  private clock: MediaClock;
+  private evaluator: FrameEvaluator;
+  private readonly presenter: DomPresenter;
+  private readonly clock: MediaClock;
   private state: MediaSessionState;
   private surface: MediaSurface | null = null;
   private readonly listeners = new Set<Listener>();
-  private runtimeEventDisposers: Array<() => void> = [];
   private renderToken = 0;
+  private acceptedRenderToken = 0;
+  // Clock frames are expendable; data candidates only yield to another update
+  // or an explicit seek/render. A busy presenter must not starve live data.
+  private updateToken = 0;
+  private inputRevision = 0;
+  private pendingUpdateToken: number | null = null;
   private renderChain: Promise<void> = Promise.resolve();
   private lastResult: MediaFrameResult | null = null;
+  private requestedFrame: number | null = null;
+  private acceptedRevision = 0;
   private lastGraphHtml: string | null = null;
   private suppressClockRender = false;
+  private suppressClockPublication = false;
+  private disposed = false;
+  private targetRoot: Document | Element | null = null;
+  private targetRevision: number | null = null;
+  private videoTargets: HTMLVideoElement[] | null = null;
+  private plateTargets: HTMLElement[] | null = null;
   private events: Partial<{ [K in keyof MediaSessionEvents]: Set<MediaSessionEvents[K]> }> = {};
-  private readyPromise: Promise<void>;
+  private readonly readyPromise: Promise<void>;
   private resolveReady!: () => void;
   private rejectReady!: (error: unknown) => void;
+  private readonly runtimeStore: RuntimeStore;
+  private readonly performance: RuntimePerformanceProbe | null;
 
-  constructor(template: RuntimeInput, options: MediaSessionOptions = {}) {
-    this.template = template;
-    this.options = options;
+  constructor(
+    private readonly template: RuntimeInput,
+    options: MediaSessionOptions = {},
+    preparedStdlib?: PreparedStdlib,
+  ) {
+    this.options = { ...options };
+    this.performance = options.performance ? new RuntimePerformanceProbe(options.performance) : null;
+    this.evaluator = new FrameEvaluator(template, toEvaluatorOptions(this.options), preparedStdlib);
+    const playerMode = options.playerMode ?? "render-only";
+    this.presenter = options.presenter ?? new IframePresenter({ playerMode });
+    this.applyPresenterPolicy(playerMode, !!this.evaluator.info.tailwind);
+
     this.readyPromise = new Promise<void>((resolve, reject) => {
       this.resolveReady = resolve;
       this.rejectReady = reject;
     });
 
-    const runtimeOptions = this.toRuntimeOptions({ autoplay: false });
-    const runtimeInfo = resolveRuntimeTemplateInfo(template as RuntimeTemplate, {
-      ...(runtimeOptions.data !== undefined ? { data: runtimeOptions.data } : {}),
-      ...(runtimeOptions.width !== undefined ? { width: runtimeOptions.width } : {}),
-      ...(runtimeOptions.height !== undefined ? { height: runtimeOptions.height } : {}),
-      ...(runtimeOptions.fps !== undefined ? { fps: runtimeOptions.fps } : {}),
-      ...(runtimeOptions.duration !== undefined ? { duration: runtimeOptions.duration } : {}),
-    });
-
-    const graph = buildMediaGraph("");
-    this.state = {
-      medium: runtimeInfo.medium,
-      animated: runtimeInfo.isAnimated,
+    this.state = freezeState({
+      medium: this.evaluator.info.medium,
+      animated: this.evaluator.info.isAnimated,
       isReady: false,
       isPlaying: false,
+      isScrubbing: false,
       currentFrame: 0,
-      totalFrames: runtimeInfo.totalFrames,
-      fps: runtimeInfo.fps,
-      duration: runtimeInfo.duration,
-      width: runtimeInfo.width,
-      height: runtimeInfo.height,
+      totalFrames: this.evaluator.info.totalFrames,
+      fps: this.evaluator.info.fps,
+      duration: this.evaluator.info.duration,
+      width: this.evaluator.info.width,
+      height: this.evaluator.info.height,
       progress: 0,
-      graph,
+      graph: buildMediaGraph(""),
       surface: null,
-    };
+    });
 
     this.clock = new MediaClock({
-      fps: runtimeInfo.fps,
-      totalFrames: runtimeInfo.totalFrames,
+      fps: this.state.fps,
+      totalFrames: this.state.totalFrames,
       playbackMode: options.playbackMode ?? "once",
       onFrame: (frame) => {
         if (!this.suppressClockRender) {
-          void this.renderFrame(frame).catch((error) => this.rejectReady(error));
+          void this.requestFrame(frame, false).catch((error) => this.handleRenderError(error));
         }
+      },
+      onPlay: () => {
+        this.updateFromClock();
+        this.playNativeMedia();
+        this.emitEvent("play");
+      },
+      onPause: () => {
+        this.updateFromClock();
+        this.pauseNativeMedia();
+        this.emitEvent("pause");
       },
       onEnded: () => {
         this.updateFromClock();
         this.pauseNativeMedia();
         this.emitEvent("ended");
       },
+      onObserverError: (error) => this.emitError(error),
     });
     this.clock.subscribe(() => {
+      if (this.suppressClockPublication) return;
       this.updateFromClock();
       this.emit();
     });
+
+    this.runtimeStore = {
+      getState: () => this.getState(),
+      subscribe: (listener) => this.subscribe(listener),
+      play: () => this.play(),
+      pause: () => this.pause(),
+      togglePlayPause: () => this.togglePlayPause(),
+      beginScrub: () => this.beginScrub(),
+      endScrub: () => this.endScrub(),
+      seekFrame: async (frame) => { await this.seekFrame(frame); },
+      seekProgress: async (progress) => { await this.seekProgress(progress); },
+    };
   }
 
   async mount(container: HTMLElement, options: MediaSurfaceMountOptions = {}): Promise<this> {
+    this.assertActive("mount");
     if (options.surface && options.surface !== "dom") {
       throw new Error(`Unsupported media surface: ${options.surface}`);
     }
-
-    this.clearRuntimeEventDisposers();
-    this.runtime?.dispose();
-    this.runtime = createRuntime(this.template, this.toRuntimeOptions({ autoplay: false }));
-    this.runtimeEventDisposers.push(
-      this.runtime.on("scenechange", (scene) => this.emitEvent("scenechange", scene)),
-    );
-    this.surface = new DomMediaSurface(() => this.runtime?.getElement() ?? null);
-    this.runtime.attach(container, { render: false });
+    this.presenter.attach(container);
+    this.configurePresenter(this.evaluator, this.options);
+    this.surface = new DomMediaSurface(() => this.presenter.getElement());
 
     try {
       await this.renderFrame(this.state.currentFrame);
@@ -204,7 +239,6 @@ export class MediaSession {
       this.rejectReady(error);
       throw error;
     }
-
     return this;
   }
 
@@ -213,46 +247,110 @@ export class MediaSession {
   }
 
   play(): void {
+    this.assertActive("play");
+    if (!this.state.animated) return;
     this.clock.play();
-    this.playNativeMedia();
-    this.emitEvent("play");
   }
 
   pause(): void {
+    this.assertActive("pause");
     this.clock.pause();
-    this.pauseNativeMedia();
-    this.emitEvent("pause");
+  }
+
+  togglePlayPause(): void {
+    this.state.isPlaying ? this.pause() : this.play();
   }
 
   async seekFrame(frame: number): Promise<MediaFrameResult> {
-    this.suppressClockRender = true;
-    try {
-      this.clock.seekFrame(frame);
-    } finally {
-      this.suppressClockRender = false;
-    }
-    return this.renderFrame(this.clock.getState().currentFrame);
+    this.assertActive("seekFrame");
+    return this.renderFrame(frame);
+  }
+
+  async seekProgress(progress: number): Promise<MediaFrameResult> {
+    const clamped = Math.max(0, Math.min(1, progress));
+    return this.seekFrame(Math.round(clamped * Math.max(0, this.state.totalFrames - 1)));
+  }
+
+  async seekTimeSeconds(seconds: number): Promise<MediaFrameResult> {
+    return this.seekFrame(Math.floor(seconds * this.state.fps));
+  }
+
+  beginScrub(): void {
+    this.assertActive("beginScrub");
+    if (this.state.isPlaying) this.pause();
+    if (this.state.isScrubbing) return;
+    // Taking scrub/inspection ownership invalidates a pending live candidate,
+    // including when the clock was already paused. Restore accepted input at
+    // the controlled clock position before its actions become eligible again.
+    void this.renderFrame(this.clock.getState().currentFrame).catch((error) => this.handleRenderError(error));
+    this.state = freezeState({ ...this.state, isScrubbing: true });
+    this.emit();
+  }
+
+  endScrub(): void {
+    this.assertActive("endScrub");
+    if (!this.state.isScrubbing) return;
+    this.state = freezeState({ ...this.state, isScrubbing: false });
+    this.emit();
   }
 
   async renderFrame(frame: number): Promise<MediaFrameResult> {
-    const runtime = this.requireRuntime("renderFrame");
+    this.assertActive("renderFrame");
+    return this.requestFrame(frame, true);
+  }
+
+  private async requestFrame(frame: number, explicit: boolean): Promise<MediaFrameResult> {
+    if (explicit) {
+      this.updateToken += 1;
+      this.pendingUpdateToken = null;
+      // Position explicit requests when requested, never after an async paint.
+      // An accepted clock frame must not rebase the running clock backwards.
+      this.suppressClockRender = true;
+      try { this.clock.seekFrame(frame); }
+      finally { this.suppressClockRender = false; }
+      frame = this.clock.getState().currentFrame;
+    }
+    const authorityToken = this.updateToken;
     const token = ++this.renderToken;
+    const sample = this.performance?.request(explicit ? "render" : "clock", frame, this.inputRevision);
+    const queuedAt = sample?.start();
+    this.requestedFrame = frame;
+    this.emitEvent("presentation", this.getPresentation());
     let accepted: MediaFrameResult | null = null;
     const task = this.renderChain.then(async () => {
-      // A newer request superseded this one before it reached the renderer.
-      if (token !== this.renderToken) return;
-      let payload: RuntimeRenderedPayload;
-      try {
-        payload = await this.renderRuntimeFrame(runtime, frame);
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        this.emitEvent("error", err);
-        throw err;
+      if (queuedAt !== undefined) sample?.end("queue", queuedAt);
+      if (token !== this.renderToken || this.disposed) {
+        if (sample) this.performance?.finish(sample, "superseded");
+        return;
       }
-      // Presentation is serialized. If a newer request arrived while it was in
-      // flight, leave session state untouched and let the newest queued render win.
-      if (token !== this.renderToken) return;
-      accepted = this.acceptRenderedPayload(payload);
+      let evaluated: EvaluatedFrame;
+      let presentationAttempted = false;
+      try {
+        if (sample) sample.inputRevision = this.inputRevision;
+        const evaluateAt = sample?.start();
+        evaluated = this.evaluator.render(frame, sample);
+        if (evaluateAt !== undefined) sample?.end("evaluate", evaluateAt);
+        if (sample) this.performance?.evaluated(sample, evaluated.frame);
+        presentationAttempted = true;
+        await this.present(evaluated, this.evaluator, sample);
+        this.syncFrameResources(evaluated, this.options, sample);
+      } catch (error) {
+        let restored = !presentationAttempted;
+        if (presentationAttempted && !this.disposed) {
+          try { await this.restoreAcceptedPresentation(); restored = true; }
+          catch (rollbackError) { this.emitError(rollbackError); }
+        }
+        if (restored) this.settleFailedRequest(token);
+        if (sample) this.performance?.finish(sample, "failed");
+        this.emitError(error);
+        throw error;
+      }
+      if (authorityToken !== this.updateToken || this.disposed) {
+        if (sample) this.performance?.finish(sample, "superseded");
+        return;
+      }
+      accepted = this.acceptEvaluatedFrame(evaluated, this.evaluator, token, sample);
+      if (sample) this.performance?.finish(sample, "accepted", accepted.frame, accepted.revision);
     });
     this.renderChain = task.catch(() => undefined);
     await task;
@@ -262,65 +360,189 @@ export class MediaSession {
     throw new Error(`MediaSession renderFrame(${frame}) was superseded before the first frame`);
   }
 
-  update(update: MediaSessionUpdate): void {
-    if (update.format !== undefined) this.options.format = update.format;
-    if (update.width !== undefined) this.options.width = update.width;
-    if (update.height !== undefined) this.options.height = update.height;
-    if (update.fps !== undefined) this.options.fps = update.fps;
-    if (update.duration !== undefined) this.options.duration = update.duration;
-    if (update.data !== undefined) this.options.data = { ...(this.options.data ?? {}), ...update.data };
-    if (update.assets !== undefined) this.options.assets = update.assets;
-    if (update.assetResolver !== undefined) this.options.assetResolver = update.assetResolver;
-    if (update.fonts !== undefined) this.options.fonts = update.fonts;
-    if (update.playbackMode !== undefined) this.options.playbackMode = update.playbackMode;
+  /** Render and present the current frame before committing option/state changes. */
+  async update(update: MediaSessionUpdate): Promise<void> {
+    this.assertActive("update");
+    const nextOptions = mergeOptions(this.options, update);
+    const evaluatorUpdate = toRuntimeUpdate(update);
+    const changesFrame = Object.keys(evaluatorUpdate).length > 0 || update.fonts !== undefined;
 
-    const runtime = this.runtime;
-    if (!runtime) return;
+    if (!changesFrame) {
+      this.updateToken += 1;
+      const wasPending = this.pendingUpdateToken !== null || this.renderToken !== this.acceptedRenderToken;
+      this.pendingUpdateToken = null;
+      this.options = nextOptions;
+      if (update.playbackMode !== undefined) {
+        this.clock.configure({ playbackMode: update.playbackMode });
+        this.updateFromClock();
+        this.emit();
+      }
+      // A mode-only request can cancel a candidate but must leave a real frame
+      // request to restore/qualify the accepted input after that cancellation.
+      if (wasPending) await this.requestFrame(this.clock.getState().currentFrame, false);
+      return;
+    }
 
-    const dimensions = update.format !== undefined ? resolveFormat(update.format) : {};
-    const runtimeUpdate: RuntimeUpdate = { ...dimensions };
-    if (update.width !== undefined) runtimeUpdate.width = update.width;
-    if (update.height !== undefined) runtimeUpdate.height = update.height;
-    if (update.fps !== undefined) runtimeUpdate.fps = update.fps;
-    if (update.duration !== undefined) runtimeUpdate.duration = update.duration;
-    if (update.data !== undefined) runtimeUpdate.data = update.data;
-    if (update.assets !== undefined) runtimeUpdate.assets = update.assets;
-    if (update.assetResolver !== undefined) runtimeUpdate.assetResolver = update.assetResolver;
-    runtime.update(runtimeUpdate, { render: false });
-    const runtimeState = runtime.getState();
-    this.clock.configure({
-      fps: runtimeState.fps,
-      totalFrames: runtimeState.totalFrames,
-      ...(update.playbackMode !== undefined ? { playbackMode: update.playbackMode } : {}),
+    // Every update request takes publication authority, even if constructing
+    // its evaluator fails. The failed latest request must not revive an older
+    // candidate that was already waiting for its presenter.
+    const updateToken = ++this.updateToken;
+    this.pendingUpdateToken = updateToken;
+    const token = ++this.renderToken;
+    let candidate: FrameEvaluator;
+    try {
+      candidate = this.evaluator.withUpdate(evaluatorUpdate);
+      if (!Number.isFinite(candidate.info.fps) || candidate.info.fps <= 0 ||
+          !Number.isFinite(candidate.info.duration) || candidate.info.duration <= 0 ||
+          !Number.isSafeInteger(candidate.info.totalFrames) || candidate.info.totalFrames < 1) {
+        throw new RangeError("MediaSession update requires positive finite fps and duration with a safe frame count");
+      }
+      this.options.validateClock?.(candidate.info);
+    }
+    catch (error) {
+      this.requestedFrame = this.clock.getState().currentFrame;
+      const sample = this.performance?.request("update", this.requestedFrame, this.inputRevision + 1);
+      const queuedAt = sample?.start();
+      this.emitEvent("presentation", this.getPresentation());
+      const task = this.renderChain.then(async () => {
+        if (queuedAt !== undefined) sample?.end("queue", queuedAt);
+        if (!this.disposed && updateToken === this.updateToken) {
+          let restored = false;
+          try { await this.restoreAcceptedPresentation(); restored = true; }
+          catch (rollbackError) { this.emitError(rollbackError); }
+          // A newer update/seek may arrive while rollback is awaiting paint.
+          if (this.pendingUpdateToken === updateToken) this.pendingUpdateToken = null;
+          if (restored) this.settleFailedRequest(token);
+        }
+        if (sample) this.performance?.finish(sample, "failed");
+        this.emitError(error);
+        throw error;
+      });
+      this.renderChain = task.catch(() => undefined);
+      await task;
+      return;
+    }
+    this.requestedFrame = this.frameForEvaluator(candidate);
+    const sample = this.performance?.request("update", this.requestedFrame, this.inputRevision + 1);
+    const queuedAt = sample?.start();
+    this.emitEvent("presentation", this.getPresentation());
+    let accepted = false;
+    const task = this.renderChain.then(async () => {
+      if (queuedAt !== undefined) sample?.end("queue", queuedAt);
+      if (updateToken !== this.updateToken || this.disposed) {
+        if (sample) this.performance?.finish(sample, "superseded");
+        return;
+      }
+      let evaluated: EvaluatedFrame;
+      let presentationAttempted = false;
+      try {
+        if (sample) sample.inputRevision = this.inputRevision + 1;
+        const targetFrame = this.frameForEvaluator(candidate);
+        const evaluateAt = sample?.start();
+        evaluated = candidate.render(targetFrame, sample);
+        if (evaluateAt !== undefined) sample?.end("evaluate", evaluateAt);
+        if (sample) this.performance?.evaluated(sample, evaluated.frame);
+        presentationAttempted = true;
+        this.configurePresenter(candidate, nextOptions);
+        await this.present(evaluated, candidate, sample);
+        this.syncFrameResources(evaluated, nextOptions, sample);
+      } catch (error) {
+        let restored = !presentationAttempted;
+        if (!this.disposed && presentationAttempted) {
+          try { await this.restoreAcceptedPresentation(); restored = true; }
+          catch (rollbackError) { this.emitError(rollbackError); }
+        }
+        if (this.pendingUpdateToken === updateToken) this.pendingUpdateToken = null;
+        if (restored) this.settleFailedRequest(token);
+        if (sample) this.performance?.finish(sample, "failed");
+        this.emitError(error);
+        throw error;
+      }
+      if (updateToken !== this.updateToken || this.disposed) {
+        if (!this.disposed) {
+          try { await this.restoreAcceptedPresentation(); }
+          catch (error) {
+            if (sample) this.performance?.finish(sample, "failed");
+            this.emitError(error);
+            throw error;
+          }
+        }
+        if (sample) this.performance?.finish(sample, "superseded");
+        return;
+      }
+      // No observer may see new clock metadata alongside the old accepted data
+      // or semantics. configure() is synchronous, but emits clock subscribers.
+      const previousClock = this.clock.getState();
+      const changesClockContract = previousClock.fps !== candidate.info.fps || previousClock.totalFrames !== candidate.info.totalFrames;
+      this.suppressClockPublication = true;
+      let result!: MediaFrameResult;
+      try {
+        this.clock.batch(() => {
+          this.options = nextOptions;
+          this.evaluator = candidate;
+          this.inputRevision += 1;
+          this.pendingUpdateToken = null;
+          this.clock.configure({
+            fps: candidate.info.fps,
+            totalFrames: candidate.info.totalFrames,
+            ...(update.playbackMode !== undefined ? { playbackMode: update.playbackMode } : {}),
+          });
+          // Frames queued under the previous fps/duration have a different
+          // meaning. Data updates retain useful frames on the same clock.
+          const acceptedToken = changesClockContract ? ++this.renderToken : token;
+          result = this.acceptEvaluatedFrame(evaluated, candidate, acceptedToken, sample);
+        });
+      } finally { this.suppressClockPublication = false; }
+      if (sample) this.performance?.finish(sample, "accepted", result.frame, result.revision);
+      accepted = true;
     });
-    this.state = {
-      ...this.state,
-      medium: runtimeState.medium,
-      animated: runtimeState.animated,
-      totalFrames: runtimeState.totalFrames,
-      fps: runtimeState.fps,
-      duration: runtimeState.duration,
-      width: runtimeState.width,
-      height: runtimeState.height,
-      progress: runtimeState.progress,
-    };
-    this.emit();
-    void this.renderFrame(this.state.currentFrame).catch((error) => {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.emitEvent("error", err);
-    });
+    this.renderChain = task.catch(() => undefined);
+    await task;
+    if (!accepted) throw Object.assign(new Error("MediaSession update was superseded by a newer request."), { code: "MEDIA_SESSION_UPDATE_SUPERSEDED" as const });
   }
 
   getState(): MediaSessionState {
     return this.state;
   }
 
+  getPresentation(): RuntimePresentation {
+    const result = this.lastResult;
+    return Object.freeze({
+      requestedFrame: this.requestedFrame,
+      accepted: result && !this.disposed ? Object.freeze({
+        frame: result.frame,
+        revision: result.revision,
+        ...(result.inputRevision !== undefined ? { inputRevision: result.inputRevision } : {}),
+        html: result.html,
+        compositeHtml: result.compositeHtml,
+        ...(result.semantic !== undefined ? { semantic: result.semantic } : {}),
+      }) : null,
+      isReady: this.state.isReady,
+      isPending: !this.disposed && (this.pendingUpdateToken !== null || this.renderToken !== this.acceptedRenderToken),
+      disposed: this.disposed,
+    });
+  }
+
   getClock(): MediaClock {
     return this.clock;
   }
 
+  getPerformance(): RuntimePerformanceSnapshot | null {
+    return this.performance?.snapshot() ?? null;
+  }
+
+  /** Refresh host geometry after transform changes outside ResizeObserver. */
+  refreshGeometry(): void {
+    this.assertActive("refreshGeometry");
+    this.presenter.refreshGeometry?.();
+  }
+
   getSurface(): MediaSurface | null {
     return this.surface;
+  }
+
+  asStore(): RuntimeStore {
+    return this.runtimeStore;
   }
 
   subscribe(listener: Listener): () => void {
@@ -347,111 +569,117 @@ export class MediaSession {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.renderToken += 1;
+    this.updateToken += 1;
+    this.pendingUpdateToken = null;
     this.clock.dispose();
-    this.clearRuntimeEventDisposers();
-    this.runtime?.dispose();
-    this.runtime = null;
+    this.presenter.dispose();
     this.surface = null;
+    this.targetRoot = null;
+    this.videoTargets = null;
+    this.plateTargets = null;
+    this.state = freezeState({
+      ...this.state,
+      isReady: false,
+      isPlaying: false,
+      isScrubbing: false,
+      surface: null,
+    });
+    this.emitEvent("presentation", this.getPresentation());
     this.listeners.clear();
     this.events = {};
   }
 
-  private toRuntimeOptions(extra: { autoplay?: boolean } = {}): RuntimeOptions {
-    const dimensions = this.options.format ? resolveFormat(this.options.format) : {};
-    const runtimeOptions: RuntimeOptions = {
-      autoplay: extra.autoplay ?? false,
-      playbackMode: toRuntimePlaybackMode(this.options.playbackMode),
-      ...dimensions,
-    };
-    if (this.options.width !== undefined) runtimeOptions.width = this.options.width;
-    if (this.options.height !== undefined) runtimeOptions.height = this.options.height;
-    if (this.options.fps !== undefined) runtimeOptions.fps = this.options.fps;
-    if (this.options.duration !== undefined) runtimeOptions.duration = this.options.duration;
-    if (this.options.data !== undefined) runtimeOptions.data = this.options.data;
-    if (this.options.assets !== undefined) runtimeOptions.assets = this.options.assets;
-    if (this.options.assetResolver !== undefined) runtimeOptions.assetResolver = this.options.assetResolver;
-    if (this.options.fonts !== undefined) runtimeOptions.fonts = this.options.fonts;
-    if (this.options.outputName !== undefined) runtimeOptions.outputName = this.options.outputName;
-    if (this.options.allowScripts !== undefined) runtimeOptions.allowScripts = this.options.allowScripts;
-    if (this.options.presenter !== undefined) runtimeOptions.presenter = this.options.presenter;
-    return runtimeOptions;
-  }
-
-  private async renderRuntimeFrame(runtime: WebRuntime, frame: number): Promise<RuntimeRenderedPayload> {
-    let payload: RuntimeRenderedPayload | null = null;
-    const offRendered = runtime.on("rendered", (next) => {
-      if (next.frame === runtime.getState().currentFrame || next.frame === Math.floor(frame)) {
-        payload = next;
-      }
-    });
+  private async present(frame: EvaluatedFrame, evaluator: FrameEvaluator, sample?: FramePerformanceSample): Promise<void> {
+    const presentAt = sample?.start();
     try {
-      await runtime.render(frame);
-    } finally {
-      offRendered();
-    }
-    if (!payload) throw new Error(`MediaSession renderFrame(${frame}) did not produce a frame`);
-    return payload;
+      await this.presenter.present(
+        frame.compositeHtml,
+        evaluator.info.width,
+        evaluator.info.height,
+        { ...(frame.escapedTree ? { escapedTree: frame.escapedTree } : {}), ...(sample ? { performance: sample } : {}) },
+      );
+    } finally { if (presentAt !== undefined) sample?.end("present", presentAt); }
   }
 
-  private acceptRenderedPayload(payload: RuntimeRenderedPayload): MediaFrameResult {
-    const graph = payload.html === this.lastGraphHtml && this.lastResult
+  private acceptEvaluatedFrame(frame: EvaluatedFrame, evaluator: FrameEvaluator, token: number, sample?: FramePerformanceSample): MediaFrameResult {
+    const acceptAt = sample?.start();
+    const graph = frame.html === this.lastGraphHtml && this.lastResult
       ? this.lastResult.graph
-      : buildMediaGraph(payload.html);
+      : buildMediaGraph(frame.html);
     const result: MediaFrameResult = {
-      frame: payload.frame,
-      html: payload.html,
-      compositeHtml: payload.compositeHtml,
+      revision: ++this.acceptedRevision,
+      inputRevision: this.inputRevision,
+      frame: frame.frame,
+      html: frame.html,
+      compositeHtml: frame.compositeHtml,
       graph,
+      ...(frame.semantic !== undefined ? { semantic: frame.semantic } : {}),
     };
-    this.lastGraphHtml = payload.html;
+    this.lastGraphHtml = frame.html;
     this.lastResult = result;
-    this.state = {
+    this.acceptedRenderToken = token;
+
+    const clock = this.clock.getState();
+    this.state = freezeState({
       ...this.state,
-      currentFrame: payload.frame,
+      medium: evaluator.info.medium,
+      animated: evaluator.info.isAnimated,
+      currentFrame: clock.currentFrame,
+      isPlaying: clock.isPlaying,
+      totalFrames: evaluator.info.totalFrames,
+      fps: evaluator.info.fps,
+      duration: evaluator.info.duration,
+      width: evaluator.info.width,
+      height: evaluator.info.height,
+      progress: clock.progress,
       graph,
       surface: this.surface,
-    };
-    this.syncClockToRenderedFrame(payload.frame);
-    this.syncNativeMedia();
+    });
+    // Bind internal request ownership before public store/clock observers can
+    // issue another request. Observer faults cannot undo an accepted frame.
+    try { frame.acceptEvaluation?.(); } catch (error) { this.emitError(error); }
+    if (acceptAt !== undefined) sample?.end("accept", acceptAt);
+    const callbacksAt = sample?.start();
     this.emit();
+    this.emitEvent("presentation", this.getPresentation());
     this.emitEvent("rendered", result);
+    if (callbacksAt !== undefined) sample?.end("callbacks", callbacksAt);
     return result;
   }
 
-  private syncClockToRenderedFrame(frame: number): void {
-    const runtimeState = this.requireRuntime("syncClock").getState();
-    let clockState = this.clock.getState();
-    const playbackMode = this.options.playbackMode ?? "once";
-    if (
-      clockState.fps !== runtimeState.fps ||
-      clockState.totalFrames !== runtimeState.totalFrames ||
-      clockState.playbackMode !== playbackMode
-    ) {
-      this.clock.configure({
-        fps: runtimeState.fps,
-        totalFrames: runtimeState.totalFrames,
-        playbackMode,
-      });
-      clockState = this.clock.getState();
+  private async restoreAcceptedPresentation(): Promise<void> {
+    this.configurePresenter(this.evaluator, this.options);
+    if (!this.lastResult) return;
+    await this.presenter.present(
+      this.lastResult.compositeHtml,
+      this.evaluator.info.width,
+      this.evaluator.info.height,
+      // Rollback is rare and must preserve the same sanitizer boundary.
+      {},
+    );
+    this.syncFrameResources(this.lastResult, this.options);
+  }
+
+  private settleFailedRequest(token: number): void {
+    // A failure with a successful rollback is settled, rather than an eternal
+    // pending request. A newer queued frame/update retains its own fence.
+    if (token === this.renderToken && this.pendingUpdateToken === null) {
+      this.acceptedRenderToken = token;
+      this.emitEvent("presentation", this.getPresentation());
     }
-    this.state = {
-      ...this.state,
-      medium: runtimeState.medium,
-      animated: runtimeState.animated,
-      isPlaying: clockState.isPlaying,
-      currentFrame: frame,
-      totalFrames: runtimeState.totalFrames,
-      fps: runtimeState.fps,
-      duration: runtimeState.duration,
-      width: runtimeState.width,
-      height: runtimeState.height,
-      progress: runtimeState.progress,
-    };
+  }
+
+  private frameForEvaluator(evaluator: FrameEvaluator): number {
+    const clock = this.clock.getState();
+    return Math.min(Math.floor(clock.currentFrame / clock.fps * evaluator.info.fps), evaluator.info.totalFrames - 1);
   }
 
   private updateFromClock(): void {
     const clockState: MediaClockState = this.clock.getState();
-    this.state = {
+    this.state = freezeState({
       ...this.state,
       isPlaying: clockState.isPlaying,
       currentFrame: clockState.currentFrame,
@@ -459,35 +687,72 @@ export class MediaSession {
       totalFrames: clockState.totalFrames,
       duration: clockState.duration,
       progress: clockState.progress,
-    };
+    });
+  }
+
+  private configurePresenter(evaluator: FrameEvaluator, options: MediaSessionOptions): void {
+    const preResolved = options.fonts;
+    const fontUrls = preResolved
+      ? [...(preResolved.stylesheets ?? [])]
+      : (evaluator.info.fonts ?? []).map((font) => {
+          const family = encodeURIComponent(font.trim());
+          return `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
+        });
+    const stylesheets = [...fontUrls, ...(evaluator.info.stylesheets ?? [])];
+    const inlineCss = [
+      ...(preResolved ? (preResolved.css ? [preResolved.css] : []) : evaluator.info.fontCss),
+      ...evaluator.info.inlineCss,
+    ];
+    this.presenter.injectStyles(inlineCss, stylesheets, evaluator.info.tailwind);
+  }
+
+  private applyPresenterPolicy(playerMode: PlayerMode, hasTailwind: boolean): void {
+    if (this.presenter instanceof IframePresenter) {
+      this.presenter.applyPolicy({ playerMode, hasTailwind });
+    }
   }
 
   private async waitForSurfaceReady(): Promise<void> {
     const root = this.getSurfaceRoot();
     if (!root) return;
-    const doc = root.nodeType === Node.DOCUMENT_NODE ? (root as Document) : root.ownerDocument;
+    const doc = root.nodeType === Node.DOCUMENT_NODE ? root as Document : root.ownerDocument;
     const fonts = doc ? (doc as Document & { fonts?: FontFaceSet }).fonts : undefined;
     if (fonts?.ready) await fonts.ready.catch(() => undefined);
   }
 
-  private syncNativeMedia(): void {
+  private syncFrameResources(frame: { readonly frame: number }, options: MediaSessionOptions, sample?: FramePerformanceSample): void {
+    const resourcesAt = sample?.start();
+    try {
+      // Native data-t belongs to the presented evaluator's frame/fps. Preserve
+      // authored clip offsets instead of substituting live clock metadata.
+      this.syncNativeMedia(options);
+      this.syncPlates(frame.frame, options);
+    } finally { if (resourcesAt !== undefined) sample?.end("resources", resourcesAt); }
+  }
+
+  private syncPlates(frame: number, options: MediaSessionOptions): void {
     const root = this.getSurfaceRoot();
     if (!root) return;
-    const videos = Array.from(root.querySelectorAll?.("video[data-superimg-media]") ?? []) as HTMLVideoElement[];
-    const shouldPlayNative = this.options.playback !== "deterministic" && this.clock.getState().isPlaying;
+    const indexed = this.refreshTargetIndex(root);
+    if (indexed && !this.plateTargets) this.plateTargets = Array.from(root.querySelectorAll<HTMLElement>("[data-superimg-plate]"));
+    syncPlateMedia(root, frame, options.assetResolver, indexed ? this.plateTargets! : undefined);
+  }
+
+  private syncNativeMedia(options: MediaSessionOptions = this.options): void {
+    const root = this.getSurfaceRoot();
+    if (!root) return;
+    const videos = this.getVideoTargets(root);
+    const shouldPlay = options.playback !== "deterministic" && this.clock.getState().isPlaying;
+    const seekTolerance = shouldPlay ? 0.05 : 0.002;
     for (const video of videos) {
       const time = Number(video.dataset.t ?? "0");
-      if (Number.isFinite(time) && Math.abs(video.currentTime - time) > 0.05) {
-        try {
-          video.currentTime = time;
-        } catch {
-          // Browser previews can point at remote assets; leave failed seeks to native media.
-        }
+      if (Number.isFinite(time) && Math.abs(video.currentTime - time) > seekTolerance) {
+        try { video.currentTime = time; } catch { /* leave failed remote seeks to browser */ }
       }
-      if (shouldPlayNative) {
-        void video.play?.().catch(() => undefined);
+      if (shouldPlay) {
+        try { void video.play?.()?.catch(() => undefined); } catch { /* remote/autoplay failure */ }
       } else {
-        video.pause?.();
+        try { video.pause?.(); } catch { /* media lifecycle failure */ }
       }
     }
   }
@@ -499,12 +764,35 @@ export class MediaSession {
   private pauseNativeMedia(): void {
     const root = this.getSurfaceRoot();
     if (!root) return;
-    const videos = Array.from(root.querySelectorAll?.("video[data-superimg-media]") ?? []) as HTMLVideoElement[];
-    for (const video of videos) video.pause?.();
+    const videos = this.getVideoTargets(root);
+    for (const video of videos) {
+      try { video.pause?.(); } catch { /* media lifecycle failure */ }
+    }
+  }
+
+  private getVideoTargets(root: Document | Element): HTMLVideoElement[] {
+    const indexed = this.refreshTargetIndex(root);
+    if (indexed && this.videoTargets) return this.videoTargets;
+    const targets = Array.from(root.querySelectorAll<HTMLVideoElement>("video[data-superimg-media]"));
+    if (indexed) this.videoTargets = targets;
+    return targets;
+  }
+
+  private refreshTargetIndex(root: Document | Element): boolean {
+    const revision = this.presenter.getDomRevision?.();
+    // Custom presenters without a revision contract retain the scanning path.
+    if (revision === undefined) return false;
+    if (this.targetRoot !== root || this.targetRevision !== revision) {
+      this.targetRoot = root;
+      this.targetRevision = revision;
+      this.videoTargets = null;
+      this.plateTargets = null;
+    }
+    return true;
   }
 
   private getSurfaceRoot(): Document | Element | null {
-    const element = this.runtime?.getElement();
+    const element = this.surface?.getElement();
     if (!element) return null;
     if (element instanceof HTMLIFrameElement) return element.contentDocument;
     return element;
@@ -512,41 +800,86 @@ export class MediaSession {
 
   private markReady(): void {
     if (this.state.isReady) return;
-    this.state = { ...this.state, isReady: true, surface: this.surface };
+    this.state = freezeState({ ...this.state, isReady: true, surface: this.surface });
     this.emit();
     this.emitEvent("ready");
+    this.emitEvent("presentation", this.getPresentation());
     this.resolveReady();
   }
 
-  private requireRuntime(operation: string): WebRuntime {
-    if (!this.runtime) throw new Error(`MediaSession must be mounted before ${operation}()`);
-    return this.runtime;
+  private handleRenderError(error: unknown): void {
+    if (!this.state.isReady) this.rejectReady(error);
+  }
+
+  private emitError(error: unknown): void {
+    this.emitEvent("error", error instanceof Error ? error : new Error(String(error)));
+  }
+
+  private assertActive(operation: string): void {
+    if (this.disposed) throw new Error(`MediaSession is disposed; cannot ${operation}()`);
   }
 
   private emit(): void {
-    this.listeners.forEach((listener) => listener());
+    this.listeners.forEach((listener) => {
+      try { listener(); } catch (error) { this.emitError(error); }
+    });
   }
 
-  private clearRuntimeEventDisposers(): void {
-    for (const dispose of this.runtimeEventDisposers) dispose();
-    this.runtimeEventDisposers = [];
-  }
-
-  private emitEvent<K extends keyof MediaSessionEvents>(event: K, ...args: Parameters<MediaSessionEvents[K]>): void {
+  private emitEvent<K extends keyof MediaSessionEvents>(
+    event: K,
+    ...args: Parameters<MediaSessionEvents[K]>
+  ): void {
     this.events[event]?.forEach((callback) => {
-      (callback as (...a: Parameters<MediaSessionEvents[K]>) => void)(...args);
+      try { (callback as (...values: Parameters<MediaSessionEvents[K]>) => void)(...args); }
+      catch (error) {
+        // Observer failure cannot reject a transaction whose DOM/data already
+        // committed. Error observers are terminal to avoid recursive errors.
+        if (event !== "error") this.emitError(error);
+      }
     });
   }
 }
 
-function resolveFormat(format: FormatOption): { width: number; height: number } {
-  if (typeof format === "object") return format;
-  const presetPath = FORMAT_ALIASES[format] ?? format;
-  const preset = getPreset(presetPath);
-  if (!preset) throw new Error(`Unknown format: ${format}`);
-  return { width: preset.width, height: preset.height };
+function toEvaluatorOptions(options: MediaSessionOptions): FrameEvaluatorOptions {
+  const size = options.size ?? {};
+  return {
+    ...size,
+    ...(options.width !== undefined ? { width: options.width } : {}),
+    ...(options.height !== undefined ? { height: options.height } : {}),
+    ...(options.fps !== undefined ? { fps: options.fps } : {}),
+    ...(options.duration !== undefined ? { duration: options.duration } : {}),
+    ...(options.data !== undefined ? { data: options.data } : {}),
+    ...(options.assets !== undefined ? { assets: options.assets } : {}),
+    ...(options.assetResolver !== undefined ? { assetResolver: options.assetResolver } : {}),
+    ...(options.fonts !== undefined ? { fonts: options.fonts } : {}),
+    ...(options.captureSemantic !== undefined ? { captureSemantic: options.captureSemantic } : {}),
+  };
 }
 
-function toRuntimePlaybackMode(mode: MediaPlaybackMode | undefined): PlaybackMode {
-  return mode === "loop" ? "loop" : "once";
+function toRuntimeUpdate(update: MediaSessionUpdate): RuntimeUpdate {
+  const size = update.size ?? {};
+  return {
+    ...size,
+    ...(update.width !== undefined ? { width: update.width } : {}),
+    ...(update.height !== undefined ? { height: update.height } : {}),
+    ...(update.fps !== undefined ? { fps: update.fps } : {}),
+    ...(update.duration !== undefined ? { duration: update.duration } : {}),
+    ...(update.data !== undefined ? { data: update.data } : {}),
+    ...(update.assets !== undefined ? { assets: update.assets } : {}),
+    ...(update.assetResolver !== undefined ? { assetResolver: update.assetResolver } : {}),
+  };
+}
+
+function mergeOptions(current: MediaSessionOptions, update: MediaSessionUpdate): MediaSessionOptions {
+  return {
+    ...current,
+    ...update,
+    ...(update.data !== undefined
+      ? { data: { ...(current.data ?? {}), ...update.data } }
+      : {}),
+  };
+}
+
+function freezeState(state: MediaSessionState): MediaSessionState {
+  return Object.freeze(state);
 }

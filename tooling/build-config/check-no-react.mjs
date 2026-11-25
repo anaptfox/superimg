@@ -10,7 +10,8 @@ const packageRoot = resolve(process.argv[2] ?? process.cwd());
 const ROOT = dirname(packageRoot);
 
 const TARGETS = [
-  join(ROOT, "superimg-runtime-web"),
+  join(ROOT, "superimg-browser-export"),
+  join(ROOT, "superimg-edge-runtime"),
   join(ROOT, "superimg-media"),
   join(ROOT, "superimg-player"),
 ];

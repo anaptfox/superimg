@@ -1,4 +1,5 @@
-import { define, type RenderContext } from "superimg/browser";
+import { define, type RenderContext } from "@foxworth/superimg";
+import { Html } from "@foxworth/superimg";
 
 export const introTemplate = define({
   config: {
@@ -22,7 +23,7 @@ export const introTemplate = define({
     const glowOpacity = 0.25 + Math.sin(timeline.progress * Math.PI * 3) * 0.1
     const glowScale = 0.95 + Math.sin(timeline.progress * Math.PI * 2) * 0.05
 
-    return `
+    return Html({ width: "fill", height: "fill", html: `
       <style>* { margin:0; padding:0; box-sizing:border-box; }</style>
       <div style="
         width:${width}px;
@@ -73,6 +74,6 @@ export const introTemplate = define({
           ">100% code</div>
         </div>
       </div>
-    `
+    ` })
   },
 })

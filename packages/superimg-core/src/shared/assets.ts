@@ -1,3 +1,4 @@
+import { bytesDataUrl } from "./base64.js";
 //! Asset resolution and type detection
 
 import type {
@@ -90,7 +91,6 @@ export {
   type MixClipInput,
 } from "./audio-dsp.js";
 
-export { buildTimelineModel } from "./timeline-model.js";
 
 function flattenClips(value: AudioValue | undefined): AudioClip[] {
   if (!value) return [];
@@ -103,8 +103,8 @@ function flattenClips(value: AudioValue | undefined): AudioClip[] {
  * Merge compose-level config.audio with per-scene clips.
  * Scene clips without at/atScene get atScene = scene.id.
  */
-export function collectComposeAudio(
-  scenes: SceneDefinition[],
+export function collectComposeAudio<TData>(
+  scenes: SceneDefinition<TData>[],
   globalAudio?: AudioValue,
 ): AudioTimeline | undefined {
   const clips: AudioClip[] = [...flattenClips(globalAudio)];
@@ -134,31 +134,42 @@ export function collectComposeAudio(
 }
 
 /**
- * Resolve config.assets to normalized declarations for loading.
- * Supports shorthand (string) and explicit (AssetDeclaration) forms.
+ * Resolve config.assets to normalized declarations for legacy render engines.
+ *
+ * Authoring values are always explicit URL or owned-byte declarations. Byte
+ * declarations become data URLs at this compatibility seam; the value-first
+ * runtime freezes and serves the original bytes without this conversion.
  */
 export function resolveConfigAssets(
-  assets: Record<string, string | AssetDeclaration> | undefined,
+  assets: Record<string, AssetDeclaration> | undefined,
   defaultSourceDir: string = (typeof process !== "undefined" && process.cwd ? process.cwd() : ".")
 ): ResolvedAssetDeclaration[] {
   if (!assets || Object.keys(assets).length === 0) return [];
 
   return Object.entries(assets).map(([key, value]) => {
     const sourceDir = defaultSourceDir;
-    if (typeof value === "string") {
+    if ("url" in value) {
+      const src = String(value.url);
       return {
         key,
-        type: detectAssetType(value),
-        src: value,
+        type: value.type ?? detectAssetType(src),
+        src,
         sourceDir,
       };
     }
-    const type = value.type ?? detectAssetType(value.src);
+    const type = value.type ?? detectAssetTypeFromMimeType(value.mimeType);
     return {
       key,
       type,
-      src: value.src,
+      src: bytesDataUrl(value.bytes, value.mimeType),
       sourceDir,
     };
   });
+}
+
+function detectAssetTypeFromMimeType(mimeType: string): "image" | "video" | "audio" {
+  const family = mimeType.trim().toLowerCase().split("/", 1)[0];
+  if (family === "video") return "video";
+  if (family === "audio") return "audio";
+  return "image";
 }

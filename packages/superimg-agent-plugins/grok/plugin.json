@@ -1,0 +1,8 @@
+{
+  "name": "superimg",
+  "version": "0.1.1-media-library.20261022.1",
+  "description": "Programmatic video generation (HTML/CSS → MP4). Full lifecycle: brief, design, build, review, variants, ship.",
+  "skills": "./skills",
+  "agents": "./agents",
+  "commands": "./commands"
+}

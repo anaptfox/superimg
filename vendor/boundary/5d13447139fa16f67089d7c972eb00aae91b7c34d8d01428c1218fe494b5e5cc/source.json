@@ -1,0 +1,11 @@
+{
+  "package": "@foxworth/boundary",
+  "version": "0.2.0",
+  "repository": "https://github.com/anaptfox/boundary",
+  "sourceCommit": "3771252e983ef586cf05bed72ac8b1dc7ba98b9d",
+  "sourceWorktreeDirty": false,
+  "archiveSha256": "sha256:5d13447139fa16f67089d7c972eb00aae91b7c34d8d01428c1218fe494b5e5cc",
+  "contentDigest": "sha256:fc3f426135ac5f194d518ee01c26d2344355e71e112b54054ae553438940a68f",
+  "bytes": 237929,
+  "capturedAt": "2026-11-24T21:16:25.193Z"
+}

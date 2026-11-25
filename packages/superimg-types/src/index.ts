@@ -3,16 +3,63 @@
 
 import type { JsonObject } from "./json.js";
 import type { TemplateModule } from "./types.js";
+export type { NativeSurfaceHost, NativeSurfaceFrame, NativeSurfaceInstance, NativeSurfaceModule } from "./native-surface.js";
 
-/**
- * Any template module. After the `define()` collapse there is a single module
- * shape (medium + animated discriminate behaviour), so this is just an alias —
- * kept for the many call sites that import it.
- */
-export type { JsonPrimitive, JsonObject, JsonValue, TemplateData } from "./json.js";
+/** Runtime view of a deterministic media module. */
+export type {
+  JsonPrimitive,
+  JsonObject,
+  JsonValue,
+  JsonCompatible,
+  TemplateData,
+} from "./json.js";
 export { isJsonObject } from "./json.js";
+export type {
+  ReviewPlan,
+  ReviewBeat,
+  ReviewCheck,
+  ReviewObservationContext,
+} from "./review.js";
+
+export type {
+  Program,
+  CompositionFit,
+  CompositionMedia,
+  CompositionContent,
+  InteractiveCompositionChild,
+  InteractiveCompositionRuntime,
+  Use,
+  SequenceProgram,
+  TogetherProgram,
+  PlacedUse,
+  CompositionPlacement,
+  ChooseProgram,
+  CompositionLeafSchedule,
+  CompositionSchedule,
+  RetainedComposition,
+  CompositionEntryData,
+} from "./composition.js";
 
 export type AnyTemplateModule<TData = JsonObject> = TemplateModule<TData>;
+
+export {
+  MEDIA_ELEMENT,
+  isMediaElement,
+  isRenderOutput,
+} from "./media-node.js";
+export type {
+  MediaLayout,
+  MediaStylePropertyValue,
+  MediaStyleObject,
+  MediaMotionValue,
+  MediaStyleValue,
+  MediaProps,
+  MediaAttributes,
+  MediaChild,
+  MediaElement,
+  MediaNode,
+  RenderOutput,
+} from "./media-node.js";
 
 // =============================================================================
 // CORE TYPES
@@ -23,13 +70,13 @@ export type {
   RenderContext,
   Timeline,
   TrackSource,
-  OutputInfo,
   CssViewport,
 
   // Mode Types
   PlaybackMode,
   LoadMode,
   HoverBehavior,
+  DriveSource,
   FitMode,
 
   // Template Types
@@ -37,7 +84,7 @@ export type {
   TemplateModule,
   TemplateConfig,
   FrameReadinessPolicy,
-  OutputPreset,
+  TemporalMode,
   ProjectConfig,
   DeployConfig,
   BaseConfig,
@@ -49,14 +96,12 @@ export type {
   Transition,
   SceneDefinition,
   ResolvedTransition,
-  ResolvedScene,
-  ComposedTemplate,
-  ComposedTemplateBase,
 
   RenderOptions,
 
   // Asset Types
   AssetDeclaration,
+  AssetKind,
   AssetMeta,
   ImageAssetMeta,
   VideoAssetMeta,
@@ -87,16 +132,17 @@ export type {
 } from "./audio.js";
 
 export type {
-  TimelineModel,
-  TimelineTrack,
-  TimelineTrackKind,
-  TimelineItem,
-  VideoTimelineItem,
-  AudioTimelineItem,
-} from "./timeline-model.js";
+  NarrationSegmentTiming, MeasuredNarrationSegment, NarrationTimingOptions,
+  NarrationPlanSegment, NarrationFinding, NarrationPlan,
+} from "./narration.js";
+
+
 
 export type {
   EncodingOptions,
+  CaptureOptions,
+  StillEncodeOptions,
+  StillDebandMode,
   OutputFormat,
   VideoCodecPreference,
   AudioCodecPreference,
@@ -104,14 +150,98 @@ export type {
   BitrateMode,
   LatencyMode,
   HardwareAcceleration,
+  EncodingQuality,
 } from "./encoding-types.js";
+export {
+  isStillOutputFormat,
+  resolveCaptureDefaults,
+  resolveCaptureRegion,
+  normalizeEncodingQuality,
+  isAlphaCodecContainerCompatible,
+  PRORES_MASTER_ENCODING,
+  PRORES_MASTER_ALPHA_ENCODING,
+} from "./encoding-types.js";
+export type {
+  MediaInput,
+  MediaTrackInspection,
+  MediaInspection,
+  MediaInspectOptions,
+  MediaTrim,
+  NormalizedMediaTrim,
+  ConversionTrackSelection,
+  ConversionVideoSelection,
+  ConversionCopyOptions,
+  ConversionSource,
+  ConversionRequest,
+  ConversionArtifact,
+  ConversionTrackPlan,
+} from "./media.js";
+export { mediaTrackId, normalizeTrim, normalizeConversionCopy, resolveMediaTrackId, selectMediaTrack } from "./media.js";
+export type { JobState, JobEvent, PausableJob } from "./job.js";
+export type {
+  CortexStockViewId,
+  EditorialIntent,
+  EditorialAudience,
+  EditorialBrief,
+  VisualAtomKind,
+  VisualAtom,
+  CortexAssetKind,
+  CortexAssetRef,
+  CortexEvidenceRef,
+  CortexCustomPayload,
+  CortexBundle,
+  CortexArtifactRecord,
+} from "./cortex.js";
+export {
+  CORTEX_STOCK_VIEWS,
+  EDITORIAL_INTENTS,
+  EDITORIAL_AUDIENCES,
+  VISUAL_ATOM_KINDS,
+  CORTEX_ASSET_KINDS,
+  CortexBundleError,
+  isCortexStockViewId,
+  atomKinds,
+  parseCortexBundle,
+} from "./cortex.js";
+
+export type {
+  FontSource,
+  FontDeclaration,
+  GoogleFontDeclaration,
+  FontInput,
+} from "./fonts.js";
+export {
+  googleFont,
+  isGoogleFontDeclaration,
+  isFontDeclaration,
+  fontDeclarationIssue,
+} from "./fonts.js";
 
 // Template helpers
 export { defineConfig } from "./types.js";
 export {
   define,
+  video,
+  image,
+  svg,
+  ogImage,
   isAnimatedTemplate,
   isStaticTemplate,
+  type CanvasSize,
+  type DeterministicMediaKind,
+  type DefaultMediaFormat,
+  type MediaEdition,
+  type MediaEditions,
+  type MediaVariantPatch,
+  type MediaVariants,
+  type MediaDefinition,
+  type DeterministicMediaDefinition,
+  type VideoDefinition,
+  type ImageDefinition,
+  type SvgDefinition,
+  type VideoInput,
+  type ImageInput,
+  type SvgInput,
   type ImageRenderContext,
   type SvgRenderContext,
   type SvgAnimatedRenderContext,
@@ -127,10 +257,25 @@ export {
   type DefineHtmlStaticInput,
 } from "./define.js";
 
+export {
+  type MediaCoordinates,
+  type RenditionCoordinates,
+  type RenditionRequest,
+  type RenditionPlan,
+  type CompiledMediaFile,
+  type CompiledMediaRendition,
+} from "./coordinates.js";
+
+export type { MediaDiagnosticCode, MediaDiagnostic } from "./diagnostics.js";
+
 export type {
   ResolveInput,
   ResolveResult,
   ResolveFn,
+  ResolveCue,
+  ResolveCueFinding,
+  ResolveShotBreakdown,
+  ResolveBreakdown,
   ResolveMarker,
   ResolvePhaseConfig,
 } from "./resolve.js";
@@ -146,6 +291,7 @@ export type {
   TimeContext,
   SourceLocation,
   SuperImgErrorJSON,
+  SuperImgErrorCode,
 } from "./results.js";
 
 export type {
@@ -164,6 +310,7 @@ export {
 
 export {
   SuperImgError,
+  isSuperImgError,
   TemplateCompilationError,
   TemplateRuntimeError,
   ValidationError,
@@ -174,15 +321,11 @@ export {
 
 // =============================================================================
 // PLAYER TYPES (user-facing interfaces only)
-// Implementation types (PlayerState, PlayerStore, etc.) are in @superimg/player
+// Browser session implementation types live in @superimg/media and @superimg/player.
 // =============================================================================
 
-export type { PlayerOptions, PlayerEvents, PlayerInput } from "./player.js";
-export {
-  isComposedTemplate,
-  isComposedSvgTemplate,
-  isAnyComposedTemplate,
-} from "./player.js";
+export type { PlayerInput } from "./player.js";
+export { inferTemplateAnimated } from "./player.js";
 
 // =============================================================================
 // STDLIB TYPES
@@ -217,18 +360,22 @@ export type {
 export type {
   RenderJob,
   RenderProgress,
-  FrameRendererConfig,
-  FrameRenderer,
-  RasterizerCapabilities,
+  FrameCaptureOptions,
   RasterizerConfig,
+  RasterizerCapabilities,
+  ResolvedFontFace,
   Rasterizer,
   VideoEncoderConfig,
+  VideoEncoderDiagnostics,
+  EncodedFileResult,
   VideoEncoder,
   RenderEngine,
   RenderPlan,
   FramePresenter,
   ResolvedAssetDeclaration,
   TemplateBundle,
+  PreparedNativeModuleSet,
+  CompilerDiagnostic,
   TemplateSourceMap,
 } from "./engine.js";
 
@@ -244,14 +391,181 @@ export type {
 } from "./validation.js";
 
 // =============================================================================
-// BUILD INTEGRATION EVENTS
+// MEDIA IR (experimental draft, schemaVersion 0)
 // =============================================================================
 
-export { RENDER_EVENT_VERSION } from "./events.js";
-export type { RenderEvent } from "./events.js";
+export type {
+  MediaIRFrameRange,
+  MediaIRTemporalCapability,
+  MediaIRMotionCapability,
+  MediaIRVisualCapability,
+  MediaIRPortability,
+  MediaIRDeterminism,
+  MediaIRCapabilityIssue,
+  MediaIRCapabilities,
+  MediaIRProvenance,
+  MediaIRPhase,
+  MediaIRMarker,
+  MediaIRTransition,
+  MediaIRScene,
+  MediaIRTrackKind,
+  MediaIRTrack,
+  MediaIREasing,
+  MediaIRMotion,
+  MediaIRAsset,
+  MediaIRHashRun,
+  MediaIRObservations,
+  MediaIRHashes,
+  MediaIRRenderConfig,
+  MediaIRExtensionEnvelope,
+  MediaIR,
+  CreateMediaIROptions,
+  MediaIRDiffConfidence,
+  MediaIRDiffCategory,
+  MediaIRDiffChange,
+  MediaIRDiff,
+  MediaIRQuery,
+  MediaIRQueryResult,
+  MediaJob,
+  MediaArtifactFileEntry,
+  MediaArtifactManifest,
+  CompiledMediaArtifact,
+  FrozenRenderArtifact,
+} from "./media-ir.js";
+
+export { createMediaIR, MEDIA_IR_STUB_HASH } from "./media-ir.js";
 
 // =============================================================================
-// BATCH TYPES
+// EDITING (Studio source bindings / operations — experimental draft)
 // =============================================================================
 
-export { defineBatch, type BatchEntry, type BatchProvider } from "./batch-types.js";
+export type {
+  EditCapability,
+  EditUiState,
+  EditTimeSpace,
+  EditReasonCode,
+  EditFramePoint,
+  EditFrameRange,
+  EditSourceBinding,
+  EditManifest,
+  EditOperationPreconditions,
+  MediaEditCommand,
+  EditTransaction,
+  EditApplyResult,
+  EditFrameObservation,
+} from "./editing.js";
+
+// =============================================================================
+// RENDER CAPABILITIES / PATH NEGOTIATION (experimental draft)
+// =============================================================================
+
+export type {
+  MediaCapabilities,
+  MediaCapabilityName,
+  RenderOutputFormat,
+  RenderRequirements,
+  RasterizerKind,
+  EncoderKind,
+  MediaDecoderKind,
+  StitcherKind,
+  FilesystemCapability,
+  RuntimeCapabilities,
+  RuntimeProfileName,
+  RenderPath,
+  UnsupportedRequirement,
+  NegotiateRenderPathResult,
+} from "./render-capabilities.js";
+
+// =============================================================================
+// TEMPLATE PACKAGE (experimental draft)
+// =============================================================================
+
+export type {
+  PackageProgram,
+  PackageAsset,
+  TemplatePackage,
+  TemplatePackageManifest,
+  OutputRequest,
+  PackageRejectCode,
+  PackageRejectError,
+} from "./template-package.js";
+
+export type { DeployRuntimeProfile } from "./types.js";
+
+// =============================================================================
+// VALUE-FIRST RUNTIME
+// =============================================================================
+
+export {
+  RuntimeInfrastructureError,
+  RuntimeDisposedError,
+  CapabilityUnavailableError,
+  RuntimeCancelledError,
+  MediaPreflightError,
+  ExportBundleDisposedError,
+} from "./runtime.js";
+export type {
+  OpaqueInteractiveMediaValue,
+  DeterministicMediaValue,
+  CollectionMediaValue,
+  MediaValue,
+  ExportableMedia,
+  RuntimeDocumentFormat,
+  RuntimeRasterFormat,
+  RuntimeAnimatedFormat,
+  RuntimeOutputFormat,
+  MediaRuntimeCapabilities,
+  InitOptions,
+  Runtime,
+  RuntimeMediaCoordinates,
+  RuntimeRenditionCoordinates,
+  RuntimeMediaKind,
+  RuntimeFindingSeverity,
+  RuntimeFindingCategory,
+  RuntimeFinding,
+  RuntimeTechnicalCoverage,
+  ProviderResolution,
+  RuntimeSelectionOptions,
+  CheckOptions,
+  CheckReport,
+  InspectOptions,
+  RuntimeMediaConfig,
+  FrozenAssetMetadata,
+  FrozenFontMetadata,
+  CollectionInspection,
+  InspectReport,
+  ExactRenderFormat,
+  RenderFormat,
+  MediaRenderOptions,
+  MediaRenderResult,
+  ExportRenditionRequest,
+  ExportTarget,
+  ExportProgressItem,
+  ExportProgressWork,
+  ExportProgressEvent,
+  ExportOptions,
+  ExportManifestArtifact,
+  ExportManifest,
+  ExportArtifact,
+  ExportBundle,
+  PublicationReceipt,
+  DoctorReport,
+  SetupOptions,
+} from "./runtime.js";
+
+// =============================================================================
+// COLLECTION TYPES
+// =============================================================================
+
+export {
+  collection,
+  listCollectionEntries,
+  type CollectionEntryItem,
+  type CollectionEntryProvider,
+  type CollectionEntries,
+  type CollectionEntryIdResolver,
+  type CollectionInput,
+  type CollectionDefinition,
+} from "./collection.js";
+
+export type * from "./scene.js";

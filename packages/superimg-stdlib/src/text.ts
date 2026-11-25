@@ -80,16 +80,7 @@ export function formatCurrency(
  * @param str - String to escape
  * @returns Escaped string
  */
-export function escapeHtml(str: string): string {
-  const map: Record<string, string> = {
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;",
-  };
-  return str.replace(/[&<>"']/g, (m) => map[m] ?? m);
-}
+export { escapeHtml } from "./escape-html.js";
 
 /**
  * Convert a string to a URL-friendly slug

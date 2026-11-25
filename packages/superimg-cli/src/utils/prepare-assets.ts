@@ -1,5 +1,5 @@
 import { isAbsolute, resolve } from "node:path";
-import { resolveAssetUrls, normalizeAudioInput } from "@superimg/core";
+import { normalizeAudioInput } from "@superimg/core";
 import type { AudioClip, AudioValue, ResolvedAssetDeclaration } from "@superimg/types";
 
 interface PrepareAssetsOptions {
@@ -23,6 +23,19 @@ export function prepareAssets(options: PrepareAssetsOptions): ResolvedAssetDecla
   return options.assetUrlResolver
     ? resolveAssetUrls(resolved, options.assetUrlResolver)
     : resolved;
+}
+
+function resolveAssetUrls(
+  declarations: ResolvedAssetDeclaration[],
+  assetUrlResolver: (absolutePath: string) => string,
+): ResolvedAssetDeclaration[] {
+  return declarations.map((declaration) => {
+    if (/^(?:https?:|data:|blob:)/i.test(declaration.src)) return declaration;
+    const absolutePath = isAbsolute(declaration.src)
+      ? declaration.src
+      : resolve(declaration.sourceDir, declaration.src);
+    return { ...declaration, src: assetUrlResolver(absolutePath) };
+  });
 }
 
 function resolveClipSrc(

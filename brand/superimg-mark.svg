@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="SuperImg">
+  <defs>
+    <linearGradient id="si-layer-back" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5b6fe8"/>
+      <stop offset="100%" stop-color="#6b5bd4"/>
+    </linearGradient>
+    <linearGradient id="si-layer-mid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#667eea"/>
+      <stop offset="100%" stop-color="#7c5cdb"/>
+    </linearGradient>
+    <linearGradient id="si-layer-front" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7b6cf0"/>
+      <stop offset="55%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <filter id="si-soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <!-- App tile -->
+  <rect width="128" height="128" rx="28" fill="#0b0b14"/>
+
+  <!-- Back layer -->
+  <g filter="url(#si-soft)">
+    <rect x="22" y="28" width="68" height="52" rx="10"
+          fill="url(#si-layer-back)" stroke="rgba(255,255,255,0.55)" stroke-width="1.5"/>
+  </g>
+
+  <!-- Mid layer -->
+  <g filter="url(#si-soft)">
+    <rect x="30" y="38" width="68" height="52" rx="10"
+          fill="url(#si-layer-mid)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+  </g>
+
+  <!-- Front layer -->
+  <g filter="url(#si-soft)">
+    <rect x="38" y="48" width="68" height="52" rx="10"
+          fill="url(#si-layer-front)" stroke="rgba(255,255,255,0.75)" stroke-width="1.75"/>
+    <!-- Play -->
+    <path d="M62 62.5 L62 85.5 L82 74 Z" fill="#0b0b14"/>
+    <!-- Motion chevrons -->
+    <path d="M86 70 L90 74 L86 78" fill="none" stroke="rgba(255,255,255,0.55)"
+          stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M91 70 L95 74 L91 78" fill="none" stroke="rgba(255,255,255,0.35)"
+          stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

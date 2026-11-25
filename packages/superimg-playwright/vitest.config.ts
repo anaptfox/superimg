@@ -12,7 +12,7 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
     pool: 'forks',
-    singleFork: true,
+    maxWorkers: 1,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

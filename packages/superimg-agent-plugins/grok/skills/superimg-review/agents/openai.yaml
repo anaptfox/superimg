@@ -1,0 +1,7 @@
+interface:
+  display_name: '/superimg-review'
+  short_description: 'Review SuperImg *.media.ts for technical correctness, agreement with the brief, and vis...'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$superimg-review: Review my template before I ship it'

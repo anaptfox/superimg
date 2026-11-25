@@ -1,18 +1,26 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-const CODE_EXAMPLE = `import { define } from "superimg";
+const CODE_EXAMPLE = `import { video, Frame, Stack, Text } from "@foxworth/superimg";
+import { Player } from "@foxworth/superimg/player";
 
-export default define({
+const program = video({
+  duration: "3s",
+  sample: { title: "Hello" },
   render(ctx) {
-    const { timeline.frame, width, height } = ctx;
-    return \`
-      <div style="width: \${width}px; height: \${height}px;">
-        <h1>Frame \${timeline.frame}</h1>
-      </div>
-    \`;
+    return Frame(
+      { width: "fill", height: "fill" },
+      Stack(
+        { width: "fill", height: "fill", align: "center", justify: "center" },
+        Text({ variant: "display" }, ctx.data.title),
+      ),
+    );
   },
-});`;
+});
+
+// Same media program — live embed
+const player = new Player(document.querySelector("#stage"));
+await player.load(program);`;
 
 export function ForDevelopers() {
   return (
@@ -20,10 +28,12 @@ export function ForDevelopers() {
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 text-center">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Or write code directly
+            One media program — play or export
           </h2>
           <p className="mt-3 text-muted-foreground">
-            For developers who prefer full control, write templates in JavaScript or TypeScript
+            Author with <code className="text-sm">video()</code>, embed with{" "}
+            <code className="text-sm">@foxworth/superimg/player</code>, check and export with the CLI
+            or <code className="text-sm">@foxworth/superimg/runtime</code>.
           </p>
         </div>
 
@@ -37,11 +47,14 @@ export function ForDevelopers() {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Button asChild variant="outline" size="lg">
-            <Link href="/docs">Read the Docs</Link>
-          </Button>
           <Button asChild size="lg">
-            <Link href="/playground">Open Playground</Link>
+            <Link href="/docs/getting-started">Get started</Link>
+          </Button>
+          <Button asChild variant="outline" size="lg">
+            <Link href="/docs/embed-in-apps">Embed in apps</Link>
+          </Button>
+          <Button asChild variant="ghost" size="lg">
+            <Link href="/playground">Playground</Link>
           </Button>
         </div>
       </div>

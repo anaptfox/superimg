@@ -13,7 +13,7 @@
  * ```
  */
 
-import { lerp } from "./math";
+import { lerp } from "./math-basic.js";
 
 export interface SpringConfig {
   /** Spring constant — higher = faster oscillation. */

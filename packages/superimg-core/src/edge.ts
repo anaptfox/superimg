@@ -1,6 +1,10 @@
-import type { AnyTemplateModule } from "@superimg/types";
+import type {
+  AnyTemplateModule,
+} from "@superimg/types";
 import { compileTemplate } from "./rendering/compiler.js";
 import { renderTemplateFrame } from "./rendering/render-frame.js";
+export { assertNoNativeSurfaceMarkup } from "./rendering/native-markup.js";
+export { assetMetadataFromFrozen } from "./shared/asset-metadata.js";
 
 export interface NativeRenderOptions {
   /** The bundled template code or a compiled module (image/video/svg/gif) */
@@ -33,10 +37,10 @@ export function renderToHtml(options: NativeRenderOptions): string {
 
   if (typeof options.template === "string") {
     const result = compileTemplate(options.template);
-    if (result.error || !result.template) {
+    if (result.error || !result.media) {
       throw result.error ?? new Error("Template compilation produced no module.");
     }
-    module = result.template;
+    module = result.media;
   } else {
     module = options.template;
   }
@@ -56,6 +60,3 @@ export function renderToHtml(options: NativeRenderOptions): string {
 
   return compositeHtml;
 }
-
-/** @deprecated Use renderToHtml instead. */
-export const renderNativeToHtml = renderToHtml;

@@ -5,6 +5,7 @@
     "affectedUsingTaskInputs": true
   },
   "globalDependencies": [
+    ".node-version",
     ".turbo-platform.json",
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml"
@@ -13,6 +14,10 @@
     "generate": {
       "dependsOn": ["^build"],
       "outputs": [".generated/**"]
+    },
+    "@superimg/interactions#generate": {
+      "dependsOn": ["^build"],
+      "outputs": ["program.lock"]
     },
     "docs#generate": {
       "dependsOn": ["^build"],
@@ -61,6 +66,10 @@
       "dependsOn": ["generate"],
       "outputs": []
     },
+    "docs#check-types": {
+      "dependsOn": ["build"],
+      "outputs": [".next/types/**"]
+    },
     "build": {
       "dependsOn": ["^build", "generate"],
       "env": ["NODE_ENV"],
@@ -75,50 +84,90 @@
         ".react-router/**"
       ]
     },
-    "superimg#build:node": {
+    "@foxworth/superimg#build:node": {
       "dependsOn": ["^build"],
       "env": ["NODE_ENV"],
       "outputs": [".build/node/**"]
     },
-    "superimg#build:define": {
+    "@foxworth/superimg#build:define": {
       "dependsOn": ["^build"],
       "env": ["NODE_ENV"],
       "outputs": [".build/define/**"]
     },
-    "superimg#build:edge": {
+    "@foxworth/superimg#build:edge": {
       "dependsOn": ["^build"],
       "env": ["NODE_ENV"],
       "outputs": [".build/edge/**"]
     },
-    "superimg#build:browser": {
+    "@foxworth/superimg#build:browser": {
       "dependsOn": ["^build"],
       "env": ["NODE_ENV"],
       "outputs": [".build/browser/**"]
     },
-    "superimg#assemble": {
-      "dependsOn": ["build:node", "build:define", "build:edge", "build:browser"],
+    "@foxworth/superimg#build:player": {
+      "dependsOn": ["^build"],
+      "env": ["NODE_ENV"],
+      "outputs": [".build/player/**"]
+    },
+    "@foxworth/superimg#assemble": {
+      "dependsOn": ["build:node", "build:define", "build:edge", "build:browser", "build:player"],
+      "env": ["SUPERIMG_SOURCE_TREE_RECEIPT"],
       "outputs": ["dist/**"]
     },
-    "superimg#build": {
+    "@foxworth/superimg#build": {
       "dependsOn": ["assemble"],
       "outputs": []
     },
-    "@superimg/codex-plugin#build": {
-      "dependsOn": ["^build", "generate"],
-      "outputs": ["plugin/skills/**", "plugin/.mcp.json"]
+    "@superimg/agent-plugins#build": {
+      "cache": false,
+      "outputs": ["grok/**", "codex/**"]
     },
     "test": {
       "dependsOn": ["^build", "generate"],
       "env": ["CI"],
       "outputs": []
     },
-    "superimg#test": {
+    "@foxworth/superimg-cli#test": {
+      "dependsOn": ["build", "@foxworth/superimg#build"],
+      "env": ["CI"],
+      "outputs": []
+    },
+    "@foxworth/superimg#test": {
       "dependsOn": ["build"],
+      "env": ["CI"],
+      "outputs": []
+    },
+    "@foxworth/superimg-node#test": {
+      "dependsOn": ["build"],
+      "env": ["CI"],
+      "outputs": []
+    },
+    "@superimg/interactions#test": {
+      "dependsOn": ["^build", "generate", "@foxworth/superimg#build"],
+      "env": ["CI"],
+      "outputs": []
+    },
+    "@superimg/core#test": {
+      "dependsOn": ["^build", "generate", "@foxworth/superimg#build"],
+      "env": ["CI"],
+      "outputs": []
+    },
+    "@superimg/node#test": {
+      "dependsOn": ["^build", "generate", "@foxworth/superimg#build"],
+      "env": ["CI"],
+      "outputs": []
+    },
+    "@superimg/playwright#test": {
+      "dependsOn": ["^build", "generate", "@foxworth/superimg#build"],
       "env": ["CI"],
       "outputs": []
     },
     "typecheck": {
       "dependsOn": ["^build", "generate"],
+      "outputs": []
+    },
+    "@foxworth/superimg-cli#typecheck": {
+      "dependsOn": ["^build", "generate", "build"],
       "outputs": []
     },
     "check-types": {

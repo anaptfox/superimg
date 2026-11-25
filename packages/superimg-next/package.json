@@ -1,0 +1,58 @@
+{
+  "name": "@superimg/next",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Embed SuperImg media programs in Next.js App Router \u2014 RSC payload, poster, and client Player island.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "react-server": "./dist/client.react-server.js",
+      "import": "./dist/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown",
+    "test": "vitest --run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@superimg/adapters": "workspace:*",
+    "@superimg/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "next": ">=14",
+    "react": ">=18",
+    "react-dom": ">=18",
+    "@foxworth/superimg": "*"
+  },
+  "devDependencies": {
+    "@superimg/build-config": "workspace:*",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@foxworth/superimg": "workspace:*",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "MIT"
+}

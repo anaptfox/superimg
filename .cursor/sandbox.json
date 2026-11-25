@@ -1,0 +1,6 @@
+{
+  "additionalReadwritePaths": [
+    "~/Library/Caches/ms-playwright",
+    "~/.cache/ms-playwright"
+  ]
+}

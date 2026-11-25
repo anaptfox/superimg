@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-80 -180 160 190">
+  <title>Celadon tea bowl — local origin at the foot's contact centre; tea level is an edit of #tea-*</title>
+  <defs>
+    <linearGradient id="bowl-outer" x1="-56" y1="0" x2="56" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#456c5c"/>
+      <stop offset="0.3" stop-color="#6c9682"/>
+      <stop offset="0.68" stop-color="#9fc6b0"/>
+      <stop offset="0.88" stop-color="#d0e5d7"/>
+      <stop offset="1" stop-color="#7ea591"/>
+    </linearGradient>
+    <linearGradient id="bowl-outer-ivory" x1="-56" y1="0" x2="56" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9c8f74"/>
+      <stop offset="0.3" stop-color="#cbbd9c"/>
+      <stop offset="0.68" stop-color="#ece2c9"/>
+      <stop offset="0.88" stop-color="#fbf5e6"/>
+      <stop offset="1" stop-color="#c6b796"/>
+    </linearGradient>
+    <linearGradient id="bowl-inner-ivory" x1="-54" y1="0" x2="54" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbf3df"/>
+      <stop offset="0.45" stop-color="#e3d6b8"/>
+      <stop offset="1" stop-color="#a99a78"/>
+    </linearGradient>
+    <linearGradient id="bowl-inner" x1="-54" y1="0" x2="54" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c3ddcd"/>
+      <stop offset="0.45" stop-color="#8db5a0"/>
+      <stop offset="1" stop-color="#557d6b"/>
+    </linearGradient>
+    <linearGradient id="bowl-shade" x1="0" y1="-70" x2="0" y2="-4" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2d4b3f" stop-opacity="0"/>
+      <stop offset="1" stop-color="#2d4b3f" stop-opacity="0.5"/>
+    </linearGradient>
+    <linearGradient id="tea" x1="-50" y1="0" x2="50" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6a300d"/>
+      <stop offset="0.5" stop-color="#a8551c"/>
+      <stop offset="1" stop-color="#c8742f"/>
+    </linearGradient>
+    <linearGradient id="steam-fade" x1="0" y1="-170" x2="0" y2="-74" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff6e6" stop-opacity="0"/>
+      <stop offset="0.6" stop-color="#fff6e6" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#fff6e6" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="rim-opening">
+      <ellipse cx="0" cy="-70" rx="50" ry="12.5"/>
+    </clipPath>
+    <filter id="blur-soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5"/>
+    </filter>
+    <filter id="blur-steam" x="-80%" y="-30%" width="260%" height="160%">
+      <feGaussianBlur stdDeviation="3.5"/>
+    </filter>
+  </defs>
+
+  <g id="steam" opacity="0">
+    <path id="steam-a" d="M-14 -78 C-26 -98 -2 -112 -14 -134 C-24 -150 -8 -160 -12 -172" fill="none" stroke="url(#steam-fade)" stroke-width="9" stroke-linecap="round" filter="url(#blur-steam)"/>
+    <path id="steam-b" d="M12 -80 C24 -100 4 -116 16 -138 C24 -152 12 -162 16 -170" fill="none" stroke="url(#steam-fade)" stroke-width="7" stroke-linecap="round" filter="url(#blur-steam)"/>
+  </g>
+
+  <g id="bowl-back">
+  <ellipse id="rim-back" cx="0" cy="-70" rx="54" ry="13.5" fill="#6f9884"/>
+  <ellipse id="bowl-interior" cx="0" cy="-70" rx="50" ry="12.5" fill="url(#bowl-inner)"/>
+
+  <g id="tea-in-bowl" clip-path="url(#rim-opening)">
+    <ellipse id="tea-surface" cx="0" cy="-30" rx="36" ry="9" fill="url(#tea)" opacity="0"/>
+    <ellipse id="tea-meniscus" cx="0" cy="-30" rx="36" ry="9" fill="none" stroke="#e3a35c" stroke-width="1.4" stroke-opacity="0.8" opacity="0"/>
+    <ellipse id="tea-sheen" cx="14" cy="-32" rx="12" ry="2.6" fill="#ffd9a1" opacity="0" filter="url(#blur-soft)"/>
+    <ellipse id="ripple" cx="-4" cy="-30" rx="10" ry="2.5" fill="none" stroke="#f0b877" stroke-width="1.6" opacity="0"/>
+    <ellipse id="ripple-outer" cx="-4" cy="-30" rx="18" ry="4.5" fill="none" stroke="#f0b877" stroke-width="1" opacity="0"/>
+  </g>
+  </g>
+
+  <g id="bowl-front">
+    <path id="cup-glaze" d="M-54 -70 A54 13.5 0 0 0 54 -70 C54 -38 40 -12 24 -7 L-24 -7 C-40 -12 -54 -38 -54 -70 Z" fill="url(#bowl-outer)"/>
+    <path id="cup-shade" d="M-54 -70 A54 13.5 0 0 0 54 -70 C54 -38 40 -12 24 -7 L-24 -7 C-40 -12 -54 -38 -54 -70 Z" fill="url(#bowl-shade)"/>
+    <path id="cup-rim-light" d="M30 -59 C44 -62 52 -66 54 -70 C54 -54 50 -40 44 -30" fill="none" stroke="#f6ead0" stroke-width="2.4" stroke-opacity="0.7" filter="url(#blur-soft)"/>
+    <ellipse id="cup-specular" cx="34" cy="-48" rx="5" ry="10" transform="rotate(-18 34 -48)" fill="#ffffff" opacity="0.7" filter="url(#blur-soft)"/>
+    <path id="rim-lip" d="M-54 -70 A54 13.5 0 0 0 54 -70" fill="none" stroke="#e2f0e6" stroke-width="1.6" stroke-opacity="0.85"/>
+    <path id="foot-ring" d="M-24 -7 L24 -7 C26 -3 24 0 18 1 L-18 1 C-24 0 -26 -3 -24 -7 Z" fill="#a98463"/>
+  </g>
+</svg>

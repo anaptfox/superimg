@@ -1,0 +1,7 @@
+interface:
+  display_name: '/superimg-variants'
+  short_description: 'Deliver one SuperImg media program to YouTube, portrait, square, custom sizes, content ...'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$superimg-variants: Deliver this video as reel + OG image'

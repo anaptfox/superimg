@@ -2,23 +2,23 @@
   "name": "podcast-splash",
   "version": "0.1.0",
   "private": true,
-  "description": "Generate podcast speaker splash intros — renders YouTube (16:9) and Reel (9:16) MP4s from one responsive template",
+  "description": "Generate podcast speaker splash intros \u2014 renders YouTube (16:9) and Reel (9:16) MP4s from one responsive template",
   "type": "module",
   "bin": {
     "podcast-splash": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "node ../../../scripts/typecheck-native.mjs",
     "start": "node --enable-source-maps dist/cli.js",
     "dev": "tsx src/cli.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "superimg": "workspace:*"
+    "@foxworth/superimg": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.0.0",
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }

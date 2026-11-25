@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "study": "cleft",
+  "method": "stone modal impact and bowed glass",
+  "seed": "345abcde",
+  "sampleRate": 48000,
+  "samplesPerFrame": 1600,
+  "channels": 2,
+  "bitDepth": 16,
+  "sampleCount": 864000,
+  "durationSeconds": 18,
+  "loop": false,
+  "peak": 0.72,
+  "rms": 0.08015534965355299,
+  "sha256": "e5d76bffecd266cbc936521b347d7da5ee2118470b4ff329ed2230e2ce029de3",
+  "cues": [
+    {
+      "id": "stone-impact",
+      "seconds": 2,
+      "kind": "stone-impact",
+      "duration": 1.8,
+      "frequency": 180,
+      "sample": 96000
+    },
+    {
+      "id": "bowed-glass",
+      "seconds": 6,
+      "kind": "bowed-glass",
+      "duration": 4,
+      "frequency": 290,
+      "sample": 288000
+    },
+    {
+      "id": "mineral-current",
+      "seconds": 12.4,
+      "kind": "mineral-current",
+      "duration": 1.5,
+      "frequency": 400,
+      "sample": 595200
+    },
+    {
+      "id": "stone-settle",
+      "seconds": 15,
+      "kind": "stone-settle",
+      "duration": 2,
+      "frequency": 510,
+      "sample": 720000
+    }
+  ]
+}

@@ -3,8 +3,7 @@
  * Pure enough for agents: JSON issues without watching MP4s.
  */
 
-import type { AnyTemplateModule, ComposedTemplate } from "@superimg/types";
-import { isComposedTemplate } from "@superimg/types";
+import type { AnyTemplateModule } from "@superimg/types";
 import { readTimeSeconds, wordCount } from "@superimg/stdlib/timing";
 import {
   probeDirectorPhases,
@@ -72,17 +71,12 @@ function guessHoldPhase(phases: NormalizedPhase[]): NormalizedPhase | null {
 
 function guessEnterPhase(phases: NormalizedPhase[]): NormalizedPhase | null {
   if (phases.length === 0) return null;
-  return (
-    phases.find((p) => /enter|intro|hook|in/i.test(p.name)) ?? phases[0]!
-  );
+  return phases.find((p) => /^(enter|intro)$/i.test(p.name)) ?? null;
 }
 
 function guessExitPhase(phases: NormalizedPhase[]): NormalizedPhase | null {
   if (phases.length < 2) return null;
-  return (
-    phases.find((p) => /exit|outro|out|resolve/i.test(p.name)) ??
-    phases[phases.length - 1]!
-  );
+  return phases.find((p) => /^(exit|outro)$/i.test(p.name)) ?? null;
 }
 
 /** Static source scan for craft anti-patterns. */
@@ -120,31 +114,10 @@ export function critiqueSource(source: string): CritiqueIssue[] {
  * Critique a loaded template module for motion craft issues.
  */
 export function critiqueTemplate(
-  template: AnyTemplateModule | ComposedTemplate,
+  template: AnyTemplateModule,
   opts: CritiqueOptions = {},
 ): CritiqueReport {
   const issues: CritiqueIssue[] = [];
-
-  if (isComposedTemplate(template)) {
-    return {
-      issues: [
-        {
-          severity: "info",
-          code: "NO_HOLD_PHASE",
-          message: "Composed multi-scene templates are not phase-probed at root",
-          suggestion: "Inspect individual scenes for craft metrics",
-        },
-      ],
-      phases: null,
-      metrics: {
-        duration: 0,
-        holdSeconds: null,
-        enterSeconds: null,
-        exitSeconds: null,
-        sampleCount: 0,
-      },
-    };
-  }
 
   const mod = template as AnyTemplateModule & {
     config?: {
@@ -172,7 +145,7 @@ export function critiqueTemplate(
   const phases = probeDirectorPhases(template, {
     fps,
     durationSeconds: duration,
-    data: opts.data,
+    ...(opts.data !== undefined ? { data: opts.data } : {}),
   });
 
   const minHold = opts.minHoldSeconds ?? 1;
@@ -198,7 +171,7 @@ export function critiqueTemplate(
           message: `Hold phase is ${holdSeconds.toFixed(2)}s (want ≥ ${minHold}s when duration ≥ ${minDur}s)`,
           suggestion:
             "Lengthen hold or use std.phases.recipe(\"hold-heavy\") / std.timing.sceneDuration({ text })",
-          phase: hold?.name,
+          ...(hold ? { phase: hold.name } : {}),
         });
       }
       if (phases.length < 2) {
@@ -223,7 +196,7 @@ export function critiqueTemplate(
         message: `Exit phase (${exitSeconds.toFixed(2)}s) is longer than enter (${enterSeconds.toFixed(2)}s)`,
         suggestion:
           "Make exit ~25% shorter than enter (e.g. enter 0.5s, exit 0.4s) or use std.phases.fromText",
-        phase: exit?.name,
+        ...(exit ? { phase: exit.name } : {}),
       });
     }
 
@@ -234,7 +207,7 @@ export function critiqueTemplate(
         message: `Enter phase is ${enterSeconds.toFixed(2)}s wall-clock (individual motions default-cap at ~375ms)`,
         suggestion:
           "Keep functional element enters under ~400ms; use hold for reading time",
-        phase: enter?.name,
+        ...(enter ? { phase: enter.name } : {}),
       });
     }
 
@@ -255,7 +228,7 @@ export function critiqueTemplate(
           message: `Hold ${holdSeconds.toFixed(2)}s may be short for "${longest.slice(0, 40)}${longest.length > 40 ? "…" : ""}" (need ≥ ${need.toFixed(2)}s settled)`,
           suggestion:
             "std.timing.readTime(text) for hold length; max(0.8, words/3) seconds",
-          phase: hold?.name,
+          ...(hold ? { phase: hold.name } : {}),
         });
       }
     }

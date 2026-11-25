@@ -25,6 +25,10 @@ export interface ExportOptions extends RenderExecutionOptions {
   onStatusChange?: (message: string) => void;
   /** Yield to the browser after this many frames. Default: 1. */
   yieldEveryFrames?: number;
+  lifecycle?: {
+    checkpoint(completed?: number, total?: number): Promise<void>;
+    finalizing(): void;
+  };
 }
 
 function yieldToBrowser(): Promise<void> {
@@ -64,7 +68,7 @@ export async function exportImageDataToVideo(
     options.onStatusChange?.("Rendering frames...");
     const yieldEvery = Math.max(1, Math.floor(options.yieldEveryFrames ?? 1));
     let pendingCapture: Promise<ImageData> = raceWithExecution(
-      captureFrame(0),
+      (async () => { await options.lifecycle?.checkpoint(0, totalFrames); return captureFrame(0); })(),
       executionOptions,
     );
     // A look-ahead capture can outlive an encode failure. Attach a rejection
@@ -85,7 +89,10 @@ export async function exportImageDataToVideo(
       const imageData = await pendingCapture;
 
       if (frame + 1 < totalFrames) {
-        pendingCapture = raceWithExecution(captureFrame(frame + 1), executionOptions);
+        pendingCapture = raceWithExecution(
+          (async () => { await options.lifecycle?.checkpoint(frame + 1, totalFrames); return captureFrame(frame + 1); })(),
+          executionOptions,
+        );
         pendingCapture.catch(() => undefined);
       }
 
@@ -104,6 +111,7 @@ export async function exportImageDataToVideo(
     await flushEncode();
 
     options.onStatusChange?.("Finalizing video...");
+    options.lifecycle?.finalizing();
     const blob = await encoder.finalize(executionOptions);
     complete = true;
     return blob;

@@ -1,0 +1,51 @@
+{
+  "name": "@superimg/docusaurus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Docusaurus plugin + theme components for SuperImg Player embeds in MDX docs. Builds on @superimg/adapters core.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown",
+    "test": "vitest --run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist",
+    "src/theme",
+    "src/theme-types.d.ts"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@superimg/adapters": "workspace:*",
+    "@superimg/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "@docusaurus/core": ">=3.0.0",
+    "react": ">=18",
+    "react-dom": ">=18",
+    "@foxworth/superimg": "*"
+  },
+  "devDependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@superimg/build-config": "workspace:*",
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "@foxworth/superimg": "workspace:*",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "MIT"
+}

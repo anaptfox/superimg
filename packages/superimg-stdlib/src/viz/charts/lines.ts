@@ -1,6 +1,7 @@
 import type { CoordSystem } from "../coords.js";
 import type { ChartSeries } from "./shared.js";
 import type { LineChartOpts } from "./line.js";
+import { chartColors } from "./shared.js";
 import { line } from "./line.js";
 
 export interface MultiLineOpts extends LineChartOpts {
@@ -18,11 +19,11 @@ export function lines(
       const staggered = opts.stagger
         ? Math.max(0, Math.min(1, ((opts.progress ?? 1) * n - i) / 1))
         : (opts.progress ?? 1);
-      const color = s.color;
+      const color = s.color ?? chartColors(opts)[i % chartColors(opts).length]!;
       return line(coords, s.data, {
         ...opts,
         progress: staggered,
-        colors: color ? [color] : opts.colors,
+        colors: [color],
       });
     })
     .join("\n");

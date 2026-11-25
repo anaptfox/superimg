@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -150 100 160">
+  <title>Tea tin — origin at bench contact. Label text and body paint are edit targets.</title>
+  <defs>
+    <linearGradient id="tin-copper" x1="-40" y1="0" x2="40" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4a2a1c"/><stop offset="0.62" stop-color="#8a4f33"/><stop offset="0.84" stop-color="#e0ac83"/><stop offset="1" stop-color="#6b3c26"/>
+    </linearGradient>
+    <linearGradient id="tin-celadon" x1="-40" y1="0" x2="40" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1f3a33"/><stop offset="0.62" stop-color="#3f6b5c"/><stop offset="0.84" stop-color="#a6cbb5"/><stop offset="1" stop-color="#2c4a3e"/>
+    </linearGradient>
+    <linearGradient id="tin-ink" x1="-40" y1="0" x2="40" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#15181c"/><stop offset="0.62" stop-color="#2d333b"/><stop offset="0.84" stop-color="#8d96a0"/><stop offset="1" stop-color="#20252b"/>
+    </linearGradient>
+    <linearGradient id="lid-brass" x1="-40" y1="0" x2="40" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7a5a2e"/><stop offset="0.7" stop-color="#d1a95f"/><stop offset="0.86" stop-color="#f3dfa8"/><stop offset="1" stop-color="#9a7537"/>
+    </linearGradient>
+    <linearGradient id="label-paper" x1="-34" y1="0" x2="34" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c9b48d"/><stop offset="0.6" stop-color="#efe2c6"/><stop offset="0.85" stop-color="#fbf3e0"/><stop offset="1" stop-color="#d8c7a3"/>
+    </linearGradient>
+    <clipPath id="label-wrap"><path d="M-36 -98 A36 8 0 0 0 36 -98 L36 -48 A36 8 0 0 1 -36 -48 Z"/></clipPath>
+  </defs>
+  <path id="tin-body" d="M-38 -128 L-38 -4 A38 9 0 0 0 38 -4 L38 -128 Z" fill="url(#tin-copper)"/>
+  <path id="tin-label" d="M-36 -98 A36 8 0 0 0 36 -98 L36 -48 A36 8 0 0 1 -36 -48 Z" fill="url(#label-paper)"/>
+  <g id="label-print" clip-path="url(#label-wrap)">
+    <text id="tin-name" x="0" y="-74" font-family="Bricolage Grotesque" font-size="15" font-weight="600" text-anchor="middle" fill="#3b2416">Lapsang</text>
+    <text id="tin-number" x="0" y="-58" font-family="Bricolage Grotesque" font-size="9" font-weight="600" text-anchor="middle" letter-spacing="2" fill="#8a4f33">No. 7</text>
+    <path id="label-rule" d="M-22 -88 L22 -88" fill="none" stroke="#8a4f33" stroke-width="0.8"/>
+  </g>
+  <path id="tin-label-shade" d="M8 -98 A36 8 0 0 0 36 -98 L36 -48 A36 8 0 0 1 8 -44 Z" fill="#ffffff" opacity="0.18"/>
+  <path id="tin-shoulder" d="M-38 -128 A38 9 0 0 0 38 -128 L38 -122 A38 9 0 0 1 -38 -122 Z" fill="#2a160c" opacity="0.45"/>
+  <path id="tin-lid" d="M-40 -130 L-40 -138 A40 9.5 0 0 1 40 -138 L40 -130 A40 9.5 0 0 1 -40 -130 Z" fill="url(#lid-brass)"/>
+  <ellipse id="tin-lid-top" cx="0" cy="-138" rx="40" ry="9.5" fill="#e3c27e"/>
+  <ellipse id="tin-lid-knob" cx="0" cy="-140" rx="9" ry="2.6" fill="#b88d47"/>
+</svg>

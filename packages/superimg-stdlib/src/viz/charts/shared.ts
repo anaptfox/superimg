@@ -19,6 +19,8 @@ export interface ChartScaleOpts {
 }
 
 export interface ChartOpts extends ChartScaleOpts {
+  /** Optional occurrence identity for locally scoped SVG definitions. */
+  id?: string;
   progress?: number;
   colors?: string[];
   animate?: "grow" | "draw" | "fade";
@@ -52,7 +54,7 @@ export const DEFAULT_CHART_COLORS = [
 ];
 
 export function chartColors(opts?: ChartOpts): string[] {
-  return opts?.colors ?? DEFAULT_CHART_COLORS;
+  return opts?.colors?.length ? opts.colors : DEFAULT_CHART_COLORS;
 }
 
 export function animOpacity(progress = 1, mode: ChartOpts["animate"] = "fade"): number {
@@ -79,7 +81,7 @@ export function chartScales(
   const [xMin, xMax] = opts?.xDomain ?? coords.config.xRange;
   const y = linearScale([yMin, yMax], [area.top + area.height, area.top]);
   const x = linearScale([xMin, xMax], [area.left, area.left + area.width]);
-  const baseline = y(yMin)!;
+  const baseline = y(baselineValue(yMin, yMax))!;
   return { x, y, yMin, yMax, xMin, xMax, baseline };
 }
 
@@ -117,4 +119,21 @@ export function drawDashAttrs(
     strokeDasharray: result.strokeDasharray,
     strokeDashoffset: result.strokeDashoffset,
   };
+}
+/** Zero when visible, otherwise the closest domain boundary. */
+export function baselineValue(min: number, max: number): number {
+  return Math.max(Math.min(min, max), Math.min(0, Math.max(min, max)));
+}
+
+/** First appearance order across every series, including later-only categories. */
+export function seriesCategories(series: ChartSeries[]): string[] {
+  return [...new Set(series.flatMap(s => s.data.map(d => d.label)))];
+}
+
+/** Pure definition id: equal definitions can share; differing geometry cannot alias. */
+export function chartClipId(prefix: string, id: string | undefined, geometry: unknown): string {
+  const text = JSON.stringify([id, geometry]);
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+  return `${prefix}-${(hash >>> 0).toString(36)}`;
 }

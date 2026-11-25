@@ -9,7 +9,9 @@ export default defineConfig({
   platform: "neutral",
   clean: true,
   entry: {
-    "index.edge": "src/index.edge.ts",
+    "runtime.edge": "src/runtime.edge.ts",
+    "runtime.edge-raster": "src/runtime.edge-raster.ts",
+    "runtime/html": "src/runtime.html.ts",
   },
   define: sharedDefine,
   deps: platformDeps,
@@ -17,5 +19,8 @@ export default defineConfig({
   // Namespace shared chunks so this secondary build can't overwrite node entries.
   outputOptions: {
     chunkFileNames: "chunks/edge/[name].js",
+    // Lazy capability chunks re-import bindings from the entry; keep those
+    // internal names readable instead of minified (`n`, `t`).
+    minifyInternalExports: false,
   },
 });

@@ -1,5 +1,6 @@
 import { Player } from "@superimg/player";
-import { playerView, helpBtn } from "./dom";
+import { playerView, helpBtn, exportPanel } from "./dom";
+import { closeExportPanel } from "./export";
 
 let playerInstance: Player | null = null;
 
@@ -9,8 +10,12 @@ export function initShortcuts(
   openExportPanel: () => void
 ) {
   document.addEventListener("keydown", (e) => {
-    // Escape: back to home when in player view
+    // Escape: close export first, then back to all media
     if (e.key === "Escape") {
+      if (exportPanel && !exportPanel.classList.contains("hidden")) {
+        closeExportPanel();
+        return;
+      }
       if (playerView.classList.contains("visible")) {
         location.href = "/";
       }
@@ -20,7 +25,8 @@ export function initShortcuts(
     const player = playerInfo();
     if (!player?.store) return;
 
-    const store = player.store.getState();
+    const store = player.store;
+    const state = store.getState();
     const target = e.target as HTMLElement;
     if (target.closest("input") || target.closest("textarea") || target.closest("select")) return;
 
@@ -41,21 +47,21 @@ export function initShortcuts(
         break;
       case "ArrowLeft":
         e.preventDefault();
-        if (store.isPlaying) return;
-        store.setFrame(Math.max(0, store.currentFrame - (e.shiftKey ? 10 : 1)));
+        if (state.isPlaying) return;
+        void store.seekFrame(Math.max(0, state.currentFrame - (e.shiftKey ? 10 : 1)));
         break;
       case "ArrowRight":
         e.preventDefault();
-        if (store.isPlaying) return;
-        store.setFrame(Math.min(store.totalFrames - 1, store.currentFrame + (e.shiftKey ? 10 : 1)));
+        if (state.isPlaying) return;
+        void store.seekFrame(Math.min(state.totalFrames - 1, state.currentFrame + (e.shiftKey ? 10 : 1)));
         break;
       case "Home":
         e.preventDefault();
-        store.setFrame(0);
+        void store.seekFrame(0);
         break;
       case "End":
         e.preventDefault();
-        store.setFrame(store.totalFrames - 1);
+        void store.seekFrame(state.totalFrames - 1);
         break;
       case "?":
         e.preventDefault();

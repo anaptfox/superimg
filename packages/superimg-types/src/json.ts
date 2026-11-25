@@ -1,10 +1,15 @@
 //! Serializable JSON-shaped values for template data defaults and CLI loaders.
 
-export type JsonPrimitive = string | number | boolean | null;
+import type { JsonObject, JsonValue, JsonPrimitive } from "@superimg/stdlib/scene-types";
+export type { JsonObject, JsonValue, JsonPrimitive } from "@superimg/stdlib/scene-types";
 
-export type JsonObject = { [key: string]: JsonValue };
-
-export type JsonValue = JsonPrimitive | JsonValue[] | JsonObject;
+/** Preserve a user data shape while rejecting functions and non-JSON leaves. */
+export type JsonCompatible<T> =
+  T extends JsonPrimitive ? T
+  : T extends readonly (infer TItem)[] ? readonly JsonCompatible<TItem>[]
+  : T extends (...args: never[]) => unknown ? never
+  : T extends object ? { [K in keyof T]: JsonCompatible<T[K]> }
+  : never;
 
 /** Top-level template sample / runtime data object. */
 export type TemplateData = JsonObject;

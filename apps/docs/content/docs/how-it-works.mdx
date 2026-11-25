@@ -1,163 +1,31 @@
 # How It Works
 
-SuperImg turns your HTML/CSS into media — MP4, GIF, PNG, or SVG. Here's exactly what happens under the hood.
+Author a media program, then play it live or export files. The pipeline below is for extenders who need the compile and export boundary.
 
-## The Pipeline
+## Authoring to play or export
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Template   │     │  Playwright │     │   Encoder   │
-│  (HTML/CSS) │ ──▶ │  screenshots│ ──▶ │  MP4 / GIF  │
-│             │     │  30x/second │     │  PNG / SVG  │
-└─────────────┘     └─────────────┘     └─────────────┘
-    You write         Browser            Final output
-```
-
-That's the entire system. No magic.
-
-## Step 1: You Write a Template
-
-A template is a `*.media.ts` file that exports a `render` function via `define()`. This function receives timing information and returns an HTML string.
-
-```typescript
-import { define } from "superimg";
-
-export default define({
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "3s"
-  },
-  sample: {
-    title: "Hello World"
-  },
-  render(ctx) {
-    const opacity = ctx.std.interpolate(ctx.timeline, [0, 1], [0, 1]);
-    return `<div style="opacity: ${opacity}">${ctx.data.title}</div>`;
-  }
-})
+```text
+*.media.ts media program
+      ↓
+source analysis
+      ├── server-only entries projection
+      └── browser-safe media projection
+                    ↓
+               MediaDefinition
+          ┌─────────┴─────────┐
+     Player (live)     entry × variant × edition
+                              ↓
+                       Media IR schema 0
+                              ↓
+                 destination/custom rendition
+                              ↓
+                      atomic export bundle
 ```
 
-The key insight: you're not "animating" anything. You're answering the question: **"What should be on screen at this exact moment?"**
+For ordinary media, the browser Player and server export both evaluate the same deterministic render function.
 
-Output kind is determined by config, not the filename:
+For collections, the compiler extracts `entries` before browser module resolution. Provider imports, static datasets, Node dependencies, secrets, and raw entry data are excluded from browser bundles, artifacts, IR, and sourcemaps. The server resolves and freezes the complete entry snapshot once, then reuses it across all planned renditions.
 
-| Output | Config signal |
-|--------|---------------|
-| **MP4/WebM** | `fps` + `duration` |
-| **GIF** | `fps` + `duration` + `--format gif` |
-| **Image** | no `fps`/`duration` |
-| **SVG** | `medium: "svg"` |
+Destinations do not enter `render(ctx)`. They turn the authored media into a requested canvas and encoding after the entry, variant, and edition coordinates are known.
 
-## Step 2: SuperImg Calls Your Function
-
-For a 3-second video at 30fps, SuperImg calls your `render` function 90 times—once per frame.
-
-Each call receives a `ctx` object with timing info:
-
-| Property | Frame 0 | Frame 45 | Frame 89 |
-|----------|---------|----------|----------|
-| `ctx.timeline.frame` | 0 | 45 | 89 |
-| `ctx.timeline.seconds` | 0.0 | 1.5 | 2.97 |
-| `ctx.timeline.progress` | 0.0 | 0.5 | 0.99 |
-
-Your function uses these values to calculate positions, colors, and opacities—then returns the HTML for that specific frame.
-
-## Step 3: Browser Screenshots Each Frame
-
-SuperImg runs a headless Chromium browser (via Playwright). For each frame:
-
-1. Injects your HTML into a sandboxed iframe
-2. Seeks any `std.video.sync()` elements to the correct media time
-3. Takes a screenshot at the exact canvas dimensions
-4. Saves the image
-
-This is why CSS works perfectly—it's a real browser rendering your styles.
-
-For stills, only one frame is captured via `render --frame <n>` or when the template has no `fps`/`duration`.
-
-## Step 4: Encode to Output
-
-Once frames are captured, the encoder produces the final file — MP4/WebM via mediabunny/FFmpeg, GIF via FFmpeg, PNG/WebP/JPEG via Sharp, or SVG via resvg.
-
-## Why This Architecture?
-
-### CSS Just Works
-
-Any CSS property animates correctly because it's rendered in a real browser. Flexbox, grid, transforms, filters, blend modes—all work exactly as you'd expect.
-
-### No Learning Curve
-
-You already know HTML and CSS. There's no new animation language to learn. If you can build a website, you can build a video.
-
-### Deterministic Output
-
-The same template + data = the same video. Every time. This makes videos testable, reproducible, and safe to generate in CI/CD pipelines.
-
-### Batch Rendering
-
-Pass different data to the same template, get different videos. Render 1,000 personalized videos from a CSV without changing any code.
-
-## What's in the Context?
-
-The `ctx` object your render function receives:
-
-```typescript
-render(ctx) {
-  // Scene timing — use these for animation in single-scene templates
-  ctx.timeline.frame           // Current frame within the scene (0-indexed)
-  ctx.timeline.seconds     // Elapsed seconds in the current scene
-  ctx.timeline.progress        // 0-1 progress through the current scene
-  ctx.timeline.totalFrames     // Total frames in this scene
-  ctx.timeline.durationSeconds // Duration of this scene
-
-  // Scene metadata (multi-scene compositions via compose())
-  ctx.sceneIndex           // Index of the current scene (0-indexed)
-  ctx.sceneId              // ID of the current scene
-
-  // Global timing — across the entire video (useful inside compose())
-  ctx.globalFrame          // Current frame across the entire video
-  ctx.globalTimeSeconds    // Elapsed seconds total
-  ctx.totalFrames          // Total frames in the video
-  ctx.totalDurationSeconds // Total duration of the video
-
-  // Video info
-  ctx.fps                  // Frames per second
-  ctx.isFinite             // True for finite-duration videos
-
-  // Canvas dimensions
-  ctx.width                // Canvas width in pixels
-  ctx.height               // Canvas height in pixels
-  ctx.aspectRatio          // width / height
-  ctx.isPortrait           // true when height > width
-  ctx.isLandscape          // true when width > height
-  ctx.isSquare             // true when width === height
-
-  // Data (merged from template sample + incoming render data)
-  ctx.data.title           // Your custom typed data
-
-  // Assets
-  ctx.asset('logo.png')    // URL for a file in the co-located assets/ folder
-  ctx.assets.hero          // Preloaded asset metadata declared in config.assets
-
-  // Output
-  ctx.output               // { name, width, height, fit } for the current preset
-  ctx.cssViewport          // Optional viewport overrides for responsive templates
-
-  // Standard library
-  ctx.ctx.director(...)       // Phase-based motion orchestration
-  ctx.std.layers(...)      // Z-ordered layer stack
-  ctx.std.video.sync(...)  // Frame-accurate embedded video
-  ctx.std.interpolate(...) // Multi-keyframe interpolation
-  ctx.std.css(...)         // Generate CSS strings
-}
-```
-
-The standard library covers more than `director`, `interpolate`, and `css` — see [Animation Basics](/docs/animation) for motion primitives and [Timing With Director And Cues](/docs/timing) for audio sync and cues.
-
-## Next Steps
-
-- [CLI Reference](/docs/cli) — Commands for creating and rendering media
-- [Animation Basics](/docs/animation) — How to think about timing and motion
-- [Player](/docs/player) — Embed videos in web apps
+The resulting URL-free schema-0 bundle records coordinates, hashes, dimensions, MIME types, producer identity, and paths. It records entry ids and data digests, never raw collection data.

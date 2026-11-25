@@ -1,4 +1,20 @@
-import { define } from "superimg";
+// Chapter IV — the colophon. The plate closes on the belt alone.
+import { define, Vector, vector, googleFont } from "@foxworth/superimg";
+import {
+  BONE,
+  GOLD,
+  ORION,
+  chartBox,
+  circle,
+  furniture,
+  ground,
+  place,
+  skyDefs,
+  starColor,
+  starRadius,
+} from "./sky.js";
+
+const BELT = ["alnitak", "alnilam", "mintaka"];
 
 export default define({
   medium: "svg",
@@ -6,57 +22,53 @@ export default define({
     width: 1920,
     height: 1080,
     fps: 30,
-    duration: "3s",
-    fonts: ["Inter:wght@400;600;800", "JetBrains+Mono:wght@400"],
+    duration: "3.5s",
+    fonts: [googleFont("Fraunces:wght@600"), googleFont("Inter:wght@400;600")],
   },
   sample: {
-    headline: "Rendered browser-free",
-    detail: "resvg-wasm · composeSvg · zero Playwright",
+    headline: "Drawn without a browser",
+    detail: "resvg · compose · deterministic frames",
+    plate: "COLOPHON",
   },
   render(ctx) {
     const { std, width, height, data, timeline } = ctx;
-    const t = ctx.director({ enter: "60%", hold: "25%", exit: "15%" });
-    const card = t.motion({ y: 40, scale: 0.92, easing: "easeOutBack" });
+    const t = ctx.director({ settle: "40%", read: "44%", hold: "16%" });
 
-    const ringCount = 5;
-    const rings: string[] = [];
-    for (let i = 0; i < ringCount; i++) {
-      const base = 100 + i * 55;
-      const r = base + 20 * Math.sin(timeline.progress * Math.PI * 2 + i);
-      const op = 0.08 + 0.06 * (ringCount - i) / ringCount;
-      rings.push(
-        `<circle cx="${width / 2}" cy="${height / 2}" r="${r.toFixed(1)}" fill="none" stroke="#5b8cff" stroke-width="1.5" opacity="${op.toFixed(3)}"/>`,
+    const arrive = std.interpolate(t.in("settle"), [0, 1], [0, 1], "easeOutCubic");
+    const box = chartBox(width, height);
+    const unit = box.w * 0.02;
+
+    // The belt drifts up into the colophon: three stars, one rule, one line.
+    const beltY = height * 0.4;
+    const belt = BELT.map((id) => ORION.find((s) => s.id === id)).filter(
+      (s): s is (typeof ORION)[number] => Boolean(s),
+    );
+    const beltEls = belt.map((s, i) => {
+      const from = place(s, box);
+      const to = { x: width / 2 + (i - 1) * 96, y: beltY };
+      const x = from.x + (to.x - from.x) * arrive;
+      const y = from.y + (to.y - from.y) * arrive;
+      const r = starRadius(s.mag, unit);
+      const live = 1 + 0.04 * Math.sin(timeline.seconds * 2 + i);
+      return vector.group({ id: `belt-${s.id}`, transform: { x, y, scale: live } },
+        vector.path({ d: circle(0, 0, r * 2.6), fill: starColor(s.hue), opacity: 0.16 }),
+        vector.path({ d: circle(0, 0, r), fill: starColor(s.hue) }),
       );
-    }
+    });
 
-    const checkScale = std.interpolate(t.in("enter"), [0.3, 1], [0, 1], "easeOutBack");
-    const badgeY = height / 2 - 30;
+    const readP = std.interpolate(t.in("read"), [0, 0.45], [0, 1], "easeOutCubic");
+    const headY = height * 0.58;
+    const rise = std.interpolate(arrive, [0, 1], [26, 0], "easeOutCubic");
+    const ruleW = width * 0.13 * readP;
 
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <defs>
-    <linearGradient id="outroBg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#06060f"/>
-      <stop offset="50%" stop-color="#0c1020"/>
-      <stop offset="100%" stop-color="#06060f"/>
-    </linearGradient>
-    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#4fd1c5"/>
-      <stop offset="100%" stop-color="#5b8cff"/>
-    </linearGradient>
-  </defs>
-  <rect width="${width}" height="${height}" fill="url(#outroBg)"/>
-  ${rings.join("\n")}
-  <g transform="translate(${width / 2} ${height / 2})" opacity="${card.opacity.toFixed(3)}">
-    <g transform="${card.transform}">
-    <g transform="translate(0 ${badgeY - height / 2}) scale(${checkScale.toFixed(3)})">
-      <circle cx="0" cy="0" r="52" fill="url(#badgeGrad)" opacity="0.9"/>
-      <path d="M -18 2 L -4 18 L 24 -14" fill="none" stroke="#06060f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
-    <text x="0" y="30" text-anchor="middle" font-family="Inter,sans-serif" font-size="56" font-weight="800" fill="#f0f4ff">${data.headline}</text>
-    <text x="0" y="85" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="22" fill="#8b95b0" letter-spacing="1">${data.detail}</text>
-    <text x="0" y="140" text-anchor="middle" font-family="Inter,sans-serif" font-size="20" fill="#5b8cff" letter-spacing="12" opacity="0.7">SUPERIMG</text>
-    </g>
-  </g>
-</svg>`;
+    return Vector(
+      { id: "winter-sky-colophon", width, height, viewBox: { x: 0, y: 0, width, height } },
+      skyDefs(), ground(width, height, 7),
+      furniture({ width, height, chapter: "THE WINTER SKY", plate: data.plate, ruleP: 1, op: arrive }),
+      vector.group({ id: "belt", filter: "bloom" }, ...beltEls),
+      ruleW > 0 ? vector.path({ d: `M${width / 2 - ruleW},${beltY + 78}H${width / 2 + ruleW}`, fill: "none", stroke: GOLD, strokeWidth: 1.4, opacity: 0.7 }) : null,
+      vector.text({ id: "headline", x: width / 2, y: headY + rise, anchor: "middle", family: "Fraunces, Georgia, serif", size: 64, weight: 600, fill: BONE, opacity: arrive }, data.headline),
+      vector.text({ id: "detail", x: width / 2, y: headY + 58 + rise, anchor: "middle", family: "Inter, sans-serif", size: 23, fill: BONE, letterSpacing: 3, opacity: 0.55 * readP }, data.detail),
+    );
   },
 });

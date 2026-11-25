@@ -1,0 +1,37 @@
+[
+  {
+    "at": 0.18,
+    "duration": 3.288798,
+    "voice": "Would you build a road that takes zero minutes? Watch what happens."
+  },
+  {
+    "at": 5.18,
+    "duration": 8.709751,
+    "voice": "Four thousand drivers. Two routes. The mint roads slow with traffic: drivers divided by a hundred, in minutes. The gray roads always take forty-five."
+  },
+  {
+    "at": 15.18,
+    "duration": 7.500000000000001,
+    "voice": "Traffic splits evenly. Two thousand drivers per route. Twenty minutes on the busy road, plus forty-five on the other. Sixty-five minutes each."
+  },
+  {
+    "at": 23.18,
+    "duration": 7.509025,
+    "voice": "Add a free shortcut. With the original traffic, one driver could do the trip in about forty minutes. What happens when everyone can use it?"
+  },
+  {
+    "at": 34.18,
+    "duration": 8.739546,
+    "voice": "Even at full load, each busy road takes forty minutes, beating forty-five. Everyone chooses both busy roads. Forty plus zero plus forty: eighty."
+  },
+  {
+    "at": 45.18,
+    "duration": 7.108209,
+    "voice": "Why not switch back? With everyone else on the shortcut, either old route now takes eighty-five. No driver can improve alone."
+  },
+  {
+    "at": 58.18,
+    "duration": 8.869116,
+    "voice": "Close the shortcut. Traffic splits again. Back to sixty-five. That is Braess's paradox: individual shortcuts can create a collective slowdown."
+  }
+]

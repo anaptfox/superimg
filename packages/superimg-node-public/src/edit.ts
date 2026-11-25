@@ -1,0 +1,3 @@
+export { NodeEditError, NodeEditUncertainError, NodeEditEngine, hashEditSource, extractEditBindings, compileNodeEditableSource, previewNodeEdit } from "../../superimg-node/src/library/edit-entry.js";
+export type { NodeEditErrorCode, NodeEditableSourceFile, NodeEditableCompilation, CompileEditableSourceArgs, NodeEditEngineOptions, NodeEditWriter, PlannedSourceReplacement, NodeEditPlan, EditableSourceFile, ExtractEditBindingsOptions, ExtractedEditBindings } from "../../superimg-node/src/library/edit-entry.js";
+export type { NodeEditPreviewOptions, NodeEditPreviewSample, NodeEditPreviewRow, NodeEditPreview } from "../../superimg-node/src/library/edit-entry.js";

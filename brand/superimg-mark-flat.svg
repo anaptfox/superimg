@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="SuperImg">
+  <!-- Favicon / 16–32px: simplified stack + play, no filters -->
+  <rect width="32" height="32" rx="7" fill="#0b0b14"/>
+  <rect x="5" y="6.5" width="16" height="12" rx="2.5" fill="#5b6fe8" opacity="0.7"/>
+  <rect x="7.5" y="9.5" width="16" height="12" rx="2.5" fill="#667eea" opacity="0.85"/>
+  <rect x="10" y="12.5" width="16" height="12" rx="2.5" fill="#8b5cf6"/>
+  <path d="M15.5 15.6 L15.5 21.4 L20.5 18.5 Z" fill="#0b0b14"/>
+</svg>

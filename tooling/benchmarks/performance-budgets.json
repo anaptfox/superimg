@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 0,
   "bundles": {
     "player": 180000,
     "reactPlayer": 195000,
@@ -28,8 +28,10 @@
     "rootImportMaxRssMb": 100,
     "playerImportP95Ms": 30,
     "playerImportMaxRssMb": 80,
-    "serverImportP95Ms": 650,
-    "serverImportMaxRssMb": 320,
+    "runtimeImportP95Ms": 650,
+    "runtimeImportMaxRssMb": 320,
+    "interactionsImportP95Ms": 650,
+    "interactionsImportMaxRssMb": 320,
     "cliHelpP95Ms": 150,
     "listShallowP95Ms": 250,
     "inspectSummaryP95Ms": 400

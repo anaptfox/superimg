@@ -1,6 +1,16 @@
 import { parseSync } from "oxc-parser";
 import { TemplateCompilationError } from "@superimg/types";
 import type { AstExpr, AstNode, AstObjectExpression } from "./ast.js";
+import {
+  isArrayExpression,
+  isCallExpression,
+  isIdentifier,
+  isLiteral,
+  isMemberExpression,
+  isObjectExpression,
+  isTemplateLiteral,
+  isUnaryExpression,
+} from "./ast.js";
 
 export interface TailwindMetadataConfig {
   css?: string;
@@ -21,24 +31,22 @@ export interface TemplateMetadataConfig {
   height?: number;
   fps?: number;
   duration?: number | string;
+  /** Playback intent for animated templates. */
+  temporal?: "once" | "loop";
   fonts?: string[];
   inlineCss?: string[];
   stylesheets?: string[];
   tailwind?: boolean | TailwindMetadataConfig;
-  outputs?: Record<string, { width?: number; height?: number; fps?: number; format?: string }>;
-  responsive?: boolean;
   type?: string;
   watermark?: import("@superimg/types").WatermarkValue;
   background?: import("@superimg/types").BackgroundValue;
   audio?: AudioMetadataConfig | { clips: AudioMetadataConfig[] };
-  assets?: Record<string, string | import("@superimg/types").AssetDeclaration>;
+  assets?: Record<string, import("@superimg/types").AssetDeclaration>;
 }
 
 export interface TemplateMetadata {
   hasRenderExport: boolean;
   hasDefaultExport: boolean;
-  /** True when the default export is compose() or composeSvg(). */
-  isComposed?: boolean;
   /** The `medium` field on the define() argument (string literal), default "html". */
   medium?: "html" | "svg";
   config?: TemplateMetadataConfig;
@@ -47,19 +55,19 @@ export interface TemplateMetadata {
 type VariableInitMap = Map<string, AstExpr | null>;
 
 function getIdentifierName(node: AstNode): string | undefined {
-  if (!node || node.type !== "Identifier") return undefined;
+  if (!node || !isIdentifier(node)) return undefined;
   return node.name;
 }
 
 function readPositiveNumberLiteral(node: AstNode): number | undefined {
   if (!node) return undefined;
-  if (node.type === "Literal" && typeof node.value === "number" && Number.isFinite(node.value) && node.value > 0) {
+  if (isLiteral(node) && typeof node.value === "number" && Number.isFinite(node.value) && node.value > 0) {
     return node.value;
   }
   if (
-    node.type === "UnaryExpression" &&
+    isUnaryExpression(node) &&
     node.operator === "-" &&
-    node.argument.type === "Literal" &&
+    isLiteral(node.argument) &&
     typeof node.argument.value === "number"
   ) {
     const value = -node.argument.value;
@@ -69,33 +77,33 @@ function readPositiveNumberLiteral(node: AstNode): number | undefined {
 }
 
 function readAudioClipObject(node: AstNode): AudioMetadataConfig | undefined {
-  if (node.type !== "ObjectExpression") return undefined;
+  if (!isObjectExpression(node)) return undefined;
   const config: AudioMetadataConfig = { src: "" };
   for (const prop of node.properties) {
     if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
     if (prop.computed) continue;
-    const key = prop.key.type === "Identifier" ? prop.key.name : undefined;
-    if (key === "id" && prop.value.type === "Literal" && typeof prop.value.value === "string") {
+    const key = isIdentifier(prop.key) ? prop.key.name : undefined;
+    if (key === "id" && isLiteral(prop.value) && typeof prop.value.value === "string") {
       config.id = prop.value.value;
     }
-    if (key === "src" && prop.value.type === "Literal" && typeof prop.value.value === "string") {
+    if (key === "src" && isLiteral(prop.value) && typeof prop.value.value === "string") {
       config.src = prop.value.value;
     }
-    if (key === "role" && prop.value.type === "Literal" && typeof prop.value.value === "string") {
+    if (key === "role" && isLiteral(prop.value) && typeof prop.value.value === "string") {
       config.role = prop.value.value;
     }
-    if (key === "loop" && prop.value.type === "Literal" && typeof prop.value.value === "boolean") {
+    if (key === "loop" && isLiteral(prop.value) && typeof prop.value.value === "boolean") {
       config.loop = prop.value.value;
     }
-    if (key === "volume" && prop.value.type === "Literal" && typeof prop.value.value === "number") {
+    if (key === "volume" && isLiteral(prop.value) && typeof prop.value.value === "number") {
       config.volume = prop.value.value;
     }
-    if (key === "fadeIn" && prop.value.type === "Literal") {
+    if (key === "fadeIn" && isLiteral(prop.value)) {
       if (typeof prop.value.value === "number" || typeof prop.value.value === "string") {
         config.fadeIn = prop.value.value;
       }
     }
-    if (key === "fadeOut" && prop.value.type === "Literal") {
+    if (key === "fadeOut" && isLiteral(prop.value)) {
       if (typeof prop.value.value === "number" || typeof prop.value.value === "string") {
         config.fadeOut = prop.value.value;
       }
@@ -104,12 +112,25 @@ function readAudioClipObject(node: AstNode): AudioMetadataConfig | undefined {
   return config.src ? config : undefined;
 }
 
-function readStringArrayLiteral(node: AstNode): string[] | undefined {
-  if (!node || node.type !== "ArrayExpression") return undefined;
+function readFontSpecs(node: AstNode): string[] | undefined {
+  if (!node || !isArrayExpression(node)) return undefined;
   const values: string[] = [];
   for (const el of node.elements) {
-    if (el && el.type === "Literal" && typeof el.value === "string") {
+    if (!el) continue;
+    if (isLiteral(el) && typeof el.value === "string" && el.value.trim().length > 0) {
       values.push(el.value);
+      continue;
+    }
+    if (
+      isCallExpression(el) &&
+      isIdentifier(el.callee) &&
+      el.callee.name === "googleFont" &&
+      el.arguments.length >= 1
+    ) {
+      const arg = el.arguments[0];
+      if (arg && isLiteral(arg) && typeof arg.value === "string" && arg.value.trim().length > 0) {
+        values.push(arg.value);
+      }
     }
   }
   return values.length > 0 ? values : undefined;
@@ -121,12 +142,12 @@ function readAudioConfig(node: AstNode): AudioMetadataConfig | { clips: AudioMet
   if (clip) return clip;
 
   // audio: { clips: [...] }
-  if (node.type === "ObjectExpression") {
+  if (isObjectExpression(node)) {
     for (const prop of node.properties) {
       if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
       if (prop.computed) continue;
-      const key = prop.key.type === "Identifier" ? prop.key.name : undefined;
-      if (key === "clips" && prop.value.type === "ArrayExpression") {
+      const key = isIdentifier(prop.key) ? prop.key.name : undefined;
+      if (key === "clips" && isArrayExpression(prop.value)) {
         const clips: AudioMetadataConfig[] = [];
         for (const el of prop.value.elements) {
           if (!el) continue;
@@ -142,22 +163,23 @@ function readAudioConfig(node: AstNode): AudioMetadataConfig | { clips: AudioMet
 
 function readTailwindConfig(node: AstNode): boolean | TailwindMetadataConfig | undefined {
   // tailwind: true
-  if (node.type === "Literal" && node.value === true) {
+  if (isLiteral(node) && node.value === true) {
     return true;
   }
   // tailwind: { css: "..." }
-  if (node.type === "ObjectExpression") {
+  if (isObjectExpression(node)) {
     const config: TailwindMetadataConfig = {};
     for (const prop of node.properties) {
       if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
       if (prop.computed) continue;
-      const key = prop.key.type === "Identifier" ? prop.key.name : undefined;
-      if (key === "css" && prop.value.type === "Literal" && typeof prop.value.value === "string") {
+      const key = isIdentifier(prop.key) ? prop.key.name : undefined;
+      if (key === "css" && isLiteral(prop.value) && typeof prop.value.value === "string") {
         config.css = prop.value.value;
       }
       // Also handle template literals for css
-      if (key === "css" && prop.value.type === "TemplateLiteral" && prop.value.quasis.length === 1) {
-        config.css = prop.value.quasis[0].value.cooked ?? prop.value.quasis[0].value.raw;
+      if (key === "css" && isTemplateLiteral(prop.value) && prop.value.quasis.length === 1) {
+        const quasi = prop.value.quasis[0]!;
+        config.css = quasi.value.cooked ?? quasi.value.raw;
       }
     }
     return Object.keys(config).length > 0 ? config : true; // Empty object = just enable tailwind
@@ -167,36 +189,48 @@ function readTailwindConfig(node: AstNode): boolean | TailwindMetadataConfig | u
 
 function readAssetsConfig(
   node: AstNode,
-): Record<string, string | import("@superimg/types").AssetDeclaration> | undefined {
-  if (node.type !== "ObjectExpression") return undefined;
-  const assets: Record<string, string | import("@superimg/types").AssetDeclaration> = {};
+): Record<string, import("@superimg/types").AssetDeclaration> | undefined {
+  if (!isObjectExpression(node)) return undefined;
+  const assets: Record<string, import("@superimg/types").AssetDeclaration> = {};
   for (const prop of node.properties) {
     if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
     if (prop.computed) continue;
     let key: string | undefined;
-    if (prop.key.type === "Identifier") key = prop.key.name;
-    else if (prop.key.type === "Literal" && typeof prop.key.value === "string") key = prop.key.value;
+    if (isIdentifier(prop.key)) key = prop.key.name;
+    else if (isLiteral(prop.key) && typeof prop.key.value === "string") key = prop.key.value;
     if (!key) continue;
 
-    if (prop.value.type === "Literal" && typeof prop.value.value === "string") {
-      assets[key] = prop.value.value;
-    } else if (prop.value.type === "ObjectExpression") {
-      const decl: { src?: string; type?: string } = {};
+    if (isObjectExpression(prop.value)) {
+      const decl: {
+        url?: string;
+        type?: import("@superimg/types").AssetDeclaration["type"];
+      } = {};
       for (const field of prop.value.properties) {
         if (field.type !== "Property" && field.type !== "ObjectProperty") continue;
         if (field.computed) continue;
         let fieldKey: string | undefined;
-        if (field.key.type === "Identifier") fieldKey = field.key.name;
-        else if (field.key.type === "Literal" && typeof field.key.value === "string") fieldKey = field.key.value;
+        if (isIdentifier(field.key)) fieldKey = field.key.name;
+        else if (isLiteral(field.key) && typeof field.key.value === "string") fieldKey = field.key.value;
         
-        if (fieldKey === "src" && field.value.type === "Literal" && typeof field.value.value === "string") {
-          decl.src = field.value.value;
+        if (fieldKey === "url" && isLiteral(field.value) && typeof field.value.value === "string") {
+          decl.url = field.value.value;
         }
-        if (fieldKey === "type" && field.value.type === "Literal" && typeof field.value.value === "string") {
+        if (
+          fieldKey === "type" &&
+          isLiteral(field.value) &&
+          (field.value.value === "image" ||
+            field.value.value === "video" ||
+            field.value.value === "audio")
+        ) {
           decl.type = field.value.value;
         }
       }
-      if (decl.src) assets[key] = decl;
+      if (decl.url) {
+        assets[key] = {
+          url: decl.url,
+          ...(decl.type !== undefined ? { type: decl.type } : {}),
+        };
+      }
     }
   }
   return Object.keys(assets).length > 0 ? assets : undefined;
@@ -211,7 +245,7 @@ function resolveConfigValue(
   variableInits: VariableInitMap,
   visited: Set<string> = new Set(),
 ): AstExpr | undefined {
-  if (node.type === "Identifier") {
+  if (isIdentifier(node)) {
     if (visited.has(node.name)) return undefined;
     visited.add(node.name);
     const init = variableInits.get(node.name);
@@ -242,9 +276,9 @@ function readConfigObject(
     if (property.computed) continue;
 
     let key: string | undefined;
-    if (property.key.type === "Identifier") {
+    if (isIdentifier(property.key)) {
       key = property.key.name;
-    } else if (property.key.type === "Literal" && typeof property.key.value === "string") {
+    } else if (isLiteral(property.key) && typeof property.key.value === "string") {
       key = property.key.value;
     }
     if (!key) continue;
@@ -253,52 +287,6 @@ function readConfigObject(
       const tailwindValue = readTailwindConfig(property.value);
       if (tailwindValue !== undefined) {
         config.tailwind = tailwindValue;
-      }
-      continue;
-    }
-
-    if (key === "outputs") {
-      const outputsExpr = resolveConfigValue(property.value, variableInits);
-      if (outputsExpr && outputsExpr.type === "ObjectExpression") {
-        const outputs: Record<string, { width?: number; height?: number; fps?: number; format?: string }> = {};
-        for (const presetProp of outputsExpr.properties) {
-          if (presetProp.type !== "Property" && presetProp.type !== "ObjectProperty") continue;
-          if (presetProp.computed) continue;
-          let presetName: string | undefined;
-          if (presetProp.key.type === "Identifier") {
-            presetName = presetProp.key.name;
-          } else if (presetProp.key.type === "Literal" && typeof presetProp.key.value === "string") {
-            presetName = presetProp.key.value;
-          }
-          if (!presetName) continue;
-          const presetExpr = presetProp.value;
-          if (presetExpr.type !== "ObjectExpression") continue;
-          const preset: { width?: number; height?: number; fps?: number; format?: string } = {};
-          for (const field of presetExpr.properties) {
-            if (field.type !== "Property" && field.type !== "ObjectProperty") continue;
-            if (field.computed) continue;
-            let fieldKey: string | undefined;
-            if (field.key.type === "Identifier") {
-              fieldKey = field.key.name;
-            } else if (field.key.type === "Literal" && typeof field.key.value === "string") {
-              fieldKey = field.key.value;
-            }
-            if (!fieldKey) continue;
-            if (fieldKey === "format" && field.value.type === "Literal" && typeof field.value.value === "string") {
-              preset.format = field.value.value;
-              continue;
-            }
-            const fieldValue = readPositiveNumber(field.value, variableInits);
-            if (fieldValue === undefined) continue;
-            if (fieldKey === "width") preset.width = fieldValue;
-            if (fieldKey === "height") preset.height = fieldValue;
-            if (fieldKey === "fps") preset.fps = fieldValue;
-          }
-          outputs[presetName] = preset;
-        }
-        if (Object.keys(outputs).length > 0) {
-          config.outputs = outputs;
-        }
       }
       continue;
     }
@@ -330,23 +318,25 @@ function readConfigObject(
     }
 
     if (key === "fonts") {
-      const fontsValue = readStringArrayLiteral(property.value);
+      const fontsValue = readFontSpecs(property.value);
       if (fontsValue !== undefined) {
         config.fonts = fontsValue;
       }
       continue;
     }
 
-    if (key === "responsive") {
-      if (property.value.type === "Literal" && typeof property.value.value === "boolean") {
-        config.responsive = property.value.value;
+    if (key === "type") {
+      if (isLiteral(property.value) && typeof property.value.value === "string") {
+        config.type = property.value.value;
       }
       continue;
     }
 
-    if (key === "type") {
-      if (property.value.type === "Literal" && typeof property.value.value === "string") {
-        config.type = property.value.value;
+    if (key === "temporal") {
+      if (isLiteral(property.value) && typeof property.value.value === "string") {
+        if (property.value.value === "once" || property.value.value === "loop") {
+          config.temporal = property.value.value;
+        }
       }
       continue;
     }
@@ -366,10 +356,10 @@ function readConfigObject(
   for (const property of expr.properties) {
     if (property.type !== "Property" && property.type !== "ObjectProperty") continue;
     if (property.computed) continue;
-    const key = property.key.type === "Identifier" ? property.key.name : undefined;
+    const key = isIdentifier(property.key) ? property.key.name : undefined;
     if (key === "duration" && !config.duration) {
       const resolved = resolveConfigValue(property.value, variableInits);
-      if (resolved && resolved.type === "Literal" && typeof resolved.value === "string") {
+      if (resolved && isLiteral(resolved) && typeof resolved.value === "string") {
         config.duration = resolved.value;
       }
     }
@@ -380,9 +370,8 @@ function readConfigObject(
     config.height === undefined &&
     config.fps === undefined &&
     config.duration === undefined &&
+    config.temporal === undefined &&
     config.tailwind === undefined &&
-    config.outputs === undefined &&
-    config.responsive === undefined &&
     config.type === undefined &&
     config.watermark === undefined &&
     config.background === undefined &&
@@ -406,7 +395,7 @@ function resolveExpression(
   const init = variableInits.get(name);
   if (!init) return undefined;
 
-  if (init.type === "Identifier") {
+  if (isIdentifier(init)) {
     return resolveExpression(init.name, variableInits, visited);
   }
 
@@ -415,9 +404,9 @@ function resolveExpression(
 
 function unwrapDefineTemplate(expr: AstExpr): AstExpr {
   if (
-    expr.type === "CallExpression" &&
+    isCallExpression(expr) &&
     expr.arguments.length === 1 &&
-    expr.arguments[0].type === "ObjectExpression"
+    isObjectExpression(expr.arguments[0]!)
   ) {
     return expr.arguments[0];
   }
@@ -473,21 +462,20 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
   const variableInits: VariableInitMap = new Map();
   let hasDefaultExport = false;
   let hasRenderExport = false;
-  let isComposed = false;
   let config: TemplateMetadataConfig | undefined;
   let medium: "html" | "svg" | undefined;
 
   function analyzeExportedExpression(declExpr: AstExpr) {
     let expr: AstExpr | undefined;
 
-    if (declExpr.type === "Identifier") {
+    if (isIdentifier(declExpr)) {
       expr = resolveExpression(declExpr.name, variableInits);
       if (expr) expr = unwrapDefineTemplate(expr);
     } else {
       expr = unwrapDefineTemplate(declExpr);
     }
 
-    if (expr && expr.type === "ObjectExpression") {
+    if (expr && isObjectExpression(expr)) {
       for (const prop of expr.properties) {
         if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
         if (prop.computed) continue;
@@ -497,44 +485,43 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
           hasRenderExport = true;
         } else if (key === "config") {
           const configExpr = resolveConfigValue(prop.value, variableInits);
-          if (configExpr && configExpr.type === "ObjectExpression") {
+          if (configExpr && isObjectExpression(configExpr)) {
             config = readConfigObject(configExpr, variableInits);
           }
         } else if (key === "medium") {
           // Top-level string literal: define({ medium: "svg", ... }).
-          if (prop.value.type === "Literal" && (prop.value.value === "svg" || prop.value.value === "html")) {
+          if (isLiteral(prop.value) && (prop.value.value === "svg" || prop.value.value === "html")) {
             medium = prop.value.value;
           }
         }
       }
     }
-    // compose([...]) / composeSvg([...]) return a TemplateModule with render
-    if (expr && expr.type === "CallExpression") {
+    // compose([...]) returns a TemplateModule with render
+    if (expr && isCallExpression(expr)) {
       const callee = expr.callee;
       const calleeName =
-        callee.type === "Identifier"
+        isIdentifier(callee)
           ? callee.name
-          : callee.type === "MemberExpression" &&
-            callee.property.type === "Identifier"
+          : isMemberExpression(callee) &&
+            isIdentifier(callee.property)
           ? callee.property.name
           : undefined;
       if (calleeName === "compose") {
         hasRenderExport = true;
-        isComposed = true;
         const configArg = expr.arguments[1];
-        if (configArg?.type === "ObjectExpression") {
+        if (configArg && isObjectExpression(configArg)) {
           const props = configArg.properties;
           for (const prop of props) {
             if (prop.type !== "Property" && prop.type !== "ObjectProperty") continue;
             const key = getIdentifierName(prop.key);
             if (key === "config") {
               const configExpr = resolveConfigValue(prop.value, variableInits);
-              if (configExpr && configExpr.type === "ObjectExpression") {
+              if (configExpr && isObjectExpression(configExpr)) {
                 config = readConfigObject(configExpr, variableInits);
                 if (config && !medium) {
                   for (const p2 of configExpr.properties) {
                     if (p2.type !== "Property" && p2.type !== "ObjectProperty") continue;
-                    if (getIdentifierName(p2.key) === "medium" && p2.value.type === "Literal" && p2.value.value === "svg") {
+                    if (getIdentifierName(p2.key) === "medium" && isLiteral(p2.value) && p2.value.value === "svg") {
                       medium = "svg";
                     }
                   }
@@ -589,7 +576,6 @@ export async function extractTemplateMetadata(code: string): Promise<TemplateMet
   return {
     hasRenderExport,
     hasDefaultExport,
-    ...(isComposed ? { isComposed } : {}),
     ...(medium !== undefined ? { medium } : {}),
     ...(config !== undefined ? { config } : {}),
   };

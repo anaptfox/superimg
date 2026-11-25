@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import posthog from "posthog-js";
-import { Player } from "superimg/react/player";
+import { Player } from "@foxworth/superimg/react/player";
 import type { EditorExample } from "@/lib/video/examples";
 import { usePlaygroundExample } from "@/lib/playground/example";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,7 +44,7 @@ export function TemplateCard({ example, active, onPreview, onSelect }: TemplateC
   );
 
   const {
-    template,
+    media,
     assets,
     assetResolver,
     duration,
@@ -109,12 +109,12 @@ export function TemplateCard({ example, active, onPreview, onSelect }: TemplateC
                 "Missing bundle — run `just generate-examples`"}
             </div>
           )}
-          {active && template && (
+          {active && media && (
             <Player
-              template={template}
+              media={media}
               assets={assets}
               assetResolver={assetResolver}
-              format="horizontal"
+              size={{ width: 1920, height: 1080 }}
               playbackMode="loop"
               loadMode="eager"
               autoPlay
@@ -123,7 +123,7 @@ export function TemplateCard({ example, active, onPreview, onSelect }: TemplateC
               style={{ aspectRatio: "16/9" }}
             />
           )}
-          {active && compiling && !template && (
+          {active && compiling && !media && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-neutral-950/60 text-xs text-white/70">
               Loading…
             </div>
@@ -156,6 +156,11 @@ export function TemplateCard({ example, active, onPreview, onSelect }: TemplateC
           {example.playground?.needsBundle && (
             <div className="absolute left-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-200">
               Bundle
+            </div>
+          )}
+          {example.playground?.needsAssets && (
+            <div className="absolute left-2 top-8 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-200">
+              Assets
             </div>
           )}
         </div>

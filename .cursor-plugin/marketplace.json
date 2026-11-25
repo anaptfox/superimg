@@ -1,0 +1,21 @@
+{
+  "name": "superimg",
+  "description": "SuperImg arrangements for Grok Bot — perceptual contracts, not a video template pack.",
+  "owner": {
+    "name": "anaptfox"
+  },
+  "plugins": [
+    {
+      "name": "superimg",
+      "description": "Arrangements that externalize identifiable human work. Each pattern fails when its invariants cannot be met.",
+      "source": {
+        "type": "local",
+        "path": "./packages/superimg-agent-plugins/grok-bot"
+      },
+      "category": "developer-tools",
+      "version": "0.1.0",
+      "tags": ["superimg", "arrangements", "grok-bot"],
+      "keywords": ["comparison", "timeline", "screenshot", "diagram", "before-and-after"]
+    }
+  ]
+}

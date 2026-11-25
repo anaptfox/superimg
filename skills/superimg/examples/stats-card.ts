@@ -1,5 +1,5 @@
 // Advanced template demonstrating director + motion, staggered entrance, and responsive sizing
-import { define } from "superimg";
+import { define, Frame, Stack, Text, googleFont } from "@foxworth/superimg";
 
 export default define({
   sample: {
@@ -16,23 +16,8 @@ export default define({
     height: 1080,
     fps: 30,
     duration: 4,
-    fonts: ["JetBrains+Mono:wght@400;600", "Inter:wght@400;600"],
-    inlineCss: [`
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #0f172a; font-family: 'Inter', sans-serif; overflow: hidden; }
-      .card {
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        text-align: left;
-      }
-      .label { font-weight: 600; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; }
-      .value-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 20px; }
-      .value { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
-      .unit { font-family: 'JetBrains Mono', monospace; color: rgba(255, 255, 255, 0.5); }
-      .bar-track { overflow: hidden; }
-      .bar-fill { height: 100%; }
-    `],
+    fonts: [googleFont("JetBrains+Mono:wght@400;600"), googleFont("Inter:wght@400;600")],
+    inlineCss: ["* { margin: 0; padding: 0; box-sizing: border-box; } body { overflow: hidden; }"],
   },
 
   render(ctx) {
@@ -66,31 +51,74 @@ export default define({
     const barGradient = std.color.mix(accentColor, secondaryColor, 0.3);
     const barBg = std.color.alpha("#ffffff", 0.1);
 
-    const bodyStyle  = std.css({ width, height }, std.css.center());
-    const cardStyle  = std.css({ padding: cardPadding }, cardAnim.style);
-    const labelStyle = std.css({ fontSize: labelSize }, labelAnim.style);
-    const valueStyle = std.css({ fontSize: valueSize, color: accentColor }, valueAnim.style);
-    const unitStyle  = std.css({ fontSize: valueSize * 0.4 }, valueAnim.style);
-    const trackStyle = std.css({ width: barMaxWidth, height: barHeight, background: barBg, borderRadius: barHeight / 2 });
-    const fillStyle  = std.css({
-      width: barFill * 100 + "%",
-      background: "linear-gradient(90deg, " + accentColor + ", " + barGradient + ")",
-      borderRadius: barHeight / 2,
-    });
-
-    return `
-      <div style="${bodyStyle}">
-        <div class="card" style="${cardStyle}">
-          <div class="label" style="${labelStyle}">${label}</div>
-          <div class="value-row">
-            <span class="value" style="${valueStyle}">${displayValue}</span>
-            <span class="unit" style="${unitStyle}">${unit}</span>
-          </div>
-          <div class="bar-track" style="${trackStyle}">
-            <div class="bar-fill" style="${fillStyle}"></div>
-          </div>
-        </div>
-      </div>
-    `;
+    return Frame(
+      { width, height, fill: "#0f172a" },
+      Stack(
+        { width: "fill", height: "fill", align: "center", justify: "center" },
+        Frame(
+          {
+            radius: 16,
+            pad: cardPadding,
+            fill: "rgba(255,255,255,0.03)",
+            motion: cardAnim,
+            style: { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" },
+          },
+          Stack(
+            { gap: 20 },
+            Text(
+              {
+                variant: "label",
+                size: labelSize,
+                weight: 600,
+                color: "rgba(255,255,255,0.6)",
+                letterSpacing: 2,
+                motion: labelAnim,
+              },
+              label.toUpperCase(),
+            ),
+            Stack(
+              { direction: "row", align: "end", gap: 8 },
+              Text(
+                {
+                  variant: "display",
+                  size: valueSize,
+                  weight: 600,
+                  color: accentColor,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  motion: valueAnim,
+                },
+                displayValue,
+              ),
+              Text(
+                {
+                  variant: "title",
+                  size: valueSize * 0.4,
+                  color: "rgba(255,255,255,0.5)",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  motion: valueAnim,
+                },
+                unit,
+              ),
+            ),
+            Frame(
+              {
+                width: barMaxWidth,
+                height: barHeight,
+                radius: barHeight / 2,
+                fill: barBg,
+                overflow: "hidden",
+                motion: barAnim,
+              },
+              Frame({
+                width: barMaxWidth * barFill,
+                height: barHeight,
+                radius: barHeight / 2,
+                fill: `linear-gradient(90deg, ${accentColor}, ${barGradient})`,
+              }),
+            ),
+          ),
+        ),
+      ),
+    );
   },
 });

@@ -1,65 +1,37 @@
 # Lower Thirds Example
 
-A broadcast-style lower third graphic — the kind you see on TV or YouTube
-identifying a speaker. Slides in from the left with staggered animation,
-holds, then slides back out.
+A transparent, broadcast-style speaker ID. Risograph paper slab: bone stock, ink
+type, one terracotta bar, and deliberate misregistration on the name.
 
 ## Quick Start
 
 ```bash
-# Development mode (browser preview with hot reload)
-pnpm dev
-
-# Render to file
-pnpm render
+npx superimg check examples/marketing/lower-thirds/lower-thirds.media.ts --pretty
+npx superimg export examples/marketing/lower-thirds/lower-thirds.media.ts --for youtube
+npx superimg dev examples/marketing/lower-thirds/lower-thirds.media.ts
 ```
 
 ## What You'll Learn
 
-This template demonstrates staggered element animation with directional
-slide transitions:
+- `Frame` / `Safe` composition for a product-specific overlay on a transparent root
+- `ctx.director()` for explicit enter, hold, and exit phases
+- `std.stagger.ms()` for capped, wall-clock entrance and reverse exit cascades
+- `std.interpolate()` driving a `clip-path` paper unroll rather than a slide
+- Riso misregistration: an accent-colored copy of the name offset behind the ink copy
+- Responsive font, padding, and slab sizing through `ctx.isPortrait`
 
-| Function | What it does here |
-|----------|-------------------|
-| `std.interpolate(p, [0, 1], [a, b], easing)` | Eased slide-in/slide-out translation and stagger timing |
-| `std.math.clamp(val, 0, 1)` | Create timed phases with stagger offsets |
-| `std.color.alpha(color, opacity)` | Semi-transparent backgrounds and accent glow |
+## Timeline
 
-It also demonstrates:
-- **Staggered animation**: Bar appears first, then name, then title (0.15s and 0.35s offsets)
-- **Reverse-order exit**: Title leaves first, then name, then bar
-- **Responsive sizing**: Font sizes and padding adapt via `ctx.isPortrait`
-- **Overlay-ready**: Transparent background for compositing over video
-
-## Animation Timeline (4 seconds)
-
-```
-Time:  0.0   0.5   1.0   1.5   2.0   2.5   3.0   3.5   4.0
-       |--ENTER--|------HOLD------|---EXIT---|
-Bar:   ====>                               <====
-Name:    =====>                          <=====
-Title:      =====>                    <=====
-```
+The four-second scene uses a 0.85s entrance, 2.5s hold, and 0.65s exit. Four beats
+enter in order — bar grows, paper unrolls, name rises, title follows — and reverse
+on the way out.
 
 ## Customize It
 
-Edit the sample in the template file:
-
-```js
-export default define({
-  sample: {
-    name: "Jane Doe",
-    title: "Senior Engineer, Acme Corp",
-    accentColor: "#3b82f6",
-  },
-  // ...
-});
-```
-
-Try different accent colors: `#ef4444` (red), `#22c55e` (green), `#f59e0b` (amber), `#8b5cf6` (purple).
+Edit `sample`, provide live Player data, or use a collection for batch speaker ids.
+`accentColor` drives both the bar and the misregistered name ghost.
 
 ## Next Steps
 
-- [hello-world](../hello-world) — Animated title card with fade-in/out
-- [countdown](../countdown) — Countdown timer with particle effects
-- [assets-demo](../assets-demo) — Backgrounds, audio, and template defaults
+- [Hello World](../../basics/hello-world/) — Animated title card
+- [Countdown](../countdown/) — Split-flap countdown board

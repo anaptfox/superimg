@@ -15,7 +15,7 @@ const cliVersion = version("packages/superimg-cli/package.json");
 
 if (publicVersion !== cliVersion) {
   throw new Error(
-    `Ship-together version mismatch: superimg=${publicVersion}, @superimg/cli=${cliVersion}`,
+    `Ship-together version mismatch: @foxworth/superimg=${publicVersion}, @foxworth/superimg-cli=${cliVersion}`,
   );
 }
 

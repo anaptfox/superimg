@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Player, type PlayerRef } from "superimg/react/player";
+import { Player, type PlayerRef } from "@foxworth/superimg/react/player";
 import { introTemplate } from "@/content/templates/intro-demo";
 
 export default function HeroPlayer() {
@@ -10,8 +10,8 @@ export default function HeroPlayer() {
   return (
     <Player
       ref={playerRef}
-      template={introTemplate}
-      format="horizontal"
+      media={introTemplate}
+      size={{ width: 1920, height: 1080 }}
       playbackMode="loop"
       loadMode="eager"
       style={{ width: "100%", height: "100%", aspectRatio: "16/9" }}

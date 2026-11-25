@@ -1,0 +1,7 @@
+assets/*.aiff
+assets/*.wav
+assets/*.mp3
+assets/*.txt
+output/
+
+assets/audio.generated.json

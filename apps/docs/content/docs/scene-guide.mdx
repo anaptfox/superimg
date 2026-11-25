@@ -1,0 +1,28 @@
+# Scene Guides
+
+Guides describe a singular interactive experience. They are imported from `@foxworth/superimg/interactive/define` and consumed by `InteractivePlayer`.
+
+```ts
+import { defineInteractive } from "@foxworth/superimg/interactive/define";
+
+interface Lesson {
+  title: string;
+  steps: readonly Step[];
+}
+
+export default defineInteractive<Lesson>({
+  guide: lessonGuide,
+  sample: defaultLesson,
+  render(ctx) {
+    return renderLesson(ctx.data);
+  },
+});
+```
+
+```tsx
+import { InteractivePlayer } from "@foxworth/superimg/react/interactive";
+
+<InteractivePlayer media={lesson} data={selectedLesson} />
+```
+
+The guide package owns layout, checkpoints, navigation, actions, and semantic scene checks. Offline export can use explicit sample/default data. There is no entry coordinate or batch expansion for interactive definitions.

@@ -21,6 +21,8 @@ export interface MediaClockOptions {
   onPlay?: () => void;
   onPause?: () => void;
   onEnded?: () => void;
+  /** Internal observation failure reporting; does not alter clock ownership. */
+  onObserverError?: (error: unknown) => void;
 }
 
 type Listener = () => void;
@@ -55,6 +57,9 @@ export class MediaClock {
   private readonly onPlay?: () => void;
   private readonly onPause?: () => void;
   private readonly onEnded?: () => void;
+  private readonly onObserverError?: (error: unknown) => void;
+  private notificationDepth = 0;
+  private notificationPending = false;
 
   constructor(options: MediaClockOptions) {
     this.fps = options.fps;
@@ -67,13 +72,34 @@ export class MediaClock {
     if (options.onPlay) this.onPlay = options.onPlay;
     if (options.onPause) this.onPause = options.onPause;
     if (options.onEnded) this.onEnded = options.onEnded;
+    if (options.onObserverError) this.onObserverError = options.onObserverError;
   }
 
   configure(options: { fps?: number; totalFrames?: number; playbackMode?: MediaPlaybackMode }): void {
+    const fps = options.fps ?? this.fps;
+    const totalFrames = options.totalFrames !== undefined
+      ? Math.max(1, Math.floor(options.totalFrames)) : this.totalFrames;
+    const playbackMode = options.playbackMode ?? this.playbackMode;
+    if (fps === this.fps && totalFrames === this.totalFrames && playbackMode === this.playbackMode) return;
+    // Rebase only when the clock contract changes. A data-only update never
+    // touches the anchor. FPS changes retain time in seconds, including the
+    // fractional frame, rather than retroactively changing elapsed playback.
+    const now = this.now();
+    const runningPosition = this.isPlaying
+      ? this.startFrame + Math.max(0, now - this.startedAtMs) * this.fps / 1000
+      : this.currentFrame;
+    const position = this.playbackMode === "loop"
+      ? runningPosition % this.totalFrames
+      : runningPosition;
+    const nextPosition = position / this.fps * fps;
     if (options.fps !== undefined) this.fps = options.fps;
-    if (options.totalFrames !== undefined) this.totalFrames = Math.max(1, Math.floor(options.totalFrames));
+    this.totalFrames = totalFrames;
     if (options.playbackMode !== undefined) this.playbackMode = options.playbackMode;
-    this.currentFrame = this.clampFrame(this.currentFrame);
+    this.currentFrame = this.clampFrame(nextPosition);
+    if (this.isPlaying) {
+      this.startFrame = Math.min(nextPosition, this.totalFrames - 1);
+      this.startedAtMs = now;
+    }
     this.emit();
   }
 
@@ -93,6 +119,19 @@ export class MediaClock {
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** Internal session seam: publish synchronous clock changes after its commit. */
+  batch<T>(commit: () => T): T {
+    this.notificationDepth += 1;
+    try { return commit(); }
+    finally {
+      this.notificationDepth -= 1;
+      if (this.notificationDepth === 0 && this.notificationPending) {
+        this.notificationPending = false;
+        this.emit();
+      }
+    }
   }
 
   play(): void {
@@ -136,7 +175,7 @@ export class MediaClock {
   step(nowMs: number = this.now()): void {
     if (!this.isPlaying) return;
     const elapsed = (nowMs - this.startedAtMs) / 1000;
-    const frame = this.startFrame + Math.floor(elapsed * this.fps);
+    const frame = Math.floor(this.startFrame + elapsed * this.fps);
     if (frame >= this.totalFrames) {
       if (this.playbackMode === "loop") {
         this.currentFrame = 0;
@@ -187,6 +226,15 @@ export class MediaClock {
   }
 
   private emit(): void {
-    this.listeners.forEach((listener) => listener());
+    if (this.notificationDepth > 0) {
+      this.notificationPending = true;
+      return;
+    }
+    this.listeners.forEach((listener) => {
+      try { listener(); }
+      catch (error) {
+        try { this.onObserverError?.(error); } catch { /* observation is passive */ }
+      }
+    });
   }
 }

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { bundleTemplateCodeWithMap } from "@superimg/core/bundler";
-import type { FrameRenderer, RenderJob, VideoEncoder } from "@superimg/types";
+import type { Rasterizer, RenderJob, VideoEncoder } from "@superimg/types";
 import { createRenderSession, type RenderSessionEngine } from "./render-session.js";
 
-function renderer(): FrameRenderer<string> {
+function renderer(): Rasterizer<string> {
   return {
     init: async () => {},
-    captureFrame: async (html) => html,
+    rasterize: async (html) => html,
     dispose: async () => {},
   };
 }
@@ -25,10 +25,10 @@ function encoder(frames: Array<{ frame: string; ts: number }>): VideoEncoder<str
 async function job(): Promise<RenderJob> {
   const templateBundle = await bundleTemplateCodeWithMap(
     `
-      import { define } from "superimg";
+      import { define, Html } from "@foxworth/superimg";
       export default define({
         config: { fps: 10, duration: 0.2, width: 100, height: 100 },
-        render(ctx) { return "<main>" + ctx.globalFrame + "</main>"; }
+        render(ctx) { return Html({ width: "fill", height: "fill", html: "<main>" + ctx.globalFrame + "</main>" }); }
       });
     `,
     { sourcefile: "session.media.ts" },
@@ -83,7 +83,7 @@ describe("RenderSession", () => {
         return {
           renderer: {
             init: async () => {},
-            captureFrame: async (html) => {
+            rasterize: async (html) => {
               if (current === 1) {
                 captureStarted();
                 await captureGate;
@@ -111,6 +111,43 @@ describe("RenderSession", () => {
     await session.close();
   });
 
+  it("does not let a third job overtake an active job when the second queued job aborts", async () => {
+    let releaseFirst!: () => void;
+    const gate = new Promise<void>((resolve) => { releaseFirst = resolve; });
+    let started!: () => void;
+    const firstStarted = new Promise<void>((resolve) => { started = resolve; });
+    let adapters = 0;
+    const engine: RenderSessionEngine<string> = {
+      async init() {},
+      createAdapters() {
+        const first = ++adapters === 1;
+        return {
+          renderer: { async init() {}, async rasterize(html) {
+            if (first) { started(); await gate; }
+            return html;
+          }, async dispose() {} },
+          encoder: encoder([]),
+        };
+      },
+      async dispose() {},
+    };
+    const session = await createRenderSession({ engine });
+    const renderJob = await job();
+    const first = session.render(renderJob);
+    await firstStarted;
+    const controller = new AbortController();
+    const second = session.render(renderJob, { signal: controller.signal });
+    controller.abort();
+    await expect(second).rejects.toMatchObject({ code: "aborted" });
+    const third = session.render(renderJob);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(adapters).toBe(1);
+    releaseFirst();
+    await Promise.all([first, third]);
+    expect(adapters).toBe(2);
+    await session.close();
+  });
+
   it("cancels queued work without starting new adapters", async () => {
     let releaseCapture!: () => void;
     const captureGate = new Promise<void>((resolve) => { releaseCapture = resolve; });
@@ -124,7 +161,7 @@ describe("RenderSession", () => {
         return {
           renderer: {
             init: async () => {},
-            captureFrame: async (html) => {
+            rasterize: async (html) => {
               captureStarted();
               await captureGate;
               return html;
@@ -162,7 +199,7 @@ describe("RenderSession", () => {
       createAdapters: () => ({
         renderer: {
           init: async () => {},
-          captureFrame: async (html) => {
+          rasterize: async (html) => {
             captureStarted();
             await captureGate;
             return html;

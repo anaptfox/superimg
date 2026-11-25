@@ -10,7 +10,7 @@
     "build": "pnpm turbo:prepare && turbo run build --filter=!docs",
     "build:affected": "pnpm turbo:prepare && turbo run build --affected --filter=!docs",
     "build:docs": "pnpm turbo:prepare && turbo run build --filter=docs",
-    "build:render": "pnpm turbo:prepare && turbo run build --filter=@superimg/cli...",
+    "build:render": "pnpm turbo:prepare && turbo run build --filter=@superimg/types --filter=@superimg/core --filter=@superimg/playwright --filter=@superimg/node --filter=@superimg/browser-export --filter=@superimg/edge-runtime --filter=@superimg/interactions --filter=@foxworth/superimg-cli... --filter=@foxworth/superimg",
     "bench:build": "pnpm --filter @superimg/benchmarks run measure",
     "bench:quick": "pnpm --filter @superimg/benchmarks run bench:quick",
     "bench:catalog": "pnpm --filter @superimg/benchmarks run bench:catalog",
@@ -19,52 +19,55 @@
     "rebuild:render": "pnpm clean:render && pnpm build:render",
     "rebuild": "pnpm clean && pnpm build",
     "test": "pnpm turbo:prepare && turbo run test",
+    "test:browser-inspection": "pnpm build:render && pnpm --filter @superimg/integration-tests test:browser-inspection",
+    "verify:inspection": "pnpm check && pnpm verify:examples && pnpm test:browser-inspection",
     "test:affected": "pnpm turbo:prepare && turbo run test --affected",
     "test:coverage": "pnpm turbo:prepare && turbo run test -- --coverage",
     "typecheck": "pnpm turbo:prepare && turbo run typecheck check-types",
     "lint": "pnpm turbo:prepare && turbo run lint lint:root",
     "lint:root": "eslint packages --max-warnings 0",
     "verify": "pnpm turbo:prepare && turbo run verify",
+    "verify:examples": "pnpm build:render && tsx scripts/verify-example-catalog.mts",
     "verify:generated-artifacts": "node scripts/verify-generated-artifacts.mjs",
+    "verify:docs": "node scripts/verify-docs.mjs",
+    "verify:public-boundary": "node scripts/verify-public-boundary.mjs",
     "verify:versions": "node scripts/verify-package-versions.mjs && pnpm verify:generated-artifacts",
-    "check": "pnpm verify:versions && pnpm turbo:prepare && turbo run build test typecheck check-types verify lint lint:root --concurrency=50%",
-    "check:affected": "pnpm verify:versions && pnpm turbo:prepare && turbo run build test typecheck check-types verify lint lint:root --affected --concurrency=50%",
+    "check": "pnpm verify:library-boundaries && pnpm verify:public-boundary && pnpm verify:versions && pnpm verify:docs && pnpm turbo:prepare && turbo run build test typecheck check-types verify lint lint:root --concurrency=25% && pnpm verify:codec-consumers",
+    "check:affected": "pnpm verify:public-boundary && pnpm verify:versions && pnpm verify:docs && pnpm turbo:prepare && turbo run build test typecheck check-types verify lint lint:root --affected --concurrency=25%",
     "clean": "pnpm turbo:prepare && turbo run clean",
-    "clean:render": "pnpm turbo:prepare && turbo run clean --filter=@superimg/cli...",
-    "videos": "node ./packages/superimg/dist/cli.js dev"
+    "clean:render": "pnpm turbo:prepare && turbo run clean --filter=@foxworth/superimg-cli...",
+    "videos": "node ./packages/superimg-cli/dist/cli.js dev",
+    "verify:library-boundaries": "node --test scripts/library-first-boundaries.test.mjs",
+    "verify:library-consumers": "node scripts/verify-library-consumers.mjs",
+    "verify:codec-consumers": "node scripts/verify-codec-consumers.mjs"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "engines": {
-    "node": ">=22.12.0",
-    "pnpm": ">=10.32.1"
+    "node": ">=26.0.0",
+    "pnpm": ">=12.18.0"
   },
-  "packageManager": "pnpm@10.32.1",
-  "pnpm": {
-    "overrides": {
-      "@types/react": "19.2.17",
-      "@types/react-dom": "19.2.3",
-      "env-runner": "0.1.14"
-    }
-  },
+  "packageManager": "pnpm@12.18.0",
   "devDependencies": {
-    "@seydx/node-av-darwin-arm64": "^6.1.1",
-    "@types/node": "^26.0.0",
-    "@vitest/coverage-v8": "^4.1.9",
-    "eslint": "^10.5.0",
-    "superimg": "workspace:*",
-    "tsdown": "^0.22.3",
-    "tsx": "^4.22.4",
-    "turbo": "^2.10.4",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.46.2",
-    "vite": "^8.1.0",
-    "vitest": "^4.1.9"
+    "@bytecodealliance/jco": "1.37.0",
+    "@foxworth/superimg": "workspace:*",
+    "@seydx/node-av-darwin-arm64": "^6.2.0",
+    "@seydx/node-av-linux-arm64": "6.2.0",
+    "@types/node": "catalog:",
+    "@typescript/native": "npm:typescript@7.0.2",
+    "@vitest/coverage-v8": "^5.1.0",
+    "eslint": "catalog:",
+    "tsdown": "catalog:",
+    "tsx": "catalog:",
+    "turbo": "^2.11.10",
+    "typescript": "catalog:",
+    "typescript-eslint": "^8.72.2",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "zod": "^4.6.7"
   },
   "dependencies": {
-    "@shikijs/langs": "^4.3.0",
-    "@shikijs/themes": "^4.3.0",
-    "playwright": "^1.61.1"
+    "playwright": "catalog:"
   }
 }

@@ -1,9 +1,17 @@
 //! Template compilation - evaluates pre-bundled code into TemplateModule
 
-import type { TemplateModule, CompileError, CompileResult } from "@superimg/types";
+import type {
+  CompileError,
+  CompileResult,
+  MediaDefinition,
+  TemplateBundle,
+} from "@superimg/types";
 import { TemplateCompilationError } from "@superimg/types";
+import { isMediaElement } from "@superimg/types";
+import { copyStdlibCapabilityStamp, getStampedMediaCapabilities, stampStdlibCapabilitiesFromSource } from "../shared/stdlib-capability-detection.js";
+import { normalizeCompilerError } from "../errors/compiler-diagnostics.js";
 
-export type { TemplateModule, CompileError, CompileResult } from "@superimg/types";
+export type { CompileError, CompileResult, MediaDefinition } from "@superimg/types";
 
 /**
  * Evaluates pre-bundled template code into a TemplateModule.
@@ -13,50 +21,47 @@ export type { TemplateModule, CompileError, CompileResult } from "@superimg/type
  * when compilation fails. Engine layer enriches the error with sourcemap-mapped
  * location + code frame before surfacing to users.
  */
-export function compileTemplate(bundledCode: string): CompileResult {
+export function compileTemplate(input: string | TemplateBundle): CompileResult {
+  const bundledCode = typeof input === "string" ? input : input.code;
+  const nativeModules = Object.fromEntries((typeof input === "string" ? [] : input.nativeModuleSets ?? []).map(set => [set.identity, set.outputs]));
   let factory: Function;
   try {
-    factory = new Function(bundledCode + "\nreturn __template;");
+    factory = new Function("__superimgNativeModules", bundledCode + "\nreturn __template;");
   } catch (e) {
-    const err = e as Error;
     return {
-      error: new TemplateCompilationError({
-        syntaxError: err.message,
-      }),
+      error: normalizeCompilerError(e, "evaluate"),
     };
   }
 
-  let exports: { default?: TemplateModule };
+  let exports: {
+    default?: MediaDefinition | NonNullable<CompileResult["interactive"]>;
+  };
   try {
-    exports = factory() as { default?: TemplateModule };
+    exports = factory(nativeModules) as {
+      default?: MediaDefinition | NonNullable<CompileResult["interactive"]>;
+    };
   } catch (e) {
-    const err = e as Error;
-    const tce = new TemplateCompilationError({
-      syntaxError: err.message,
-    });
-    if (err.stack) tce.stack = err.stack;
-    return { error: tce };
+    return { error: normalizeCompilerError(e, "evaluate") };
   }
 
   const def = exports?.default;
-  if (!def || typeof def.render !== "function") {
+  if (
+    !def ||
+    (def.kind !== "media" && def.kind !== "interactive") ||
+    typeof def.render !== "function"
+  ) {
     return {
       error: new TemplateCompilationError({
-        syntaxError: "Template must use define({ render(ctx) { ... } })",
-        suggestion: "Add `export default define({ render(ctx) { return '<div/>' } })` to your template.",
+        syntaxError:
+          "Media source must export a deterministic media or interactive definition",
+        suggestion:
+          "Export `video(...)`, `image(...)`, `svg(...)`, `ogImage(...)`, `define(...)`, or `defineInteractive(...)` as the default value.",
       }),
     };
   }
 
-  // Migration guard: helpful error if using old `data` field
-  if (def.data && !def.sample) {
-    return {
-      error: new TemplateCompilationError({
-        syntaxError: "`data` has been renamed to `sample` in define().",
-        suggestion:
-          "Rename `data` to `sample`. Before: `define({ data: { ... } })`. After: `define({ sample: { ... } })`.",
-      }),
-    };
+  if (def.kind === "interactive") {
+    return { interactive: def };
   }
 
   // Derive medium/animated if the runtime identity stamp is missing (e.g. a
@@ -70,52 +75,46 @@ export function compileTemplate(bundledCode: string): CompileResult {
         typeof config.fps === "number" &&
         (config.duration != null || hasResolve);
 
-  const template: TemplateModule = {
+  const media: MediaDefinition = {
+    kind: "media",
+    media: def.media,
+    fallbackFormat: def.fallbackFormat,
     medium: def.medium ?? "html",
     animated:
       typeof def.animated === "boolean"
         ? def.animated
-        : def.type === "composed"
-          ? true
-          : animated,
+        : animated,
     render: def.render,
-    config: def.config,
-    sample: def.sample,
+    ...(def.config !== undefined ? { config: def.config } : {}),
+    ...(def.sample !== undefined ? { sample: def.sample } : {}),
+    ...(def.editions !== undefined ? { editions: def.editions } : {}),
+    ...(def.variants !== undefined ? { variants: def.variants } : {}),
+    ...(def.poster !== undefined ? { poster: def.poster } : {}),
+    ...(def.composition !== undefined ? { composition: def.composition } : {}),
     ...(hasResolve ? { resolve: def.resolve } : {}),
   };
 
-  // Preserve composed-template identity (scene list, totalFrames, helpers).
-  if (def.type === "composed") {
-    Object.assign(template, {
-      type: def.type,
-      scenes: def.scenes,
-      totalFrames: def.totalFrames,
-      duration: def.duration,
-      fps: def.fps,
-      getScene: def.getScene,
-      getSceneById: def.getSceneById,
-      getSceneAtFrame: def.getSceneAtFrame,
-      getCheckpoints: def.getCheckpoints,
-    });
-  }
+  // Full IIFE source includes helpers outside `render()` (e.g. renderCodeWindow
+  // calling std.code). Capability preparation only sees render.toString() without this.
+  if (getStampedMediaCapabilities(def)) copyStdlibCapabilityStamp(def, media);
+  else stampStdlibCapabilitiesFromSource(media, bundledCode);
 
-  return { template };
+  return { media };
 }
 
 /**
  * Tests a compiled template by running render with a test context.
  *
- * Returns a SuperImgError-shaped error (or null) — the legacy `CompileError`
- * shape is kept structurally compatible.
+ * Returns a minimal validation error, or null when rendering succeeds.
  */
 export function validateTemplate(
-  template: TemplateModule,
+  template: MediaDefinition,
   testContext: import("@superimg/types").RenderContext
 ): CompileError | null {
   try {
     const result = template.render(testContext);
-    if (typeof result !== "string") {
-      return { message: "render() must return a string" };
+    if (!isMediaElement(result)) {
+      return { message: "render() must return a MediaElement tree" };
     }
     return null;
   } catch (e) {

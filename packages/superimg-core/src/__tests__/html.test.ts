@@ -1,3 +1,4 @@
+import { googleFont } from "@foxworth/superimg";
 import { describe, it, expect } from "vitest";
 import { buildPageShell, installSuperimgReady } from "../html/html.js";
 import { buildTailwindScript, TAILWIND_CDN_URL } from "../html/css.js";
@@ -137,7 +138,7 @@ describe("buildPageShell", () => {
 
   it("places Tailwind script before other styles", () => {
     const shell = buildPageShell({
-      fonts: ["Inter"],
+      fonts: [googleFont("Inter")],
       stylesheets: ["https://example.com/custom.css"],
       inlineCss: [".my-class { color: red; }"],
       tailwind: true,

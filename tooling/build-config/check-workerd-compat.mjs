@@ -6,20 +6,24 @@
  *   node check-workerd-compat.mjs [packageRoot]
  */
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { collectSourceImports } from "./scan-imports.mjs";
 
 const ROOT = resolve(process.argv[2] ?? process.cwd());
 const DIST = join(ROOT, "dist");
-const EDGE_ROOT = join(DIST, "index.edge.js");
+const WORKER_ROOTS = {
+  edge: "runtime.edge.js",
+  html: "runtime/html.js",
+};
 
-const FORBIDDEN_STATIC_RE =
-  /(?:^|\n)\s*(?:import\s+(?:[^'"]*\s+from\s+)?|export\s+(?:[^'"]*\s+from\s+)?)['"](node:[^'"]+|rolldown|oxc-parser|sharp|vite|@rolldown\/browser)['"]/g;
-const FORBIDDEN_DYNAMIC_RE =
-  /import\s*\(\s*['"](node:[^'"]+|rolldown|oxc-parser|sharp|vite|@rolldown\/browser)['"]\s*\)/g;
-
-const LINE_IMPORT_RE =
-  /^import\s+(?:type\s+)?(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+|)['"]([^'"]+)['"]/;
+const FORBIDDEN_IMPORTS = new Set([
+  "rolldown",
+  "oxc-parser",
+  "sharp",
+  "vite",
+  "@rolldown/browser",
+]);
 
 function walkRelativeGraph(entryFile, seen = new Set()) {
   const rel = entryFile.startsWith(DIST) ? entryFile.slice(DIST.length + 1) : entryFile;
@@ -28,11 +32,7 @@ function walkRelativeGraph(entryFile, seen = new Set()) {
 
   const abs = join(DIST, rel);
   const src = readFileSync(abs, "utf8");
-  for (const line of src.split("\n")) {
-    const trimmed = line.trimStart();
-    const match = trimmed.match(LINE_IMPORT_RE);
-    if (!match) continue;
-    const spec = match[1];
+  for (const spec of collectSourceImports(src)) {
     if (!spec.startsWith("./") && !spec.startsWith("../")) continue;
     const next = resolve(dirname(abs), spec);
     if (!next.endsWith(".js")) continue;
@@ -43,31 +43,60 @@ function walkRelativeGraph(entryFile, seen = new Set()) {
 }
 
 function scanFile(relPath) {
-  const hits = [];
   const src = readFileSync(join(DIST, relPath), "utf8");
+  return [...collectSourceImports(src)].filter(
+    (specifier) => specifier.startsWith("node:") || FORBIDDEN_IMPORTS.has(specifier),
+  );
+}
 
-  for (const re of [FORBIDDEN_STATIC_RE, FORBIDDEN_DYNAMIC_RE]) {
-    re.lastIndex = 0;
-    let match;
-    while ((match = re.exec(src))) {
-      hits.push(match[1] ?? match[0]);
+const errors = [];
+const graphs = {};
+
+for (const [name, root] of Object.entries(WORKER_ROOTS)) {
+  const absolute = join(DIST, root);
+  if (!statSync(absolute, { throwIfNoEntry: false })?.isFile()) {
+    console.error(`✗ check-workerd-compat: missing ${absolute} — run tsdown first`);
+    process.exit(1);
+  }
+  const graph = [...walkRelativeGraph(root)].sort();
+  graphs[name] = graph;
+  for (const file of graph) {
+    const hits = scanFile(file);
+    for (const hit of hits) {
+      errors.push(`${name}:${file}: forbidden import "${hit}"`);
     }
   }
-  return hits;
 }
 
-if (!statSync(EDGE_ROOT, { throwIfNoEntry: false })?.isFile()) {
-  console.error(`✗ check-workerd-compat: missing ${EDGE_ROOT} — run tsdown first`);
-  process.exit(1);
-}
+// Conservative downstream closure policies treat any `env.foo`/`env[...]`
+// access as ambient authority, including lexically local variables. Keep that
+// compatibility marker explicit until those policies become binding-aware.
+const HTML_CAPABILITY_PATTERNS = [
+  ["direct fetch", /\bfetch\s*\(/u],
+  ["conservative env policy", /\benv\s*(?:\.|\[)/u],
+  ["process authority", /\bprocess\b/u],
+  ["Deno authority", /\bDeno\s*\./u],
+  ["Bun authority", /\bBun\s*\./u],
+  ["import.meta env", /\bimport\.meta\.env\b/u],
+  ["CommonJS require", /\brequire\s*\(/u],
+  ["Node buffer", /\bBuffer\b/u],
+  ["Node dirname", /\b__dirname\b/u],
+  ["Node filename", /\b__filename\b/u],
+  ["font network loader", /resolveFontBuffers|fonts\.googleapis\.com/u],
+  // The base stdlib intentionally contains a missing("katex") capability
+  // marker. Detect the parser implementation/module, not that inert label.
+  ["KaTeX parser", /env\.handler|katex(?:\.mjs|\.js)["']/u],
+];
 
-const graph = [...walkRelativeGraph("index.edge.js")].sort();
-const errors = [];
-
-for (const file of graph) {
-  const hits = scanFile(file);
-  for (const hit of hits) {
-    errors.push(`${file}: forbidden import "${hit}"`);
+for (const file of graphs.html) {
+  const source = readFileSync(join(DIST, file), "utf8");
+  for (const specifier of collectSourceImports(source)) {
+    if (!specifier.startsWith("./") && !specifier.startsWith("../")) {
+      errors.push(`html:${file}: disallowed bare import "${specifier}"`);
+    }
+  }
+  for (const [label, pattern] of HTML_CAPABILITY_PATTERNS) {
+    if (pattern.test(source)) errors.push(`html:${file}: forbidden ${label}`);
   }
 }
 
@@ -78,5 +107,5 @@ if (errors.length) {
 }
 
 console.log(
-  `✓ check-workerd-compat: edge graph OK (${graph.length} files, no node:/rolldown/oxc-parser/sharp/vite)`,
+  `✓ check-workerd-compat: edge graph OK (${graphs.edge.length} files); pure HTML graph OK (${graphs.html.length} files, no forbidden capabilities or downstream compatibility markers)`,
 );

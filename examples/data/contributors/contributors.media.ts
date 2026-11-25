@@ -1,14 +1,10 @@
-import { define, type RenderContext } from "superimg";
+// Contributors — an honour board of enamel pins. Every face is drawn deterministically
+// from the login string, so the film renders offline with no avatar CDN in the loop.
 
-function formatNumber(num: number): string {
-  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
-  if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, "") + "K";
-  return num.toLocaleString();
-}
+import { video, Frame, Stack, Text, Fill, Html, googleFont } from "@foxworth/superimg";
 
 export interface ContributorItem {
   login: string;
-  avatar_url: string;
   contributions: number;
 }
 
@@ -22,139 +18,302 @@ export interface ContributorsVideoData extends Record<string, unknown> {
   accentColor: string;
 }
 
-const TIMING = {
-  headerFadeIn: { start: 0, end: 0.1 },
-  avatarReveal: { start: 0.1, end: 0.85 },
-  finalPause: { start: 0.85, end: 0.92 },
-  fadeOut: { start: 0.92, end: 1.0 },
-};
+const DISPLAY = "'Archivo', 'Inter', system-ui, sans-serif";
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 
-const GITHUB_LOGO =
-  'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z';
+const BOARDS = {
+  dark: { felt: "#0C1512", grain: "#16241E", ink: "#F0EFE6", faint: "rgba(240,239,230,0.45)", disc: 26 },
+  light: { felt: "#EDE7D8", grain: "#DED5C0", ink: "#17201C", faint: "rgba(23,32,28,0.5)", disc: 76 },
+} as const;
 
-const PEOPLE_ICON =
-  "M2 5.5a3.5 3.5 0 1 1 5.898 2.549 5.508 5.508 0 0 1 3.034 4.084.75.75 0 1 1-1.482.235 4 4 0 0 0-7.9 0 .75.75 0 0 1-1.482-.236A5.507 5.507 0 0 1 3.102 8.05 3.493 3.493 0 0 1 2 5.5ZM11 4a3.001 3.001 0 0 1 2.22 5.018 5.01 5.01 0 0 1 2.56 3.012.749.749 0 0 1-.885.954.752.752 0 0 1-.549-.514 3.507 3.507 0 0 0-2.522-2.372.75.75 0 0 1-.574-.73v-.352a.75.75 0 0 1 .416-.672A1.5 1.5 0 0 0 11 5.5.75.75 0 0 1 11 4Zm-5.5-.5a2 2 0 1 0-.001 3.999A2 2 0 0 0 5.5 3.5Z";
 
-export default define<ContributorsVideoData>({
+
+
+
+/** FNV-1a — same login always draws the same face. */
+function hash32(value: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    h ^= value.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function picker(seed: number) {
+  let s = seed || 1;
+  return (n: number) => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s % n;
+  };
+}
+
+/** A portrait built from a login: hue, head, cap, eyes, mouth, one accessory. */
+function portrait(login: string, discL: number): string {
+  const pick = picker(hash32(login));
+  const hue = pick(360);
+  const alt = (hue + 140 + pick(80)) % 360;
+
+  const disc = `hsl(${hue} 42% ${discL}%)`;
+  const skin = `hsl(${hue} 64% ${discL > 50 ? 58 : 62}%)`;
+  const cap = `hsl(${alt} 58% ${discL > 50 ? 42 : 52}%)`;
+  const dark = `hsl(${hue} 60% 14%)`;
+
+  const capDrop = 6 + pick(14); // how low the hair sits
+  const eyeR = 3 + pick(2);
+  const eyeDx = 8 + pick(3);
+  const smile = pick(3) - 1; // -1 frown, 0 flat, 1 smile
+  const accessory = pick(4); // 0 none, 1 glasses, 2 cheeks, 3 antenna
+
+  const mouth =
+    smile === 0
+      ? `<line x1="44" y1="59" x2="56" y2="59" stroke="${dark}" stroke-width="2.4" stroke-linecap="round"/>`
+      : `<path d="M43,${smile > 0 ? 57 : 61} Q50,${smile > 0 ? 65 : 54} 57,${smile > 0 ? 57 : 61}" fill="none" stroke="${dark}" stroke-width="2.4" stroke-linecap="round"/>`;
+
+  const extras =
+    accessory === 1
+      ? `<g fill="none" stroke="${dark}" stroke-width="1.8" opacity="0.85">
+           <circle cx="${50 - eyeDx}" cy="46" r="7.5"/><circle cx="${50 + eyeDx}" cy="46" r="7.5"/>
+           <line x1="${50 - eyeDx + 7.5}" y1="46" x2="${50 + eyeDx - 7.5}" y2="46"/>
+         </g>`
+      : accessory === 2
+        ? `<g fill="hsl(${alt} 70% 60%)" opacity="0.55">
+             <circle cx="${50 - eyeDx - 6}" cy="54" r="4"/><circle cx="${50 + eyeDx + 6}" cy="54" r="4"/>
+           </g>`
+        : accessory === 3
+          ? `<g stroke="${cap}" stroke-width="2.4" fill="${cap}">
+               <line x1="50" y1="22" x2="50" y2="13" stroke-linecap="round"/><circle cx="50" cy="10" r="3.6" stroke="none"/>
+             </g>`
+          : "";
+
+  return `<g clip-path="url(#disc-clip)">
+  <circle cx="50" cy="50" r="50" fill="${disc}"/>
+  <path d="M12,100 Q12,74 50,74 Q88,74 88,100 Z" fill="${cap}" opacity="0.9"/>
+  <circle cx="50" cy="46" r="26" fill="${skin}"/>
+  <path d="M24,${46 - capDrop + 8} A26,26 0 0 1 76,${46 - capDrop + 8} L76,${46 - capDrop} A26,26 0 0 0 24,${46 - capDrop} Z" fill="${cap}"/>
+  <path d="M24,46 A26,26 0 0 1 76,46 L76,${46 - capDrop} A26,26 0 0 0 24,${46 - capDrop} Z" fill="${cap}"/>
+  <circle cx="${50 - eyeDx}" cy="46" r="${eyeR}" fill="${dark}"/>
+  <circle cx="${50 + eyeDx}" cy="46" r="${eyeR}" fill="${dark}"/>
+  ${mouth}
+  ${extras}
+</g>`;
+}
+
+export default video<ContributorsVideoData>({
+  duration: "9.5s",
+  poster: "7.6s",
+  fonts: [googleFont("Archivo:wght@600;700;800"), googleFont("IBM+Plex+Mono:wght@400;500;600")],
+  inlineCss: ["* { margin: 0; padding: 0; box-sizing: border-box; }", "body { overflow: hidden; }"],
+
   sample: {
     repo: "vercel/next.js",
     description: "The React Framework for the Web",
     totalContributors: 3200,
     contributors: [
-      { login: "timneutkens", avatar_url: "https://avatars.githubusercontent.com/u/6324199", contributions: 5420 },
-      { login: "ijjk", avatar_url: "https://avatars.githubusercontent.com/u/22380829", contributions: 3180 },
-      { login: "Timer", avatar_url: "https://avatars.githubusercontent.com/u/616428", contributions: 2850 },
-      { login: "balazsorban44", avatar_url: "https://avatars.githubusercontent.com/u/18369201", contributions: 1920 },
-      { login: "leerob", avatar_url: "https://avatars.githubusercontent.com/u/9113740", contributions: 890 },
-      { login: "huozhi", avatar_url: "https://avatars.githubusercontent.com/u/4236644", contributions: 750 },
+      { login: "timneutkens", contributions: 5420 },
+      { login: "ijjk", contributions: 3180 },
+      { login: "Timer", contributions: 2850 },
+      { login: "balazsorban44", contributions: 1920 },
+      { login: "leerob", contributions: 890 },
+      { login: "huozhi", contributions: 750 },
     ],
     theme: "dark",
     showContributions: true,
-    accentColor: "#238636",
+    accentColor: "#C8A24A",
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "6s",
-  },
-  render(ctx: RenderContext<ContributorsVideoData>) {
-    const { std, width, height, timeline, data } = ctx;
+
+  render(ctx) {
+    const { std, width, height, data } = ctx;
     const { contributors, repo, description, totalContributors, theme, showContributions, accentColor } = data;
+    const board = theme === "light" ? BOARDS.light : BOARDS.dark;
 
-    const bgColor = theme === "dark" ? "#0d1117" : "#ffffff";
-    const textColor = theme === "dark" ? "#c9d1d9" : "#24292f";
-    const mutedColor = theme === "dark" ? "#8b949e" : "#656d76";
-    const cardBg = theme === "dark" ? "#161b22" : "#f6f8fa";
-    const borderColor = theme === "dark" ? "#30363d" : "#d0d7de";
+    if (contributors.length === 0) {
+      return Frame(
+        { id: "empty-state", width, height, fill: board.felt },
+        Stack(
+          { width: "fill", height: "fill", align: "center", justify: "center", gap: 24, pad: 96 },
+          Text({ variant: "title", size: 52, color: board.ink }, repo),
+          Text({ variant: "body", size: 30, color: board.ink }, "No contributors yet"),
+        ),
+      );
+    }
 
-    const headerProgress = std.interpolate(timeline.progress, [TIMING.headerFadeIn.start, TIMING.headerFadeIn.end], [0, 1], "easeOutCubic");
-    const avatarProgress = std.interpolate(timeline.progress, [TIMING.avatarReveal.start, TIMING.avatarReveal.end], [0, 1]);
-    const fadeOutProgress = std.interpolate(timeline.progress, [TIMING.fadeOut.start, TIMING.fadeOut.end], [0, 1], "easeInCubic");
+    const t = ctx.director({
+      board: "13%",
+      pin: "38%",
+      tally: "17%",
+      hold: "23%",
+      exit: "9%",
+    });
 
-    const globalOpacity = 1 - fadeOutProgress;
+    const n = contributors.length;
+    const most = Math.max(1, ...contributors.map((c) => c.contributions));
+    const topLogin = contributors.reduce((best, c) => (c.contributions > best.contributions ? c : best), contributors[0]!).login;
 
-    const padding = { top: 160, right: 60, bottom: 80, left: 60 };
-    const gridWidth = width - padding.left - padding.right;
+    // ── Board geometry ──────────────────────────────────────────────────────
+    const margin = 96;
+    const headH = 250;
+    const cols = Math.min(6, Math.max(1, n));
+    const rows = Math.ceil(n / cols);
+    const gapX = 52;
+    const gapY = 44;
+    const availW = width - margin * 2;
+    const size = Math.min(214, Math.floor((availW - gapX * (cols - 1)) / cols));
+    const cellH = size + 84;
+    const gridW = cols * size + (cols - 1) * gapX;
+    const gridX = Math.round((width - gridW) / 2);
+    const gridH = rows * cellH + (rows - 1) * gapY;
+    const gridY = headH + Math.max(0, (height - headH - margin - gridH) / 2);
 
-    const count = contributors.length;
-    const cols = count <= 12 ? 4 : count <= 24 ? 5 : count <= 35 ? 6 : 7;
-    const avatarSize = Math.min(100, Math.floor((gridWidth - (cols - 1) * 16) / cols));
-    const gap = 16;
+    const boardP = t.in("board");
+    const headOp = std.interpolate(boardP, [0, 0.55], [0, 1], "easeOutCubic");
+    const headY = std.interpolate(boardP, [0, 0.7], [16, 0], "easeOutQuint");
+    const ruleP = std.interpolate(boardP, [0.35, 1], [0, 1], "easeOutQuart");
 
-    const visibleCount = Math.floor(avatarProgress * count);
+    const pinP = t.in("pin");
+    const pinAt = (i: number) => {
+      const step = 1 / (n + 2.4);
+      return std.clamp01((pinP - i * step * 0.95) / (step * 2.4));
+    };
 
-    const avatars = contributors
-      .slice(0, visibleCount)
-      .map((contributor: ContributorItem, index: number) => {
-        const col = index % cols;
-        const row = Math.floor(index / cols);
-        const x = padding.left + col * (avatarSize + gap);
-        const y = padding.top + row * (avatarSize + gap + 30);
+    const tallyP = t.in("tally");
+    const shownTotal = std.interpolate(tallyP, [0, 0.85], [0, totalContributors], "easeOutQuint");
+    const crown = std.interpolate(tallyP, [0.3, 0.8], [0, 1], "easeOutQuart");
 
-        const avatarStartProgress = index / count;
-        const avatarEndProgress = Math.min(1, avatarStartProgress + 0.15);
-        let avatarLocalProgress = 0;
-        if (avatarProgress > avatarStartProgress) {
-          avatarLocalProgress = Math.min(1, (avatarProgress - avatarStartProgress) / (avatarEndProgress - avatarStartProgress));
-        }
+    const exitOp = 1 - std.interpolate(t.in("exit"), [0, 1], [0, 1], "easeInCubic");
 
-        const scale = std.interpolate(avatarLocalProgress, [0, 1], [0, 1], "easeOutBack");
-        const opacity = std.interpolate(avatarLocalProgress, [0, 1], [0, 1], "easeOutCubic");
+    // ── Pins ────────────────────────────────────────────────────────────────
+    const pins = contributors.map((person, i) => {
+      const p = pinAt(i);
+      if (p <= 0.001) return null;
 
-        return `
-      <div style="position: absolute; left: ${x}px; top: ${y}px; width: ${avatarSize}px; text-align: center; transform: scale(${scale}); opacity: ${opacity}; transform-origin: center top;">
-        <div style="width: ${avatarSize}px; height: ${avatarSize}px; border-radius: 50%; overflow: hidden; border: 3px solid ${borderColor}; background: ${cardBg}; margin: 0 auto;">
-          <img src="${contributor.avatar_url}" width="${avatarSize}" height="${avatarSize}" style="display: block; width: 100%; height: 100%; object-fit: cover;" />
-        </div>
-        <div style="margin-top: 6px; font-size: 12px; color: ${textColor}; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-          ${contributor.login}
-        </div>
-        ${showContributions ? `
-          <div style="display: inline-flex; align-items: center; gap: 3px; margin-top: 2px; padding: 2px 6px; background: ${accentColor}; border-radius: 10px; font-size: 10px; color: white; font-weight: 600;">
-            ${formatNumber(contributor.contributions)}
-          </div>
-        ` : ""}
-      </div>
-    `;
-      })
-      .join("");
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = gridX + col * (size + gapX);
+      const y = gridY + row * (cellH + gapY);
 
-    return `
-    <div style="width: ${width}px; height: ${height}px; background: ${bgColor}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; position: relative; opacity: ${globalOpacity}; overflow: hidden;">
+      const scale = std.spring(0.68, 1, p, "snappy");
+      const op = std.clamp01(p * 2.4);
+      // The gauge sweeps a beat behind the pin landing.
+      const gauge = std.interpolate(std.clamp01((p - 0.4) / 0.6), [0, 1], [0, 1], "easeOutCubic");
+      const share = person.contributions / most;
 
-      <div style="position: absolute; top: 40px; left: ${padding.left}px; right: ${padding.right}px; display: flex; justify-content: space-between; align-items: flex-start; opacity: ${headerProgress}; transform: translateY(${(1 - headerProgress) * -20}px);">
-        <div style="flex: 1; min-width: 0;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <svg width="36" height="36" viewBox="0 0 16 16" fill="${textColor}">
-              <path d="${GITHUB_LOGO}"/>
-            </svg>
-            <span style="font-size: 28px; font-weight: 600; color: ${textColor};">${repo}</span>
-          </div>
-          ${description ? `<div style="font-size: 16px; color: ${mutedColor}; margin-top: 8px; max-width: 500px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${description}</div>` : ""}
-        </div>
+      const isTop = person.login === topLogin;
+      const ringLit = isTop ? crown : 0;
 
-        <div style="text-align: right; flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
-            <svg width="28" height="28" viewBox="0 0 16 16" fill="${accentColor}">
-              <path d="${PEOPLE_ICON}"/>
-            </svg>
-            <span style="font-size: 40px; font-weight: 700; color: ${accentColor};">
-              ${formatNumber(totalContributors)}
-            </span>
-          </div>
-          <div style="font-size: 14px; color: ${mutedColor}; margin-top: 4px;">
-            contributors
-          </div>
-        </div>
-      </div>
+      const r = 50;
+      const gaugeR = 56;
+      const circ = 2 * Math.PI * gaugeR;
+      const svg = `<svg width="${size}" height="${size}" viewBox="-8 -8 116 116" xmlns="http://www.w3.org/2000/svg">
+  <defs><clipPath id="disc-clip"><circle cx="50" cy="50" r="${r}"/></clipPath></defs>
+  ${portrait(person.login, board.disc)}
+  <circle cx="50" cy="50" r="${r}" fill="none" stroke="${std.color.alpha(accentColor, 0.35 + ringLit * 0.55)}" stroke-width="${(2 + ringLit * 1.6).toFixed(2)}"/>
+  <circle cx="50" cy="50" r="${gaugeR}" fill="none" stroke="${std.color.alpha(board.ink, 0.12)}" stroke-width="3"/>
+  <circle cx="50" cy="50" r="${gaugeR}" fill="none" stroke="${accentColor}" stroke-width="3" stroke-linecap="round"
+          stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${(circ * (1 - share * gauge)).toFixed(2)}"
+          transform="rotate(-90 50 50)"/>
+  ${ringLit > 0 ? `<circle cx="50" cy="50" r="${(gaugeR + 6 + ringLit * 5).toFixed(2)}" fill="none" stroke="${std.color.alpha(accentColor, 0.4 * ringLit)}" stroke-width="1.2"/>` : ""}
+</svg>`;
 
-      ${avatars}
+      return Frame(
+        {
+          id: `pin-${person.login}`,
+          x,
+          y,
+          width: size,
+          height: cellH,
+          style: { opacity: op, transform: `scale(${scale.toFixed(4)})`, transformOrigin: "center top" },
+        },
+        Html({ width: size, height: size, html: svg }),
+        Frame(
+          { x: 0, y: size + 16, width: size, height: 60 },
+          Stack(
+            { width: size, height: 60, gap: 7 },
+            Text(
+              {
+                variant: "label",
+                color: isTop && crown > 0.4 ? accentColor : board.ink,
+                size: 18,
+                weight: 700,
+                fontFamily: DISPLAY,
+                align: "center",
+                maxWidth: size,
+              },
+              person.login,
+            ),
+            showContributions
+              ? Text(
+                  { variant: "label", color: board.faint, size: 14, fontFamily: MONO, align: "center", letterSpacing: 1 },
+                  `${std.text.formatCompact(person.contributions)} commits`,
+                )
+              : null,
+          ),
+        ),
+      );
+    });
 
-      <div style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: ${mutedColor}; font-size: 14px; opacity: 0.6;">
-        contributors
-      </div>
-    </div>
-  `;
+    // ── Board grain ─────────────────────────────────────────────────────────
+    const grainSvg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="felt" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="4" seed="19" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+    </filter>
+  </defs>
+  <rect width="${width}" height="${height}" filter="url(#felt)" opacity="${theme === "light" ? 0.06 : 0.09}"/>
+</svg>`;
+
+    return Frame(
+      { id: "board", width, height },
+      Fill({ color: board.felt }),
+      Fill({
+        gradient: { kind: "radial", at: "50% 8%", size: "82% 66%", stops: [std.color.alpha(board.grain, 0.95), "transparent"] },
+      }),
+      Html({ id: "grain", width, height, html: grainSvg }),
+
+      Frame(
+        { x: 0, y: 0, width, height, style: { opacity: exitOp } },
+
+        // Plaque header
+        Frame(
+          { x: margin, y: 92, width: width - margin * 2, height: 120, style: { opacity: headOp, transform: `translateY(${headY.toFixed(2)}px)` } },
+          Stack(
+            { width: width - margin * 2, gap: 14 },
+            Stack(
+              { direction: "row", height: 22, gap: 14, align: "center" },
+              Frame({ width: 26, height: 3, fill: accentColor }),
+              Text({ variant: "label", color: accentColor, size: 14, weight: 600, fontFamily: MONO, letterSpacing: 5 }, "BUILT BY"),
+            ),
+            Text({ variant: "display", color: board.ink, size: 56, weight: 800, fontFamily: DISPLAY, letterSpacing: -1.8 }, repo),
+            description
+              ? Text({ variant: "caption", color: board.faint, size: 22, fontFamily: DISPLAY, maxWidth: 900 }, description)
+              : null,
+          ),
+        ),
+
+        // Total, counted up during the tally
+        Frame(
+          { x: width - margin - 320, y: 96, width: 320, height: 104, style: { opacity: headOp } },
+          Stack(
+            { width: 320, height: 104, gap: 6 },
+            Text({ variant: "display", color: accentColor, size: 62, weight: 800, fontFamily: DISPLAY, align: "right", letterSpacing: -2 }, std.text.formatCompact(Math.round(shownTotal))),
+            Text({ variant: "label", color: board.faint, size: 15, weight: 500, fontFamily: MONO, align: "right", letterSpacing: 3 }, "CONTRIBUTORS"),
+            Text({ variant: "label", color: board.faint, size: 14, fontFamily: MONO, align: "right", letterSpacing: 1.5 }, `TOP ${n} SHOWN`),
+          ),
+        ),
+
+        // Rule under the plaque
+        Frame({
+          x: margin,
+          y: 232,
+          width: width - margin * 2,
+          height: 1,
+          fill: std.color.alpha(board.ink, 0.18),
+          style: { transform: `scaleX(${ruleP.toFixed(3)})`, transformOrigin: "left center" },
+        }),
+
+        ...pins,
+      ),
+    );
   },
 });

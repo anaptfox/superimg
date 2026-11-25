@@ -43,7 +43,12 @@ export async function mapBounded<T, R>(
   try {
     const workers = Array.from({ length: concurrency }, async (_, workerIndex) => {
       while (true) {
-        throwIfExecutionCancelled({ signal: linked.signal, deadlineMs: options.deadlineMs });
+        throwIfExecutionCancelled({
+          signal: linked.signal,
+          ...(options.deadlineMs !== undefined
+            ? { deadlineMs: options.deadlineMs }
+            : {}),
+        });
         if (firstError !== undefined && options.stopOnError) return;
         const itemIndex = nextIndex++;
         if (itemIndex >= items.length) return;

@@ -1,0 +1,25 @@
+{
+  "name": "superimg",
+  "version": "0.1.1-media-library.20261022.1",
+  "description": "Programmatic video generation — HTML/CSS templates in *.media.ts rendered to MP4, images, GIFs, and SVGs.",
+  "skills": "./skills",
+  "interface": {
+    "displayName": "SuperImg",
+    "shortDescription": "HTML/CSS → MP4 video templates",
+    "longDescription": "SuperImg renders TypeScript media definitions into video files. This plugin carries the full authoring lifecycle: brief, design, build, motion craft, review, multi-format variants, ship.",
+    "developerName": "anaptfox",
+    "category": "developer-tools",
+    "capabilities": [
+      "skills"
+    ],
+    "websiteUrl": "https://superimg.app",
+    "defaultPrompt": [
+      "Create a SuperImg template that announces a launch",
+      "Review my template before I ship it",
+      "Export this video for YouTube and Instagram"
+    ],
+    "brandColor": "#667eea",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/logo.svg"
+  }
+}

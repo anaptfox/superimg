@@ -1,18 +1,17 @@
 import { describe, it, expect } from "vitest";
-import type { TemplateModule } from "@superimg/types";
-import { renderNativeToHtml, renderToHtml } from "../edge.js";
+import { image, video, type JsonObject } from "@superimg/types";
+import { renderToHtml } from "../edge.js";
 import { bundleTemplateCode } from "../bundler/bundler.js";
+import { boxedHtml } from "./__test-utils__/index.js";
 
-describe("renderNativeToHtml", () => {
-  it("renders a TemplateModule object to HTML without Playwright", () => {
-    const template: TemplateModule = {
-      medium: "html",
-      animated: false,
-      config: { width: 800, height: 600 },
-      render: (ctx) => `<div data-w="${ctx.width}">hello ${ctx.data?.name ?? ""}</div>`,
-    };
+describe("renderToHtml", () => {
+  it("renders a media definition to HTML without Playwright", () => {
+    const template = image<JsonObject>({
+      size: { width: 800, height: 600 },
+      render: (ctx) => boxedHtml(`<div data-w="${ctx.width}">hello ${ctx.data?.name ?? ""}</div>`),
+    });
 
-    const html = renderNativeToHtml({ template, data: { name: "world" } });
+    const html = renderToHtml({ template, data: { name: "world" } });
 
     expect(html).toContain("hello world");
     expect(html).toContain('data-w="800"');
@@ -20,15 +19,15 @@ describe("renderNativeToHtml", () => {
 
   it("compiles and renders an IIFE-bundled template string", async () => {
     const code = `
-      import { define } from "superimg";
+      import { define, Html } from "@foxworth/superimg";
       export default define({
         config: { width: 400, height: 400 },
-        render: (ctx) => \`<h1>\${ctx.data.title}</h1>\`,
+        render: (ctx) => Html({ width: "fill", height: "fill", html: \`<h1>\${ctx.data.title}</h1>\` }),
       });
     `;
     const bundled = await bundleTemplateCode(code);
 
-    const html = renderNativeToHtml({
+    const html = renderToHtml({
       template: bundled,
       data: { title: "Edge Render" },
     });
@@ -41,13 +40,11 @@ describe("renderNativeToHtml", () => {
 
 describe("renderToHtml — sample field fallback", () => {
   it("uses module.sample when options.data is not provided", () => {
-    const template: TemplateModule<{ greeting: string }> & { sample: { greeting: string } } = {
-      medium: "html",
-      animated: false,
-      config: { width: 600, height: 400 },
+    const template = image<JsonObject>({
+      size: { width: 600, height: 400 },
       sample: { greeting: "from sample" },
-      render: (ctx) => `<span>${ctx.data.greeting}</span>`,
-    };
+      render: (ctx) => boxedHtml(`<span>${ctx.data.greeting}</span>`),
+    });
 
     const html = renderToHtml({ template });
 
@@ -55,13 +52,11 @@ describe("renderToHtml — sample field fallback", () => {
   });
 
   it("options.data overrides module.sample", () => {
-    const template: TemplateModule<{ greeting: string }> & { sample: { greeting: string } } = {
-      medium: "html",
-      animated: false,
-      config: { width: 600, height: 400 },
+    const template = image<JsonObject>({
+      size: { width: 600, height: 400 },
       sample: { greeting: "sample value" },
-      render: (ctx) => `<span>${ctx.data.greeting}</span>`,
-    };
+      render: (ctx) => boxedHtml(`<span>${ctx.data.greeting}</span>`),
+    });
 
     const html = renderToHtml({ template, data: { greeting: "runtime override" } });
 
@@ -70,41 +65,33 @@ describe("renderToHtml — sample field fallback", () => {
   });
 
   it("falls back to empty object when neither sample nor data is provided", () => {
-    const template: TemplateModule = {
-      medium: "html",
-      animated: false,
-      config: { width: 400, height: 400 },
-      render: (ctx) => `<div data-empty="${JSON.stringify(ctx.data)}"></div>`,
-    };
+    const template = image<JsonObject>({
+      size: { width: 400, height: 400 },
+      render: (ctx) => boxedHtml(`<div data-empty="${JSON.stringify(ctx.data)}"></div>`),
+    });
 
     const html = renderToHtml({ template });
 
     expect(html).toContain("{}");
   });
 
-  it("renderToHtml and renderNativeToHtml are aliases — both accept sample-bearing modules", () => {
-    const template: TemplateModule<{ tag: string }> & { sample: { tag: string } } = {
-      medium: "html",
-      animated: false,
-      config: { width: 300, height: 200 },
+  it("accepts sample-bearing modules", () => {
+    const template = image<JsonObject>({
+      size: { width: 300, height: 200 },
       sample: { tag: "alias-check" },
-      render: (ctx) => `<p>${ctx.data.tag}</p>`,
-    };
+      render: (ctx) => boxedHtml(`<p>${ctx.data.tag}</p>`),
+    });
 
-    const html1 = renderToHtml({ template });
-    const html2 = renderNativeToHtml({ template });
+    const html = renderToHtml({ template });
 
-    expect(html1).toBe(html2);
-    expect(html1).toContain("alias-check");
+    expect(html).toContain("alias-check");
   });
 
   it("respects explicit width/height options over module.config", () => {
-    const template: TemplateModule = {
-      medium: "html",
-      animated: false,
-      config: { width: 100, height: 100 },
-      render: (ctx) => `<div data-w="${ctx.width}" data-h="${ctx.height}"></div>`,
-    };
+    const template = image<JsonObject>({
+      size: { width: 100, height: 100 },
+      render: (ctx) => boxedHtml(`<div data-w="${ctx.width}" data-h="${ctx.height}"></div>`),
+    });
 
     const html = renderToHtml({ template, width: 1200, height: 630 });
 
@@ -113,12 +100,12 @@ describe("renderToHtml — sample field fallback", () => {
   });
 
   it("renders a specific frame via frame option", () => {
-    const template: TemplateModule & { sample?: Record<string, unknown> } = {
-      medium: "html",
-      animated: true,
-      config: { fps: 30, duration: 2, width: 640, height: 360 },
-      render: (ctx) => `<div data-progress="${ctx.timeline.progress}"></div>`,
-    };
+    const template = video<JsonObject>({
+      fps: 30,
+      duration: 2,
+      size: { width: 640, height: 360 },
+      render: (ctx) => boxedHtml(`<div data-progress="${ctx.timeline.progress}"></div>`),
+    });
 
     const start = renderToHtml({ template, frame: 0, composite: false });
     const mid = renderToHtml({ template, frame: 30, composite: false });
@@ -129,11 +116,11 @@ describe("renderToHtml — sample field fallback", () => {
 
   it("renders a bundled template string using sample as default data", async () => {
     const code = `
-      import { define } from "superimg";
+      import { define, Html } from "@foxworth/superimg";
       export default define({
         sample: { headline: "bundled sample" },
         config: { width: 800, height: 400 },
-        render: (ctx) => \`<h2>\${ctx.data.headline}</h2>\`,
+        render: (ctx) => Html({ width: "fill", height: "fill", html: \`<h2>\${ctx.data.headline}</h2>\` }),
       });
     `;
     const bundled = await bundleTemplateCode(code);

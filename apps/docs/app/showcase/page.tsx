@@ -1,13 +1,11 @@
 import { TopNav } from "@/components/landing/TopNav";
 import { Button } from "@/components/ui/button";
 import { GitHubIcon } from "@/components/icons/github";
-import { ExternalLink } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 export const metadata = {
   title: "Showcase — SuperImg",
-  description: "Projects built with SuperImg.",
+  description: "Projects and media built with SuperImg.",
 };
 
 export default function ShowcasePage() {
@@ -22,58 +20,25 @@ export default function ShowcasePage() {
               Showcase
             </h1>
             <p className="mt-4 text-lg text-muted-foreground">
-              Projects built with SuperImg
+              Example media programs live in the playground. Ship something with
+              SuperImg? Share it on GitHub.
             </p>
           </div>
 
-          {/* RexRender */}
-          <div className="mb-8 rounded-xl border border-border bg-card p-8">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-4">
-                <Image
-                  src="/rexrender-logo.svg"
-                  alt="RexRender"
-                  width={48}
-                  height={48}
-                  className="shrink-0"
-                />
-                <div>
-                  <h2 className="text-2xl font-semibold">RexRender</h2>
-                  <p className="mt-2 text-muted-foreground">
-                    Web-based video creation tool. Paste content, customize, export. 30+ templates for tweets, ChatGPT conversations, terminal sessions, and more.
-                  </p>
-                  <ul className="mt-4 flex flex-wrap gap-2">
-                    <li className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                      Video Editor
-                    </li>
-                    <li className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                      No-Code
-                    </li>
-                    <li className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                      SaaS
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <Button asChild className="shrink-0">
-                <a
-                  href="https://rexrender.dev"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2"
-                >
-                  Visit
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </Button>
-            </div>
+          <div className="mb-8 flex flex-wrap justify-center gap-3">
+            <Button asChild>
+              <Link href="/playground">Open playground</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/">Back home</Link>
+            </Button>
           </div>
 
-          {/* Your Project */}
           <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
-            <h3 className="text-lg font-medium">Your Project Here</h3>
+            <h3 className="text-lg font-medium">Your project here</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Built something with SuperImg? Let us know on GitHub.
+              Built something with SuperImg? Open an issue with the project name,
+              URL, and a short description.
             </p>
             <div className="mt-4">
               <Button asChild variant="outline" size="sm">
@@ -84,7 +49,7 @@ export default function ShowcasePage() {
                   className="inline-flex items-center gap-2"
                 >
                   <GitHubIcon className="h-4 w-4" />
-                  Submit Your Project
+                  Submit your project
                 </a>
               </Button>
             </div>
@@ -94,7 +59,7 @@ export default function ShowcasePage() {
 
       <footer className="border-t border-border/50 px-6 py-8">
         <div className="mx-auto max-w-3xl text-center text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground transition-colors">
+          <Link href="/" className="transition-colors hover:text-foreground">
             ← Back to SuperImg
           </Link>
         </div>

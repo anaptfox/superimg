@@ -1,0 +1,114 @@
+{
+  "name": "@foxworth/superimg-node",
+  "version": "0.1.1-media-library.20261022.1",
+  "type": "module",
+  "description": "SuperImg Node operations",
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./project": {
+      "types": "./dist/project.d.ts",
+      "import": "./dist/project.js"
+    },
+    "./source": {
+      "types": "./dist/source.d.ts",
+      "import": "./dist/source.js"
+    },
+    "./review": {
+      "types": "./dist/review.d.ts",
+      "import": "./dist/review.js"
+    },
+    "./plate": {
+      "types": "./dist/plate.d.ts",
+      "import": "./dist/plate.js"
+    },
+    "./cortex": {
+      "types": "./dist/cortex.d.ts",
+      "import": "./dist/cortex.js"
+    },
+    "./thumbnail": {
+      "types": "./dist/thumbnail.d.ts",
+      "import": "./dist/thumbnail.js"
+    },
+    "./narration": {
+      "types": "./dist/narration.d.ts",
+      "import": "./dist/narration.js"
+    },
+    "./transcription": {
+      "types": "./dist/transcription.d.ts",
+      "import": "./dist/transcription.js"
+    },
+    "./media-preparation": {
+      "types": "./dist/media-preparation.d.ts",
+      "import": "./dist/media-preparation.js"
+    },
+    "./project-tools": {
+      "import": "./dist/project-tools.js",
+      "types": "./dist/project-tools.d.ts"
+    },
+    "./arrangement": {
+      "types": "./dist/arrangement.d.ts",
+      "import": "./dist/arrangement.js"
+    },
+    "./edit": {
+      "types": "./dist/edit.d.ts",
+      "import": "./dist/edit.js"
+    },
+    "./baseline": {
+      "types": "./dist/baseline.d.ts",
+      "import": "./dist/baseline.js"
+    },
+    "./review/advanced": {
+      "types": "./dist/review/advanced.d.ts",
+      "import": "./dist/review/advanced.js"
+    },
+    "./source/advanced": {
+      "types": "./dist/source/advanced.d.ts",
+      "import": "./dist/source/advanced.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run --passWithNoTests"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@hono/node-server": "catalog:",
+    "@mediabunny/dts": "catalog:",
+    "@mediabunny/server": "catalog:",
+    "@resvg/resvg-wasm": "catalog:",
+    "execa": "^10.2.1",
+    "hono": "catalog:",
+    "mediabunny": "catalog:",
+    "node-av": "^6.2.0",
+    "oxc-parser": "catalog:",
+    "playwright": "catalog:",
+    "rolldown": "catalog:",
+    "sharp": "catalog:",
+    "three": "0.184.0"
+  },
+  "peerDependencies": {
+    "@foxworth/superimg": "workspace:*"
+  },
+  "devDependencies": {
+    "@foxworth/superimg": "workspace:*",
+    "@superimg/core": "workspace:*",
+    "@superimg/interactive": "workspace:*",
+    "@superimg/node": "workspace:*",
+    "@superimg/playwright": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/types": "workspace:*"
+  }
+}

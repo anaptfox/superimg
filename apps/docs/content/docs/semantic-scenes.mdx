@@ -1,0 +1,20 @@
+# Interactive Scenes
+
+Semantic scenes belong to the optional interactive path (`@foxworth/superimg/interactive/define`), not neutral media definitions or the passive Player.
+
+```ts
+import { defineInteractive, centeredCamera } from "@foxworth/superimg/interactive/define";
+
+export default defineInteractive<Lesson>({
+  guide: lessonGuide,
+  render(ctx) {
+    ctx.scene.node("diagram", { role: "diagram" });
+    const camera = centeredCamera(ctx.width, ctx.height, { zoom: 1.2 });
+    return renderLesson(ctx.data, camera);
+  },
+});
+```
+
+The interactive package owns semantic node authoring and query, scene actions, hit targets, navigation, guide layout, checks, and `InteractivePlayer`.
+
+Interactive definitions are singular live experiences. They accept host data and may export from explicit sample/default data. They cannot be wrapped in `collection()`.

@@ -4,15 +4,14 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Player,
   DataForm,
   VideoControls,
   usePlayerShortcuts,
-  isComposedTemplate,
   type ExportOptions,
-} from "superimg/react";
-import { useCompiledTemplate } from "superimg/react/compile";
-import { usePlayerSession } from "superimg/react/session";
+} from "@foxworth/superimg/react";
+import { Player } from "@foxworth/superimg/react/player";
+import { useCompiledMedia } from "@foxworth/superimg/react/compile";
+import { usePlayerSession } from "@foxworth/superimg/react/session";
 import {
   playgroundAssetResolver,
   resolvePlaygroundAssets,
@@ -56,7 +55,7 @@ import { useSearchParams } from "next/navigation";
 
 const SUPERIMG_CONTEXT = `## SuperImg - Programmatic Video Generation
 
-Video is a pure function of time. \`render(ctx)\` is called once per frame, returns HTML string.
+Video is a pure function of time. \`render(ctx)\` is called once per frame and returns a layout tree (\`h()\` / Frame / Stack / Text). A root string is the opaque-markup escape hatch.
 
 ### Key Context Fields
 \`timeline.progress\` (0→1), \`timeline.seconds\`, \`width\`, \`height\`, \`data\`, \`std\`
@@ -69,12 +68,12 @@ Video is a pure function of time. \`render(ctx)\` is called once per frame, retu
 - \`std.css.center()\`, \`std.css.fill()\`
 
 ### Rules
-- Return template literal strings, NOT JSX
+- Return \`h()\` / primitives (Frame, Stack, Text). Strings are the escape hatch, not JSX
 - Keep render pure — no state mutation
-- Set root to \`width: \${width}px; height: \${height}px\`
+- Root Frame uses \`width\` / \`height\` from ctx
 `;
 
-const TEMPLATE_EXAMPLE = `import { define } from "superimg";
+const TEMPLATE_EXAMPLE = `import { define, Html } from "@foxworth/superimg";
 
 export default define({
   sample: { title: "Hello", color: "#667eea" },
@@ -82,11 +81,11 @@ export default define({
   render(ctx) {
     const { std, timeline, width, height, data } = ctx;
     const opacity = std.interpolate(timeline.progress, [0, 1], [0, 1], "easeOutCubic");
-    return \\\`
+    return Html({ width: "fill", height: "fill", html: \\\`
       <div style="\\\${std.css({ width, height, background: '#0f0f23' }, std.css.center())}">
         <h1 style="\\\${std.css({ color: data.color, fontSize: 64, opacity })}">\\\${data.title}</h1>
       </div>
-    \\\`;
+    \\\` });
   }
 });`;
 
@@ -95,7 +94,7 @@ const HTML_PAGE_EXAMPLE = `<!DOCTYPE html>
 <head>
   <title>My Video</title>
   <script type="module">
-    import { Player, define } from 'https://esm.sh/superimg';
+    import { Player, define, Html } from 'https://esm.sh/superimg';
 
     const template = define({
       sample: { title: "Hello", color: "#667eea" },
@@ -103,11 +102,11 @@ const HTML_PAGE_EXAMPLE = `<!DOCTYPE html>
       render(ctx) {
         const { std, timeline, width, height, data } = ctx;
         const opacity = std.interpolate(timeline.progress, [0, 1], [0, 1], "easeOutCubic");
-        return \\\`
+        return Html({ width: "fill", height: "fill", html: \\\`
           <div style="\\\${std.css({ width, height, background: '#0f0f23' }, std.css.center())}">
             <h1 style="\\\${std.css({ color: data.color, fontSize: 64, opacity })}">\\\${data.title}</h1>
           </div>
-        \\\`;
+        \\\` });
       }
     });
 
@@ -160,7 +159,7 @@ const DEFAULT_TEMPLATE = `// SuperImg Template
 // 2. Access values via \`ctx.data.title\`, \`ctx.data.accentColor\`, etc.
 // 3. Changes in the Data panel instantly update the preview
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 
 export default define({
   sample: {
@@ -180,7 +179,7 @@ export default define({
     // Subtle hue pulse on accent
     const pulsedColor = std.color.mix(data.accentColor, "#ffffff", Math.sin(timeline.seconds * 2) * 0.08 + 0.08);
 
-    return \`
+    return Html({ width: "fill", height: "fill", html: \`
       <div style="\${std.css({ width, height, background: data.bgColor }, std.css.center())}">
         <div style="\${std.css({
           textAlign: "center",
@@ -196,7 +195,7 @@ export default define({
           </p>
         </div>
       </div>
-    \`;
+    \` });
   },
 });
 `;
@@ -204,23 +203,23 @@ export default define({
 const DURATION_OPTIONS = [1, 3, 5, 10, 15, 30];
 
 interface EditorProps {
-  templateId?: string;
+  exampleId?: string;
 }
 
-function initialEditorCode(templateId?: string): string {
-  if (templateId) {
-    const example = getExampleById(templateId);
+function initialEditorCode(exampleId?: string): string {
+  if (exampleId) {
+    const example = getExampleById(exampleId);
     if (example?.code) return example.code;
   }
   return DEFAULT_TEMPLATE;
 }
 
-export default function Editor({ templateId }: EditorProps) {
+export default function Editor({ exampleId }: EditorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialExample = templateId ? getExampleById(templateId) : undefined;
-  const [code, setCode] = useState(() => initialEditorCode(templateId));
-  const [activeExampleId, setActiveExampleId] = useState<string | undefined>(templateId);
+  const initialExample = exampleId ? getExampleById(exampleId) : undefined;
+  const [code, setCode] = useState(() => initialEditorCode(exampleId));
+  const [activeExampleId, setActiveExampleId] = useState<string | undefined>(exampleId);
   const [dataPanelOpen, setDataPanelOpen] = useState(true);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [duration, setDuration] = useState(5);
@@ -234,8 +233,8 @@ export default function Editor({ templateId }: EditorProps) {
   const activeExample = activeExampleId ? getExampleById(activeExampleId) : undefined;
 
   useEffect(() => {
-    if (templateId) setActiveExampleId(templateId);
-  }, [templateId]);
+    if (exampleId) setActiveExampleId(exampleId);
+  }, [exampleId]);
 
   // Load example source when the active template changes
   useEffect(() => {
@@ -281,10 +280,9 @@ export default function Editor({ templateId }: EditorProps) {
     setExamplesOpen(false);
   };
 
-  const { template, compiling, error: compileError } = useCompiledTemplate({
+  const { media, compiling, error: compileError } = useCompiledMedia({
     code,
     codeUrl: activeExample?.codeUrl,
-    bundled: activeExample?.bundled,
     bundledUrl: activeExample?.bundledUrl,
     wasmCompile,
     debounceMs: 300,
@@ -295,41 +293,41 @@ export default function Editor({ templateId }: EditorProps) {
   });
 
   const assets = useMemo(
-    () => resolvePlaygroundAssets(template?.config?.assets),
-    [template?.config?.assets],
+    () => resolvePlaygroundAssets(media?.config?.assets),
+    [media?.config?.assets],
   );
 
   const session = usePlayerSession({
-    template,
+    media,
     data: formData,
     duration,
   });
 
   // Sync duration dropdown when the compiled template declares one
   useEffect(() => {
-    if (!template || isComposedTemplate(template)) return;
-    const declared = template.config?.duration;
+    if (!media) return;
+    const declared = media.config?.duration;
     if (typeof declared === "number") setDuration(declared);
-  }, [template]);
+  }, [media]);
 
   const durationOptions = useMemo(() => {
     const declared =
-      template && !isComposedTemplate(template) && typeof template.config?.duration === "number"
-        ? template.config.duration
+      media && typeof media.config?.duration === "number"
+        ? media.config.duration
         : undefined;
     if (declared != null && !DURATION_OPTIONS.includes(declared)) {
       return [...DURATION_OPTIONS, declared].sort((a, b) => a - b);
     }
     return DURATION_OPTIONS;
-  }, [template]);
+  }, [media]);
 
   useEffect(() => {
     if (compileError) {
       posthog.capture("editor_compile_error", { error_message: compileError.message });
-    } else if (template && codeEdited) {
+    } else if (media && codeEdited) {
       posthog.capture("editor_code_changed", { code_length: code.length });
     }
-  }, [compileError, template, codeEdited, code.length]);
+  }, [compileError, media, codeEdited, code.length]);
 
   const exportRequested = searchParams.get("action") === "export";
 
@@ -346,14 +344,14 @@ export default function Editor({ templateId }: EditorProps) {
   const handleExport = useCallback(
     async (options: ExportOptions) => {
       posthog.capture("editor_export_started", {
-        format: options.format,
+        format: options.encoding?.format,
         duration_seconds: duration,
       });
       const blob = await session.exportMp4(options);
       if (blob) {
         posthog.capture("editor_export_completed", {
           file_size_bytes: blob.size,
-          format: options.format,
+          format: options.encoding?.format,
           duration_seconds: duration,
         });
       }
@@ -506,8 +504,8 @@ export default function Editor({ templateId }: EditorProps) {
           <div className="flex flex-1 items-center justify-center overflow-hidden bg-neutral-950 p-4">
             <Player
               ref={session.playerRef}
-              template={template ?? undefined}
-              format={session.format}
+              media={media ?? undefined}
+              size={session.size}
               duration={duration}
               playbackMode={looping ? "loop" : "once"}
               loadMode="eager"
@@ -545,9 +543,9 @@ export default function Editor({ templateId }: EditorProps) {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <div className="max-h-[200px] overflow-y-auto px-4 pb-4">
-                {template && !isComposedTemplate(template) && template.sample && Object.keys(template.sample).length > 0 ? (
+                {media && media.sample && Object.keys(media.sample).length > 0 ? (
                   <DataForm
-                    templateData={template.sample}
+                    templateData={media.sample}
                     data={formData}
                     onChange={handleDataChange}
                     theme="dark"
@@ -567,14 +565,12 @@ export default function Editor({ templateId }: EditorProps) {
               store={session.store}
               showTimeline
               showTime
-              showFormat
               showExport
               onExport={handleExport}
               onDownload={session.download}
               exporting={session.exporting}
               exportProgress={session.exportProgress}
-              currentFormat={session.format}
-              onFormatChange={session.setFormat}
+              currentSize={session.size}
               exportDialogOpen={exportDialogOpen}
               onExportDialogOpenChange={setExportDialogOpen}
               className="border-t border-border"

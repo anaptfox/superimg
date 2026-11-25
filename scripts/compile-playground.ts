@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Compile playground examples to static assets for Gumbo (or any static host).
+ * Compile SuperImg playground examples to assets for a static host.
  *
  * Output layout (under --out, default: public/playground):
  *   manifest.json
@@ -8,22 +8,14 @@
  *   examples/{id}/bundle.iife.js   (when needsBundle)
  *   assets/{id}/...              (companion files from template dirs)
  *
- * Mirrors cross-template asset refs into {out}/assets/{exampleId}/ (flat filenames).
- * Gumbo dev only serves playground/assets/<known-example-id>/*.
- *
- * Env (set by gumbo [[build.hook]]):
- *   GUMBO_ROOT   — project root
- *   GUMBO_OUTDIR — bundle outdir (dist)
- *   GUMBO_MODE   — build | dev
+ * Mirrors nested companion assets into {out}/assets/{exampleId}/.
+ * The host project and optional built-in source directory are explicit inputs.
  */
 
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
-import {
-  bundleTemplate,
-  bundleTemplateCode,
-} from "../packages/superimg-core/dist/bundler.js";
+import { collectCompanionAssets } from "./example-companion-assets.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SUPERIMG_ROOT = path.resolve(SCRIPT_DIR, "..");
@@ -44,8 +36,6 @@ const EXAMPLE_CATEGORIES = [
 ] as const;
 
 type ExampleCategory = (typeof EXAMPLE_CATEGORIES)[number];
-/** @deprecated Use ExampleCategory */
-type TemplateCategory = ExampleCategory;
 
 function assertExampleCategory(
   id: string,
@@ -62,6 +52,8 @@ function assertExampleCategory(
 interface TemplateMetadata {
   title: string;
   category: ExampleCategory;
+  directory?: string;
+  playground?: boolean;
   description?: string;
 }
 
@@ -85,20 +77,10 @@ interface CatalogEntry {
 interface BuiltinSpec {
   id: string;
   title: string;
-  category: TemplateCategory;
+  category: ExampleCategory;
   module: string;
   export: string;
 }
-
-/** Editor keeps WASM live-compile for these demos even when a preview bundle exists. */
-const EDITOR_WASM_DEMO_IDS = new Set([
-  "code-galaxy",
-  "countdown",
-  "force-graph",
-  "math-tunnel",
-  "spinner",
-  "svg-filter",
-]);
 
 /** Built-in string-literal examples (not sourced from examples/<category>/). */
 const BUILTIN_SPECS: BuiltinSpec[] = [
@@ -130,7 +112,7 @@ const BUILTIN_SPECS: BuiltinSpec[] = [
 
 function parseArgs(argv: string[]) {
   let outDir = "public/playground";
-  let gumboRoot = process.env.GUMBO_ROOT;
+  let hostRoot = process.cwd();
   let builtinsDir: string | undefined;
 
   for (let i = 0; i < argv.length; i++) {
@@ -138,18 +120,18 @@ function parseArgs(argv: string[]) {
     if (arg === "--out" && argv[i + 1]) {
       outDir = argv[++i];
     } else if (arg === "--root" && argv[i + 1]) {
-      gumboRoot = argv[++i];
+      hostRoot = argv[++i];
     } else if (arg === "--builtins-dir" && argv[i + 1]) {
       builtinsDir = argv[++i];
     }
   }
 
-  gumboRoot ??= path.resolve(SUPERIMG_ROOT, "../superimg_app");
+  hostRoot = path.resolve(hostRoot);
   const resolvedOut = path.isAbsolute(outDir)
     ? outDir
-    : path.join(gumboRoot, outDir);
+    : path.join(hostRoot, outDir);
 
-  return { outDir: resolvedOut, gumboRoot, builtinsDir };
+  return { outDir: resolvedOut, hostRoot, builtinsDir };
 }
 
 function markGenerated(filePath: string) {
@@ -250,7 +232,7 @@ function mirrorReferencedAssets(
 ): void {
   const destDir = path.join(outDir, "assets", exampleId);
   fs.mkdirSync(destDir, { recursive: true });
-  // Marker so Gumbo dev static serving registers the example assets directory.
+  // Marker so static hosts can treat the example asset directory as a package boundary.
   const marker = path.join(destDir, "package.json");
   writeFileIfChanged(marker, JSON.stringify({ name: exampleId, private: true }, null, 2));
 
@@ -268,9 +250,12 @@ function mirrorReferencedAssets(
   }
 }
 
-function resolveLiveEdit(id: string, hasBundle: boolean): boolean {
-  if (EDITOR_WASM_DEMO_IDS.has(id)) return true;
-  return !hasBundle;
+/**
+ * Playground is single-file only: every catalog entry is live-editable via
+ * in-browser WASM. Multi-file templates are skipped (they belong in apps).
+ */
+function resolveLiveEdit(_id: string, _hasBundle: boolean): boolean {
+  return true;
 }
 
 function parseDuration(code: string): number | undefined {
@@ -299,16 +284,8 @@ function needsPreBundle(dirPath: string, code: string): boolean {
 
 function copyCompanionAssets(srcDir: string, destRoot: string, exampleId: string) {
   const destDir = path.join(destRoot, "assets", exampleId);
-  const files = fs.readdirSync(srcDir);
-  const skip = new Set([".DS_Store"]);
-
-  for (const file of files) {
-    if (skip.has(file)) continue;
-    const src = path.join(srcDir, file);
-    if (!fs.statSync(src).isFile()) continue;
-    if (file.endsWith(".media.ts") || file.endsWith(".media.js")) continue;
-    if (file.endsWith(".test.ts") || file.endsWith(".test.js")) continue;
-    copyFileIfChanged(src, path.join(destDir, file));
+  for (const asset of collectCompanionAssets(srcDir)) {
+    copyFileIfChanged(asset.source, path.join(destDir, asset.relative));
   }
 }
 
@@ -375,9 +352,10 @@ async function loadBuiltinModules(builtinsDir: string) {
 }
 
 async function compileTemplates(outDir: string): Promise<CatalogEntry[]> {
+  const { bundleTemplate } = await import("../packages/superimg-core/dist/bundler.js");
   const rawMetadata = JSON.parse(
     fs.readFileSync(METADATA_PATH, "utf-8"),
-  ) as Record<string, { title: string; category: string; description?: string }>;
+  ) as Record<string, Omit<TemplateMetadata, "category"> & { category: string }>;
   const metadata: Record<string, TemplateMetadata> = {};
   for (const [id, meta] of Object.entries(rawMetadata)) {
     assertExampleCategory(id, meta.category);
@@ -389,7 +367,12 @@ async function compileTemplates(outDir: string): Promise<CatalogEntry[]> {
   for (const [id, meta] of Object.entries(metadata).sort(([a], [b]) =>
     a.localeCompare(b),
   )) {
-    const dirPath = path.join(EXAMPLES_DIR, meta.category, id);
+    if (meta.playground === false) continue;
+    const directory = meta.directory ?? id;
+    if (typeof directory !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(directory)) {
+      throw new Error(`examples/_templates.json: "${id}" has invalid directory "${directory}"`);
+    }
+    const dirPath = path.join(EXAMPLES_DIR, meta.category, directory);
     if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
       console.warn(`Warning: Missing directory for ${id} at ${dirPath}, skipping`);
       continue;
@@ -397,34 +380,34 @@ async function compileTemplates(outDir: string): Promise<CatalogEntry[]> {
 
     const files = fs.readdirSync(dirPath);
     const templateFiles = files.filter(
-      (file) => file.endsWith(".media.ts") || file.endsWith(".media.js"),
+      (file) => file === `${id}.media.ts` || file === `${id}.media.js`,
     );
     if (templateFiles.length !== 1) continue;
 
     const [templateFile] = templateFiles;
     const filePath = path.join(dirPath, templateFile);
     const code = fs.readFileSync(filePath, "utf-8");
-    const mustBundle = needsPreBundle(dirPath, code);
+    // Playground = single-file only. Multi-file templates stay as app/examples.
+    if (needsPreBundle(dirPath, code)) {
+      console.warn(
+        `  ⊘ ${meta.category}/${id} — multi-file (relative imports / companions); ` +
+          `skipped for playground (use as an app/example project)`,
+      );
+      continue;
+    }
     const needsAssets = hasConfigAssets(code);
     const duration = parseDuration(code);
 
-    // Bundle when the template has companions/imports, or when the editor should
-    // prefer a prebuilt IIFE over in-browser WASM (not in EDITOR_WASM_DEMO_IDS).
-    const shouldBundle = mustBundle || !EDITOR_WASM_DEMO_IDS.has(id);
-
+    // Optional prebuilt IIFE for first paint; live edit always uses WASM.
     let bundled: string | undefined;
-    if (shouldBundle) {
-      try {
-        bundled = await bundleTemplate(filePath);
-        console.log(`  ✓ ${meta.category}/${id} → ${meta.title} (bundled)`);
-      } catch (err) {
-        console.warn(
-          `Warning: Bundle failed for ${id}: ${err instanceof Error ? err.message : err}`,
-        );
-        console.log(`  ✓ ${meta.category}/${id} → ${meta.title} (code only)`);
-      }
-    } else {
-      console.log(`  ✓ ${meta.category}/${id} → ${meta.title}`);
+    try {
+      bundled = await bundleTemplate(filePath);
+      console.log(`  ✓ ${meta.category}/${id} → ${meta.title} (bundled)`);
+    } catch (err) {
+      console.warn(
+        `Warning: Bundle failed for ${id}: ${err instanceof Error ? err.message : err}`,
+      );
+      console.log(`  ✓ ${meta.category}/${id} → ${meta.title} (code only)`);
     }
 
     if (needsAssets) {
@@ -434,7 +417,7 @@ async function compileTemplates(outDir: string): Promise<CatalogEntry[]> {
     const hasBundle = bundled !== undefined;
     const playground: PlaygroundMeta = {
       liveEdit: resolveLiveEdit(id, hasBundle),
-      needsBundle: mustBundle,
+      needsBundle: false,
       needsAssets,
       ...(duration !== undefined ? { duration } : {}),
     };
@@ -461,6 +444,7 @@ async function compileBuiltins(
   builtinsDir: string,
   templateIds: Set<string>,
 ): Promise<CatalogEntry[]> {
+  const { bundleTemplateCode } = await import("../packages/superimg-core/dist/bundler.js");
   const modules = await loadBuiltinModules(builtinsDir);
   const catalog: CatalogEntry[] = [];
 
@@ -487,9 +471,8 @@ async function compileBuiltins(
       console.log(`  ✓ builtin/${spec.id} → ${spec.title} (code only)`);
     }
 
-    const hasBundle = bundled !== undefined;
     const playground: PlaygroundMeta = {
-      liveEdit: resolveLiveEdit(spec.id, hasBundle),
+      liveEdit: true,
       needsBundle: false,
       needsAssets: hasConfigAssets(code),
       ...(duration !== undefined ? { duration } : {}),
@@ -511,15 +494,12 @@ async function compileBuiltins(
 }
 
 async function main() {
-  const { outDir, gumboRoot, builtinsDir } = parseArgs(process.argv.slice(2));
+  const { outDir, hostRoot, builtinsDir } = parseArgs(process.argv.slice(2));
   const resolvedBuiltins =
-    builtinsDir ?? path.join(gumboRoot, "src/lib/video/examples");
+    builtinsDir ?? path.join(hostRoot, "src/lib/video/examples");
 
   console.log(`Compiling playground → ${outDir}`);
-  console.log(`  GUMBO_ROOT=${gumboRoot}`);
-  if (process.env.GUMBO_MODE) {
-    console.log(`  GUMBO_MODE=${process.env.GUMBO_MODE}`);
-  }
+  console.log(`  host root=${hostRoot}`);
 
   fs.mkdirSync(outDir, { recursive: true });
 
@@ -543,7 +523,7 @@ async function main() {
   );
   const manifestPath = path.join(outDir, "manifest.json");
   const manifestShape = {
-    version: 1,
+    version: 0,
     categories,
     examples,
   };

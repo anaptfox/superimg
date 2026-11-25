@@ -12,8 +12,12 @@ export const DEFAULT_READINESS: Required<FrameReadinessPolicy> = {
 export function resolveReadinessPolicy(
   policy?: FrameReadinessPolicy,
 ): Required<FrameReadinessPolicy> {
+  const timeoutMs = policy?.timeoutMs ?? DEFAULT_READINESS.timeoutMs;
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 2_147_483_647) {
+    throw new TypeError("Frame readiness timeout must be a positive finite timeout in milliseconds");
+  }
   return {
-    timeoutMs: policy?.timeoutMs ?? DEFAULT_READINESS.timeoutMs,
+    timeoutMs,
     waitImplicit: policy?.waitImplicit ?? DEFAULT_READINESS.waitImplicit,
   };
 }
@@ -33,7 +37,7 @@ export function collectWaitLabels(html: string): string[] {
 const READY_HINT =
   'Hint: img/video with data-superimg-wait auto-clear after load. ' +
   'For custom canvas/WebGL use std.ready.token("label") and run token.done after paint ' +
-  '(or std.viz.three.scene which auto-wires). Do not await inside render().';
+  '(NativeSurface handles readiness automatically). Do not await inside render().';
 
 export function formatReadinessTimeout(
   openLabels: string[],
@@ -67,110 +71,5 @@ export interface ReadinessEvaluateResult {
   error?: string;
 }
 
-/**
- * Runs inside Playwright page.evaluate after frame HTML is injected.
- * Must be self-contained (no outer closures).
- */
-export async function readinessEvaluateInPage(
-  input: ReadinessEvaluateInput,
-): Promise<ReadinessEvaluateResult> {
-  const ready = (
-    window as unknown as {
-      __superimgReady?: {
-        done: (label: string) => void;
-        fail: (label: string, err?: string) => void;
-        __reset: () => void;
-        __wait: (
-          labels: string[],
-          timeoutMs: number,
-        ) => Promise<{ ok: boolean; open: string[]; error?: string }>;
-      };
-    }
-  ).__superimgReady;
-
-  if (!ready) {
-    return {
-      ok: false,
-      open: [],
-      error: "window.__superimgReady missing — page shell not loaded",
-    };
-  }
-
-  // Do not __reset() here — captureFrame already resets before injecting HTML and
-  // running scripts. Resetting after would erase synchronous done() from three/canvas.
-
-  const root = document.getElementById("frame");
-  if (!root) {
-    return { ok: false, open: [], error: "#frame element missing" };
-  }
-
-  if (input.waitFonts && document.fonts?.ready) {
-    await document.fonts.ready;
-  }
-
-  async function decodeImg(img: HTMLImageElement): Promise<void> {
-    if (img.complete && img.naturalWidth > 0) return;
-    if (typeof img.decode === "function") {
-      try {
-        await img.decode();
-        return;
-      } catch {
-        // fall through to load/error events
-      }
-    }
-    if (img.complete) return;
-    await new Promise<void>((resolve) => {
-      const done = () => {
-        img.removeEventListener("load", done);
-        img.removeEventListener("error", done);
-        resolve();
-      };
-      img.addEventListener("load", done);
-      img.addEventListener("error", done);
-    });
-  }
-
-  const labeled = root.querySelectorAll<HTMLElement>(`[${input.waitAttr}]`);
-  const labels: string[] = [];
-  const labelSet = new Set<string>();
-
-  for (const el of labeled) {
-    const label = el.getAttribute(input.waitAttr)?.trim();
-    if (!label || labelSet.has(label)) continue;
-    labelSet.add(label);
-    labels.push(label);
-
-    // Auto-clear labels on static media so authors need not call done().
-    if (el instanceof HTMLImageElement) {
-      void decodeImg(el).then(
-        () => ready.done(label),
-        () => ready.done(label), // still clear so timeout isn't infinite on broken src
-      );
-    } else if (el instanceof HTMLVideoElement) {
-      const v = el;
-      const mark = () => ready.done(label);
-      if (v.readyState >= 2) mark();
-      else {
-        v.addEventListener("loadeddata", mark, { once: true });
-        v.addEventListener("error", mark, { once: true });
-      }
-    }
-    // canvas / other: author must call __superimgReady.done(label)
-  }
-
-  if (input.waitImages) {
-    const imgs = root.querySelectorAll("img");
-    await Promise.all(Array.from(imgs).map((img) => decodeImg(img as HTMLImageElement)));
-  }
-
-  if (labels.length === 0) {
-    return { ok: true, open: [] };
-  }
-
-  const result = await ready.__wait(labels, input.timeoutMs);
-  return {
-    ok: result.ok,
-    open: result.open ?? [],
-    ...(result.error !== undefined ? { error: result.error } : {}),
-  };
-}
+/** The shared self-contained probe is also used by Player and browser export. */
+export { waitForBrowserResources as readinessEvaluateInPage } from "@superimg/core/html";

@@ -1,8 +1,11 @@
 import type { GradientStop } from "../color/gradient.js";
 import { animateGradientStops } from "../color/gradient.js";
-import { colord } from "colord";
+import { colord, extend } from "colord";
+import mixPlugin from "colord/plugins/mix";
 
-let uid = 0;
+// The svg subpath can load without the root color module that normally
+// installs this plugin. Keep animate() correct when imported in isolation.
+extend([mixPlugin]);
 
 export interface SvgGradientResult {
   id: string;
@@ -11,6 +14,8 @@ export interface SvgGradientResult {
 }
 
 export interface SvgLinearGradientOpts {
+  /** Stable definition id. A deterministic content id is used when omitted. */
+  id?: string;
   x1?: string;
   y1?: string;
   x2?: string;
@@ -20,9 +25,20 @@ export interface SvgLinearGradientOpts {
 }
 
 export interface SvgRadialGradientOpts {
+  /** Stable definition id. A deterministic content id is used when omitted. */
+  id?: string;
   cx?: string;
   cy?: string;
   r?: string;
+}
+
+function stableId(prefix: "lin" | "rad", value: unknown): string {
+  const input = JSON.stringify(value);
+  let hash = 5381;
+  for (let i = 0; i < input.length; i++) {
+    hash = ((hash << 5) + hash + input.charCodeAt(i)) | 0;
+  }
+  return `grad-${prefix}-${Math.abs(hash).toString(36)}`;
 }
 
 function stopEls(stops: GradientStop[]): string {
@@ -48,7 +64,7 @@ function angleToCoords(angle: number): { x1: string; y1: string; x2: string; y2:
 }
 
 export function linear(stops: GradientStop[], opts: SvgLinearGradientOpts = {}): SvgGradientResult {
-  const id = `grad-lin-${uid++}`;
+  const id = opts.id ?? stableId("lin", { stops, opts });
   const coords = opts.angle != null ? angleToCoords(opts.angle) : { x1: "0%", y1: "0%", x2: "0%", y2: "100%" };
   const x1 = opts.x1 ?? coords.x1;
   const y1 = opts.y1 ?? coords.y1;
@@ -59,7 +75,7 @@ export function linear(stops: GradientStop[], opts: SvgLinearGradientOpts = {}):
 }
 
 export function radial(stops: GradientStop[], opts: SvgRadialGradientOpts = {}): SvgGradientResult {
-  const id = `grad-rad-${uid++}`;
+  const id = opts.id ?? stableId("rad", { stops, opts });
   const cx = opts.cx ?? "50%";
   const cy = opts.cy ?? "50%";
   const r = opts.r ?? "50%";
@@ -75,7 +91,13 @@ export function animate(
   opts?: SvgLinearGradientOpts | SvgRadialGradientOpts,
 ): SvgGradientResult {
   const morphed = animateGradientStops(stopsA, stopsB, progress);
+  const id = opts?.id ?? stableId(kind === "radial" ? "rad" : "lin", {
+    stopsA,
+    stopsB,
+    kind,
+    opts,
+  });
   return kind === "radial"
-    ? radial(morphed, opts as SvgRadialGradientOpts)
-    : linear(morphed, opts as SvgLinearGradientOpts);
+    ? radial(morphed, { ...(opts as SvgRadialGradientOpts), id })
+    : linear(morphed, { ...(opts as SvgLinearGradientOpts), id });
 }

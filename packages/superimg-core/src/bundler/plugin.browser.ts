@@ -9,18 +9,19 @@ import {
 } from "./plugin.shared.js";
 
 const SUPERIMG_VIRTUAL = "\0superimg-virtual";
-const SUPERIMG_DEFINE = "\0superimg-define";
+const SUPERIMG_INTERACTIVE = "\0superimg-interactive";
 
 const BUNDLED_STDLIB_VIRTUAL: Record<BundledStdlibSubpath, string> = {
   code: "\0stdlib-code",
   cue: "\0stdlib-cue",
   text: "\0stdlib-text",
+  charts: "\0stdlib-charts",
 };
 
 export function createSuperimgPlugin() {
   return buildSuperimgPlugin({
     resolveSuperimg: () => SUPERIMG_VIRTUAL,
-    resolveDefine: () => SUPERIMG_DEFINE,
+    resolveInteractive: () => SUPERIMG_INTERACTIVE,
     resolveStdlibSubpath(sub) {
       if (sub in BUNDLED_STDLIB_VIRTUAL) {
         return BUNDLED_STDLIB_VIRTUAL[sub as BundledStdlibSubpath];

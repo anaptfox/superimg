@@ -1,0 +1,22 @@
+{
+  "name": "superimg-example-agent-inspection",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "node ../../../scripts/typecheck-native.mjs --noEmit && vite build",
+    "typecheck": "node ../../../scripts/typecheck-native.mjs --noEmit",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@foxworth/boundary": "^0.2.0",
+    "@foxworth/superimg": "workspace:*",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "path-lesson-browser",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "vite --host 0.0.0.0" },
+  "dependencies": { "@foxworth/superimg": "workspace:*" },
+  "devDependencies": { "typescript": "catalog:", "vite": "catalog:" }
+}

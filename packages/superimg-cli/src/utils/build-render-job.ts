@@ -1,13 +1,14 @@
 import type {
   Duration,
   EncodingOptions,
+  RenderJob,
   ResolvedAssetDeclaration,
   TemplateBundle,
 } from "@superimg/types";
 import {
   resolveRenderConfig,
   type ParsedTemplate,
-} from "../cli/utils/template-config.js";
+} from "@foxworth/superimg-node/project-tools";
 import { prepareAssets, resolveAudioUrl } from "./prepare-assets.js";
 
 export interface BuildRenderJobOverrides {
@@ -17,8 +18,6 @@ export interface BuildRenderJobOverrides {
   duration?: Duration;
   data?: Record<string, unknown>;
   encoding?: EncodingOptions;
-  /** Per-target output name (preset name). Defaults to "default". */
-  outputName?: string;
 }
 
 export interface BuildRenderJobInput {
@@ -63,7 +62,9 @@ export function buildRenderJob(input: BuildRenderJobInput) {
   const resolvedAssets = prepareAssets({
     autoDiscovered: input.autoDiscovered,
     configAssets: input.parsed.resolvedAssets,
-    assetUrlResolver: input.assetUrlResolver,
+    ...(input.assetUrlResolver !== undefined
+      ? { assetUrlResolver: input.assetUrlResolver }
+      : {}),
   });
 
   const resolvedAudio = resolveAudioUrl(
@@ -88,7 +89,6 @@ export function buildRenderJob(input: BuildRenderJobInput) {
     width: widthOverride ?? resolvedConfig.width,
     height: heightOverride ?? resolvedConfig.height,
     fps: fpsOverride ?? resolvedConfig.fps,
-    outputName: overrides.outputName ?? "default",
     ...(input.parsed.templateConfig?.fonts !== undefined
       ? { fonts: input.parsed.templateConfig.fonts }
       : {}),
@@ -110,7 +110,7 @@ export function buildRenderJob(input: BuildRenderJobInput) {
       ? { background: input.parsed.templateConfig.background }
       : {}),
     ...(resolvedAudio !== undefined ? { audio: resolvedAudio } : {}),
-  };
+  } as RenderJob;
 
   // Only keys the caller passed in overrides (CLI/API) — soft defaults stay on job only.
   const explicitOverrides: {

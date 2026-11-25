@@ -27,11 +27,19 @@ export function parseDuration(
     return parseFloat(frameMatch[1]!) / fps;
   }
 
+  // Bare seconds: "0", "1.5" (export --at; inspect --at is a different clock)
+  const bare = d.match(/^(\d+(?:\.\d+)?)$/);
+  if (bare) return parseFloat(bare[1]!);
+
   // Seconds or milliseconds: "5s", "500ms", "2.5s"
   const match = d.match(/^(\d+(?:\.\d+)?)(ms|s)$/);
   if (!match) {
+    const atHint =
+      fieldName === "--at" || fieldName === "at"
+        ? ` Export --at is time in seconds (0, 0s, 1.5s). Inspect --at is progress 0–1 (or f:N).`
+        : "";
     throw new Error(
-      `Invalid ${fieldName}: "${d}". Expected format: "5s", "500ms", or "30f"`
+      `Invalid ${fieldName}: "${d}". Expected format: "5s", "500ms", "30f", or a bare number of seconds.${atHint}`,
     );
   }
 

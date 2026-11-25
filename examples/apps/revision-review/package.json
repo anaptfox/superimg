@@ -1,0 +1,25 @@
+{
+  "name": "superimg-example-revision-review",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "node ../../../scripts/typecheck-native.mjs --noEmit && vite build",
+    "typecheck": "node ../../../scripts/typecheck-native.mjs --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@foxworth/superimg": "workspace:*",
+    "@foxworth/superimg-node": "workspace:*",
+    "@foxworth/superimg-interactions": "workspace:*",
+    "@superimg/core": "workspace:*",
+    "@superimg/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

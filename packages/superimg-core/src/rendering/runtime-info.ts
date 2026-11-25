@@ -1,15 +1,17 @@
 import type {
   AnyTemplateModule,
-  ComposedTemplate,
   Medium,
   TailwindConfig,
   Duration,
+  RetainedComposition,
 } from "@superimg/types";
-import { isComposedTemplate } from "@superimg/types";
+import { inferTemplateAnimated, isGoogleFontDeclaration } from "@superimg/types";
 import { DEFAULT_FPS, DEFAULT_HEIGHT, DEFAULT_WIDTH } from "../shared/constants.js";
 import { parseDuration } from "../shared/utils.js";
+import { scopedCompositionData } from "../composition/scoped-data.js";
+import { fontBytesDataUrl, fontFaceCss, fontMimeType } from "./font-css.js";
 
-export type RuntimeTemplate = AnyTemplateModule | ComposedTemplate;
+export type RuntimeTemplate = AnyTemplateModule;
 
 export interface ResolveRuntimeTemplateInfoOptions {
   width?: number;
@@ -21,7 +23,6 @@ export interface ResolveRuntimeTemplateInfoOptions {
 
 export interface RuntimeTemplateInfo {
   medium: Medium;
-  isComposed: boolean;
   isAnimated: boolean;
   width: number;
   height: number;
@@ -30,13 +31,14 @@ export interface RuntimeTemplateInfo {
   totalFrames: number;
   data: Record<string, unknown>;
   fonts: string[];
+  /** Portable explicit font faces. Filesystem declarations require host resolution. */
+  fontCss: string[];
   inlineCss: string[];
   stylesheets: string[];
   tailwind?: boolean | TailwindConfig;
 }
 
 function getMedium(template: RuntimeTemplate): Medium {
-  if (isComposedTemplate(template)) return template.medium;
   return template.medium;
 }
 
@@ -50,23 +52,21 @@ export function resolveRuntimeTemplateInfo(
 ): RuntimeTemplateInfo {
   const medium = getMedium(template);
   const config = getConfig(template);
-  const isComposed = isComposedTemplate(template);
-  const animated = isComposed ? true : template.animated;
+  // Shared inference — the IR compiles its clock from the same rule, and the
+  // Player rejects any load where the two clocks disagree (IR_CLOCK_MISMATCH).
+  const animated = inferTemplateAnimated(template);
 
   const width = options.width ?? config.width ?? DEFAULT_WIDTH;
   const height = options.height ?? config.height ?? DEFAULT_HEIGHT;
+  const composition = "composition" in template
+    ? template.composition as RetainedComposition | undefined
+    : undefined;
 
   let fps = options.fps ?? ("fps" in config ? config.fps : undefined) ?? DEFAULT_FPS;
   let duration: number;
   let totalFrames: number;
 
-  if (isComposed) {
-    fps = options.fps ?? template.fps;
-    duration = options.duration
-      ? parseDuration(options.duration, "duration", fps)
-      : template.duration;
-    totalFrames = Math.ceil(duration * fps);
-  } else if (!animated) {
+  if (!animated) {
     // Static template (one frame). SVG may declare a duration for CSS animation;
     // HTML stills are fps 1 / duration 1.
     fps = 1;
@@ -80,12 +80,24 @@ export function resolveRuntimeTemplateInfo(
       options.duration ??
       ("duration" in config ? config.duration : undefined);
     duration = parseDuration(configuredDuration, "duration", fps);
-    totalFrames = Math.ceil(duration * fps);
+    if (composition) {
+      const schedule = composition.schedule;
+      if (fps !== schedule.fps || width !== composition.outputSize.width || height !== composition.outputSize.height) {
+        throw new TypeError("composition: this timed projection requires its authored size and fps");
+      }
+      if (options.duration !== undefined && Math.abs(duration * fps - schedule.totalFrames) > 1e-7) {
+        throw new TypeError("composition: duration override would change the retained frame schedule");
+      }
+      scopedCompositionData(options.data, schedule.leaves.map((leaf) => leaf.path));
+      totalFrames = schedule.totalFrames;
+      duration = totalFrames / fps;
+    } else {
+      totalFrames = Math.ceil(duration * fps);
+    }
   }
 
   return {
     medium,
-    isComposed,
     isAnimated: animated,
     width,
     height,
@@ -96,7 +108,18 @@ export function resolveRuntimeTemplateInfo(
       ...("sample" in template ? template.sample ?? {} : {}),
       ...(options.data ?? {}),
     } as Record<string, unknown>,
-    fonts: config.fonts ?? [],
+    fonts: (config.fonts ?? []).flatMap((font) => isGoogleFontDeclaration(font) ? [font.spec.trim()] : []),
+    fontCss: (config.fonts ?? []).flatMap((font) => {
+      if (isGoogleFontDeclaration(font)) return [];
+      if (typeof font.src === "string") {
+        const url = font.src.trim();
+        // A browser must never reinterpret a filesystem font as a page-relative URL.
+        return /^https?:\/\//i.test(url) ? [fontFaceCss(font, url)] : [];
+      }
+      const bytes = font.src instanceof Uint8Array ? font.src : new Uint8Array(font.src);
+      const mimeType = fontMimeType(bytes);
+      return [fontFaceCss({ ...font, mimeType }, fontBytesDataUrl(bytes, mimeType))];
+    }),
     inlineCss: "inlineCss" in config ? config.inlineCss ?? [] : [],
     stylesheets: "stylesheets" in config ? config.stylesheets ?? [] : [],
     ...("tailwind" in config && config.tailwind !== undefined

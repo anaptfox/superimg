@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "study": "borrowed-shapes",
+  "method": "porcelain modal partials transforming into stone modes",
+  "seed": "345abcde",
+  "sampleRate": 48000,
+  "samplesPerFrame": 1600,
+  "channels": 2,
+  "bitDepth": 16,
+  "sampleCount": 1440000,
+  "durationSeconds": 30,
+  "loop": false,
+  "peak": 0.72,
+  "rms": 0.09111475895651468,
+  "sha256": "049c88ba671b85aabf6ef47f57605ce2cdee89b3eebf1a274f82bf8620179390",
+  "cues": [
+    {
+      "id": "gather",
+      "seconds": 0.5,
+      "kind": "porcelain",
+      "frequency": 740,
+      "sample": 24000
+    },
+    {
+      "id": "seed-held",
+      "seconds": 3,
+      "kind": "porcelain",
+      "frequency": 740,
+      "sample": 144000
+    },
+    {
+      "id": "seed-tree",
+      "seconds": 6,
+      "kind": "porcelain",
+      "frequency": 740,
+      "sample": 288000
+    },
+    {
+      "id": "tree-held",
+      "seconds": 11,
+      "kind": "porcelain",
+      "frequency": 740,
+      "sample": 528000
+    },
+    {
+      "id": "tree-citadel",
+      "seconds": 14,
+      "kind": "stone",
+      "frequency": 210,
+      "sample": 672000
+    },
+    {
+      "id": "citadel-held",
+      "seconds": 19,
+      "kind": "stone",
+      "frequency": 210,
+      "sample": 912000
+    },
+    {
+      "id": "citadel-seed",
+      "seconds": 22,
+      "kind": "porcelain",
+      "frequency": 740,
+      "sample": 1056000
+    },
+    {
+      "id": "seed-returned",
+      "seconds": 27,
+      "kind": "porcelain",
+      "frequency": 740,
+      "sample": 1296000
+    }
+  ]
+}

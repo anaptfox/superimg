@@ -1,0 +1,43 @@
+{
+  "name": "@superimg/interactions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Node-only Boundary-native interaction mount for SuperImg projects",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check:generated": "tsx --tsconfig tsconfig.generate.json scripts/generate-artifacts.ts --check",
+    "generate": "tsx --tsconfig tsconfig.generate.json scripts/generate-artifacts.ts",
+    "test": "vitest --run",
+    "typecheck": "node ../../scripts/typecheck-native.mjs --noEmit"
+  },
+  "files": [
+    "dist",
+    "program.lock"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@superimg/core": "workspace:*",
+    "@superimg/node": "workspace:*",
+    "@superimg/types": "workspace:*",
+    "oxc-parser": "catalog:"
+  },
+  "peerDependencies": {
+    "@foxworth/boundary": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "vitest": "catalog:",
+    "@foxworth/boundary": "^0.2.0"
+  }
+}

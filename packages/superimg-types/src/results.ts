@@ -1,6 +1,6 @@
 //! Result types and structured errors
 
-import type { JsonObject } from "./json.js";
+import type { JsonObject, JsonValue } from "./json.js";
 //! Discriminated unions for async operations with actionable error messages
 
 // =============================================================================
@@ -89,9 +89,30 @@ export interface SourceLocation {
  * Serialized form of a SuperImgError. Stable shape suitable for transport
  * over WebSocket / API / process boundaries.
  */
+/**
+ * Known SuperImg error codes. `(string & {})` keeps autocomplete for these
+ * literals while still accepting codes owned by other packages.
+ */
+export type SuperImgErrorCode =
+  | "CHROMIUM_MISSING"
+  | "CHROMIUM_LAUNCH_DENIED"
+  | "CHROMIUM_INSTALL_FAILED"
+  | "RUNTIME_INFRASTRUCTURE_ERROR"
+  | "RUNTIME_DISPOSED"
+  | "CAPABILITY_UNAVAILABLE"
+  | "RUNTIME_CANCELLED"
+  | "MEDIA_PREFLIGHT_FAILED"
+  | "EXPORT_BUNDLE_DISPOSED"
+  | "NOT_TEXT"
+  | "TEMPLATE_MISSING_EXPORT"
+  | "SVG_TEXT_NO_FONT"
+  | "OUTPUT_SIZE_MISMATCH"
+  | "NEEDS_BROWSER"
+  | (string & {});
+
 export interface SuperImgErrorJSON {
   name: string;
-  code: string;
+  code: SuperImgErrorCode;
   message: string;
   details: JsonObject;
   suggestion: string;
@@ -113,12 +134,13 @@ export class SuperImgError extends Error {
 
   constructor(
     message: string,
-    public readonly code: string,
+    public readonly code: SuperImgErrorCode,
     public readonly details: JsonObject,
     public readonly suggestion: string,
-    public readonly docsUrl?: string
+    public readonly docsUrl?: string,
+    options?: { cause?: unknown },
   ) {
-    super(message);
+    super(message, options && "cause" in options ? { cause: options.cause } : undefined);
     this.name = "SuperImgError";
     // Maintains proper stack trace in V8 (Node / Chromium)
     const captureStackTrace = (
@@ -147,6 +169,30 @@ export class SuperImgError extends Error {
 }
 
 /**
+ * True for a SuperImgError from this module copy or a duplicated one.
+ * Cross-realm copies fail `instanceof`, so name, code, suggestion, and details
+ * are accepted as the same shape.
+ */
+export function isSuperImgError(value: unknown, code?: SuperImgErrorCode): value is SuperImgError {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as {
+    name?: unknown;
+    code?: unknown;
+    suggestion?: unknown;
+    details?: unknown;
+  };
+  const shaped = typeof candidate.name === "string"
+    && candidate.name.length > 0
+    && typeof candidate.code === "string"
+    && typeof candidate.suggestion === "string"
+    && typeof candidate.details === "object"
+    && candidate.details !== null;
+  if (!shaped && !(value instanceof SuperImgError)) return false;
+  if (code !== undefined && candidate.code !== code) return false;
+  return value instanceof SuperImgError || shaped;
+}
+
+/**
  * Template compilation failed
  */
 export class TemplateCompilationError extends SuperImgError {
@@ -160,7 +206,7 @@ export class TemplateCompilationError extends SuperImgError {
     suggestion?: string;
   }) {
     const location = details.line ? ` at line ${details.line}` : "";
-    const defaultSuggestion = `Check the template syntax${location}. Ensure the render function returns a string.`;
+    const defaultSuggestion = `Check the template syntax${location}. Ensure the render function returns a valid media tree.`;
     super(
       `Template compilation failed${location}: ${details.syntaxError}`,
       "TEMPLATE_COMPILATION_ERROR",
@@ -182,7 +228,7 @@ export class TemplateCompilationError extends SuperImgError {
 /**
  * Timeline context at the point of failure (for debugging)
  */
-export interface TimeContext {
+export interface TimeContext extends JsonObject {
   timelineFrame: number;
   timelineSeconds: number;
   timelineProgress: number;
@@ -211,10 +257,16 @@ export class TemplateRuntimeError extends SuperImgError {
       ? ` (${details.timeContext.timelineSeconds.toFixed(3)}s, ${(details.timeContext.timelineProgress * 100).toFixed(1)}% progress)`
       : "";
     const defaultSuggestion = `The render function threw an error. Check that all data properties exist and values aren't NaN/undefined at this point in the timeline.`;
+    const { dataSnapshot, ...jsonDetails } = details;
     super(
       `Template error at frame ${details.frame}${timeInfo}: ${details.originalError}`,
       "TEMPLATE_RUNTIME_ERROR",
-      details,
+      {
+        ...jsonDetails,
+        ...(dataSnapshot !== undefined
+          ? { dataSnapshot: toDiagnosticJson(dataSnapshot) }
+          : {}),
+      },
       details.suggestion ?? defaultSuggestion,
       "https://superimg.dev/docs/templates#debugging"
     );
@@ -249,7 +301,7 @@ export class ValidationError extends SuperImgError {
     super(
       `Validation failed for field "${details.field}"`,
       "VALIDATION_ERROR",
-      details,
+      { ...details, receivedValue: toDiagnosticJson(details.receivedValue) },
       details.suggestion ?? defaultSuggestion,
       "https://superimg.dev/docs/templates"
     );
@@ -261,6 +313,15 @@ export class ValidationError extends SuperImgError {
         ...(details.column !== undefined ? { column: details.column } : {}),
       };
     }
+  }
+}
+
+function toDiagnosticJson(value: unknown): JsonValue {
+  if (value === undefined) return null;
+  try {
+    return JSON.parse(JSON.stringify(value)) as JsonValue;
+  } catch {
+    return String(value);
   }
 }
 

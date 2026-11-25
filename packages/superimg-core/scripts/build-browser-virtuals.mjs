@@ -3,7 +3,8 @@
  * Build browser virtual-module sources from real packages.
  *
  * Writes gitignored .generated/browser-virtuals.ts — never hand-edit.
- * Source of truth: template-runtime.ts, @superimg/types define, stdlib dist.
+ * Source of truth: template-runtime.ts, @superimg/types define,
+ * @superimg/interactive authoring source, and stdlib dist.
  *
  * Run: node scripts/build-browser-virtuals.mjs
  */
@@ -29,6 +30,8 @@ const hashPath = join(pkgRoot, "dist", "browser-virtuals.source-hash");
 
 const stdlibDist = join(pkgRoot, "..", "superimg-stdlib", "dist");
 const typesEntry = join(pkgRoot, "..", "superimg-types", "dist", "index.js");
+const interactiveSrc = join(pkgRoot, "..", "superimg-interactive", "src");
+const interactiveEntry = join(interactiveSrc, "define.ts");
 const runtimeEntry = join(srcDir, "template-runtime.ts");
 
 function requireFile(path, label) {
@@ -48,7 +51,11 @@ function gatherFiles(dir, exts = [".ts", ".js"]) {
     if (st.isDirectory()) {
       if (name === "generated" || name === "__tests__") continue;
       out.push(...gatherFiles(full, exts));
-    } else if (exts.some((e) => name.endsWith(e)) && !name.endsWith(".gen.ts")) {
+    } else if (
+      exts.some((e) => name.endsWith(e)) &&
+      !name.endsWith(".gen.ts") &&
+      !name.includes(".test.")
+    ) {
       out.push(full);
     }
   }
@@ -60,9 +67,12 @@ export function computeSourceHash() {
   const files = [
     runtimeEntry,
     typesEntry,
+    ...gatherFiles(interactiveSrc),
     join(stdlibDist, "code.js"),
     join(stdlibDist, "cue", "index.js"),
     join(stdlibDist, "text.js"),
+    ...gatherFiles(join(stdlibDist, "charts")),
+    ...gatherFiles(join(stdlibDist, "chunks")),
     join(__dirname, "build-browser-virtuals.mjs"),
     ...gatherFiles(join(srcDir, "composition")),
     ...gatherFiles(join(srcDir, "shared")),
@@ -97,7 +107,7 @@ async function bundleEntry(input, label) {
 async function bundleDefineOnly() {
   const virtualId = resolve(srcDir, "define-entry.ts");
   const defineSource = `
-export { define, defineConfig, defineBatch } from ${JSON.stringify(typesEntry)};
+export { define, defineConfig, video, image, svg, ogImage, collection } from ${JSON.stringify(typesEntry)};
 `;
   const bundle = await rolldown({
     input: virtualId,
@@ -127,25 +137,31 @@ export { define, defineConfig, defineBatch } from ${JSON.stringify(typesEntry)};
 async function main() {
   requireFile(runtimeEntry, "template-runtime.ts");
   requireFile(typesEntry, "@superimg/types dist");
+  requireFile(interactiveEntry, "@superimg/interactive authoring source");
   requireFile(join(stdlibDist, "code.js"), "stdlib code.js");
   requireFile(join(stdlibDist, "cue", "index.js"), "stdlib cue");
   requireFile(join(stdlibDist, "text.js"), "stdlib text.js");
+  requireFile(join(stdlibDist, "charts", "index.js"), "stdlib charts");
 
   console.log("Building browser virtual modules from real sources...");
 
   const sourceHash = computeSourceHash();
 
-  const [runtimeCode, defineCode] = await Promise.all([
+  const [runtimeCode, defineCode, interactiveCode, chartsCode] = await Promise.all([
     bundleEntry(runtimeEntry, "template-runtime"),
     bundleDefineOnly(),
+    bundleEntry(interactiveEntry, "interactive authoring"),
+    bundleEntry(join(stdlibDist, "charts", "index.js"), "charts"),
   ]);
 
   const modules = {
     "\0superimg-virtual": runtimeCode,
     "\0superimg-define": defineCode,
+    "\0superimg-interactive": interactiveCode,
     "\0stdlib-code": readFileSync(join(stdlibDist, "code.js"), "utf8"),
     "\0stdlib-cue": readFileSync(join(stdlibDist, "cue", "index.js"), "utf8"),
     "\0stdlib-text": readFileSync(join(stdlibDist, "text.js"), "utf8"),
+    "\0stdlib-charts": chartsCode,
     "\0stdlib-noop": "export {}",
   };
 
@@ -167,6 +183,7 @@ export const BROWSER_VIRTUAL_MODULES: Record<string, string> = ${JSON.stringify(
   console.log(`Wrote ${outPath}`);
   console.log(`  superimg-virtual: ${runtimeCode.length} bytes`);
   console.log(`  superimg-define:  ${defineCode.length} bytes`);
+  console.log(`  superimg-interactive: ${interactiveCode.length} bytes`);
   console.log(`  source-hash: ${sourceHash}`);
 }
 

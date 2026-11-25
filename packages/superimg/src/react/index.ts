@@ -2,33 +2,16 @@
 "use client";
 
 // =============================================================================
-// PLAYER COMPONENT (main export)
-// =============================================================================
-
-export { Player, type PlayerProps, type PlayerRef } from "./components/Player.js";
-
-// =============================================================================
 // PREVIEW HOOKS
 // =============================================================================
 
 export {
-  useMediaQuery,
-  useIsMobile,
-  usePlaygroundCatalog,
   usePlayerShortcuts,
   useTimeline,
   useCheckpoints,
-  type PlaygroundCatalogEntry,
-  type PlaygroundCategory,
-  type PlaygroundCategoryId,
-  type PlaygroundManifest,
-  type PlaygroundMeta,
-  type UsePlaygroundCatalogOptions,
-  type UsePlaygroundCatalogReturn,
   type UsePlayerShortcutsOptions,
   type UseTimelineReturn,
   type UseCheckpointsReturn,
-  type FormatOption,
 } from "./hooks/preview.js";
 
 // =============================================================================
@@ -40,24 +23,8 @@ export { ChapterNav, type ChapterNavProps } from "./components/ChapterNav.js";
 export { PlayButton, type PlayButtonProps } from "./components/PlayButton.js";
 export { ExportButton, type ExportButtonProps } from "./components/ExportButton.js";
 export { ExportDialog, type ExportDialogProps, type ExportOptions } from "./components/ExportDialog.js";
-export { FormatSelector, type FormatSelectorProps, type FormatPreset } from "./components/FormatSelector.js";
 export { VideoControls, type VideoControlsProps } from "./components/VideoControls.js";
 export { DataForm, type DataFormProps, type DataFormTheme } from "./components/DataForm.js";
-
-// =============================================================================
-// UTILITIES
-// =============================================================================
-
-export {
-  inferSchema,
-  inferFieldType,
-  humanizeKey,
-  getFieldKeys,
-  getNestedValue,
-  setNestedValue,
-  type FieldSchema,
-  type FieldType,
-} from "./utils/inferSchema.js";
 
 // =============================================================================
 // RE-EXPORTED TYPES
@@ -65,16 +32,16 @@ export {
 
 export type {
   RenderContext,
-  TemplateModule,
+  MediaDefinition,
+  CanvasSize,
   TemplateConfig,
   PlaybackMode,
   LoadMode,
   HoverBehavior,
+  DriveSource,
   Checkpoint,
   Marker,
   MarkerPosition,
-  ComposedTemplate,
-  ResolvedScene,
   AssetMeta,
   ImageAssetMeta,
   VideoAssetMeta,
@@ -86,8 +53,6 @@ export type {
   PlayerOptions,
   PlayerInput,
   LoadResult,
-} from "../index.player.js";
+} from "@superimg/player";
 
 export type { RuntimeState, RuntimeStore } from "@superimg/media";
-
-export { isComposedTemplate } from "@superimg/types";

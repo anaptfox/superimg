@@ -1,239 +1,64 @@
 # CLI Reference
 
-The SuperImg CLI handles everything from scaffolding projects to rendering final media.
-
-## Installation
-
-```bash
-npm install -g superimg
-```
-
-Or use via npx without installing:
-
-```bash
-npx superimg <command>
-```
-
-## Commands
-
-### `superimg new`
-
-Create a new template in the current project.
-
-```bash
-superimg new my-video
-```
-
-This creates:
-```
-my-video/
-├── my-video.media.ts    # Your template
-└── _config.ts           # Settings (dimensions, fps, duration)
-```
-
-Options:
-```bash
-superimg new my-video --compose     # Multi-scene template (intro/content/outro)
-superimg new my-video --tailwind    # Include Tailwind CSS
-superimg new my-video --yes         # Skip prompts, use defaults
-```
-
-### `superimg dev`
-
-Start a live preview server with hot reload.
-
-```bash
-superimg dev my-video
-```
-
-Opens your browser to a local preview. Edit your template, and the video updates instantly.
-
-Options:
-```bash
-superimg dev my-video --port 3000   # Custom port
-superimg dev my-video --no-open     # Don't auto-open browser
-superimg dev                        # Home mode (lists all templates)
-```
-
-### `superimg render`
-
-Export your template to media.
-
-```bash
-superimg render my-video.media.ts
-```
-
-Output is colocated with the template: an `output/` folder is created next to the `.media.ts` file. So `path/to/my-video.media.ts` renders to `path/to/output/my-video.mp4`.
-
-Options:
-```bash
-# Custom output path
-superimg render template.media.ts -o my-video.mp4
-superimg render template.media.ts -o ./videos/  # Directory
-
-# Quality and format
-superimg render template.media.ts --quality high
-superimg render template.media.ts --format webm
-superimg render template.media.ts --format gif
-superimg render template.media.ts --fps 60
-
-# Single-frame still capture
-superimg render template.media.ts --frame 45 --format png
-superimg render template.media.ts --frame 45 --format html  # HTML snapshot
-
-# Dimensions (override template config)
-superimg render template.media.ts --width 1080 --height 1920
-
-# Pass data
-superimg render template.media.ts --data '{"title": "Custom Title"}'
-superimg render template.media.ts --data products.json -y  # Batch: one file per entry
-
-# Render all templates in project
-superimg render --all -y
-```
-
-### `superimg list`
-
-Show all templates in your project.
+## Core workflow
 
 ```bash
 superimg list
-```
-
-Output:
-```
-Name          Kind    Config           Path
-────────────  ──────  ───────────────  ─────────────────────────
-my-video      video   1920x1080 30fps  videos/my-video/my-video.media.ts
-og-card       image   1200x630         src/og-card.media.ts
-```
-
-### `superimg discover`
-
-Fast filesystem discovery for build tool integration — no template parsing.
-
-```bash
-superimg discover --json
-```
-
-### `superimg validate`
-
-Render sample frames and check for errors.
-
-```bash
-superimg validate my-video.media.ts
-```
-
-### `superimg init`
-
-Scaffold a new SuperImg project.
-
-```bash
-superimg init my-project
-cd my-project
-```
-
-Options:
-```bash
-superimg init my-project --yes      # Skip prompts
-superimg init my-project --pm pnpm  # Use pnpm instead of npm
-```
-
-### `superimg setup`
-
-Download required browser binaries (Playwright/Chromium).
-
-```bash
 superimg setup
+superimg doctor --json
+superimg dev launch.media.ts
+superimg check launch.media.ts
+superimg inspect launch.media.ts
+superimg export launch.media.ts --for youtube
+superimg plate subject.mp4
 ```
 
-Run this once after installing SuperImg, or if rendering fails with browser errors.
+`setup` installs Chromium headless shell into the account Playwright cache (or `SUPERIMG_BROWSERS_PATH`). `doctor --json` reports `CHROMIUM_OK`, `CHROMIUM_MISSING` (run setup), or `CHROMIUM_LAUNCH_DENIED` (binary present, launch failed — do not re-setup). `list` and discovery do not execute collection providers. `dev` and `inspect` resolve a collection once and select its first entry unless `--entry` is supplied. `check` validates every entry; repeat `--entry` to restrict it. `export` materializes every entry unless restricted.
 
-### `superimg skill install`
-
-Install the SuperImg AI skill for coding agents (Claude, Cursor, Codex, etc.).
+## Export destinations
 
 ```bash
-superimg skill install
+superimg export launch --for youtube --for instagram-square
+superimg export launch --for 1080x1920.mp4 --for 1200x630.png
 ```
 
-## Render Options Reference
+`--for` is repeatable and accepts a destination id or `WIDTHxHEIGHT[.format]`.
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `-o, --output` | Output file or directory | `<template-folder>/output/<name>.mp4` |
-| `--format` | Output format (`mp4`, `webm`, `gif`, `png`, `webp`, `jpeg`, `html`) | `mp4` |
-| `--frame` | Capture a single frame (pairs with `--format png\|webp\|jpeg\|html`) | — |
-| `--quality` | Quality preset (`low`, `medium`, `high`, `very-high`) | `medium` |
-| `--fps` | Frames per second | Template config |
-| `--width` | Width in pixels | Template config |
-| `--height` | Height in pixels | Template config |
-| `--data` | JSON data or path to `.json`/`.ts`/`.js` data file | `{}` |
-| `--preset` | Use a named output preset from template config | — |
-| `--presets` | Render all presets defined in template | — |
-| `--debug-html` | Save frame HTML next to the resolved output in `.superimg/debug/` | — |
+Organic destination ids:
 
-## Video Codec Options
+```text
+youtube  instagram-square  tiktok  linkedin  facebook
+x        pinterest         threads reddit
+```
 
-For fine-grained control over encoding:
+## Collections and variants
 
 ```bash
-# Video codec
-superimg render template.media.ts --video-codec av1
-superimg render template.media.ts --video-codec vp9
-
-# Bitrate
-superimg render template.media.ts --video-bitrate 2000000
-
-# Audio (if your template has audio)
-superimg render template.media.ts --audio-codec opus
-superimg render template.media.ts --audio-bitrate 128000
+superimg check episodes
+superimg check episodes --entry introduction --entry architecture
+superimg export episodes --for youtube
+superimg export episodes --entry introduction --for youtube
+superimg export cards --variant dark --for instagram-square
 ```
 
-## Output Presets
+`--entry` on ordinary or interactive media fails. Providers execute once per command snapshot, before rendition planning.
 
-Define reusable output configurations in your template:
+## Still selection
 
-```typescript
-import { define } from "superimg";
-
-export default define({
-  config: {
-    width: 1920,
-    height: 1080,
-    outputs: {
-      "instagram-story": { width: 1080, height: 1920 },
-      "youtube-short": { width: 1080, height: 1920, fps: 60 },
-      "square": { width: 1080, height: 1080 },
-    }
-  },
-  // ...
-})
-```
-
-Then render with:
+Animated media requires an explicit poster declaration or export time when targeting a still format:
 
 ```bash
-superimg render template.media.ts --preset instagram-story
-superimg render template.media.ts --presets  # Render all presets
+superimg export launch --for 1200x630.png --at 2.5s
 ```
 
-## File Discovery
+Exports use full preflight and atomic bundle publication. A failed command preserves the last-known-good bundle.
 
-SuperImg automatically finds all `*.media.ts` files anywhere in your project. Output kind (video, image, gif, svg) is read from each template's config at parse time:
-
-```
-project/
-├── videos/intro/intro.media.ts      ✓ video (has fps + duration)
-├── src/og-card.media.ts             ✓ image (no fps/duration)
-├── examples/spinner.media.ts        ✓ gif (--format gif)
-└── charts/sine-wave.media.ts        ✓ svg (medium: "svg")
+```text
+output/episodes.export/
+  export.json
+  media/
+    introduction/youtube.mp4
+    architecture/youtube.mp4
 ```
 
-No configuration needed.
-
-## Next Steps
-
-- [How It Works](/docs/how-it-works) — Understand the rendering pipeline
-- [Animation Basics](/docs/animation) — Timing and easing patterns
-- [Player](/docs/player) — Embed videos in web apps
+The manifest records entry ids and data digests, never raw entry objects.

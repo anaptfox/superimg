@@ -1,0 +1,54 @@
+{
+  "name": "@foxworth/superimg-interactions",
+  "version": "0.1.1-media-library.20261022.1",
+  "type": "module",
+  "description": "SuperImg interaction contracts and mounts",
+  "engines": {
+    "node": ">=24.21.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run --passWithNoTests"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@foxworth/boundary": "^0.2.0",
+    "@hono/node-server": "catalog:",
+    "@mediabunny/dts": "catalog:",
+    "@mediabunny/server": "catalog:",
+    "@resvg/resvg-wasm": "catalog:",
+    "execa": "^10.2.1",
+    "hono": "catalog:",
+    "mediabunny": "catalog:",
+    "oxc-parser": "catalog:",
+    "playwright": "catalog:",
+    "rolldown": "catalog:",
+    "sharp": "catalog:",
+    "three": "0.184.0"
+  },
+  "peerDependencies": {
+    "@foxworth/superimg": "workspace:*"
+  },
+  "devDependencies": {
+    "@foxworth/superimg": "workspace:*",
+    "@superimg/core": "workspace:*",
+    "@superimg/interactions": "workspace:*",
+    "@superimg/node": "workspace:*",
+    "@superimg/playwright": "workspace:*",
+    "@superimg/stdlib": "workspace:*",
+    "@superimg/types": "workspace:*"
+  }
+}

@@ -17,8 +17,9 @@ export async function preloadLottieModule(
 ): Promise<void> {
   const url = full ? LOTTIE_MODULE_FULL : LOTTIE_MODULE_LIGHT;
   await page.evaluate(async (src) => {
-    const w = window as Window & { lottie?: unknown };
-    if (w.lottie) return;
+    const w = window as Window & { lottie?: unknown; __SUPERIMG_LOTTIE_FULL__?: boolean };
+    const wantsFull = src.endsWith("/lottie.min.js");
+    if (w.lottie && (!wantsFull || w.__SUPERIMG_LOTTIE_FULL__)) return;
     await new Promise<void>((resolve, reject) => {
       const s = document.createElement("script");
       s.src = src;
@@ -26,5 +27,6 @@ export async function preloadLottieModule(
       s.onerror = () => reject(new Error(`Failed to load lottie: ${src}`));
       document.head.appendChild(s);
     });
+    if (wantsFull) w.__SUPERIMG_LOTTIE_FULL__ = true;
   }, url);
 }

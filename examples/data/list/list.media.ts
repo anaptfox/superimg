@@ -1,4 +1,7 @@
-import { define, layoutTimeline, type RenderContext } from "superimg";
+// List — a countdown set like a magazine spread: oversized rank numerals, a spine that
+// fills as the list counts, and exactly one lit row at a time.
+
+import { video, layoutTimeline, Frame, Stack, Text, Fill, Html, Spacer, googleFont } from "@foxworth/superimg";
 
 export type ListDirection = "up" | "down";
 export type NumberStyle = "circle" | "square" | "plain";
@@ -17,22 +20,39 @@ export interface ListVideoData extends Record<string, unknown> {
   accentColor: string;
 }
 
+const DISPLAY = "'Archivo', 'Inter', system-ui, sans-serif";
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+
 function itemWeight(item: ListItem): number {
   return Math.max(1, 1 + (item.subtitle?.length ?? 0) / 80);
 }
 
+/** Silence at the head of the count so the masthead can be read first. */
+const ITEMS_LEAD_S = 0.6;
+
 function estimateListTimeline(data: ListVideoData) {
   const weights = data.items.map(itemWeight);
-  const itemsS = Math.max(2, weights.reduce((a, w) => a + w, 0) * 1.15);
-  return layoutTimeline({
-    intro: 0.95,
-    items: itemsS,
-    hold: Math.max(0.5, itemsS * 0.1),
-    outro: 0.65,
-  });
+  const itemsS = Math.round(Math.max(2, weights.reduce((a, w) => a + w, 0)) * 20) / 20;
+  const itemsSeconds = itemsS + ITEMS_LEAD_S;
+  return {
+    itemsSeconds,
+    ...layoutTimeline({
+      // The masthead snaps in; the read beat lives at the head of `items` as stack lead.
+      intro: 0.4,
+      items: itemsSeconds,
+      // The last row is the payoff — give it a real beat, never less than a read.
+      hold: Math.round(Math.max(2.2, itemsS * 0.26) * 20) / 20,
+      // Exits are shorter than enters — leaving should never outlast arriving.
+      outro: 0.3,
+    }),
+  };
 }
 
-export default define<ListVideoData>({
+export default video<ListVideoData>({
+  duration: "9s", // AST fallback; resolve() owns the real clock
+  fonts: [googleFont("Archivo:wght@600;700;800"), googleFont("Inter:wght@400;500"), googleFont("IBM+Plex+Mono:wght@500")],
+  inlineCss: ["* { margin: 0; padding: 0; box-sizing: border-box; }", "body { overflow: hidden; }"],
+
   sample: {
     title: "Top 5 Reasons to Use TypeScript",
     items: [
@@ -44,208 +64,287 @@ export default define<ListVideoData>({
     ],
     direction: "down",
     theme: "dark",
-    numberStyle: "circle",
-    accentColor: "#f97316",
+    numberStyle: "plain",
+    accentColor: "#FF5A1F",
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "8s", // AST fallback; resolve() overrides
-  },
+
   resolve({ data }) {
     const { totalSeconds, phases } = estimateListTimeline(data);
-    return { duration: `${totalSeconds}s`, phases };
+    return { duration: `${Math.round(totalSeconds * 100) / 100}s`, phases };
   },
-  render(ctx: RenderContext<ListVideoData>) {
-    const { std, width, height, timeline, data } = ctx;
-    const {
-      title,
-      items,
-      direction = "down",
-      theme = "dark",
-      numberStyle = "circle",
-      accentColor = "#f97316",
-    } = data;
 
-    const orderedItems = direction === "down" ? [...items].reverse() : items;
-    const itemCount = orderedItems.length;
+  render(ctx) {
+    const { std, width, height, data } = ctx;
+    const { title, items, direction, theme, numberStyle, accentColor } = data;
 
-    const bgColor = theme === "dark" ? "#0a0a0a" : "#fafafa";
-    const textColor = theme === "dark" ? "#ffffff" : "#0a0a0a";
-    const mutedColor = theme === "dark" ? "#a1a1aa" : "#71717a";
+    const dark = theme !== "light";
+    const page = dark ? "#0B0B0C" : "#EDE8E1";
+    const ink = dark ? "#EDE8E1" : "#111112";
+    const faint = dark ? "rgba(237,232,225,0.34)" : "rgba(17,17,18,0.38)";
+    const hair = dark ? "rgba(237,232,225,0.14)" : "rgba(17,17,18,0.16)";
 
-    const { phases } = estimateListTimeline(data);
-    const t = ctx.director(phases);
-    const weights = orderedItems.map(itemWeight);
-    const stk = std.stack(orderedItems, { during: t.in("items"), weights });
-
-    function getDisplayNumber(index: number): number {
-      if (direction === "down") return itemCount - index;
-      return index + 1;
+    if (items.length === 0) {
+      return Frame(
+        { id: "empty-state", width, height, fill: page },
+        Stack(
+          { width: "fill", height: "fill", align: "center", justify: "center", gap: 24, pad: 96 },
+          Text({ variant: "title", size: 52, color: ink }, title),
+          Text({ variant: "body", size: 30, color: ink }, "No list items yet"),
+        ),
+      );
     }
 
-    const titleProgress = std.interpolate(t.in("intro"), [0, 1], [0, 1], "easeOutCubic");
-    const finalHoldProgress = std.interpolate(t.in("hold"), [0, 1], [0, 1]);
-    const fadeOutProgress = std.interpolate(t.in("outro"), [0, 1], [0, 1], "easeInCubic");
-    const globalOpacity = 1 - fadeOutProgress;
+    const { phases, itemsSeconds } = estimateListTimeline(data);
+    const t = ctx.director(phases);
 
-    const baseFontSize = Math.min(width, height) * 0.045;
-    const titleFontSize = baseFontSize * 1.4;
-    const numberSize = baseFontSize * 2.2;
-    const itemPadding = baseFontSize * 0.6;
-    const itemGap = baseFontSize * 0.5;
+    // "down" counts 5→1 so the payoff lands on #1.
+    const ordered = direction === "down" ? [...items].reverse() : items;
+    const count = ordered.length;
+    const rankOf = (i: number) => (direction === "down" ? count - i : i + 1);
 
-    const headerHeight = height * 0.15;
-    const contentHeight = height - headerHeight - height * 0.08;
-    const itemHeight = Math.min(
-      (contentHeight - itemGap * (itemCount - 1)) / itemCount,
-      height * 0.14
+    const weights = ordered.map(itemWeight);
+    const stk = std.stack(ordered, {
+      id: "countdown",
+      itemIds: ordered.map((_item, i) => `rank-${rankOf(i)}`),
+      during: t.in("items"),
+      weights,
+      lead: ITEMS_LEAD_S / itemsSeconds,
+      trail: 0.06,
+    });
+
+    // ── Page geometry ───────────────────────────────────────────────────────
+    const margin = 112;
+    const headH = 176;
+    const listY = margin + headH;
+    const listH = height - listY - margin;
+    const rowH = Math.min(150, listH / count);
+    const listTop = listY + (listH - rowH * count) / 2;
+    const spineX = margin;
+    const numW = 168;
+    const textX = margin + 44 + numW;
+    const textW = width - textX - margin;
+
+    const introP = t.in("intro");
+    const headOp = std.interpolate(introP, [0, 0.8], [0, 1], "easeOutCubic");
+    const headY = std.interpolate(introP, [0, 1], [18, 0], "easeOutQuint");
+    const outro = t.in("outro");
+    const pageOp = 1 - std.interpolate(outro, [0, 1], [0, 1], "easeInCubic");
+    const pageScale = std.interpolate(outro, [0, 1], [1, 0.985], "easeInCubic");
+
+    // ── Spine: fills as rows land, so the countdown has a gauge ─────────────
+    const landed = ordered.reduce((acc, _item, i) => acc + std.clamp01(stk.state(i).enter), 0);
+    const spineFill = count > 0 ? landed / count : 0;
+    const spineH = rowH * count;
+    const spineSvg = `<svg width="3" height="${spineH}" viewBox="0 0 3 ${spineH}" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="3" height="${spineH}" fill="${hair}"/>
+  <rect x="0" y="0" width="3" height="${(spineH * spineFill).toFixed(2)}" fill="${accentColor}"/>
+</svg>`;
+
+    // ── Rank numeral — numberStyle stays an honest author dial ──────────────
+    function numeral(rank: number, lit: number, pop: number) {
+      const label = String(rank);
+      const color = lit > 0.5 ? accentColor : faint;
+      const scale = std.interpolate(pop, [0, 1], [0.82, 1], "easeOutBack");
+      const common = {
+        style: {
+          transform: `scale(${scale.toFixed(4)})`,
+          transformOrigin: "center center",
+          opacity: pop,
+        },
+      };
+
+      if (numberStyle === "square") {
+        const size = Math.min(96, rowH - 34);
+        return Frame(
+          { width: numW, height: rowH },
+          Frame(
+            { x: numW - size, y: (rowH - size) / 2, width: size, height: size, radius: 8, fill: color, ...common },
+            Stack(
+              { width: size, height: size, align: "center", justify: "center" },
+              Text({ variant: "display", color: page, size: size * 0.56, weight: 800, fontFamily: DISPLAY }, label),
+            ),
+          ),
+        );
+      }
+
+      if (numberStyle === "circle") {
+        const size = Math.min(96, rowH - 34);
+        return Frame(
+          { width: numW, height: rowH },
+          Frame(
+            {
+              x: numW - size,
+              y: (rowH - size) / 2,
+              width: size,
+              height: size,
+              radius: size / 2,
+              ...common,
+              style: { ...common.style, border: `3px solid ${color}` },
+            },
+            Stack(
+              { width: size, height: size, align: "center", justify: "center" },
+              Text({ variant: "display", color, size: size * 0.5, weight: 700, fontFamily: DISPLAY }, label),
+            ),
+          ),
+        );
+      }
+
+      // plain — the poster setting: a bare, oversized numeral flush right
+      return Frame(
+        { width: numW, height: rowH, ...common },
+        Stack(
+          { width: numW, height: rowH, justify: "center" },
+          Text(
+            {
+              variant: "display",
+              color,
+              size: Math.min(112, rowH * 0.82),
+              weight: 800,
+              fontFamily: DISPLAY,
+              align: "right",
+              letterSpacing: -5,
+              style: { lineHeight: 1 },
+            },
+            label,
+          ),
+        ),
+      );
+    }
+
+    // ── Rows ────────────────────────────────────────────────────────────────
+    const rows = ordered.map((item, i) => {
+      const state = stk.state(i);
+      if (state.state === "hidden") return null;
+
+      const enter = std.clamp01(state.enter);
+      const pop = std.interpolate(enter, [0, 1], [0, 1], "easeOutCubic");
+      const textP = std.interpolate(std.clamp01((enter - 0.18) / 0.82), [0, 1], [0, 1], "easeOutQuint");
+
+      // Lit while it is the newest row; earlier rows recede but stay legible.
+      const nextStarted = i + 1 < count ? std.clamp01(stk.state(i + 1).enter * 2.2) : 0;
+      const lit = 1 - nextStarted;
+      const rowOp = std.interpolate(lit, [0, 1], [0.42, 1], "easeOutCubic") * pop;
+
+      const y = listTop + i * rowH;
+      const ruleP = std.interpolate(enter, [0, 1], [0, 1], "easeOutQuart");
+
+      // The last row to land keeps a slab of accent behind it — the payoff.
+      const isFinal = i === count - 1;
+      const payoff = isFinal ? std.clamp01(t.in("hold") * 3) * lit : 0;
+
+      return Frame(
+        { id: `row-${rankOf(i)}`, x: 0, y, width, height: rowH },
+
+        payoff > 0
+          ? Frame({
+              x: margin,
+              y: 8,
+              width: (width - margin * 2) * payoff,
+              height: rowH - 16,
+              radius: 4,
+              fill: std.color.alpha(accentColor, 0.1),
+            })
+          : null,
+
+        // Baseline rule sweeps out from the spine.
+        Frame({
+          x: margin,
+          y: rowH - 1,
+          width: width - margin * 2,
+          height: 1,
+          fill: hair,
+          style: { transform: `scaleX(${ruleP.toFixed(3)})`, transformOrigin: "left center" },
+        }),
+
+        Frame(
+          { x: margin + 44, y: 0, width: width - margin - 44, height: rowH, style: { opacity: rowOp } },
+          Stack(
+            { direction: "row", width: width - margin * 2 - 44, height: rowH, gap: 44, align: "center" },
+            numeral(rankOf(i), lit, pop),
+            Frame(
+              {
+                width: textW,
+                height: rowH,
+                style: { transform: `translateX(${((1 - textP) * 42).toFixed(2)}px)`, opacity: textP },
+              },
+              Stack(
+                { width: textW, height: rowH, gap: 8, justify: "center" },
+                Text(
+                  {
+                    variant: "title",
+                    color: ink,
+                    size: Math.min(50, rowH * 0.34),
+                    weight: 700,
+                    fontFamily: DISPLAY,
+                    letterSpacing: -1,
+                    maxWidth: textW,
+                  },
+                  item.title,
+                ),
+                item.subtitle
+                  ? Text(
+                      { variant: "caption", color: faint, size: Math.min(25, rowH * 0.17), maxWidth: textW },
+                      item.subtitle,
+                    )
+                  : null,
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+
+    return Frame(
+      { id: "page", width, height },
+      Fill({ color: page }),
+      Fill({
+        gradient: {
+          kind: "radial",
+          at: "88% 6%",
+          size: "64% 58%",
+          stops: [std.color.alpha(accentColor, dark ? 0.13 : 0.1), "transparent"],
+        },
+      }),
+
+      Frame(
+        {
+          x: 0,
+          y: 0,
+          width,
+          height,
+          style: { opacity: pageOp, transform: `scale(${pageScale.toFixed(4)})`, transformOrigin: "center center" },
+        },
+
+        // Masthead
+        Frame(
+          { x: margin, y: margin, width: width - margin * 2, height: headH, style: { opacity: headOp, transform: `translateY(${headY.toFixed(2)}px)` } },
+          Stack(
+            { width: width - margin * 2, gap: 18 },
+            Stack(
+              { direction: "row", height: 22, gap: 16, align: "center" },
+              Frame({ width: 34, height: 3, fill: accentColor }),
+              Text({ variant: "label", color: accentColor, size: 15, weight: 600, fontFamily: MONO, letterSpacing: 5 }, direction === "down" ? "COUNTDOWN" : "THE LIST"),
+              Text({ variant: "label", color: faint, size: 15, weight: 500, fontFamily: MONO, letterSpacing: 2 }, `${count} ENTRIES`),
+            ),
+            Text(
+              {
+                variant: "display",
+                color: ink,
+                size: 68,
+                weight: 800,
+                fontFamily: DISPLAY,
+                letterSpacing: -2.4,
+                maxWidth: width - margin * 2 - 120,
+                style: { lineHeight: 1.05 },
+              },
+              title,
+            ),
+          ),
+        ),
+
+        Frame({ x: spineX, y: listTop, width: 3, height: spineH }, Html({ width: 3, height: spineH, html: spineSvg })),
+        ...rows,
+      ),
     );
-    const startY =
-      headerHeight + (contentHeight - (itemHeight * itemCount + itemGap * (itemCount - 1))) / 2;
-
-    const itemsHtml = orderedItems
-      .map((item: ListItem, i: number) => {
-        const state = stk.state(i);
-        if (state.state === "hidden") return "";
-
-        const rawProgress = state.enter;
-        const numberProgress = std.interpolate(Math.min(1, rawProgress * 1.5), [0, 1], [0, 1], "easeOutBack");
-        const textProgress = std.interpolate(rawProgress, [0, 1], [0, 1], "easeOutCubic");
-        const anim = {
-          numberScale: numberProgress,
-          numberOpacity: Math.min(1, rawProgress * 2),
-          textTranslateX: (1 - textProgress) * 50,
-          textOpacity: textProgress,
-        };
-
-        const displayNum = getDisplayNumber(i);
-        const y = startY + i * (itemHeight + itemGap);
-        const numSize = numberSize * 0.9;
-
-        let numberBadge = "";
-        if (numberStyle === "circle") {
-          numberBadge = `
-        <div style="
-          width: ${numSize}px;
-          height: ${numSize}px;
-          border-radius: 50%;
-          background: ${accentColor};
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: ${numSize * 0.5}px;
-          font-weight: 800;
-          color: white;
-          transform: scale(${anim.numberScale});
-          opacity: ${anim.numberOpacity};
-          box-shadow: 0 0 20px ${accentColor}40;
-        ">${displayNum}</div>
-      `;
-        } else if (numberStyle === "square") {
-          numberBadge = `
-        <div style="
-          width: ${numSize}px;
-          height: ${numSize}px;
-          border-radius: ${numSize * 0.15}px;
-          background: ${accentColor};
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: ${numSize * 0.5}px;
-          font-weight: 800;
-          color: white;
-          transform: scale(${anim.numberScale}) rotate(${(1 - anim.numberScale) * -15}deg);
-          opacity: ${anim.numberOpacity};
-        ">${displayNum}</div>
-      `;
-        } else {
-          numberBadge = `
-        <div style="
-          font-size: ${numSize * 0.7}px;
-          font-weight: 900;
-          color: ${accentColor};
-          transform: scale(${anim.numberScale});
-          opacity: ${anim.numberOpacity};
-          min-width: ${numSize}px;
-          text-align: center;
-        ">${displayNum}</div>
-      `;
-        }
-
-        return `
-      <div style="
-        position: absolute;
-        left: ${width * 0.06}px;
-        right: ${width * 0.06}px;
-        top: ${y}px;
-        height: ${itemHeight}px;
-        display: flex;
-        align-items: center;
-        gap: ${itemPadding}px;
-      ">
-        ${numberBadge}
-        <div style="
-          flex: 1;
-          transform: translateX(${anim.textTranslateX}px);
-          opacity: ${anim.textOpacity};
-        ">
-          <div style="
-            font-size: ${baseFontSize * 1.1}px;
-            font-weight: 700;
-            color: ${textColor};
-            line-height: 1.2;
-            margin-bottom: 2px;
-          ">${item.title}</div>
-          ${item.subtitle ? `
-            <div style="
-              font-size: ${baseFontSize * 0.75}px;
-              color: ${mutedColor};
-              line-height: 1.3;
-            ">${item.subtitle}</div>
-          ` : ""}
-        </div>
-      </div>
-    `;
-      })
-      .join("");
-
-    const celebrationOpacity = finalHoldProgress > 0 ? Math.sin(finalHoldProgress * Math.PI) * 0.3 : 0;
-
-    return `
-    <div style="width:${width}px;height:${height}px;background:${bgColor};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;position:relative;overflow:hidden;opacity:${globalOpacity};">
-
-      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%, ${accentColor}10 0%, transparent 50%);pointer-events:none;"></div>
-
-      <div style="position:absolute;inset:0;background:${accentColor};opacity:${celebrationOpacity};pointer-events:none;"></div>
-
-      <div style="
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: ${headerHeight}px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 ${width * 0.06}px;
-        opacity: ${titleProgress};
-        transform: translateY(${(1 - titleProgress) * -20}px);
-      ">
-        <h1 style="
-          font-size: ${titleFontSize}px;
-          font-weight: 800;
-          color: ${textColor};
-          text-align: center;
-          line-height: 1.2;
-          letter-spacing: -0.02em;
-        ">${title}</h1>
-      </div>
-
-      ${itemsHtml}
-
-    </div>
-  `;
   },
 });

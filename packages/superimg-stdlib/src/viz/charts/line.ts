@@ -3,7 +3,7 @@ import { bandScale, linearScale, timeScale } from "../scale.js";
 import { makeLine, makeArea, type CurveName } from "../d3-helpers.js";
 import { formatDate } from "../../date.js";
 import type { ChartDataPoint, ChartOpts } from "./shared.js";
-import { animOpacity, chartColors, chartScales, drawDashAttrs, plotArea } from "./shared.js";
+import { chartClipId, animOpacity, chartColors, chartScales, drawDashAttrs, plotArea } from "./shared.js";
 
 export interface LineChartOpts extends ChartOpts {
   curve?: CurveName;
@@ -87,7 +87,7 @@ function renderLinePath(
     y: (p) => p.py,
     curve: opts.curve ?? "monotone",
     tension: opts.tension,
-    defined: (p) => definedFn(p.datum),
+    defined: (p) => Number.isFinite(p.px) && Number.isFinite(p.py) && definedFn(p.datum),
   });
   const pathD = lineGen(points) ?? "";
   const progress = opts.progress ?? 1;
@@ -119,13 +119,13 @@ function renderAreaPath(
     y1: (p) => p.py,
     curve: opts.curve ?? "monotone",
     tension: opts.tension,
-    defined: (p) => definedFn(p.datum),
+    defined: (p) => Number.isFinite(p.px) && Number.isFinite(p.py) && definedFn(p.datum),
   });
   const fillD = areaGen(points) ?? "";
 
   if (opts.animate === "draw") {
     const clipW = area.width * progress;
-    const clipId = `area-clip-${Math.round(area.left)}-${Math.round(area.top)}`;
+    const clipId = chartClipId("area-clip", opts.id, [area, clipW, fillD]);
     return `<defs><clipPath id="${clipId}"><rect x="${area.left}" y="${area.top}" width="${clipW.toFixed(2)}" height="${area.height}"/></clipPath></defs><path d="${fillD}" fill="${color}" opacity="${fillOp.toFixed(3)}" clip-path="url(#${clipId})"/>`;
   }
 
@@ -137,6 +137,7 @@ function renderPoints(points: ResolvedPoint[], opts: LineChartOpts, color: strin
   const r = opts.pointRadius ?? 5;
   const progress = opts.progress ?? 1;
   return points
+    .filter(p => Number.isFinite(p.px) && Number.isFinite(p.py) && (opts.defined?.(p.datum) ?? true))
     .map(
       (p) =>
         `<circle cx="${p.px.toFixed(2)}" cy="${p.py.toFixed(2)}" r="${r}" fill="${color}" opacity="${progress.toFixed(3)}"/>`,
@@ -172,8 +173,10 @@ export function lineTime(
   const scales = chartScales(coords, areaBox, opts);
   const color = chartColors(opts)[0]!;
   const dates = data.map((d) => parseDate(d.date));
+  const validDates = dates.filter(d => Number.isFinite(d.getTime()));
+  if (!validDates.length) return "";
   const x = timeScale(
-    [dates[0]!, dates[dates.length - 1]!],
+    [new Date(Math.min(...validDates.map(Number))), new Date(Math.max(...validDates.map(Number)))],
     [areaBox.left, areaBox.left + areaBox.width],
   );
   const grow = opts.animate === "grow" ? progress : 1;
@@ -199,6 +202,7 @@ export function lineTime(
     const step = Math.max(1, Math.floor(data.length / 6));
     for (let i = 0; i < data.length; i += step) {
       const dt = dates[i]!;
+      if (!Number.isFinite(dt.getTime())) continue;
       const px = x(dt)!;
       const ly = areaBox.top + areaBox.height + labelSize + 4;
       parts.push(

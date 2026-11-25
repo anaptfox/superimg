@@ -1,0 +1,57 @@
+{
+  "name": "@superimg/astro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Astro integration for SuperImg \u2014 shell poster + island props. Builds on @superimg/adapters core.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "import": "./dist/vite.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown",
+    "test": "vitest --run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@superimg/adapters": "workspace:*",
+    "@superimg/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "astro": ">=4",
+    "@foxworth/superimg": "*",
+    "vite": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "astro": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@superimg/build-config": "workspace:*",
+    "@foxworth/superimg": "workspace:*",
+    "astro": "7.4.8",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "MIT"
+}

@@ -2,7 +2,7 @@ import type { CoordSystem } from "../coords.js";
 import { bandScale } from "../scale.js";
 import { makeArea, makeLine, type CurveName } from "../d3-helpers.js";
 import type { ChartDataPoint, ChartOpts } from "./shared.js";
-import { animOpacity, chartColors, chartScales, drawDashAttrs, plotArea } from "./shared.js";
+import { chartClipId, animOpacity, chartColors, chartScales, drawDashAttrs, plotArea } from "./shared.js";
 
 export interface AreaChartOpts extends ChartOpts {
   curve?: CurveName;
@@ -48,7 +48,7 @@ export function area(
     y1: (p) => p.py,
     curve: opts.curve ?? "monotone",
     tension: opts.tension,
-    defined: (p) => definedFn(p.datum),
+    defined: (p) => Number.isFinite(p.px) && Number.isFinite(p.py) && definedFn(p.datum),
   });
   const fillD = areaGen(points) ?? "";
   const fillOp = (opts.fillOpacity ?? 0.4) * (opts.animate === "fade" ? progress : opts.animate === "grow" ? progress : 1);
@@ -58,7 +58,7 @@ export function area(
 
   if (opts.animate === "draw") {
     const clipW = areaBox.width * progress;
-    const clipId = `area-clip-${Math.round(areaBox.left)}-${Math.round(areaBox.top)}`;
+    const clipId = chartClipId("area-clip", opts.id, [areaBox, clipW, fillD]);
     parts.push(
       `<defs><clipPath id="${clipId}"><rect x="${areaBox.left}" y="${areaBox.top}" width="${clipW.toFixed(2)}" height="${areaBox.height}"/></clipPath></defs>`,
       `<path d="${fillD}" fill="${color}" opacity="${fillOp.toFixed(3)}" clip-path="url(#${clipId})"/>`,
@@ -73,7 +73,7 @@ export function area(
       y: (p) => p.py,
       curve: opts.curve ?? "monotone",
       tension: opts.tension,
-      defined: (p) => definedFn(p.datum),
+      defined: (p) => Number.isFinite(p.px) && Number.isFinite(p.py) && definedFn(p.datum),
     });
     const pathD = lineGen(points) ?? "";
     const sw = opts.strokeWidth ?? 2.5;

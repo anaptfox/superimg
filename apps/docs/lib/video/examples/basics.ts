@@ -1,7 +1,7 @@
 export const HELLO_WORLD = `// Hello World
 // A simple animated intro
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -10,7 +10,7 @@ export default define({
   const opacity = Math.min(1, timeline.progress * 3);
   const scale = 0.8 + timeline.progress * 0.2;
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -29,28 +29,38 @@ export default define({
         text-shadow: 0 4px 20px rgba(0,0,0,0.3);
       ">Hello, World!</h1>
     </div>
-  \`;
+  \` });
   },
 });`;
 
 export const ANIMATED_TEXT = `// Animated Text
-// Text that types in character by character
+// Text that types in character by character.
+// Tweaks: Data panel (sample) — text/background/color without recompile.
+// Structure: edit source → live recompile.
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
+  config: { fps: 30, duration: 3 },
+  sample: {
+    text: "Building the future...",
+    background: "#0a0a0a",
+    color: "#00ff88",
+  },
   render(ctx) {
-  const { width, height, timeline } = ctx;
+  const { width, height, timeline, data } = ctx;
 
-  const text = "Building the future...";
+  const text = String(data.text ?? "");
+  const background = String(data.background ?? "#0a0a0a");
+  const color = String(data.color ?? "#00ff88");
   const visibleChars = Math.floor(timeline.progress * text.length * 1.5);
   const displayText = text.slice(0, Math.min(visibleChars, text.length));
   const showCursor = Math.floor(timeline.seconds * 2) % 2 === 0;
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
-      background: #0a0a0a;
+      background: \${background};
       display: flex;
       align-items: center;
       justify-content: center;
@@ -58,20 +68,20 @@ export default define({
       <div style="
         font-family: 'SF Mono', Monaco, monospace;
         font-size: 48px;
-        color: #00ff88;
+        color: \${color};
       ">
         <span>\${displayText}</span>
         <span style="opacity: \${showCursor ? 1 : 0}">|</span>
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
 export const GRADIENT = `// Gradient Background
 // Smoothly shifting gradient animation
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -80,7 +90,7 @@ export default define({
   const hue2 = (hue1 + 60) % 360;
   const angle = timeline.progress * 360;
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -103,14 +113,14 @@ export default define({
         Progress: \${Math.round(timeline.progress * 100)}%
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
 export const COMPLETE_TEMPLATE = `// Complete Template
 // Demonstrates config (width, fps, duration) and data together
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 
 export default define({
   config: {
@@ -132,7 +142,7 @@ export default define({
     const opacity = std.interpolate(enterProgress, [0, 1], [0, 1], "easeOutCubic");
     const y = std.interpolate(enterProgress, [0, 1], [30, 0], "easeOutCubic");
 
-    return \`
+    return Html({ width: "fill", height: "fill", html: \`
       <div style="
         width: \${width}px;
         height: \${height}px;
@@ -158,6 +168,6 @@ export default define({
           margin-top: 16px;
         ">\${subtitle}</p>
       </div>
-    \`;
+    \` });
   },
 });`;

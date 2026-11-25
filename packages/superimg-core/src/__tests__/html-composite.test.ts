@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildCompositeHtml } from "../html/html.js";
+import { buildCompositeHtml } from "../html/composite.js";
 
 describe("buildCompositeHtml", () => {
   const width = 1920;
@@ -21,9 +21,18 @@ describe("buildCompositeHtml", () => {
     expect(watermarkIdx).toBeGreaterThan(templateIdx);
   });
 
-  it("defaults to black background when none specified", () => {
-    const html = buildCompositeHtml("<div />", undefined, undefined, width, height);
-    expect(html).toContain("background:#000000");
+  it("omits background layer when none specified (template owns fill)", () => {
+    const html = buildCompositeHtml(
+      '<div style="background:red">x</div>',
+      undefined,
+      undefined,
+      width,
+      height,
+    );
+    expect(html).not.toContain("background:#000000");
+    expect(html).toContain("background:red");
+    expect(html).toContain("position:absolute;inset:0;overflow:hidden");
+    expect(html).not.toContain("background:#07070c");
   });
 
   it("renders image background with cover fit", () => {
@@ -40,7 +49,8 @@ describe("buildCompositeHtml", () => {
 
   it("wraps template in absolute inset container", () => {
     const html = buildCompositeHtml("<span>frame</span>", "#000", undefined, width, height);
-    expect(html).toContain('position:absolute;inset:0;overflow:hidden');
+    expect(html).toContain("position:absolute;inset:0;overflow:hidden");
+    expect(html).not.toContain("background:#07070c");
     expect(html).toContain("<span>frame</span>");
   });
 

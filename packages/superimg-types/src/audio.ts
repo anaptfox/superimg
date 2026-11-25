@@ -1,15 +1,10 @@
 //! Audio timeline types — serializable clip model for mix + future editor
 
 import type { Duration } from "./types.js";
+import type { TranscriptWord } from "@superimg/stdlib/cue";
+export type { TranscriptWord } from "@superimg/stdlib/cue";
 
 export type AudioRole = "music" | "voice" | "sfx" | "ambient";
-
-/** Word-level timing co-located with voice clips */
-export interface TranscriptWord {
-  text: string;
-  start: number;
-  end: number;
-}
 
 /** Editor / future-TTS seam. Foundation renders `file` only. */
 export type AudioSource =

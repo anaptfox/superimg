@@ -6,7 +6,7 @@ import {
 } from "../rendering/engine.js";
 import { createRenderContext } from "../rendering/create-render-context.js";
 import { bundleTemplateCodeWithMap } from "../bundler/bundler.js";
-import type { FrameRendererConfig, RenderJob } from "@superimg/types";
+import type { FrameCaptureOptions, RasterizerConfig, RenderJob, VideoEncoderConfig } from "@superimg/types";
 
 async function jobFromCode(
   code: string,
@@ -28,26 +28,22 @@ async function jobFromCode(
 
 function mockRenderer() {
   let captureCount = 0;
-  const clockSteps: number[] = [];
-  const initConfigs: FrameRendererConfig[] = [];
+  const captureTimes: Array<number | undefined> = [];
+  const initConfigs: RasterizerConfig[] = [];
   const renderer = {
-    init: async (config: FrameRendererConfig) => {
+    init: async (config: RasterizerConfig) => {
       initConfigs.push(config);
     },
-    captureFrame: async (html: string) => {
+    rasterize: async (html: string, options?: FrameCaptureOptions) => {
+      captureTimes.push(options?.time);
       captureCount++;
       return html;
-    },
-    advanceClock: async (ms: number) => {
-      clockSteps.push(ms);
     },
     dispose: async () => {},
     get captureCount() {
       return captureCount;
     },
-    get clockSteps() {
-      return clockSteps;
-    },
+    get captureTimes() { return captureTimes; },
     get initConfigs() {
       return initConfigs;
     },
@@ -57,8 +53,10 @@ function mockRenderer() {
 
 function mockEncoder() {
   const frames: Array<{ frame: unknown; ts: number }> = [];
+  const configs: VideoEncoderConfig[] = [];
   return {
-    init: async () => {},
+    configs,
+    init: async (config: VideoEncoderConfig) => { configs.push(config); },
     addFrame: async (frame: unknown, ts: number) => {
       frames.push({ frame, ts });
     },
@@ -104,10 +102,10 @@ describe("createRenderContext timing", () => {
 describe("executeRenderPlan frame behavior", () => {
   it("deduplicates identical consecutive frames in frame mode", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
         render(ctx) {
-          return '<div>' + (ctx.globalFrame < 5 ? 'static' : ctx.globalFrame) + '</div>';
+          return Html({ width: 'fill', height: 'fill', html: '<div>' + (ctx.globalFrame < 5 ? 'static' : ctx.globalFrame) + '</div>' });
         }
       });
     `;
@@ -125,10 +123,10 @@ describe("executeRenderPlan frame behavior", () => {
 
   it("captures every frame in animation mode", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
         config: { mode: 'animation' },
-        render() { return '<div class="animated">x</div>'; }
+        render() { return Html({ width: 'fill', height: 'fill', html: '<div class="animated">x</div>' }); }
       });
     `;
     const job = await jobFromCode(code);
@@ -140,14 +138,15 @@ describe("executeRenderPlan frame behavior", () => {
     await executeRenderPlan(plan, renderer, encoder);
 
     expect(renderer.captureCount).toBe(10);
-    expect(renderer.clockSteps).toEqual(Array(10).fill(100));
+    expect(renderer.captureTimes).toEqual(Array.from({ length: 10 }, (_, i) => i / 10));
+    expect(encoder.configs[0]?.durationSeconds).toBe(1);
   });
 
   it("renders partial frame range via startFrame/endFrame", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
-        render(ctx) { return '<div>' + ctx.globalFrame + '</div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>' + ctx.globalFrame + '</div>' }); }
       });
     `;
     const job = await jobFromCode(code);
@@ -156,7 +155,7 @@ describe("executeRenderPlan frame behavior", () => {
     const renderedFrames: number[] = [];
     const renderer = {
       init: async () => {},
-      captureFrame: async (html: string) => {
+      rasterize: async (html: string) => {
         const match = html.match(/>(\d+)</);
         if (match) renderedFrames.push(Number(match[1]));
         return html;
@@ -174,10 +173,10 @@ describe("executeRenderPlan frame behavior", () => {
 
   it("calls onFrameRendered with raw and composite html", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
         config: { background: '#ff0000' },
-        render() { return '<main>tpl</main>'; }
+        render() { return Html({ width: 'fill', height: 'fill', html: '<main>tpl</main>' }); }
       });
     `;
     const job = await jobFromCode(code, { duration: 0.1, fps: 1 });
@@ -201,8 +200,8 @@ describe("executeRenderPlan frame behavior", () => {
 
   it("encodes frames in order with correct timestamps", async () => {
     const code = `
-      import { define } from 'superimg';
-      export default define({ render(ctx) { return String(ctx.globalFrame); } });
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ render(ctx) { return Html({ width: 'fill', height: 'fill', html: String(ctx.globalFrame) }); } });
     `;
     const job = await jobFromCode(code, { duration: 0.3, fps: 10 });
     const plan = await createRenderPlan(job);
@@ -219,9 +218,9 @@ describe("executeRenderPlan frame behavior", () => {
 describe("executeRenderPlanParallel", () => {
   it("distributes frames round-robin and encodes in order", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
-        render(ctx) { return '<div>' + ctx.globalFrame + '</div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>' + ctx.globalFrame + '</div>' }); }
       });
     `;
     const job = await jobFromCode(code, { duration: 0.4, fps: 10 });
@@ -240,11 +239,28 @@ describe("executeRenderPlanParallel", () => {
     expect(encoder.frames.map((f) => f.ts)).toEqual([0, 0.1, 0.2, 0.3]);
   });
 
+  it("samples absolute animation time across parallel workers and partial ranges", async () => {
+    const job = await jobFromCode(`
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ config: { mode: 'animation' }, render() {
+        return Html({ width: 'fill', height: 'fill', html: '<div>animated</div>' });
+      }});
+    `, { duration: 1, fps: 30 });
+    const plan = await createRenderPlan(job, { startFrame: 7, endFrame: 11 });
+    const first = mockRenderer();
+    const second = mockRenderer();
+    const encoder = mockEncoder();
+    await executeRenderPlanParallel(plan, [first, second], encoder);
+    expect(first.captureTimes).toEqual([7 / 30, 9 / 30]);
+    expect(second.captureTimes).toEqual([8 / 30, 10 / 30]);
+    expect(encoder.configs[0]?.durationSeconds).toBe(1);
+  });
+
   it("falls back to single renderer when array has one entry", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
-        render(ctx) { return '<div>' + ctx.globalFrame + '</div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>' + ctx.globalFrame + '</div>' }); }
       });
     `;
     const job = await jobFromCode(code, { duration: 0.2, fps: 10 });
@@ -261,8 +277,8 @@ describe("executeRenderPlanParallel", () => {
 
   it("throws when renderers array is empty", async () => {
     const code = `
-      import { define } from 'superimg';
-      export default define({ render() { return '<div />'; } });
+      import { define, Html } from '@foxworth/superimg';
+      export default define({ render() { return Html({ width: 'fill', height: 'fill', html: '<div />' }); } });
     `;
     const job = await jobFromCode(code);
     const plan = await createRenderPlan(job);
@@ -275,9 +291,9 @@ describe("executeRenderPlanParallel", () => {
 
   it("bounds out-of-order captured frames behind a slow frame", async () => {
     const code = `
-      import { define } from 'superimg';
+      import { define, Html } from '@foxworth/superimg';
       export default define({
-        render(ctx) { return '<div>' + ctx.globalFrame + '</div>'; }
+        render(ctx) { return Html({ width: 'fill', height: 'fill', html: '<div>' + ctx.globalFrame + '</div>' }); }
       });
     `;
     const job = await jobFromCode(code, { duration: 0.8, fps: 10 });
@@ -287,7 +303,7 @@ describe("executeRenderPlanParallel", () => {
     let capturesStarted = 0;
     const makeRenderer = () => ({
       init: async () => {},
-      captureFrame: async (html: string) => {
+      rasterize: async (html: string) => {
         capturesStarted += 1;
         if (html.includes(">0</div>")) await firstFrameGate;
         return html;
@@ -305,5 +321,29 @@ describe("executeRenderPlanParallel", () => {
     expect(capturesStarted).toBe(2);
     releaseFirst();
     await rendering;
+  });
+
+  it("keeps SVG markup out of the HTML composite shell in parallel mode", async () => {
+    const code = `
+      import { define, Html, Vector } from '@foxworth/superimg';
+      export default define({
+        medium: 'svg',
+        render(ctx) {
+          return Vector(
+            { width: ctx.width, height: ctx.height, viewBox: { x: 0, y: 0, width: 10, height: 10 } },
+            Html({ width: 'fill', height: 'fill', html: '<circle cx="5" cy="5" r="4" />' }),
+          );
+        }
+      });
+    `;
+    const job = await jobFromCode(code, { duration: 0.1, fps: 1 });
+    const plan = await createRenderPlan(job);
+    const encoder = mockEncoder();
+
+    await executeRenderPlanParallel(plan, [mockRenderer(), mockRenderer()], encoder);
+
+    const captured = String(encoder.frames[0]!.frame);
+    expect(captured).toContain("<svg");
+    expect(captured).not.toContain("<!doctype html>");
   });
 });

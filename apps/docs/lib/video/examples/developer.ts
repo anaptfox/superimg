@@ -1,7 +1,7 @@
 export const CODE_TYPEWRITER = `// Code Typewriter
 // Syntax highlighted code typing animation
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 
 const CODE = \`function fibonacci(n) {
   if (n <= 1) return n;
@@ -21,7 +21,7 @@ export default define({
 
   const highlighted = std.code.highlight(visible, { lang: 'javascript' });
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -47,14 +47,14 @@ export default define({
         </div>
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
 export const GIT_DIFF = `// Git Diff
 // Side-by-side diff animation
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 
 const REMOVED = [
   "  const result = [];",
@@ -75,7 +75,7 @@ export default define({
   const removedOpacity = Math.max(0, 1 - timeline.progress * 3);
   const addedOpacity = Math.min(1, (timeline.progress - 0.3) * 2);
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -116,14 +116,14 @@ export default define({
         </div>
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
 export const TERMINAL = `// Terminal Session
 // CLI demo with command output
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 
 const COMMANDS = [
   { cmd: "npm create superimg@latest", delay: 0 },
@@ -139,7 +139,7 @@ export default define({
 
   const showCursor = std.text.cursor(timeline.seconds);
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -185,14 +185,14 @@ export default define({
         </div>
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
 export const GIT_BRANCH = `// Git Branch Animation
 // Visualizing git workflow with branches
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 
 const COMMITS = {
   main: [
@@ -222,7 +222,7 @@ export default define({
     const branchProgress = Math.max(0, Math.min(1, (timeline.progress - 0.3) * 2.5));
     const mergeProgress = Math.max(0, Math.min(1, (timeline.progress - 0.7) * 3));
 
-    return \`
+    return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -295,7 +295,7 @@ export default define({
               white-space: nowrap;
             ">\${c.msg}</div>
           </div>
-        \`;
+    \`;
       }).join('')}
 
       <!-- Feature commits -->
@@ -329,17 +329,17 @@ export default define({
         \`;
       }).join('')}
     </div>
-  \`;
+  \` });
   },
 });`;
 
 export const GITHUB_README = `// GitHub README Animation
 // Animated stats badge for your README.md
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 
 const STATS = {
-  repo: "superimg/superimg",
+  repo: "@foxworth/superimg/superimg",
   stars: 2847,
   forks: 156,
   contributors: 42,
@@ -362,7 +362,7 @@ export default define({
   const badge3 = Math.min(1, Math.max(0, (timeline.progress - 0.2) * 4));
   const badge4 = Math.min(1, Math.max(0, (timeline.progress - 0.3) * 4));
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -448,14 +448,14 @@ export default define({
         opacity: \${Math.max(0, (timeline.progress - 0.5) * 2)};
       ">Perfect for your GitHub README.md</div>
     </div>
-  \`;
+  \` });
   },
 });`;
 
 export const CHANGELOG = `// Changelog / Release Notes
 // Animated release notes from version data
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 
 const RELEASES = [
   {
@@ -499,7 +499,7 @@ export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -574,6 +574,6 @@ export default define({
         }).join('')}
       </div>
     </div>
-  \`;
+  \` });
   },
 });`;

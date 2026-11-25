@@ -1,8 +1,9 @@
-import { defineConfig } from "superimg";
+import { googleFont } from "@foxworth/superimg";
+import type { ProjectConfig } from "@foxworth/superimg";
 
-export default defineConfig({
+export default {
   width: 1920,
   height: 1080,
   fps: 30,
-  fonts: ["IBM+Plex+Sans:wght@400;700"],
-});
+  fonts: [googleFont("Instrument+Serif:wght@400"), googleFont("DM+Mono:wght@400;500")],
+} satisfies ProjectConfig;

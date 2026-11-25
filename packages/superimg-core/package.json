@@ -11,6 +11,10 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./edge": {
+      "import": "./dist/index.edge.js",
+      "types": "./dist/index.edge.d.ts"
+    },
     "./html": {
       "import": "./dist/html.js",
       "types": "./dist/html.d.ts"
@@ -28,8 +32,24 @@
       "types": "./dist/bundler-plugin.d.ts"
     },
     "./template-runtime": {
+      "types": "./dist/template-runtime.d.ts",
       "import": "./dist/template-runtime.js",
-      "types": "./dist/template-runtime.d.ts"
+      "require": "./dist/template-runtime.js",
+      "default": "./dist/template-runtime.js"
+    },
+    "./template-public": {
+      "types": "./dist/template-public.d.ts",
+      "import": "./dist/template-public.js",
+      "require": "./dist/template-public.js",
+      "default": "./dist/template-public.js"
+    },
+    "./composition": {
+      "types": "./dist/browser/composition.d.ts",
+      "import": "./dist/browser/composition.js"
+    },
+    "./source": {
+      "types": "./dist/browser/source.d.ts",
+      "import": "./dist/browser/source.js"
     },
     "./engine": {
       "import": "./dist/engine.js",
@@ -38,6 +58,18 @@
     "./template-metadata": {
       "import": "./dist/template-metadata.js",
       "types": "./dist/template-metadata.d.ts"
+    },
+    "./destinations": {
+      "import": "./dist/destinations.js",
+      "types": "./dist/destinations.d.ts"
+    },
+    "./export": {
+      "import": "./dist/export.js",
+      "types": "./dist/export.d.ts"
+    },
+    "./source-analysis": {
+      "import": "./dist/source-analysis.js",
+      "types": "./dist/source-analysis.d.ts"
     },
     "./validation": {
       "import": "./dist/validation.js",
@@ -59,6 +91,38 @@
       "import": "./dist/testing.js",
       "types": "./dist/testing.d.ts"
     },
+    "./runtime": {
+      "import": "./dist/runtime.js",
+      "types": "./dist/runtime.d.ts"
+    },
+    "./arrange": {
+      "import": "./dist/arrange.js",
+      "types": "./dist/arrange.d.ts"
+    },
+    "./cortex": {
+      "import": "./dist/cortex.js",
+      "types": "./dist/cortex.d.ts"
+    },
+    "./player-core": {
+      "import": "./dist/browser/player-core.js",
+      "types": "./dist/browser/player-core.d.ts"
+    },
+    "./player-composition": {
+      "import": "./dist/browser/player-composition.js",
+      "types": "./dist/browser/player-composition.d.ts"
+    },
+    "./ir": {
+      "import": "./dist/ir.js",
+      "types": "./dist/ir.d.ts"
+    },
+    "./edit": {
+      "import": "./dist/edit.js",
+      "types": "./dist/edit.d.ts"
+    },
+    "./ir-node": {
+      "import": "./dist/ir-node.js",
+      "types": "./dist/ir-node.d.ts"
+    },
     "./rendering/resvg-rasterizer.edge": {
       "import": "./dist/rendering/resvg-rasterizer.edge.js",
       "types": "./dist/rendering/resvg-rasterizer.edge.d.ts"
@@ -66,22 +130,44 @@
     "./rendering/resvg-rasterizer.node": {
       "import": "./dist/rendering/resvg-rasterizer.node.js",
       "types": "./dist/rendering/resvg-rasterizer.node.d.ts"
+    },
+    "./review": {
+      "types": "./dist/review.d.ts",
+      "import": "./dist/review.js"
+    },
+    "./takes": {
+      "types": "./dist/takes/index.d.ts",
+      "import": "./dist/takes/index.js"
     }
   },
   "scripts": {
     "generate": "node scripts/build-browser-virtuals.mjs",
     "verify:generated": "node scripts/verify-browser-virtuals.mjs",
     "verify": "pnpm run verify:generated",
-    "build": "tsdown",
+    "build": "tsdown --config tsdown.config.ts && tsdown --config tsdown.browser.ts && node scripts/fix-index-dts.mjs && node scripts/verify-build-entries.mjs",
     "dev": "tsdown --watch",
     "test": "vitest --run",
+    "typecheck": "node ../../scripts/typecheck-native.mjs -p tsconfig.json --noEmit",
     "prepublishOnly": "pnpm run verify:generated",
     "clean": "rm -rf dist .generated"
   },
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/index.js",
+    "./dist/index.edge.js",
+    "./dist/engine.js",
+    "./dist/runtime.js",
+    "./dist/html.js",
+    "./dist/testing.js",
+    "./src/index.ts",
+    "./src/index.edge.ts",
+    "./src/engine.ts",
+    "./src/runtime/index.ts",
+    "./src/html.ts",
+    "./src/testing/index.ts"
+  ],
   "keywords": [
     "superimg",
     "core",
@@ -90,30 +176,30 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "@babel/code-frame": "^8.0.0",
-    "@resvg/resvg-wasm": "2.6.2",
-    "@rolldown/browser": "1.1.3",
+    "@babel/code-frame": "^8.0.6",
+    "@resvg/resvg-wasm": "catalog:",
+    "@foxworth/superimg-script": "workspace:*",
+    "@rolldown/browser": "catalog:",
     "@superimg/stdlib": "workspace:*",
     "@superimg/types": "workspace:*",
-    "oxc-parser": "^0.137.0",
+    "oxc-parser": "catalog:",
     "picocolors": "^1.1.1",
-    "rolldown": "1.1.3",
-    "source-map-js": "^1.2.1",
-    "zustand": "^5.0.14"
+    "rolldown": "catalog:",
+    "source-map-js": "^1.2.2"
   },
   "devDependencies": {
     "@superimg/build-config": "workspace:*",
     "@types/babel__code-frame": "^7.27.0",
-    "@types/node": "^26.0.0"
+    "@types/node": "catalog:"
   },
   "optionalDependencies": {
-    "@oxc-parser/binding-darwin-arm64": "^0.137.0",
-    "@oxc-parser/binding-darwin-x64": "^0.137.0",
-    "@oxc-parser/binding-linux-arm64-gnu": "^0.137.0",
-    "@oxc-parser/binding-linux-arm64-musl": "^0.137.0",
-    "@oxc-parser/binding-linux-x64-gnu": "^0.137.0",
-    "@oxc-parser/binding-linux-x64-musl": "^0.137.0",
-    "@oxc-parser/binding-win32-arm64-msvc": "^0.137.0",
-    "@oxc-parser/binding-win32-x64-msvc": "^0.137.0"
+    "@oxc-parser/binding-darwin-arm64": "catalog:",
+    "@oxc-parser/binding-darwin-x64": "catalog:",
+    "@oxc-parser/binding-linux-arm64-gnu": "catalog:",
+    "@oxc-parser/binding-linux-arm64-musl": "catalog:",
+    "@oxc-parser/binding-linux-x64-gnu": "catalog:",
+    "@oxc-parser/binding-linux-x64-musl": "catalog:",
+    "@oxc-parser/binding-win32-arm64-msvc": "catalog:",
+    "@oxc-parser/binding-win32-x64-msvc": "catalog:"
   }
 }

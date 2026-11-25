@@ -1,7 +1,8 @@
 //! React hook for timeline scrubbing
 
 import { useEffect, useCallback, useRef } from "react";
-import { formatTime, type RuntimeStore } from "../../index.browser.js";
+import type { RuntimeStore } from "@superimg/media";
+import { formatTime } from "@superimg/player";
 
 export interface UseTimelineReturn {
   /** Start scrubbing at a position (0-1) */
@@ -43,6 +44,7 @@ export function useTimeline(
   const startScrub = useCallback((position: number) => {
     const frame = positionToFrame(position);
     isScrubbing.current = true;
+    store.beginScrub();
     store.seekFrame(frame);
   }, [store, positionToFrame]);
 
@@ -55,7 +57,8 @@ export function useTimeline(
   const stopScrub = useCallback(() => {
     isScrubbing.current = false;
     activePointerId.current = null;
-  }, []);
+    store.endScrub();
+  }, [store]);
 
   // Pointer events for mouse + touch scrubbing
   useEffect(() => {

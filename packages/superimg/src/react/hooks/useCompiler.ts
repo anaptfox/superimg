@@ -1,29 +1,31 @@
 //! React hook for template compilation (browser - uses @rolldown/browser)
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { compileTemplate, validateTemplate } from "@superimg/core";
+import { compilerDiagnostics, normalizeCompilerError } from "@superimg/core/errors";
 import {
-  compileTemplate,
-  validateTemplate,
   TemplateCompilationError,
-  type TemplateModule,
+  type MediaDefinition,
+  type CompilerDiagnostic,
   type CompileError,
   type CompileResult,
   type RenderContext,
   type SuperImgError,
-} from "../../index.browser.js";
+} from "@superimg/types";
 import { loadBundler } from "./bundler-loader.js";
 
 export interface UseCompilerReturn {
   /** Whether the bundler is ready (@rolldown/browser initialized) */
   ready: boolean;
-  /** The compiled template (null if not compiled or has errors) */
-  template: TemplateModule | null;
+  /** The compiled media (null if not compiled or has errors) */
+  media: MediaDefinition | null;
   /** Compilation error (null if successful) */
   error: SuperImgError | null;
+  diagnostics: readonly CompilerDiagnostic[];
   /** Compile code into a template (async - bundles with @rolldown/browser first) */
   compile: (code: string) => Promise<CompileResult>;
-  /** Validate a template with a test context */
-  validate: (template: TemplateModule, testContext: RenderContext) => CompileError | null;
+  /** Validate media with a test context */
+  validate: (media: MediaDefinition, testContext: RenderContext) => CompileError | null;
   /** Clear the current template and error */
   clear: () => void;
 }
@@ -34,20 +36,22 @@ export interface UseCompilerReturn {
  *
  * @example
  * ```tsx
- * const { template, error, compile, ready } = useCompiler();
+ * const { media, error, compile, ready } = useCompiler();
  *
  * const handleCodeChange = async (code: string) => {
  *   const result = await compile(code);
- *   if (result.template) {
- *     // Use the template for rendering
+ *   if (result.media) {
+ *     // Use the deterministic media for rendering
  *   }
  * };
  * ```
  */
 export function useCompiler(): UseCompilerReturn {
   const [ready, setReady] = useState(false);
-  const [template, setTemplate] = useState<TemplateModule | null>(null);
+  const [template, setTemplate] = useState<MediaDefinition | null>(null);
   const [error, setError] = useState<SuperImgError | null>(null);
+  const [diagnostics, setDiagnostics] = useState<readonly CompilerDiagnostic[]>([]);
+  const compilation = useRef(0);
 
   useEffect(() => {
     loadBundler()
@@ -61,6 +65,8 @@ export function useCompiler(): UseCompilerReturn {
   }, []);
 
   const compile = useCallback(async (code: string): Promise<CompileResult> => {
+    const generation = ++compilation.current;
+    setDiagnostics([]);
     try {
       const { initBundler, bundleTemplateBrowser } = await loadBundler();
       await initBundler();
@@ -68,29 +74,38 @@ export function useCompiler(): UseCompilerReturn {
 
       const bundled = await bundleTemplateBrowser(code);
       const result = compileTemplate(bundled.code);
+      if (generation !== compilation.current) return result;
+      setDiagnostics(result.error ? compilerDiagnostics(result.error, "evaluate") : bundled.diagnostics ?? []);
 
       if (result.error) {
         setError(result.error);
         setTemplate(null);
-      } else if (result.template) {
+      } else if (result.media) {
         setError(null);
-        setTemplate(result.template);
+        setTemplate(result.media);
+      } else if (result.interactive) {
+        const err = new TemplateCompilationError({
+          syntaxError:
+            "Interactive media requires @superimg/interactive and cannot load in the passive Player",
+        });
+        setError(err);
+        setTemplate(null);
       }
 
       return result;
     } catch (e: unknown) {
-      const err = new TemplateCompilationError({
-        syntaxError: e instanceof Error ? e.message : String(e),
-      });
+      const err = normalizeCompilerError(e, "generate", "<browser>");
+      if (generation !== compilation.current) return { error: err };
       setError(err);
+      setDiagnostics(compilerDiagnostics(err, "generate"));
       setTemplate(null);
       return { error: err };
     }
   }, []);
 
   const validate = useCallback(
-    (tmpl: TemplateModule, testContext: RenderContext): CompileError | null => {
-      const validationError = validateTemplate(tmpl, testContext);
+    (media: MediaDefinition, testContext: RenderContext): CompileError | null => {
+      const validationError = validateTemplate(media, testContext);
       if (validationError) {
         setError(new TemplateCompilationError({ syntaxError: validationError.message }));
       }
@@ -100,14 +115,17 @@ export function useCompiler(): UseCompilerReturn {
   );
 
   const clear = useCallback(() => {
+    compilation.current++;
     setTemplate(null);
     setError(null);
+    setDiagnostics([]);
   }, []);
 
   return {
     ready,
-    template,
+    media: template,
     error,
+    diagnostics,
     compile,
     validate,
     clear,

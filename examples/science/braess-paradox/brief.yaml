@@ -1,0 +1,25 @@
+audience: Math, computer science, and science YouTube viewers
+goal: Predict and understand why an extra road can worsen a selfish-routing equilibrium
+format: youtube
+length_seconds: 70
+beats:
+  - { name: hook, seconds: 5, visual: Dashed free shortcut on a fixed diamond, text: Would you build this road? }
+  - { name: rules, seconds: 10, visual: Two congestion-sensitive roads and two fixed-cost roads, text: 4000 drivers. Two routes. }
+  - { name: baseline, seconds: 8, visual: Even split and 20 plus 45 arithmetic, text: An even split. }
+  - { name: predict, seconds: 11, visual: A zero-time shortcut and one possible detour, text: What if everyone can use it? }
+  - { name: reveal, seconds: 11, visual: All flow uses both sensitive roads; total becomes 80, text: Everyone takes the shortcut. }
+  - { name: escape, seconds: 13, visual: Both unilateral escape routes cost 85, text: Can one driver do better? }
+  - { name: resolve, seconds: 12, visual: Close the shortcut and restore the 65-minute equilibrium, text: Braess's paradox. }
+must_show:
+  - The same 4000-driver demand and the same fixed road geometry throughout
+  - 65 before; 80 at the new equilibrium; 85 for a unilateral escape
+  - Closing the new link restores the old equilibrium
+tone: Precise, intriguing, dark editorial diagrams; reveal followed by a readable hold
+palette: ['#071C26', '#F4F0E6', '#5BDDC7', '#FFD166', '#FF7768']
+destinations: [youtube]
+constraints:
+  - Schematic route-choice model, not real traffic or a microscopic simulation
+  - Flow transitions crossfade equilibrium states; intermediate counts are not modeled dynamics
+  - One-way zero-time shortcut; driver demand is held fixed
+  - Locally synthesized narration, original sound accents, no commercial music
+next: superimg-ship

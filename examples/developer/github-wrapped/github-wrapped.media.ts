@@ -1,10 +1,7 @@
-import { define, type RenderContext } from "superimg";
+// GitHub Wrapped — set as a printed annual report, not a streaming recap.
+// Persistent page furniture; the centre column turns like a broadside.
 
-function formatNumberLocale(num: number): string {
-  return num.toLocaleString("en-US");
-}
-
-export type WrappedTheme = "dark" | "spotify" | "github" | "neon";
+import { video, Frame, Stack, Text, Html, type RenderContext, googleFont } from "@foxworth/superimg";
 
 export interface TopLanguage {
   name: string;
@@ -17,202 +14,490 @@ export interface TopRepo {
   stars: number;
 }
 
-export interface GitHubWrappedVideoData extends Record<string, unknown> {
+export interface GitHubWrappedData extends Record<string, unknown> {
   username: string;
   year: number;
   totalCommits: number;
   longestStreak: number;
-  topLanguages: TopLanguage[];
-  topRepos: TopRepo[];
   contributions: number;
   pullRequests: number;
   issuesClosed: number;
-  theme: WrappedTheme;
+  topLanguages: TopLanguage[];
+  topRepos: TopRepo[];
 }
 
-const THEME_CONFIG: Record<WrappedTheme, { bg: string; card: string; text: string; accent: string; glow: string }> = {
-  dark: { bg: "#0d1117", card: "#161b22", text: "#f0f6fc", accent: "#58a6ff", glow: "#58a6ff40" },
-  spotify: { bg: "#121212", card: "#1db954", text: "#ffffff", accent: "#1db954", glow: "#1db95450" },
-  github: { bg: "#0d1117", card: "#238636", text: "#f0f6fc", accent: "#3fb950", glow: "#3fb95050" },
-  neon: { bg: "#0a0a0a", card: "#1a1a2e", text: "#ffffff", accent: "#ff00ff", glow: "#ff00ff50" },
+const PAPER = "#EDE7DA";
+const INK = "#15130F";
+const RED = "#B4321F";
+const SOFT = "rgba(21,19,15,0.52)";
+const HAIR = "rgba(21,19,15,0.20)";
+
+const SPREADS = ["commits", "languages", "repos", "streak"] as const;
+type Spread = (typeof SPREADS)[number];
+
+const SPREAD_TITLE: Record<Spread, string> = {
+  commits: "The count",
+  languages: "The languages",
+  repos: "The repositories",
+  streak: "The streak",
 };
 
-export default define<GitHubWrappedVideoData>({
+function grouped(n: number): string {
+  return Math.round(n).toLocaleString("en-US");
+}
+
+/** Deterministic per-week ink weight for the contribution strip. */
+function weekWeight(i: number): number {
+  const h = (i * 2654435761) % 1009;
+  return 0.18 + (h / 1009) * 0.42;
+}
+
+export default video<GitHubWrappedData>({
+  duration: "12s",
+  fonts: [googleFont("Inter:wght@400;500;600;700;800;900"), googleFont("JetBrains+Mono:wght@400;500;700")],
+  inlineCss: [
+    "* { margin: 0; padding: 0; box-sizing: border-box; }",
+    "body { overflow: hidden; }",
+    ".num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }",
+  ],
   sample: {
     username: "devmaster",
     year: 2025,
     totalCommits: 2847,
     longestStreak: 45,
     contributions: 3200,
+    pullRequests: 156,
+    issuesClosed: 89,
     topLanguages: [
-      { name: "TypeScript", percent: 45, color: "#3178c6" },
-      { name: "Rust", percent: 25, color: "#dea584" },
-      { name: "Go", percent: 20, color: "#00add8" },
-      { name: "Python", percent: 10, color: "#3572a5" },
+      { name: "TypeScript", percent: 45, color: "#2F5D8C" },
+      { name: "Rust", percent: 25, color: "#8C5A2F" },
+      { name: "Go", percent: 20, color: "#2F7C8C" },
+      { name: "Python", percent: 10, color: "#5C5C2F" },
     ],
     topRepos: [
       { name: "awesome-cli", stars: 1250 },
       { name: "react-hooks", stars: 890 },
       { name: "dotfiles", stars: 340 },
     ],
-    pullRequests: 156,
-    issuesClosed: 89,
-    theme: "dark",
   },
-  config: {
-    width: 1920,
-    height: 1080,
-    fps: 30,
-    duration: "10s",
-  },
-  render(ctx: RenderContext<GitHubWrappedVideoData>) {
+
+  render(ctx: RenderContext<GitHubWrappedData>) {
     const { std, width, height, data } = ctx;
-    const { username, year, totalCommits, longestStreak, topLanguages, topRepos, theme } = data;
-    const themeKey: WrappedTheme = theme ?? "dark";
-    const themeConfig = THEME_CONFIG[themeKey];
+    const ease = (v: number, fn: Parameters<typeof std.interpolate>[3]) =>
+      std.interpolate(v, [0, 1], [0, 1], fn);
+    const username = String(data.username ?? "octocat");
+    const year = Number(data.year ?? 2025);
+    const languages = (data.topLanguages ?? []).slice(0, 4);
+    const repos = (data.topRepos ?? []).slice(0, 3);
 
     const t = ctx.director({
-      intro: "1.2s",
-      username: "1.0s",
-      commits: "1.6s",
-      languages: "1.7s",
-      repos: "1.7s",
-      streak: "1.3s",
-      outro: "1.0s",
-      fadeOut: "0.5s"
+      masthead: "1.6s",
+      spreads: "6.8s",
+      colophon: "1.6s",
     });
 
-    const introP = t.in("intro", { easing: "easeOutExpo" });
-    const usernameP = t.in("username", { easing: "easeOutBack" });
-    const commitsP = t.in("commits");
-    const langsP = t.in("languages");
-    const reposP = t.in("repos");
-    const streakP = t.in("streak");
-    const outroP = t.in("outro", { easing: "easeOutExpo" });
-    const fadeP = t.in("fadeOut", { easing: "easeInCubic" });
+    const mastheadP = ease(t.in("masthead"), "easeOutCubic");
+    const spreadsP = t.in("spreads");
+    const colophonP = ease(t.in("colophon"), "easeOutCubic");
 
-    const globalOp = 1 - fadeP;
-    const fontSize = Math.min(width, height) * 0.045;
+    const padX = Math.round(width * 0.068);
+    const padY = Math.round(height * 0.068);
+    const colW = width - padX * 2;
+    const bodyH = Math.round(height - padY * 2 - height * 0.22);
+    const px = (v: number) => Math.round(Math.min(width, height * 1.78) * v);
 
-    let langsHtml = "";
-    if (t.active === "languages" || t.active === "repos") {
-      langsHtml = topLanguages.slice(0, 4)
-        .map((lang: TopLanguage, i: number) => {
-          const delay = i * 0.15;
-          const localP = Math.max(0, (langsP - delay) / (1 - delay));
-          const barWidth = std.interpolate(localP, [0, 1], [0, 1], "easeOutExpo") * lang.percent;
-          return `<div style="margin-bottom:12px;opacity:${localP};">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:${fontSize * 0.5}px;font-weight:600;">${lang.name}</span>
-          <span style="font-size:${fontSize * 0.4}px;opacity:0.7;">${lang.percent}%</span>
-        </div>
-        <div style="height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;">
-          <div style="height:100%;width:${barWidth}%;background:${lang.color};border-radius:4px;"></div>
-        </div>
-      </div>`;
-        })
-        .join("");
-    }
+    // The masthead dissolves as it docks into the header rule.
+    const dock = std.interpolate(spreadsP, [0, 0.09], [0, 1], "easeOutCubic");
+    const heroOp = 1 - dock;
+    const heroLift = std.interpolate(dock, [0, 1], [0, -34], "easeInCubic");
 
-    let reposHtml = "";
-    if (t.active === "repos" || t.active === "streak") {
-      reposHtml = topRepos.slice(0, 3)
-        .map((repo: TopRepo, i: number) => {
-          const delay = i * 0.2;
-          const localP = Math.max(0, (reposP - delay) / (1 - delay));
-          const repoEased = std.interpolate(localP, [0, 1], [0, 1], "easeOutExpo");
-          return `<div style="display:flex;align-items:center;gap:12px;opacity:${repoEased};transform:translateX(${(1 - repoEased) * 30}px);">
-        <span style="font-size:${fontSize * 0.5}px;font-weight:600;">${repo.name}</span>
-        <span style="font-size:${fontSize * 0.4}px;color:${themeConfig.accent};">★ ${repo.stars}</span>
-      </div>`;
-        })
-        .join("");
-    }
+    // Page turn: each spread rises in, then lifts away. Exit is faster than enter.
+    const beat = t.beats({ during: "spreads", of: SPREADS, cross: "0s" });
+    const activeSpread: Spread = beat.crossing ? beat.to : beat.name;
+    const activeIndex = beat.index;
+    const local = beat.crossing ? 1 : beat.local;
+    const turnIn = std.interpolate(local, [0, 0.14], [0, 1], "easeOutCubic");
+    const turnOut = std.interpolate(local, [0.9, 1], [0, 1], "easeInCubic");
+    const spreadOp = Math.min(turnIn, 1 - turnOut);
+    const spreadY = (1 - turnIn) * 16 - turnOut * 12;
 
-    // Crossfade each stat beat in/out so phase changes don't hard-cut.
-    const beatPhases = ["intro", "commits", "languages", "repos", "streak"];
-    let phaseOp = 1;
-    if (t.active && beatPhases.includes(t.active)) {
-      const phaseP = t.in(t.active);
-      phaseOp = Math.min(
-        std.interpolate(phaseP, [0, 0.12], [0, 1], "easeOutCubic"),
-        std.interpolate(phaseP, [0.9, 1], [1, 0], "easeInCubic"),
+    function rule(w: number | "fill", thickness = 2, color = INK, progress = 1) {
+      return Frame(
+        { width: w, height: thickness },
+        Frame({
+          x: 0,
+          y: 0,
+          width: w,
+          height: thickness,
+          fill: color,
+          style: {
+            transform: `scaleX(${std.math.clamp(progress, 0, 1)})`,
+            transformOrigin: "left center",
+          },
+        }),
       );
     }
 
-    const renderCounter = (value: number, progress: number) =>
-      Math.floor(std.interpolate(progress, [0, 1], [0, 1], "easeOutExpo") * value);
-
-    let mainContent = "";
-
-    if (t.active === "intro") {
-      mainContent = `
-      <div style="opacity:${introP};transform:scale(${0.8 + introP * 0.2});">
-        <div style="font-size:${fontSize * 0.6}px;color:${themeConfig.accent};margin-bottom:16px;">YOUR</div>
-        <div style="font-size:${fontSize * 2}px;font-weight:900;letter-spacing:-0.03em;">${year}</div>
-        <div style="font-size:${fontSize * 0.5}px;margin-top:8px;opacity:0.7;">in code</div>
-      </div>
-    `;
-    } else if (t.active === "commits") {
-      const count = renderCounter(totalCommits, commitsP);
-      mainContent = `
-      <div style="text-align:center;">
-        <div style="font-size:${fontSize * 0.4}px;color:${themeConfig.accent};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;">Total Commits</div>
-        <div style="font-size:${fontSize * 2.5}px;font-weight:900;color:${themeConfig.accent};text-shadow:0 0 40px ${themeConfig.glow};">${formatNumberLocale(count)}</div>
-        <div style="font-size:${fontSize * 0.4}px;margin-top:16px;opacity:0.6;">contributions to the world</div>
-      </div>
-    `;
-    } else if (t.active === "languages") {
-      mainContent = `
-      <div style="width:80%;max-width:400px;">
-        <div style="font-size:${fontSize * 0.5}px;color:${themeConfig.accent};margin-bottom:24px;text-transform:uppercase;letter-spacing:0.1em;">Top Languages</div>
-        ${langsHtml}
-      </div>
-    `;
-    } else if (t.active === "repos") {
-      mainContent = `
-      <div style="text-align:left;">
-        <div style="font-size:${fontSize * 0.5}px;color:${themeConfig.accent};margin-bottom:24px;text-transform:uppercase;letter-spacing:0.1em;">Top Repositories</div>
-        <div style="display:flex;flex-direction:column;gap:16px;">${reposHtml}</div>
-      </div>
-    `;
-    } else if (t.active === "streak") {
-      const streakCount = renderCounter(longestStreak, streakP);
-      mainContent = `
-      <div style="text-align:center;">
-        <div style="font-size:${fontSize * 0.4}px;color:${themeConfig.accent};text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;">Longest Streak</div>
-        <div style="font-size:${fontSize * 2.5}px;font-weight:900;">${streakCount}</div>
-        <div style="font-size:${fontSize * 0.5}px;margin-top:8px;opacity:0.7;">days of consecutive commits</div>
-        <div style="font-size:48px;margin-top:24px;">🔥</div>
-      </div>
-    `;
-    } else {
-      mainContent = `
-      <div style="text-align:center;opacity:${outroP};">
-        <div style="font-size:${fontSize * 0.8}px;font-weight:700;margin-bottom:24px;">That's a wrap, @${username}!</div>
-        <div style="font-size:${fontSize * 0.4}px;opacity:0.7;">Here's to another year of shipping 🚀</div>
-      </div>
-    `;
+    function kicker(text: string, color = SOFT) {
+      return Text(
+        { variant: "label", color, size: px(0.0135), weight: 700, letterSpacing: 4.2 },
+        text.toUpperCase(),
+      );
     }
 
-    return `
-    <div style="width:${width}px;height:${height}px;background:${themeConfig.bg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:${themeConfig.text};position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:${globalOp};">
+    function statCell(label: string, value: string) {
+      return Stack(
+        { gap: px(0.006), width: Math.round(colW * 0.17) },
+        Text(
+          { variant: "label", color: SOFT, size: px(0.0125), weight: 600, letterSpacing: 2.6 },
+          label.toUpperCase(),
+        ),
+        Text(
+          {
+            variant: "title",
+            color: INK,
+            size: px(0.028),
+            weight: 700,
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+          },
+          value,
+        ),
+      );
+    }
 
-      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%, ${themeConfig.glow} 0%, transparent 50%);"></div>
+    function commitsSpread() {
+      const counted = std.interpolate(local, [0, 0.72], [0, 1], "easeOutExpo") * Number(data.totalCommits ?? 0);
+      return Stack(
+        { gap: px(0.022), width: colW },
+        kicker("Commits pushed", RED),
+        Text(
+          {
+            variant: "display",
+            color: INK,
+            size: px(0.155),
+            weight: 900,
+            letterSpacing: -8,
+            fontFamily: "Inter, system-ui, sans-serif",
+          },
+          grouped(counted),
+        ),
+        rule(colW, 2, HAIR, std.interpolate(local, [0.1, 0.5], [0, 1], "easeOutCubic")),
+        Stack(
+          { direction: "row", gap: px(0.03), width: colW, height: px(0.06), align: "start" },
+          statCell("contributions", grouped(Number(data.contributions ?? 0))),
+          statCell("pull requests", grouped(Number(data.pullRequests ?? 0))),
+          statCell("issues closed", grouped(Number(data.issuesClosed ?? 0))),
+        ),
+      );
+    }
 
-      ${t.active !== "intro" ? `
-        <div style="position:absolute;top:8%;opacity:${usernameP};">
-          <div style="font-size:${fontSize * 0.4}px;color:${themeConfig.accent};font-weight:600;">@${username}</div>
-        </div>
-      ` : ""}
+    function languagesSpread() {
+      const rowH = px(0.058);
+      return Stack(
+        { gap: px(0.016), width: colW },
+        kicker("Where the year went", RED),
+        ...languages.map((lang, i) => {
+          const p = std.math.clamp((local - i * 0.07) / 0.34, 0, 1);
+          const grow = std.interpolate(p, [0, 1], [0, 1], "easeOutCubic");
+          return Stack(
+            { gap: px(0.005), width: colW, style: { opacity: Math.min(1, p * 2.2) } },
+            Stack(
+              { direction: "row", width: colW, height: px(0.032), align: "center", justify: "space-between" },
+              Text({ variant: "title", color: INK, size: px(0.026), weight: 700 }, lang.name),
+              Text(
+                {
+                  variant: "title",
+                  color: SOFT,
+                  size: px(0.024),
+                  weight: 600,
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                },
+                `${lang.percent}%`,
+              ),
+            ),
+            Frame(
+              { width: colW, height: px(0.011), fill: HAIR },
+              Frame({
+                x: 0,
+                y: 0,
+                width: Math.round((colW * lang.percent) / 100),
+                height: px(0.011),
+                fill: lang.color,
+                style: { transform: `scaleX(${grow})`, transformOrigin: "left center" },
+              }),
+            ),
+            Frame({ width: colW, height: Math.round(rowH * 0.12) }),
+          );
+        }),
+      );
+    }
 
-      <div style="display:flex;flex-direction:column;align-items:center;opacity:${phaseOp};">${mainContent}</div>
+    function reposSpread() {
+      return Stack(
+        { gap: px(0.02), width: colW },
+        kicker("Most starred", RED),
+        ...repos.map((repo, i) => {
+          const p = std.math.clamp((local - i * 0.09) / 0.36, 0, 1);
+          const slide = std.interpolate(p, [0, 1], [18, 0], "easeOutCubic");
+          return Stack(
+            {
+              direction: "row",
+              width: colW,
+              height: px(0.075),
+              align: "center",
+              justify: "space-between",
+              style: {
+                opacity: Math.min(1, p * 2),
+                transform: `translateX(${slide.toFixed(2)}px)`,
+                borderBottom: `1px solid ${HAIR}`,
+              },
+            },
+            Stack(
+              { direction: "row", gap: px(0.018), align: "center", height: px(0.05) },
+              Text(
+                {
+                  variant: "title",
+                  color: RED,
+                  size: px(0.022),
+                  weight: 700,
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                },
+                String(i + 1).padStart(2, "0"),
+              ),
+              Text({ variant: "title", color: INK, size: px(0.038), weight: 700 }, repo.name),
+            ),
+            Text(
+              {
+                variant: "title",
+                color: INK,
+                size: px(0.028),
+                weight: 600,
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              },
+              `★ ${grouped(repo.stars)}`,
+            ),
+          );
+        }),
+      );
+    }
 
-      <div style="position:absolute;bottom:8%;opacity:${introP * 0.6};">
-        <div style="font-size:${fontSize * 0.3}px;color:${themeConfig.accent};">GitHub Wrapped ${year}</div>
-      </div>
+    function streakSpread() {
+      const streak = Number(data.longestStreak ?? 0);
+      const weeks = 52;
+      const cell = Math.floor((colW - (weeks - 1) * 6) / weeks);
+      const runWeeks = Math.max(1, Math.round(streak / 7));
+      const runStart = 26;
+      const drawn = std.interpolate(local, [0.06, 0.62], [0, 1], "easeOutCubic");
+      const stripH = Math.round(cell * 2.4);
+      const squares = Array.from({ length: weeks }, (_, i) => {
+        const x = i * (cell + 6);
+        const inRun = i >= runStart && i < runStart + runWeeks;
+        const shown = i / weeks <= drawn;
+        if (!shown) return "";
+        const h = inRun ? stripH : Math.round(stripH * weekWeight(i) * 1.6);
+        const y = stripH - h;
+        const fill = inRun ? RED : `rgba(21,19,15,${weekWeight(i).toFixed(2)})`;
+        return `<rect x="${x}" y="${y}" width="${cell}" height="${h}" rx="2" fill="${fill}"/>`;
+      }).join("");
 
-    </div>
-  `;
+      const counted = Math.round(
+        std.interpolate(local, [0, 0.6], [0, 1], "easeOutExpo") * streak,
+      );
+
+      return Stack(
+        { gap: px(0.024), width: colW },
+        kicker("Longest unbroken run", RED),
+        Stack(
+          { direction: "row", gap: px(0.024), align: "end", height: px(0.13) },
+          Text(
+            {
+              variant: "display",
+              color: INK,
+              size: px(0.12),
+              weight: 900,
+              letterSpacing: -6,
+            },
+            String(counted),
+          ),
+          Stack(
+            { gap: px(0.004), height: px(0.075), justify: "end" },
+            Text({ variant: "title", color: INK, size: px(0.03), weight: 700 }, "days"),
+            Text({ variant: "body", color: SOFT, size: px(0.017) }, "of consecutive commits"),
+          ),
+        ),
+        Html({
+          id: "streak-strip",
+          width: colW,
+          height: stripH,
+          html: `<svg width="${colW}" height="${stripH}" viewBox="0 0 ${colW} ${stripH}">${squares}</svg>`,
+        }),
+        Stack(
+          { direction: "row", width: colW, height: px(0.024), justify: "space-between", align: "center" },
+          Text({ variant: "label", color: SOFT, size: px(0.0125), weight: 600, letterSpacing: 2 }, "JAN"),
+          Text({ variant: "label", color: SOFT, size: px(0.0125), weight: 600, letterSpacing: 2 }, "DEC"),
+        ),
+      );
+    }
+
+    function spreadBody(name: Spread) {
+      if (name === "commits") return commitsSpread();
+      if (name === "languages") return languagesSpread();
+      if (name === "repos") return reposSpread();
+      return streakSpread();
+    }
+
+    const headerOp = Math.max(dock, colophonP > 0 ? 1 : 0);
+    const showColophon = colophonP > 0;
+
+    const centre = showColophon
+      ? Stack(
+          {
+            id: "colophon",
+            gap: px(0.024),
+            width: colW,
+            style: { opacity: std.interpolate(colophonP, [0, 0.3], [0, 1], "easeOutCubic") },
+          },
+          rule(colW, 3, RED, std.interpolate(colophonP, [0, 0.45], [0, 1], "easeOutCubic")),
+          Text(
+            { variant: "display", color: INK, size: px(0.072), maxWidth: colW, weight: 800, letterSpacing: -3 },
+            `That was ${year}, @${username}.`,
+          ),
+          Text(
+            { variant: "body", color: SOFT, size: px(0.022), maxWidth: Math.round(colW * 0.62) },
+            "Every commit, review, and late fix — set in one page and filed away.",
+          ),
+        )
+      : Stack(
+          {
+            id: "spread",
+            width: colW,
+            style: {
+              opacity: spreadOp,
+              transform: `translateY(${spreadY.toFixed(2)}px)`,
+            },
+          },
+          spreadBody(activeSpread),
+        );
+
+    return Frame(
+      { id: "page", width, height, fill: PAPER },
+      Frame({
+        width,
+        height,
+        fill: "radial-gradient(120% 100% at 50% 0%, rgba(255,255,255,0.55), transparent 70%)",
+      }),
+
+      // Page furniture — always on, so the spreads read as one document.
+      Frame(
+        { x: padX, y: padY, width: colW, height: px(0.05) },
+        Stack(
+          { gap: px(0.012), width: colW, style: { opacity: headerOp } },
+          rule(colW, 3, INK, headerOp),
+          Stack(
+            { direction: "row", width: colW, height: px(0.026), align: "center", justify: "space-between" },
+            Text(
+              { variant: "label", color: INK, size: px(0.0145), weight: 800, letterSpacing: 6 },
+              "THE ANNUAL",
+            ),
+            Text(
+              {
+                variant: "label",
+                color: SOFT,
+                size: px(0.0145),
+                weight: 500,
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              },
+              `@${username} · ${year}`,
+            ),
+          ),
+        ),
+      ),
+
+      // Opening lockup.
+      heroOp > 0.01
+        ? Stack(
+            {
+              id: "hero",
+              width: "fill",
+              height: "fill",
+              align: "center",
+              justify: "center",
+              gap: px(0.01),
+              style: { opacity: heroOp, transform: `translateY(${heroLift.toFixed(2)}px)` },
+            },
+            Text(
+              {
+                variant: "label",
+                color: RED,
+                size: px(0.018),
+                weight: 800,
+                letterSpacing: 9,
+                align: "center",
+                style: { opacity: std.interpolate(mastheadP, [0, 0.35], [0, 1], "easeOutCubic") },
+              },
+              "THE ANNUAL",
+            ),
+            Text(
+              {
+                variant: "display",
+                color: INK,
+                size: px(0.22),
+                weight: 900,
+                letterSpacing: -14,
+                align: "center",
+                motion: t.motion({ id: "hero-year", during: "masthead", at: "8%", for: "42%", y: 26 }),
+              },
+              String(year),
+            ),
+            Text(
+              {
+                variant: "body",
+                color: SOFT,
+                size: px(0.024),
+                align: "center",
+                motion: t.motion({ id: "hero-by", during: "masthead", at: "28%", for: "40%", y: 14 }),
+              },
+              `A year of code by @${username}`,
+            ),
+          )
+        : Frame({ width: 1, height: 1 }),
+
+      // Centre column.
+      Frame(
+        { x: padX, y: Math.round(padY + height * 0.13), width: colW, height: bodyH },
+        Stack({ width: colW, height: bodyH, justify: "center" }, centre),
+      ),
+
+      // Folio.
+      Frame(
+        { x: padX, y: height - padY - px(0.026), width: colW, height: px(0.026) },
+        Stack(
+          {
+            direction: "row",
+            width: colW,
+            height: px(0.026),
+            align: "center",
+            justify: "space-between",
+            style: { opacity: headerOp * 0.9 },
+          },
+          Text(
+            { variant: "label", color: SOFT, size: px(0.0125), weight: 600, letterSpacing: 2.4 },
+            showColophon ? "END OF YEAR" : SPREAD_TITLE[activeSpread].toUpperCase(),
+          ),
+          Text(
+            {
+              variant: "label",
+              color: SOFT,
+              size: px(0.0125),
+              weight: 600,
+              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+            },
+            showColophon
+              ? `${SPREADS.length} / ${SPREADS.length}`
+              : `${String(activeIndex + 1).padStart(2, "0")} / ${String(SPREADS.length).padStart(2, "0")}`,
+          ),
+        ),
+      ),
+    );
   },
 });

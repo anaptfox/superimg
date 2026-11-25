@@ -1,17 +1,22 @@
 //! SuperImg React Player - SSR-safe entry point
 //! Only exports the Player component and its types.
-//! Import from "superimg/react/player" instead of "superimg/react" for SSR compatibility.
+//! Import from "@foxworth/superimg/react/player" instead of "@foxworth/superimg/react" for SSR compatibility.
 "use client";
 
-export { Player, type PlayerProps, type PlayerRef } from "./components/Player.js";
+export {
+  PassivePlayer as Player,
+  type PassivePlayerProps as PlayerProps,
+  type PlayerRef,
+} from "./components/PassivePlayer.js";
 
 export type {
   RenderContext,
-  TemplateModule,
   TemplateConfig,
-  PlayerInput,
   PlaybackMode,
   LoadMode,
   HoverBehavior,
-  LoadResult,
-} from "../index.player.js";
+} from "@superimg/types";
+
+export type { PlayerInput, LoadResult } from "@superimg/player";
+
+export type { MediaDefinition, CanvasSize } from "@superimg/types";

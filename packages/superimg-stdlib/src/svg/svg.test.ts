@@ -4,6 +4,7 @@ import { filter } from "./filter";
 import { morph } from "./morph";
 import { shape } from "./shape";
 import { textPath } from "./textPath";
+import * as gradient from "./gradient";
 
 describe("draw", () => {
   it("returns full dasharray at progress 0 (nothing drawn)", () => {
@@ -205,5 +206,37 @@ describe("textPath", () => {
     const result = textPath("Hello", "M 0 0 L 100 0", { id: "mypath" });
     expect(result).toContain('id="mypath"');
     expect(result).toContain('href="#mypath"');
+  });
+});
+
+describe("gradient", () => {
+  const stops = [
+    { offset: 0, color: "#000" },
+    { offset: 1, color: "#fff" },
+  ];
+
+  it("derives stable ids instead of using render-order counters", () => {
+    const first = gradient.linear(stops, { angle: 45 });
+    gradient.radial(stops);
+    const second = gradient.linear(stops, { angle: 45 });
+    expect(second.id).toBe(first.id);
+    expect(second.defs).toBe(first.defs);
+  });
+
+  it("accepts an explicit definition id", () => {
+    const result = gradient.radial(stops, { id: "brand-glow" });
+    expect(result.id).toBe("brand-glow");
+    expect(result.defs).toContain('id="brand-glow"');
+    expect(result.fill).toBe("url(#brand-glow)");
+  });
+
+  it("keeps animated gradient identity stable across frames", () => {
+    const target = [
+      { offset: 0, color: "#f00" },
+      { offset: 1, color: "#00f" },
+    ];
+    expect(gradient.animate(stops, target, 0.1).id).toBe(
+      gradient.animate(stops, target, 0.9).id,
+    );
   });
 });

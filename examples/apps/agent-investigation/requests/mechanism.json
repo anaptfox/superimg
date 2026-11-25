@@ -1,0 +1,71 @@
+{
+  "pattern": "mechanism-strip",
+  "spec": {
+    "size": {
+      "width": 1100,
+      "height": 620
+    },
+    "evidence": "derived",
+    "source": "ILLUSTRATIVE MODEL · builds 4 min · tests 2 min · edits finish at 2 / 5 / 8 min",
+    "question": "Which handoff makes the old work matter?",
+    "workRemoved": "Separating a computed dependency from an unverified explanation and a proposed scheduling change",
+    "nodes": [
+      {
+        "id": "revision",
+        "label": "Every edit",
+        "note": "a new revision"
+      },
+      {
+        "id": "build",
+        "label": "Build queue",
+        "note": "one worker"
+      },
+      {
+        "id": "test",
+        "label": "Old tests",
+        "note": "still queued"
+      },
+      {
+        "id": "batch",
+        "label": "Batch once",
+        "note": "after last edit"
+      }
+    ],
+    "edges": [
+      {
+        "from": "revision",
+        "to": "build",
+        "label": "enqueue",
+        "claim": "derived"
+      },
+      {
+        "from": "build",
+        "to": "test",
+        "label": "stale work",
+        "claim": "interpretation"
+      },
+      {
+        "from": "test",
+        "to": "batch",
+        "label": "change policy",
+        "claim": "proposal"
+      }
+    ],
+    "layout": {
+      "kind": "pipeline",
+      "order": [
+        "revision",
+        "build",
+        "test",
+        "batch"
+      ]
+    },
+    "motion": {
+      "phase": "predict",
+      "revealIds": [
+        "build->test",
+        "test->batch"
+      ]
+    }
+  }
+}

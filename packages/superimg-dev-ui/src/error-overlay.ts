@@ -194,6 +194,11 @@ function buildOverlayHtml(err: SuperImgErrorJSON): string {
     );
   }
 
+  const diagnostics = err.details.compilerDiagnostics ?? err.details.diagnostics;
+  if (Array.isArray(diagnostics) && diagnostics.length) {
+    parts.push(`<details class="superimg-overlay-details"><summary>Compiler diagnostics (${diagnostics.length})</summary><pre class="superimg-overlay-frame">${escapeHtml(JSON.stringify(diagnostics, null, 2))}</pre></details>`);
+  }
+
   // Suggestion
   if (err.suggestion) {
     parts.push(`<div class="superimg-overlay-suggestion">→ ${escapeHtml(err.suggestion)}</div>`);

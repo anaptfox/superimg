@@ -2,7 +2,7 @@ import type { CoordSystem } from "../coords.js";
 import { bandScale } from "../scale.js";
 import type { ChartDataPoint } from "./shared.js";
 import type { BarChartOpts } from "./bar.js";
-import { animOpacity, chartColors, chartScales, plotArea } from "./shared.js";
+import { baselineValue, animOpacity, chartColors, chartScales, plotArea } from "./shared.js";
 
 export interface BarHorizontalOpts extends BarChartOpts {
   labelSide?: "left" | "right";
@@ -23,19 +23,20 @@ export function barHorizontal(
   const bh = y.bandwidth();
   const labelSize = opts.labelFontSize ?? 12;
   const labelColor = opts.labelColor ?? "#6b7795";
-  const xOrigin = scales.x(scales.xMin)!;
+  const xOrigin = scales.x(baselineValue(scales.xMin, scales.xMax))!;
   const parts: string[] = [];
 
   data.forEach((d, i) => {
+    if (!Number.isFinite(d.value)) return;
     const by = y(d.label) ?? area.top;
     const grow = opts.animate === "grow" ? progress : 1;
-    const animatedVal = scales.xMin + (d.value - scales.xMin) * grow;
+    const animatedVal = baselineValue(scales.xMin, scales.xMax) + (d.value - baselineValue(scales.xMin, scales.xMax)) * grow;
     const xEnd = scales.x(animatedVal)!;
-    const w = xEnd - xOrigin;
+    const w = Math.abs(xEnd - xOrigin);
     const color = colors[i % colors.length]!;
     const r = opts.barRadius ?? 4;
     parts.push(
-      `<rect x="${xOrigin.toFixed(2)}" y="${by.toFixed(2)}" width="${w.toFixed(2)}" height="${bh.toFixed(2)}" rx="${r}" fill="${color}" opacity="${opacity.toFixed(3)}"/>`,
+      `<rect x="${Math.min(xOrigin, xEnd).toFixed(2)}" y="${by.toFixed(2)}" width="${w.toFixed(2)}" height="${bh.toFixed(2)}" rx="${r}" fill="${color}" opacity="${opacity.toFixed(3)}"/>`,
     );
     if (opts.showLabels) {
       const labelX =

@@ -1,16 +1,16 @@
 //! CSS utilities - no external dependencies, browsers handle CSS natively
 
-import type { TailwindConfig } from "@superimg/types";
+import { isGoogleFontDeclaration, type FontInput, type TailwindConfig } from "@superimg/types";
 import { escapeHtmlAttr, isSafeStylesheetUrl, escapeCssInStyle } from "./sanitize.js";
 
 export const CSS_RESET = `html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden}`;
-export const CSS_BASE = `html,body{background:transparent}`;
+export const CSS_BASE = `html,body{background:transparent;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-optical-sizing:auto;text-rendering:optimizeLegibility}`;
 
 // Tailwind v4 Play CDN
 export const TAILWIND_CDN_URL = "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4";
 
 export interface CssConfig {
-  fonts?: string[];
+  fonts?: readonly (string | FontInput)[];
   stylesheets?: string[];
   inlineCss?: string[];
   tailwind?: boolean | TailwindConfig;
@@ -34,11 +34,16 @@ export function buildTailwindScript(tailwind: boolean | TailwindConfig | undefin
   return `${script}<style type="text/tailwindcss">${customCss}</style>`;
 }
 
-export function buildFontLinks(fonts: string[]): string {
-  if (fonts.length === 0) return "";
-  return fonts
-    .map((f) => {
-      const family = encodeURIComponent(f.trim());
+export function buildFontLinks(fonts: readonly (string | FontInput)[]): string {
+  const specs = fonts.flatMap((font) => {
+    if (typeof font === "string") return font.trim().length > 0 ? [font.trim()] : [];
+    if (isGoogleFontDeclaration(font)) return font.spec.trim().length > 0 ? [font.spec.trim()] : [];
+    return [];
+  });
+  if (specs.length === 0) return "";
+  return specs
+    .map((spec) => {
+      const family = encodeURIComponent(spec);
       const url = `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
       return `<link rel="stylesheet" href="${escapeHtmlAttr(url)}">`;
     })

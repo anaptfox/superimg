@@ -1,0 +1,21 @@
+{
+  "name": "@superimg/fixture-framework-portability",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest --run"
+  },
+  "dependencies": {
+    "@superimg/adapters": "workspace:*",
+    "@superimg/astro": "workspace:*",
+    "@superimg/next": "workspace:*",
+    "@superimg/react-router": "workspace:*",
+    "@superimg/tanstack-start": "workspace:*",
+    "@superimg/types": "workspace:*"
+  },
+  "devDependencies": {
+    "happy-dom": "catalog:",
+    "vitest": "catalog:"
+  }
+}

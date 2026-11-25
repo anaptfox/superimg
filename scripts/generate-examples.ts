@@ -12,6 +12,7 @@ import * as crypto from "node:crypto";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { collectCompanionAssets } from "./example-companion-assets.js";
 
 const EXAMPLES_DIR = path.join(__dirname, "../examples");
 const METADATA_PATH = path.join(EXAMPLES_DIR, "_templates.json");
@@ -47,12 +48,7 @@ const BUNDLE_CONCURRENCY = 6;
 
 /** Editor keeps WASM live-compile for these demos even when a preview bundle exists. */
 const EDITOR_WASM_DEMO_IDS = new Set([
-  "code-galaxy",
   "countdown",
-  "force-graph",
-  "math-tunnel",
-  "spinner",
-  "svg-filter",
 ]);
 
 const EXAMPLE_CATEGORIES = [
@@ -68,8 +64,6 @@ const EXAMPLE_CATEGORIES = [
 ] as const;
 
 type ExampleCategory = (typeof EXAMPLE_CATEGORIES)[number];
-/** @deprecated Use ExampleCategory */
-type TemplateCategory = ExampleCategory;
 
 function assertExampleCategory(
   id: string,
@@ -86,6 +80,8 @@ function assertExampleCategory(
 interface TemplateMetadata {
   title: string;
   category: ExampleCategory;
+  directory?: string;
+  playground?: boolean;
   description?: string;
   liveEdit?: boolean;
 }
@@ -100,7 +96,7 @@ interface PlaygroundMeta {
 interface ExampleEntry {
   id: string;
   title: string;
-  category: TemplateCategory;
+  category: ExampleCategory;
   code?: string;
   codeUrl?: string;
   bundledUrl?: string;
@@ -110,7 +106,7 @@ interface ExampleEntry {
 interface BuiltinSpec {
   id: string;
   title: string;
-  category: TemplateCategory;
+  category: ExampleCategory;
   module: string;
   export: string;
 }
@@ -149,7 +145,7 @@ const BUNDLE_PROVENANCE_PATHS = [
   path.join(REPO_ROOT, "packages/superimg-core/dist"),
   path.join(REPO_ROOT, "packages/superimg-stdlib/dist"),
   path.join(REPO_ROOT, "packages/superimg-types/dist"),
-  path.join(REPO_ROOT, "packages/superimg/dist/define.js"),
+  path.join(REPO_ROOT, "packages/superimg/dist/index.js"),
 ];
 
 const BUNDLE_SOURCE_EXTENSIONS = new Set([
@@ -253,7 +249,11 @@ function hashExampleSources(dirPath: string): string {
     }
   };
   visit(dirPath);
-  return hashFiles(files);
+  const inputs = new Set([
+    ...files,
+    ...collectCompanionAssets(dirPath).map((asset) => asset.source),
+  ]);
+  return hashFiles([...inputs]);
 }
 
 async function bundleTemplate(entryPoint: string): Promise<string> {
@@ -358,17 +358,10 @@ function pruneOrphanSidecars(activeIds: Set<string>, cache: BuildCache): number 
 function copyCompanionAssets(srcDir: string, exampleId: string) {
   const destDir = path.join(ASSETS_PUBLIC_DIR, exampleId);
   fs.rmSync(destDir, { recursive: true, force: true });
-  const files = fs.readdirSync(srcDir);
-  const skip = new Set([".DS_Store"]);
-
-  for (const file of files) {
-    if (skip.has(file)) continue;
-    const src = path.join(srcDir, file);
-    if (!fs.statSync(src).isFile()) continue;
-    if (file.endsWith(".media.ts") || file.endsWith(".media.js")) continue;
-    if (file.endsWith(".test.ts") || file.endsWith(".test.js")) continue;
-    fs.mkdirSync(destDir, { recursive: true });
-    fs.copyFileSync(src, path.join(destDir, file));
+  for (const asset of collectCompanionAssets(srcDir)) {
+    const dest = path.join(destDir, asset.relative);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(asset.source, dest);
   }
 }
 
@@ -416,6 +409,7 @@ async function bundleExample(
   bundleFn: () => Promise<string>,
   code: string,
   assetDir?: string,
+  requiredBundle = false,
 ): Promise<{ bundledUrl?: string; codeUrl: string }> {
   const bundlePath = path.join(
     EXAMPLES_PUBLIC_DIR,
@@ -438,6 +432,9 @@ async function bundleExample(
     cache[id] = { hash: contentHash, bundled: true };
     return urls;
   } catch (err) {
+    if (requiredBundle) {
+      throw new Error(`Catalog example ${id} could not be bundled: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
+    }
     const urls = writeSidecar(id, code, contentHash);
     if (assetDir) copyCompanionAssets(assetDir, id);
     cache[id] = { hash: contentHash, bundled: false };
@@ -483,7 +480,7 @@ ${examples.map(formatExample).join(",\n")}
 
 const rawMetadata = JSON.parse(
   fs.readFileSync(METADATA_PATH, "utf-8"),
-) as Record<string, { title: string; category: string; description?: string; liveEdit?: boolean }>;
+) as Record<string, Omit<TemplateMetadata, "category"> & { category: string }>;
 const metadata: Record<string, TemplateMetadata> = {};
 for (const [id, meta] of Object.entries(rawMetadata)) {
   assertExampleCategory(id, meta.category);
@@ -511,7 +508,12 @@ async function main() {
   for (const [id, meta] of Object.entries(metadata).sort(([a], [b]) =>
     a.localeCompare(b),
   )) {
-    const dirPath = path.join(EXAMPLES_DIR, meta.category, id);
+    if (meta.playground === false) continue;
+    const directory = meta.directory ?? id;
+    if (typeof directory !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(directory)) {
+      throw new Error(`examples/_templates.json: "${id}" has invalid directory "${directory}"`);
+    }
+    const dirPath = path.join(EXAMPLES_DIR, meta.category, directory);
     if (!fs.existsSync(dirPath) || !fs.statSync(dirPath).isDirectory()) {
       console.warn(`Warning: Missing directory for ${id} at ${dirPath}, skipping`);
       continue;
@@ -519,7 +521,7 @@ async function main() {
 
     const files = fs.readdirSync(dirPath);
     const templateFiles = files.filter(
-      (file) => file.endsWith(".media.ts") || file.endsWith(".media.js"),
+      (file) => file === `${id}.media.ts` || file === `${id}.media.js`,
     );
     if (templateFiles.length !== 1) continue;
 
@@ -545,6 +547,7 @@ async function main() {
         () => bundleTemplate(filePath),
         code,
         dirPath,
+        true,
       );
 
       const hasBundle = urls.bundledUrl !== undefined;

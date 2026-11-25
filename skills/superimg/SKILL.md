@@ -1,293 +1,323 @@
 ---
 name: superimg
 description: >
-  This skill should be used when the user asks to "create a video template",
-  "render HTML to MP4/PNG/GIF/SVG", "use define()", "work with ctx.std",
-  or mentions SuperImg, video generation, or programmatic media. Provides the
-  SuperImg framework for HTML/CSS templates in *.media.ts files.
+  Create deterministic video, image, SVG, Open Graph, collection, responsive,
+  interactive, and export workflows with SuperImg *.media.ts programs.
+version: 0.1.1-media-library.20261022.1
 ---
 
-# SuperImg Skill
+# SuperImg
 
-## Mental Model
+Author media content; select delivery when exporting.
 
-**Layer the frame, direct the motion** — for **video** and **gif** (animated templates).
+## Choose the helper
 
-### Unified templates (`*.media.ts`)
+| Job | Helper | Defaults |
+|-----|--------|----------|
+| Video | `video()` | 1920×1080, 30 fps, MP4 |
+| Still | `image()` | 1920×1080, PNG |
+| Vector | `svg()` | 1920×1080, SVG |
+| Open Graph | `ogImage()` | 1200×630, PNG |
+| Custom contract | `define()` | explicit |
 
-| Output | Factory | Config signal | Stdlib |
-|--------|---------|---------------|--------|
-| **MP4/WebM** | `define()` | `fps` + `duration` | Full (`director`, `carousel`, `stack`, `track`, `layers`, `reveal`, …) |
-| **GIF** | `define()` | `fps` + `duration` + `--format gif` | Full (same temporal APIs as video) |
-| **image** | `define()` | no `fps`/`duration` | Static — no director/layers/reveal |
-| **svg** | `define({ medium: "svg" })` | `medium: "svg"` | Static + `std.viz` / `std.svg` |
+All helpers lower to canonical `MediaDefinition`. Every helper accepts `size: { width, height }` for custom authored dimensions.
 
-**Pick output:** still → `define()` without fps/duration. Vector → `define({ medium: "svg" })`. Animated scene/reel → `define()` with fps + duration. File extension is always `*.media.ts`.
+```ts
+import { video, Frame, Stack, Text } from "@foxworth/superimg";
 
-### Animated path (video + gif)
-
-`render(ctx)` is a pure function of time; returns HTML each frame.
-
-| Tier | API | Role |
-|------|-----|------|
-| **Video** | `compose([scenes])` | Multi-scene chain (video only) |
-| **Template** | `define()` | Scene contract, config, sample data |
-| **Layers** (optional) | `std.layers()` | Shot stack — bg → tint → content → overlay → fx |
-| **Director** | `ctx.director()` | Phase timing + motion (`t.motion().style`, `tween`, `in`) |
-
-**Satellites:** `ctx.track()` (transcript/marker sync), `std.carousel()` / `std.stack()` (ordered item choreography), `std.css` / `std.layout` (spatial layout), `interpolate` / `spring` / `stagger` (escape hatches), `mergeMotion` (combine motions), `std.reveal.*` (transition overlay utilities — mount on `L.fx()`, not a compositional tier).
-
-Simple centered card → template + director. Layered broadcast layout → add layers. Voiceover sync → track + director.
-
-### Static path (image + svg)
-
-Single `render(ctx)` call — no `timeline`. Use `std.css`, `std.layout`, `std.color`. SVG templates return real SVG markup; optional `config.duration` for CSS animation.
-
-### Footguns
-
-- **image/svg:** no `ctx.director()` or `std.layers()` — types exclude them
-- **`std.reveal` overlays vs `std.reveal.clip`:** full-frame transition FX vs clip-path strings
-- **Broadcast overlays:** `std.layers({ mode: "transparent" })`
-- **Flat HTML (no layers):** set root `width` / `height` via `std.css`
-- **`compose()` vs `mergeMotion()`:** scenes vs motion values
-- **Clock:** `timeline.seconds` is always `progress × durationSeconds` — use `timeline` for scene-local time, not `globalTimeSeconds`
-- **Phases on stills:** prefer **percent** phases summing to 100% — second-based phases can blow up when single-frame paths use short totalSeconds. Prefer `layoutTimeline({…seconds})` which always emits percents.
-- **Config const refs:** `const DURATION = 12; duration: DURATION` is folded by metadata AST; dynamic `resolve()` duration still needs runtime/`inspect`
-- **Fixed duration + stack:** equal slots compress when item count grows — use `resolve` + `layoutTimeline` (+ optional `stack` `weights`) for programmable lists/sessions
-
-## Quick Start (video)
-
-```typescript
-import { define } from "superimg";
-
-export default define({
-  sample: { message: "Hello!", accentColor: "#667eea" },
-  config: {
-    duration: 3,
-    inlineCss: ["* { margin: 0; box-sizing: border-box; } body { background: #0f0f23; font-family: system-ui; }"],
-  },
+export default video({
+  duration: "5s",
+  sample: { title: "Hello" },
   render(ctx) {
-    const { std, width, height, data } = ctx;
-    const t = ctx.director();
-    const card = t.motion({ y: 30 });
-
-    return `
-      <div style="${std.css({ width, height }, std.css.center())}">
-        <div style="${std.css({ color: data.accentColor, fontSize: 64 }, card.style)}">${data.message}</div>
-      </div>
-    `;
+    const t = ctx.director({ in: "20%", hold: "80%" });
+    return Stack(
+      { width: "fill", height: "fill", align: "center", justify: "center" },
+      Text({ variant: "display", motion: t.motion({ y: 24 }) }, ctx.data.title),
+    );
   },
 });
 ```
 
-## Key Context Fields
+`render(ctx)` returns one typed media tree. **Frame vs Stack:** Frame owns its position (`x`/`y`); Stack is laid out by its parent — never pass `x`/`y` to Stack. Omitted size hugs content; `width: "fill"` / `height: "fill"` when you mean fill.
 
-**Video/gif:** `timeline` (`progress`, `seconds`, `frame`, `durationSeconds`), `ctx.director()`, `ctx.track()`, `width`, `height`, `data`, `std`, `asset()`. Use `timeline.progress` / `timeline.seconds` for scene-local animation.
+## Director & Multi-Beat Narrative Timing
 
-**Image/svg:** `width`, `height`, `data`, `std`, `asset()` — no temporal fields.
+Never build manual `BEAT` / `T` timestamp tables. Use `ctx.director()` for both simple phase layouts (`enter` / `hold` / `exit`) and multi-act or overlapping cue windows in seconds:
 
-**Co-located assets:** `ctx.asset('logo.png')` for files in `assets/` next to your template.
+```ts
+// Simple phase layout
+const t = ctx.director({ enter: "0.6s", hold: "2s", exit: "0.4s" });
 
-## Core Patterns
-
-**Director API (video/gif):**
-```typescript
-const t = ctx.director({ enter: "15%", hold: "70%", exit: "15%" });
-const card = t.motion({ scale: 0.8, easing: "easeOutBack" });
-const count = Math.floor(t.tween(0, 100, { during: "enter", easing: "easeOutCubic" }));
-```
-
-**Nested clips (sequence-like timing):**
-```typescript
-const t = ctx.director({ hook: "2s", demo: "5s" });
-const hook = t.clip({ during: "hook" });
-if (hook.active) {
-  const local = hook.director({ enter: "20%", hold: "60%", exit: "20%" });
-  return `<div style="${local.motion({ y: 24 }).style}">Hook</div>`;
-}
-```
-
-**Stack (accumulate — chat, FAQ, lists):**
-```typescript
-const t = ctx.director({ messages: "90%", hold: "10%" });
-const stk = std.stack(messages, {
-  during: t.in("messages"),
-  lead: 0.05,
-  trail: 0.05,
-  weights: messages.map((m) => Math.max(1, m.text.length / 40)), // optional
+// Multi-act & overlapping cue windows in seconds
+const d = ctx.director({
+  acts: { title: [0, 3.0], happy: [0.8, 12.6], away: [11.8, 20.6] },
+  cues: { hop: [1.0, 1.45], lean: [1.5, 2.0] },
 });
-for (let i = 0; i < messages.length; i++) {
-  const item = stk.state(i);
-  if (item.state === "hidden") continue;
-  // item.enter: 0→1 during reveal; item.slot: 0→1 across slot (typing, q→a)
-}
+const hopP = d.span("hop", "outCubic");
+const blinkP = d.span([2.2, 2.5], "inOutCubic");
 ```
 
-**Variable-length sessions (resolve + layoutTimeline):**
-```typescript
-import { define, layoutTimeline } from "superimg";
+Last act holds by default; pass `exit: true` (or an `exit` phase on that motion's `during`) to leave. Screen tours use `t.beats({ during, of, cross })`. Static image/SVG contexts do not expose temporal APIs. See [references/motion-and-review.md](references/motion-and-review.md) for timing, easing, stagger, and safe-area craft rules.
 
-function estimate(data: { items: unknown[] }) {
-  return layoutTimeline({
-    intro: 1,
-    main: Math.max(2, data.items.length * 1.2),
-    hold: 0.8,
-  });
-}
+## Stdlib Essentials (`@foxworth/superimg/stdlib`)
 
-export default define({
-  sample: { items: [1, 2, 3] },
-  config: { width: 1920, height: 1080, fps: 30, duration: "8s" }, // AST fallback
-  resolve({ data }) {
-    const { totalSeconds, phases } = estimate(data);
-    return { duration: `${totalSeconds}s`, phases };
-  },
-  render(ctx) {
-    const { phases } = estimate(ctx.data);
-    const t = ctx.director(phases);
-    // …
-  },
-});
-```
+**Never re-implement math, easing, color mixing, safe areas, or responsive helpers in template files.** Import them from `@foxworth/superimg/stdlib` (or access via `ctx.std`):
 
-**Carousel (replace — threads, wizards):**
-```typescript
-const t = ctx.director({ tweets: "84%", hold: "16%" });
-const car = std.carousel(tweets, { during: t.in("tweets"), exit: 0.15, last: "hold" });
-const item = car.state(0); // states: hidden | entering | hold | exiting | gone
-```
+- **Math & interpolation:** `clamp`, `lerp`, `mapClamp`, `remap`
+- **Color:** `mix` (perceptual OKLCH color mixing)
+- **Easing:** `easeOutCubic`, `easeInCubic`, `easeInOutCubic` (plus `easeOutExpo`, `easeOutBack`, etc.)
+- **Responsive & safe areas:** `createResponsive(ctx)`, `Safe` / `getSafeBox` (broadcast & `social-vertical` 9:16 safe zones)
+- **Timing & cascades:** `layoutTimeline`, `readTimeSeconds`, `stagger` (`stagger.ms` for millisecond gaps with automatic `500ms` cascade cap)
 
-**Track (transcript / marker sync):**
-```typescript
-const vo = ctx.track({ words: data.words });
-const word = vo.current();
-const charP = vo.charProgress();
-```
+## Vector & Typography (No Raw `<svg>` in `Html()`, No Font Outliners)
 
-**Data-driven viz (bar race, force graphs):**
-```typescript
-const t = ctx.director({ intro: "10%", race: "80%", outro: "10%" });
-const bars = std.viz.charts.barRace(keyframes, t.at("race", timeline.seconds));
-```
+**Paint** is `Fill` / `Image` / `Video`. **Vector art** is `Vector(...)` with the typed `vector.*` namespace:
 
-**Embedded video (frame-accurate):**
-```typescript
-const clip = std.video.sync({ src: ctx.asset("clip.mp4"), at: timeline.seconds }, ctx.fps);
-return clip.html; // not <video autoplay>
-```
+- **Primitives:** `vector.circle`, `vector.rect`, `vector.line`, `vector.ellipse`, `vector.polyline`, `vector.polygon`, `vector.path`, `vector.group`, `vector.text`, `vector.run`
+- **Defs, masks, clips, paint & filters:** `vector.defs`, `vector.mask`, `vector.clip`, `vector.linearGradient`, `vector.radialGradient`, `vector.stop`, `vector.pattern`, `vector.filter`, `vector.gaussianBlur`, `vector.turbulence`, `vector.displacementMap`
 
-**Layer stack (video/gif, layered scenes):**
-```typescript
-const L = std.layers({ width, height, mode: "opaque" });
-const wipe = std.reveal.wipe({ progress: t.in("intro"), direction: "diagonal", color: "#000" });
-return L.render(
-  L.bg(kenBurns.html),
-  L.tint("rgba(0,0,0,0.5)"),
-  L.content(`<h1 style="${card.style}">...</h1>`, { safe: "broadcast" }),
-  L.overlay(lowerThirdHtml, { anchor: "bottom-left", offset: { y: 80 }, safe: true, motion: badgeAnim }),
-  L.fx(wipe.html, { visible: () => t.in("intro") < 1 }),
-);
-```
+Masks, clips, gradients, and filters take explicit stable ids, and groups/nodes refer to those ids directly without writing `url(#...)`. Feed `std.svg.draw()` and `std.svg.morph()` geometry into `vector.path()` rather than assembling SVG strings. **Never write raw `<svg>` strings inside `Html({ html })`** (flagged by `superimg check` as `RAW_SVG_IN_HTML`). The only markup hole is boxed `Html({ id, width, height, html })` for third-party HTML — never `html` on Frame.
 
-**Still image:**
-```typescript
-import { define } from "superimg";
-export default define({
-  config: { width: 1200, height: 630 },
-  render(ctx) {
-    const { std, width, height, data } = ctx;
-    return `<div style="${std.css({ width, height, background: "#0f172a" }, std.css.center())}">
-      <h1 style="color:#fff;font-size:64px">${data.title}</h1>
-    </div>`;
+**Typography & native font measurement:**
+- `Text`, `Code`, and `vector.text` support `reveal` (`0..1` typewriter/character reveal) natively.
+- Local `.ttf`, `.otf`, `.woff`, and `.woff2` files declared in `fonts: [...]` are measured natively — **never write Python `fonttools` scripts to outline fonts into SVG paths.**
+- Let one `Text` contain a complete paragraph and let `Stack` flow from its measured height. Avoid character-count wrapping and fixed one-line Frames around text that may wrap. Put highlight paint/padding on a content-sized container. Nonbreaking spaces keep authored quantities/units together.
+
+For developed SVG art files, import `./art.svg?superimg-svg`, call `svgDocument(bytes)`, and place it with `SvgArtwork` or `svgPart` in a Scene. Named edits are bounded; use a unique occurrence id for local definitions. For Canvas or Three, import a typed `NativeSurfaceModule` with `?superimg-surface` and sample it at `ctx.timeline.seconds`. CLI/Node and dev preview support these modules; production Player, browser/edge runtime and schema-0 artifacts refuse them. Opt in to schema 1 when compiling a native Node replay artifact. See [the artwork contract](references/api.md#imported-art-and-native-surfaces) for the limits.
+
+## Charts
+
+For line/time-series and bar charts, import `layout`, `defineChart`, marks and
+scales from `@foxworth/superimg/charts`. Return `layout(definition, { id, width, height }).artwork`
+inside the media tree. Use explicit mark ids/datum keys; annotations use the
+result's points/scales or `pathPoint`, never scraped SVG. Pass explicit director
+progress through `motion.lineReveal` / `motion.barsGrow`; do not mount a chart
+animation loop. When authoring charts, read [the chart contract](references/api.md#typed-charts)
+for typography, supported paint, identity, and legacy helper migration.
+
+## Shared visual scenes
+
+For characters, split scenery, attached props or process diagrams, use `visual()` → `Instance()` → `Scene()`. Supply accepted data and explicit placement; named anchors bind props. Use `entityId` for persistent identity and `id` for the current visual occurrence. Inspect the resolved packet via `@foxworth/superimg/scene`. Read [the shared scene contract](references/api.md#shared-visual-scenes) before authoring projection, camera, semantic hits, or boxed artwork.
+
+## Responsive media
+
+The root render responds to `ctx.width` and `ctx.height` (and `createResponsive(ctx)`). Add an edition only for an exact aspect ratio that needs different art direction:
+
+```ts
+video({
+  duration: "12s",
+  render: renderResponsive,
+  editions: {
+    square: {
+      size: { width: 1080, height: 1080 },
+      render: renderSquare,
+    },
   },
 });
 ```
 
-**Responsive sizing:** `const r = std.createResponsive(ctx);` then `r({ portrait: 48, default: 40 })`
+Root `variants` are shallow data patches. They never contain size, fps, duration, format, codec, path, or filename.
 
-**Layout:** `std.css()`, `std.css.center()`, `std.css.column()`, `std.layout.partitionY()`
+## Reusable compositions
 
-## Stdlib Cheat Sheet
+Use a `Program` when a named part must remain inspectable or be used in another work. `sequence()` orders parts, `together()` places them on one clock, and `choose()` names alternatives. `time()` makes a deterministic video with an explicit canvas, fps, and route for each choice.
 
-- `ctx.director(phases?)` — video/gif only. `{ motion, tween, value, active, in, clip, at, span, transition, inSpan }`
-- `ctx.track({ words, markers })` — transcript/marker sync using `timeline.seconds`
-- `std.carousel(items, opts)` — one active item; prior items exit (`last: "hold"` keeps final)
-- `std.stack(items, opts)` — accumulate items; `enter` + `slot`; optional `weights` for unequal slots
-- `std.layoutTimeline(segments)` / `layoutTimeline` — pure seconds → percent phases + `totalSeconds` (use in resolve + render)
-- `std.video.sync(opts, fps)` — frame-accurate embedded `<video>` for headless render
-- `std.layers(opts)` — video/gif only. `.bg()`, `.tint()`, `.content()`, `.overlay()`, `.fx()`, `.handoff()`, `.render()`
-- `std.reveal.wipe/split/curtain/crossfade/iris/handoffLocal()` — transition overlays (utility)
-- `std.stagger.lead(items, progress)` — leading stagger index (sync phone mockups)
-- `std.mergeMotion(...)` — merge motion values (not `compose()`)
-- `std.interpolate`, `std.spring`, `std.stagger`
-- `std.css`, `std.color`, `std.createResponsive`
-- `std.viz`, `std.svg.*` — svg templates
+```ts
+import { sequence, time } from "@foxworth/superimg";
 
-## Do / Don't
+const story = sequence([
+  { id: "opener", content: openerImage, hold: "1s" },
+  { id: "chapter", content: chapterProgram },
+]);
+export default time(story, { size: { width: 1920, height: 1080 }, fps: 25 });
+```
 
-**DO:** Use `*.media.ts` for all templates. Use `ctx.director()` for phased video/gif animation. Use explicit time units in motion (`at: "0.2s"`, `for: "30%"`). Put shared CSS in `config.inlineCss`. Use `std.css()` for inline styles.
+IDs are stable path segments (`chapter/demo`). Stills need a hold in a timed sequence. A child of a different size needs `fit: "contain"` or `fit: "cover"`. Keep the original Program for another projection; the timed media definition is a final output. For host-controlled selection, pass a Program to `present()` from `@foxworth/superimg/player/program` with `mode: "manual"`; the host owns navigation. See [references/api.md](references/api.md#retained-composition) for placement, routes, scoped collection data, and current resource limits.
+Child asset names stay local: two children may each use `ctx.asset("logo")` when they declare portable bytes or an absolute HTTP(S) URL. `time()` gives each occurrence a qualified resource key. Imported child modules cannot use relative asset paths after bundling.
+Child audio clips get qualified IDs and root clock offsets; placement ends within the child's authored duration. Use portable audio sources and matching child mix settings. See [references/api.md](references/api.md#retained-composition) for the accepted audio timing rules.
 
-**DON'T:** Use `director`/`layers` in image/svg templates. Return JSX. Mutate state in render. Use `globalTimeSeconds` for scene-local video animation (use `timeline`). Use unitless numeric `at`/`for` in motion calls.
+## Collections
 
-## Config
+Collections batch-materialize deterministic media:
 
-`define()` config: `width`, `height`, `fps`, `duration`, `fonts`, `inlineCss`, `outputs`. Static templates omit `fps`/`duration`. SVG templates use `medium: "svg"` and may set `duration` for CSS anim.
+```ts
+import { collection, video } from "@foxworth/superimg";
+import { loadClips } from "./clips.server";
 
-## CLI
+export default collection({
+  entries: loadClips,
+  media: video<Clip>({
+    duration: "12s",
+    render: (ctx) => renderClip(ctx.data),
+  }),
+});
+```
 
-> **Note for AI Agents:** Do **not** use `-o` / `--output` unless the user requests a custom path.
+Providers are zero-argument sync/async functions returning complete arrays. Static readonly arrays work too. A required string `id` is automatic; otherwise provide `entryId` as a string-valued key or resolver. Do not infer identity from names, titles, numeric ids, or array positions.
+
+Provider code stays server-only. Never place secrets, Node imports, or large static datasets in the media projection.
+
+## Trust
+
+CLI `check` / `export` / `dev` compile first-party `*.media.ts` in-process. Browser-framework hosts compile those files with their own Rolldown/OXC. Trusted Node hosts use `compileNodeMediaSource` from `@foxworth/superimg-node/source`. Collection providers run in a child Node with an allowlisted env. Export Chromium runs `Html()` scripts (Three / Lottie). Production Player (`render-only`) strips scripts. Untrusted templates are out of scope — see `SECURITY.md`.
+
+Helpers (`video`, `image`, `svg`, `ogImage`, `define`, `collection`) are `@superimg/types` re-exports on `@foxworth/superimg`. Tree nodes (`Frame`, `Stack`, `Text`, `Html`, `Plate`) come from the root `@foxworth/superimg` entry, not `index.shared`. `defineInteractive` is `@foxworth/superimg/interactive/define`. `createDirector` is `@superimg/stdlib` / `ctx.director()`, not a root export. `@superimg/core` is rasterize / IR, not the authoring helpers.
+
+## Interactive media
+
+Interactive media is singular and host-driven:
+
+```ts
+import { defineInteractive } from "@foxworth/superimg/interactive/define";
+
+export default defineInteractive<Lesson>({
+  guide: lessonGuide,
+  render: (ctx) => renderLesson(ctx.data),
+});
+```
+
+Do not wrap interactive definitions in collections. Author with `@foxworth/superimg/interactive/define`, mount framework-neutral controllers from `@foxworth/superimg/interactive/player`, and import `InteractivePlayer` from `@foxworth/superimg/react/interactive`.
+
+## Dev preview
+
+`superimg dev source.media.ts --variant ID --edition ID` selects one content
+projection; the browser also provides variant and edition selectors. Explicit
+Default overrides startup selections. HMR keeps the selected projection and the
+last accepted output on compile failure. Stills hide playback controls.
+
+Singular interactive media mounts its controller with guide navigation and JSON
+root-data patches. Reset preview restores authored sample data and frame zero,
+paused. Live interactive state is not an export. Collection preview holds the
+selected CLI snapshot; its dev export is disabled until exact snapshot delivery
+is supported. Use explicit collection export instead.
+
+## Zero-FFmpeg Visual Review, Debug & Export Loop
+
+**Never shell out to `ffmpeg` or `magick montage` to extract frames or build contact sheets** — `--review` does this deterministically in one command. Run this 3-step loop:
 
 ```bash
-superimg dev intro
-superimg render intro
-superimg render intro --format png --frame 45   # single-frame still
-superimg render intro --format html --frame 45  # HTML snapshot (no browser)
-superimg inspect intro --pretty                 # multi-progress + phases (JSON)
-superimg inspect intro --diff 0.35,0.85         # what changed between beats?
-superimg list
-superimg setup
+# 1. Check layout, contrast, SVG usage, and motion craft at target dimensions
+superimg check foo.media.ts --for 1080x1920 --craft
+
+# 2. Pre-encode visual review -> generates contact-sheet.png + frame PNGs in .superimg/reviews/...
+#    (Omit --at to automatically sample every director act/phase hold!)
+superimg inspect foo.media.ts --for 1080x1920 --at 0.8s,1.9s,6.2s --review
+
+# 3. Direct file export + post-encode contact-sheet.png decoded from actual MP4 frames
+superimg export foo.media.ts --for 1080x1920 --review -o foo-9x16.mp4
 ```
 
-## Debug (agent loop)
+In this repo use `just cli` (builds the render stack first). Elsewhere: `npm i @foxworth/superimg` and `npm i -D @foxworth/superimg-cli`, then `npx superimg <cmd>`. One-off: `npx @foxworth/superimg-cli <cmd>`.
 
-**Start with inspect** — do not shell five single-frame renders to learn timing.
+`just cli doctor --json` before setup or export. Run `npx superimg setup` only on `CHROMIUM_MISSING`. `CHROMIUM_LAUNCH_DENIED` means leave the OS sandbox — do not re-install.
+
+`check` goes red on layout and authoring issues (`ZERO_BOX`, `EMPTY_CONTAINER`, `TEXT_OUTSIDE_PARENT`, `FLOW_TEXT_LINE_OVERLAP`, `RAW_SVG_IN_HTML`, `IDENTITY_FLICKER`, `UNPAINTED_STAGE`, `LOW_CONTRAST_TEXT`, `SPARSE_FOCAL`) as well as empty/NaN HTML. Uncolored Text on an unpainted stage fails `UNPAINTED_STAGE` / `LOW_CONTRAST_TEXT` — paint a `Fill` and set Text color (default ink `#111827`). Square chat stills (`1080x1080`, `instagram-square`) fail `MISSING_EDITION` unless the root is already square or `editions.square` exists — do not letterbox landscape art. Tiny ink on a square stage fails `SPARSE_FOCAL`.
+
+`--for` on `check`, `inspect`, and `export` accepts organic destination ids (`youtube`, `instagram-square`, `tiktok`, `linkedin`, `facebook`, `x`, `pinterest`, `threads`, `reddit`) or `WIDTHxHEIGHT[.format]`. Pass `-o <path>` on single-artifact exports to write directly to a file path while keeping atomic bundle publication. Collections export all entries by default; repeat `--entry` to restrict them. Animated-to-still requires `--poster` or `--at TIME` in **seconds** (`0s`, `1.5s`, `1500ms`). Inspect/check `--at` accepts explicit `1.5s`, `1500ms`, `45f`/`f:45`, or explicit progress such as `50%`.
+
+Attaching a picture to a message is a different job: `superimg check spec.json` then `--for 1080x1080.png` renders a perceptual arrangement straight from JSON, no `*.media.ts` needed. See the `superimg-arrangements` skill.
+
+For particles, camera travel, or procedural material, use `inspect <media> --review --review-clips --json` and a co-located `*.review.ts` plan. Read [references/motion-and-review.md](references/motion-and-review.md) for the complete timing, easing, stagger, safe-area, and critique reference, and [references/api.md](references/api.md) for the full public contract.
+
+## Library runtime
+
+Use `@foxworth/superimg/runtime` when code already has an authored media value:
+
+```ts
+import launch from "./launch.media";
+import { init, check, inspect, render, exportMedia, shutdown } from "@foxworth/superimg/runtime";
+
+await check(launch);
+await inspect(launch);
+const html = await render(launch, { as: "html" });
+await html.bytes();
+const bundle = await exportMedia(launch, {
+  for: ["youtube", "instagram-square"],
+});
+try {
+  for (const artifact of bundle.artifacts) {
+    // artifact.path is relative; artifact.stream() is a byte stream.
+    await artifact.bytes();
+  }
+} finally {
+  await bundle.dispose();
+}
+await shutdown();
+
+const runtime = await init();
+await render(launch, { runtime, as: "png" });
+await runtime.dispose();
+```
+
+Calls are media-first. Omit `runtime` to use one shared runtime. Node disposes
+that runtime after 2 seconds with no in-flight call. `shutdown()` disposes it
+immediately. Pass `options.runtime` for a runtime from `init()`. `data` is a
+partial of the media value's data type. `render` `as` is `html`, `svg`, `png`,
+`jpeg`, `webp`, `mp4`, `webm`, `mov`, or `gif`. Animated formats return one
+artifact's bytes. Results and artifacts expose `stream()`, `bytes()`, `blob()`,
+and `text()`. `text()` rejects with `NOT_TEXT` for a non-text MIME type.
+`renderResponse()` returns a `Response` with content-type, content-length, and
+an etag of the SHA-256.
+
+`check` and `inspect` do not execute collection providers by default. `render`
+produces one exact result. `exportMedia` performs its own complete preflight.
+The portable bundle owns unpublished artifacts and remains readable after the
+runtime is disposed; dispose it separately.
+
+## Host interactions
+
+Node project hosts use `await createNodeMediaInteractionSession({ projectRoot })`
+from `@foxworth/superimg-interactions` (the `@foxworth/superimg-interactions` package). Use `session.mount`
+for dispatch and `await session.dispose()` after admitted work finishes. The session
+pairs the mount and its runtime in one kernel; do not pass a runtime from
+`@foxworth/superimg/runtime.init()` to the lower-level source mount. Its interaction ids
+are `media.project.discover`, `media.source.describe`, `media.source.check`,
+`media.source.inspect`, `media.collection.snapshot`, `media.artifact.compile`,
+and `media.export`. Discovery, description, check, and inspect never run
+providers. Snapshot freezes one provider execution; compile publishes one
+schema-0 Media IR artifact; export consumes that snapshot and the runtime bundle
+before returning a durable publication receipt. Boundary control, durable
+recovery, public URLs, and deployment stay host-owned.
+
+Exact source edits dispatch the Edit Program, not a file rewrite:
 
 ```bash
-# 1. Runtime config + director phases + samples at 0/25/50/75/100%
-superimg inspect path/to/foo.media.ts --pretty
-
-# 2. Did beat B introduce content vs beat A?
-superimg inspect path/to/foo.media.ts --diff 0.35,0.85
-
-# 3. Only if HTML semantics are ambiguous
-superimg inspect path/to/foo.media.ts --at 0.5,0.9 --png
-
-# 4. Final motion polish
-superimg render path/to/foo.media.ts -y
+just cli edit bindings launch.media.ts --json
+just cli edit set-node-transform --command command.json
+just cli edit trim-scene-end --command command.json
+just cli edit set-phase-boundary --command command.json
 ```
 
-| Tool | Use for |
-|------|---------|
-| **`inspect`** | Phases, multi-progress text/colors/`data-eq-key`, semantic `--diff` (default JSON, no browser) |
-| **`info`** | Runtime config + phase summary |
-| **`validate`** | Crashes, NaN, empty output, bad easing names |
-| **`doctor` / `setup`** | Env / Chromium only |
-| **`render --format html\|png --frame N`** | One exact frame still |
-| **`render --debug-html`** | Full-render HTML dump (heavy) |
+Ids are `media.edit.bindings`, `media.edit.set-node-transform`,
+`media.edit.trim-scene-end`, and `media.edit.set-phase-boundary`. Bindings
+first; mutating commands carry the current intent hash and source hashes.
+Trusted CLI uses `createNodeEditInteractionMount()`. Expressions, spreads, and
+imported targets stay inspect-only.
 
-`inspect` stdout is machine JSON (`config`, `phases`, `samples`, optional `diff`). Prefer reading that over opening MP4s when fixing timing/content bugs.
+For long exports, `ExportOptions.onProgress` observes portable
+`ExportProgressEvent` values at the `runtime.render` stage. Interaction hosts use
+`MediaInteractionProgressOptions`, `MediaInteractionProgressRecord`, and
+`createMediaInteractionProgressReporter()` to add execution identity, ordering,
+elapsed time, stages, items, and exact work. Totals are optional; show a
+heartbeat when unknown and never invent a percentage or `/0`. Progress is
+observation only: cancellation remains an `AbortSignal`, while authority,
+retry, uncertain-effect reconciliation, and schema-0 receipts remain separate.
 
-## Additional Resources
+## Driven playback (omakase)
 
-- **[references/api.md](references/api.md)** — Full API, template kinds, composition model
-- **[examples/hello-world.ts](examples/hello-world.ts)** — Minimal video
-- **[examples/stats-card.ts](examples/stats-card.ts)** — Director + counters
+**Live browser inspection:** when selecting frames, navigating a preview, or
+capturing browser evidence, read [references/api.md#browser-inspection](references/api.md#browser-inspection).
+Use the host's `@foxworth/superimg/inspection` surface; enter persistent inspection mode,
+await the accepted frame and resources, capture, and verify the same revision.
+For persistent edit-and-inspect work and comparable evidence, read
+[references/live-browser.md](references/live-browser.md). In this repository,
+`just browser-inspect` uses the same capture procedure as the acceptance tests.
 
-### Related (motion & design)
+Author the motion. One geometry, many materials. Teach the lockup (draw-on → hold) before a comic tour. If the mark jumps, it is a montage.
 
-- **animator skill** — timing, easing, stagger, framing, SVG craft, critique checklist (`skills/animator/SKILL.md` in SuperImg monorepos; complements this skill's API mechanics)
-- **video-designer agent** — heavy scene/visual design (diagrams, line art, palettes, explainers); loads this skill + animator first
-
-### Project Examples
-
-`feature-launch`, `layer-shots`, `lower-thirds`, `stats-card`, `og-card` (image), `spinner` (gif), `sine-wave` (svg) — indexed in `examples/_templates.json`.
+- `drive="scroll"` — page story. Sticky player, tall parent. We measure travel.
+- `drive="pointer"` — follow or scrub. X across the player box.
+- Do not ask about springs, atlas vs chroma, fps, or scroll length.
+- `Plate({ src })` only when a real short clip must be the subject. `superimg plate <file>`. Page owns the background.
+- Never put `drive` on `InteractivePlayer` or stills.
+- Examples: `examples/apps/lockup-scroll`, `examples/apps/lockup-pointer`.

@@ -1,6 +1,6 @@
 //! Opt-in debug tracing for scene-template rolldown bundles.
 //!
-//! Enable: `SUPERIMG_BUNDLER_DEBUG=1` (any gumbo media render / superimg-cli render).
+//! Enable: `SUPERIMG_BUNDLER_DEBUG=1` for any SuperImg media render.
 
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -45,9 +45,7 @@ function tryReadEntrySnippet(entry: string, resolveDir?: string): {
       .filter(
         (line) =>
           line.startsWith("import ") &&
-          (line.includes("gumbo/media/define") ||
-            line.includes("gumbo/media") ||
-            line.includes("superimg") ||
+          (line.includes("superimg") ||
             line.includes("@superimg/")),
       );
     return {

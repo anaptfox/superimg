@@ -1,6 +1,6 @@
 //! Checkpoint resolver for navigation and markers
 
-import type { Checkpoint, Marker, MarkerPosition } from "@superimg/types";
+import type { Checkpoint, JsonObject, Marker, MarkerPosition } from "@superimg/types";
 
 export interface CheckpointResolverOptions {
   /** Include markers as checkpoints (default: true) */
@@ -131,7 +131,7 @@ export class CheckpointResolver {
   add(
     id: string,
     frame: number,
-    options?: { label?: string; metadata?: Record<string, unknown> }
+    options?: { label?: string; metadata?: JsonObject }
   ): Checkpoint {
     const checkpoint: Checkpoint = {
       id,

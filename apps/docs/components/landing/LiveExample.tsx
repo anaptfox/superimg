@@ -1,75 +1,47 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Player } from "superimg/react/player";
-import { landingCountdownTemplate } from "@/content/templates/landing-demos";
+import { Player } from "@foxworth/superimg/react/player";
+import { landingDualPathTemplate } from "@/content/templates/landing-demos";
 import { useIsMobile } from "@/hooks/use-mobile";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { Button } from "@/components/ui/button";
-import { Code, Play, Sliders, ChevronDown } from "lucide-react";
-
-const GRADIENT_PRESETS: Record<string, string> = {
-  Midnight: "linear-gradient(135deg, #1e1e2e, #2d2d44)",
-  Ocean: "linear-gradient(135deg, #0f2027, #203a43)",
-  Sunset: "linear-gradient(135deg, #2d1b3d, #44203a)",
-  Forest: "linear-gradient(135deg, #1a2a1a, #2d3a2d)",
-};
+import { Code, Play, Sliders, ChevronDown, RotateCcw } from "lucide-react";
 
 interface FormState {
-  name: string;
-  startFrom: number;
-  color: string;
-  fontSize: number;
-  gradientKey: string;
+  title: string;
+  accent: string;
 }
 
 const INITIAL_FORM: FormState = {
-  name: "GO!",
-  startFrom: 5,
-  color: "#ffffff",
-  fontSize: 180,
-  gradientKey: "Midnight",
+  title: "Ship it",
+  accent: "#818cf8",
 };
 
-const TEMPLATE_CODE = `import { define } from "superimg";
+/** Shown in the code pane — desktop Player uses a 9:16 reel canvas. */
+const TEMPLATE_CODE_REEL = `import { define, Html } from "@foxworth/superimg";
 
 export default define({
-  sample: {
-    name: "GO!",
-    startFrom: 5,
-    color: "#ffffff",
-    fontSize: 180,
-    gradient: "linear-gradient(135deg, #1e1e2e, #2d2d44)",
-  },
-
+  config: { width: 1080, height: 1920, fps: 30, duration: 5 },
+  sample: { title: "Ship it", accent: "#818cf8" },
   render(ctx) {
-    const { timeline, width, height, std, data } = ctx;
-    const second = Math.floor(timeline.frame / timeline.fps);
-    const count = Math.max(1, data.startFrom - second);
-    const showGo = second >= data.startFrom;
-
-    const bg = std.css({
-      width,
-      height,
-      background: data.gradient,
-      fontFamily: "system-ui, sans-serif",
-    }, std.css.center());
-
-    const num = std.css({
-      fontSize: data.fontSize,
-      fontWeight: 800,
-      color: data.color,
-      textShadow: "0 4px 20px rgba(0,0,0,0.5)",
-    });
-
-    return \`
-      <div style="\${bg}">
-        <div style="\${num}">\${showGo ? data.name : count}</div>
+    const { width, height, std, data } = ctx;
+    const t = ctx.director({ intro: "25%", live: "35%", export: "40%" });
+    const card = t.motion({ y: 18, opacity: 0, easing: "easeOutCubic" });
+    const live = t.in("live");
+    const exp = t.in("export");
+    return Html({ width: "fill", height: "fill", html: \`
+      <div style="\${std.css({ width, height }, std.css.center(), {
+        flexDirection: "column", gap: 28, background: "#0c0c12", color: "#fff",
+      })}">
+        <h1 style="\${card.style}">\${data.title}</h1>
+        <span style="opacity:\${live}">Live · in your app</span>
+        <span style="opacity:\${exp}">Export · MP4 · GIF · still</span>
       </div>
-    \`;
+    \` });
   },
 });`;
 
@@ -78,13 +50,23 @@ export function LiveExample() {
   const [showCode, setShowCode] = useState(false);
   const isMobile = useIsMobile();
 
+  // Reel on desktop; landscape on mobile (and after viewport reset to narrow).
+  const size = isMobile
+    ? { width: 1920, height: 1080 }
+    : { width: 1080, height: 1920 };
+  const sizeKey = `${size.width}x${size.height}`;
+  const [mountedSizeKey, setMountedSizeKey] = useState(sizeKey);
+
+  // Remount Player when size flips so stage size + scale re-init cleanly
+  // (avoids stuck letterbox after resize desktop↔mobile).
+  useEffect(() => {
+    setMountedSizeKey(sizeKey);
+  }, [sizeKey]);
+
   const formData = useMemo(
     () => ({
-      name: cfg.name,
-      startFrom: cfg.startFrom,
-      color: cfg.color,
-      fontSize: cfg.fontSize,
-      gradient: GRADIENT_PRESETS[cfg.gradientKey] ?? GRADIENT_PRESETS.Midnight,
+      title: cfg.title,
+      accent: cfg.accent,
     }),
     [cfg],
   );
@@ -93,162 +75,156 @@ export function LiveExample() {
     setCfg((prev) => ({ ...prev, ...patch }));
   };
 
+  const resetForm = () => {
+    setCfg(INITIAL_FORM);
+  };
+
   return (
-    <section className="py-12">
-      <div className="w-full">
-        <div className="overflow-hidden rounded-xl border border-border/50 bg-[#1a1a1a] shadow-2xl text-left">
-          <div className="grid md:grid-cols-2">
-            <div className="md:col-start-1 md:row-start-1 border-t border-border/50 md:border-t-0 md:border-r">
-              <div className="flex items-center gap-2 border-b border-border/50 bg-[#252526] px-4 py-2 text-sm font-medium text-muted-foreground">
-                <Code className="h-3 w-3" />
-                template.media.ts
-              </div>
-              <div className="md:hidden">
-                <button
-                  type="button"
-                  onClick={() => setShowCode(!showCode)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-muted-foreground hover:bg-white/5"
-                >
-                  <span>View template code</span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${showCode ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {showCode && (
-                  <CodeMirror
-                    value={TEMPLATE_CODE}
-                    height="240px"
-                    theme={oneDark}
-                    extensions={[javascript({ typescript: true })]}
-                    readOnly
-                    className="text-sm"
-                    basicSetup={{ lineNumbers: true, foldGutter: false }}
-                  />
-                )}
-              </div>
-              <div className="hidden md:block">
+    <div className="w-full">
+      <div className="overflow-hidden rounded-xl border border-border/50 bg-[#1a1a1a] shadow-2xl text-left">
+        <div className="grid md:grid-cols-2 md:items-stretch">
+          <div className="md:col-start-1 md:row-start-1 border-t border-border/50 md:border-t-0 md:border-r flex flex-col min-h-0">
+            <div className="flex items-center gap-2 border-b border-border/50 bg-[#252526] px-4 py-2 text-sm font-medium text-muted-foreground">
+              <Code className="h-3 w-3" />
+              hello.media.ts
+              <span className="ml-auto font-mono text-[10px] text-white/40">
+                {isMobile ? "16:9 mobile" : "9:16 reel"}
+              </span>
+            </div>
+            <div className="md:hidden">
+              <button
+                type="button"
+                onClick={() => setShowCode(!showCode)}
+                className="flex w-full items-center justify-between px-4 py-3 text-left text-sm text-muted-foreground hover:bg-white/5"
+              >
+                <span>View template code</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${showCode ? "rotate-180" : ""}`}
+                />
+              </button>
+              {showCode && (
                 <CodeMirror
-                  value={TEMPLATE_CODE}
-                  height="320px"
+                  value={TEMPLATE_CODE_REEL}
+                  height="200px"
                   theme={oneDark}
                   extensions={[javascript({ typescript: true })]}
                   readOnly
                   className="text-sm"
                   basicSetup={{ lineNumbers: true, foldGutter: false }}
                 />
+              )}
+            </div>
+            <div className="hidden md:block flex-1 min-h-0">
+              <CodeMirror
+                value={TEMPLATE_CODE_REEL}
+                height="100%"
+                minHeight="360px"
+                theme={oneDark}
+                extensions={[javascript({ typescript: true })]}
+                readOnly
+                className="text-sm h-full [&_.cm-editor]:h-full [&_.cm-scroller]:min-h-[360px]"
+                basicSetup={{ lineNumbers: true, foldGutter: false }}
+              />
+            </div>
+            <div className="border-t border-border/50 bg-[#252526] px-4 py-3 mt-auto">
+              <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                <Sliders className="h-3 w-3" />
+                Customize
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-white/50 hover:bg-white/10 hover:text-white/80"
+                  title="Reset title and accent"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reset
+                </button>
               </div>
-              <div className="border-t border-border/50 bg-[#252526] px-4 py-3">
-                <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  <Sliders className="h-3 w-3" />
-                  Customize (player.update)
-                </div>
-                <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="w-12 shrink-0">Name</span>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2">
+                  <span className="w-12 shrink-0">Title</span>
+                  <input
+                    type="text"
+                    value={cfg.title}
+                    onChange={(e) => updateConfig({ title: e.target.value })}
+                    className="h-8 w-full rounded border border-white/10 bg-white/5 px-2 text-xs text-white outline-none focus:border-white/25"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="w-12 shrink-0">Accent</span>
+                  <div className="flex items-center gap-1.5">
                     <input
-                      type="text"
-                      value={cfg.name}
-                      onChange={(e) => updateConfig({ name: e.target.value })}
-                      className="h-8 w-full rounded border border-white/10 bg-white/5 px-2 text-xs text-white outline-none focus:border-white/25"
+                      type="color"
+                      value={cfg.accent}
+                      onChange={(e) => updateConfig({ accent: e.target.value })}
+                      className="h-8 w-8 shrink-0 cursor-pointer rounded border border-white/10 bg-transparent p-0"
                     />
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="w-12 shrink-0">Start</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={cfg.startFrom}
-                      onChange={(e) =>
-                        updateConfig({
-                          startFrom: Math.max(1, Math.min(10, Number(e.target.value) || 1)),
-                        })
-                      }
-                      className="h-8 w-full rounded border border-white/10 bg-white/5 px-2 text-xs text-white outline-none focus:border-white/25"
-                    />
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="w-12 shrink-0">Color</span>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="color"
-                        value={cfg.color}
-                        onChange={(e) => updateConfig({ color: e.target.value })}
-                        className="h-8 w-8 shrink-0 cursor-pointer rounded border border-white/10 bg-transparent p-0"
-                      />
-                      <span className="font-mono text-[10px] text-white/50">{cfg.color}</span>
-                    </div>
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="w-12 shrink-0">BG</span>
-                    <select
-                      value={cfg.gradientKey}
-                      onChange={(e) => updateConfig({ gradientKey: e.target.value })}
-                      className="h-8 w-full cursor-pointer rounded border border-white/10 bg-white/5 px-1.5 text-xs text-white outline-none focus:border-white/25"
-                    >
-                      {Object.keys(GRADIENT_PRESETS).map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="col-span-1 flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2">
-                    <span className="w-12 shrink-0">Size</span>
-                    <input
-                      type="range"
-                      min={80}
-                      max={240}
-                      value={cfg.fontSize}
-                      onChange={(e) => updateConfig({ fontSize: Number(e.target.value) })}
-                      className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-white/70"
-                    />
-                    <span className="w-8 text-right font-mono text-[10px] text-white/50">
-                      {cfg.fontSize}
-                    </span>
-                  </label>
-                </div>
+                    <span className="font-mono text-[10px] text-white/50">{cfg.accent}</span>
+                  </div>
+                </label>
               </div>
             </div>
+          </div>
 
-            <div className="-order-1 flex flex-col md:order-0 md:col-start-2 md:row-start-1">
-              <div className="flex items-center gap-2 border-b border-border/50 bg-[#252526] px-4 py-2 text-sm font-medium text-muted-foreground">
-                <Play className="h-3 w-3" />
-                Preview
-              </div>
+          <div className="-order-1 flex flex-col md:order-0 md:col-start-2 md:row-start-1 min-w-0 bg-[#0d0d0d]">
+            <div className="flex items-center gap-2 border-b border-border/50 bg-[#252526] px-4 py-2 text-sm font-medium text-muted-foreground">
+              <Play className="h-3 w-3" />
+              Live preview
+              <span className="ml-auto text-[10px] text-white/40">
+                {isMobile ? "horizontal" : "reel"}
+              </span>
+            </div>
+            {/*
+              Desktop: 9:16 reel stage (phone frame).
+              Mobile: 16:9 horizontal so stacked preview isn’t an endless scroll.
+              Remount Player on format change (key) so scale/layout resets cleanly.
+            */}
+            <div
+              className={
+                isMobile
+                  ? "relative w-full aspect-video overflow-hidden bg-[#0d0d0d]"
+                  : "relative flex flex-1 items-center justify-center overflow-hidden bg-[#0d0d0d] p-6 min-h-[420px]"
+              }
+              style={isMobile ? { maxHeight: "min(50vh, 320px)" } : undefined}
+            >
               <div
-                className="flex flex-1 flex-col bg-[#0d0d0d] p-4"
-                style={isMobile ? { maxHeight: "min(60vh, 400px)" } : undefined}
+                className={
+                  isMobile
+                    ? "absolute inset-0"
+                    : "relative aspect-[9/16] h-full max-h-[min(560px,70vh)] w-auto max-w-full overflow-hidden rounded-none ring-0 shadow-none"
+                }
               >
                 <Player
-                  template={landingCountdownTemplate as Parameters<typeof Player>[0]["template"]}
+                  key={mountedSizeKey}
+                  media={
+                    landingDualPathTemplate as Parameters<typeof Player>[0]["media"]
+                  }
                   data={formData}
-                  format="horizontal"
+                  size={size}
                   playbackMode="loop"
                   loadMode="eager"
                   autoPlay
-                  controls="full"
-                  className="max-h-full max-w-full rounded shadow-lg"
+                  controls={false}
+                  className="absolute inset-0 h-full w-full"
                   style={{
                     width: "100%",
                     height: "100%",
-                    aspectRatio: "16/9",
                   }}
                 />
               </div>
             </div>
           </div>
         </div>
-
-        <div className="mt-8 flex justify-center gap-4">
-          <Button asChild size="lg">
-            <Link href="/playground">Open Full Playground</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/docs/introduction">Read the docs</Link>
-          </Button>
-        </div>
       </div>
-    </section>
+
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <Button asChild size="lg" className="h-9 px-4 text-sm">
+          <Link href="/playground">Open full playground</Link>
+        </Button>
+        <Button asChild variant="outline" size="lg" className="h-9 px-4 text-sm">
+          <Link href="/docs/getting-started">Getting started</Link>
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -1,0 +1,7 @@
+interface:
+  display_name: '/superimg-brief'
+  short_description: 'Turn a vague video request into a structured SuperImg brief (audience, beats, format, t...'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$superimg-brief: Outline a 20s feature announcement reel'

@@ -1,153 +1,34 @@
-export const STAR_HISTORY = `// Star History Chart — viz.charts.lineTime
-// Sample data for facebook/react
+// Runnable examples use typed chart artwork; layout also retains scales and data.
+const chartExample = (horizontal: boolean, line: boolean) => `import { video, Frame, Stack, Text } from "@foxworth/superimg";
+import { layout, defineChart, lineY, barY, barX, scaleLinear, scaleBand } from "@foxworth/superimg/charts";
 
-const STARS = [
-  { date: "2013-05-01", count: 100 },
-  { date: "2015-01-01", count: 15000 },
-  { date: "2017-01-01", count: 60000 },
-  { date: "2020-01-01", count: 140000 },
-  { date: "2024-01-01", count: 220000 },
-];
-const REPO = "facebook/react";
-
-import { define } from "superimg";
-export default define({
-  medium: "svg",
-  config: { width: 1920, height: 1080, fps: 30, duration: 5 },
+const rows = ${line ? '[{ id: "2013", value: 100 }, { id: "2015", value: 15000 }, { id: "2017", value: 60000 }, { id: "2020", value: 140000 }, { id: "2024", value: 220000 }]' : horizontal ? '[{ id: "Our Tool", value: 150 }, { id: "Tool A", value: 89 }, { id: "Tool B", value: 67 }, { id: "Legacy", value: 23 }]' : '[{ id: "W1", value: 45 }, { id: "W2", value: 48 }, { id: "W3", value: 52 }, { id: "W4", value: 47 }, { id: "W5", value: 55 }, { id: "W6", value: 58 }]'};
+export default video({
+  duration: "5s",
   render(ctx) {
-    const { std, width, height, timeline } = ctx;
-    const viz = std.viz;
-    const progress = Math.min(1, timeline.progress * 2);
-    const dates = STARS.map((s) => new Date(s.date).getTime());
-    const maxStars = Math.max(...STARS.map((s) => s.count));
-
-    const coords = viz.createCoords({
-      width,
-      height,
-      xRange: [Math.min(...dates), Math.max(...dates)],
-      yRange: [0, maxStars],
-      padding: { top: 100, bottom: 60, left: 80, right: 80 },
+    const { width, height, timeline } = ctx;
+    const chart = layout(defineChart({
+      focus: false,
+      marks: [${line ? 'lineY(rows, { id: "activity", key: "id", x: (d) => Number(d.id), y: "value", stroke: "#60a5fa", strokeWidth: 4 })' : horizontal ? 'barX(rows, { id: "activity", key: "id", y: "id", x: "value", fill: "#60a5fa" })' : 'barY(rows, { id: "activity", key: "id", x: "id", y: "value", fill: "#60a5fa" })'}],
+      scales: {
+        x: { scale: ${line ? 'scaleLinear().domain([2013, 2024])' : horizontal ? 'scaleLinear().domain([0, 170])' : 'scaleBand().domain(rows.map(d => d.id)).padding(.2)'} },
+        y: { scale: ${horizontal ? 'scaleBand().domain(rows.map(d => d.id)).padding(.2)' : `scaleLinear().domain([0, ${line ? 240000 : horizontal ? 170 : 65}])`}, grid: ${!horizontal} },
+      },
+    }), {
+      id: "weekly-activity", width: width - 160, height: height - 220,
+      theme: { foreground: "#f8fafc", muted: "#94a3b8", grid: "#334155", background: "#0f172a", palette: ["#60a5fa"] },
+      motion: { ${line ? 'lineReveal' : 'barsGrow'}: Math.min(1, timeline.seconds / 2) },
     });
-
-    const chartEl = viz.charts.lineTime(
-      coords,
-      STARS.map((s) => ({ date: s.date, value: s.count })),
-      { animate: "draw", progress, colors: ["#f0c000"], fill: true },
-    );
-
-    const currentStars = Math.floor(STARS[STARS.length - 1].count * progress);
-
-    return \`<svg xmlns="http://www.w3.org/2000/svg" width="\${width}" height="\${height}" viewBox="0 0 \${width} \${height}">
-  <rect width="\${width}" height="\${height}" fill="#0d1117"/>
-  <text x="80" y="56" font-family="system-ui,sans-serif" font-size="24">⭐</text>
-  <text x="120" y="56" font-family="system-ui,sans-serif" font-size="22" font-weight="600" fill="#ffffff">\${REPO}</text>
-  <text x="\${width - 80}" y="56" text-anchor="end" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#f0c000">\${currentStars.toLocaleString()} stars</text>
-  \${chartEl}
-</svg>\`;
+    return Frame({ width, height, fill: "#0f172a" },
+      Stack({ width: "fill", height: "fill", pad: 80, gap: 32 },
+        Text({ size: 40, weight: 700, color: "#f8fafc" }, "${line ? "facebook/react · Star history" : horizontal ? "Performance · ops/sec" : "lodash · Weekly downloads (millions)"}"),
+        chart.artwork));
   },
 });`;
 
-export const NPM_STATS = `// NPM Downloads — viz.charts.bar
-// Sample data for lodash
-
-const DOWNLOADS = [
-  { label: "W1", value: 45 },
-  { label: "W2", value: 48 },
-  { label: "W3", value: 52 },
-  { label: "W4", value: 47 },
-  { label: "W5", value: 55 },
-  { label: "W6", value: 58 },
-];
-const PACKAGE = "lodash";
-
-import { define } from "superimg";
-export default define({
-  medium: "svg",
-  config: { width: 1920, height: 1080, fps: 30, duration: 5 },
-  render(ctx) {
-    const { std, width, height, timeline } = ctx;
-    const viz = std.viz;
-    const progress = Math.min(1, timeline.progress * 2);
-    const maxVal = Math.max(...DOWNLOADS.map((d) => d.value));
-
-    const coords = viz.createCoords({
-      width,
-      height,
-      xRange: [0, DOWNLOADS.length + 1],
-      yRange: [0, maxVal],
-      padding: { top: 120, bottom: 80, left: 80, right: 80 },
-    });
-
-    const barsEl = viz.charts.bar(coords, DOWNLOADS, {
-      animate: "grow",
-      progress,
-      colors: ["#cc3534"],
-      showLabels: true,
-      barRadius: 6,
-    });
-
-    const totalM = (DOWNLOADS.reduce((s, d) => s + d.value, 0) * progress / 10).toFixed(1);
-
-    return \`<svg xmlns="http://www.w3.org/2000/svg" width="\${width}" height="\${height}" viewBox="0 0 \${width} \${height}">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1a1a2e"/>
-      <stop offset="100%" stop-color="#16213e"/>
-    </linearGradient>
-  </defs>
-  <rect width="\${width}" height="\${height}" fill="url(#bg)"/>
-  <text x="80" y="72" font-family="system-ui,sans-serif" font-size="28">📦</text>
-  <text x="130" y="72" font-family="system-ui,sans-serif" font-size="26" font-weight="600" fill="#ffffff">\${PACKAGE}</text>
-  <text x="80" y="110" font-family="system-ui,sans-serif" font-size="34" font-weight="700" fill="#cc3534">\${totalM}M weekly downloads</text>
-  \${barsEl}
-</svg>\`;
-  },
-});`;
-
-export const BENCHMARK = `// Benchmark Bars — viz.charts.barHorizontal
-// Performance comparison chart
-
-const BENCHMARKS = [
-  { label: "Our Tool", value: 150 },
-  { label: "Competitor A", value: 89 },
-  { label: "Competitor B", value: 67 },
-  { label: "Legacy", value: 23 },
-];
-
-import { define } from "superimg";
-export default define({
-  medium: "svg",
-  config: { width: 1920, height: 1080, fps: 30, duration: 5 },
-  render(ctx) {
-    const { std, width, height, timeline } = ctx;
-    const viz = std.viz;
-    const progress = Math.min(1, timeline.progress * 2);
-    const maxVal = Math.max(...BENCHMARKS.map((b) => b.value));
-
-    const coords = viz.createCoords({
-      width,
-      height,
-      xRange: [0, maxVal],
-      yRange: [0, BENCHMARKS.length],
-      padding: { top: 100, bottom: 60, left: 160, right: 100 },
-    });
-
-    const barsEl = viz.charts.barHorizontal(coords, BENCHMARKS, {
-      animate: "grow",
-      progress,
-      colors: ["#10b981", "#6366f1", "#8b5cf6", "#64748b"],
-      showLabels: true,
-      showValueLabels: true,
-      barRadius: 6,
-    });
-
-    return \`<svg xmlns="http://www.w3.org/2000/svg" width="\${width}" height="\${height}" viewBox="0 0 \${width} \${height}">
-  <rect width="\${width}" height="\${height}" fill="#0f172a"/>
-  <text x="80" y="64" font-family="system-ui,sans-serif" font-size="28" font-weight="600" fill="#ffffff">Performance Benchmark (ops/sec)</text>
-  \${barsEl}
-</svg>\`;
-  },
-});`;
+export const STAR_HISTORY = chartExample(false, true);
+export const NPM_STATS = chartExample(false, false);
+export const BENCHMARK = chartExample(true, false);
 
 export const TIMELINE = `// Animated Timeline
 // Project roadmap with milestones
@@ -160,7 +41,7 @@ const EVENTS = [
   { label: "Launch", title: "Public", icon: "🚀" },
 ];
 
-import { define } from "superimg";
+import { define, Html } from "@foxworth/superimg";
 export default define({
   render(ctx) {
   const { width, height, timeline } = ctx;
@@ -174,7 +55,7 @@ export default define({
   const lineProgress = Math.min(1, timeline.progress * 1.5);
   const lineWidth = totalWidth * lineProgress;
 
-  return \`
+  return Html({ width: "fill", height: "fill", html: \`
     <div style="
       width: \${width}px;
       height: \${height}px;
@@ -242,6 +123,6 @@ export default define({
         \`;
       }).join('')}
     </div>
-  \`;
+  \` });
   },
 });`;

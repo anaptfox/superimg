@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import posthog from "posthog-js";
-import { Player, type PlayerRef } from "superimg/react/player";
+import { Player, type PlayerRef } from "@foxworth/superimg/react/player";
 import { ChevronDown, Copy, Check, Download, ArrowRight } from "lucide-react";
 import {
   Dialog,
@@ -89,10 +89,10 @@ export function TemplatePreviewModal({
       <div className="relative aspect-video overflow-hidden rounded-lg bg-neutral-950">
         <Player
           ref={playerRef}
-          template={playground.template ?? undefined}
+          media={playground.media ?? undefined}
           assets={playground.assets}
           assetResolver={playground.assetResolver}
-          format="horizontal"
+          size={{ width: 1920, height: 1080 }}
           playbackMode="loop"
           loadMode="eager"
           hoverBehavior="none"

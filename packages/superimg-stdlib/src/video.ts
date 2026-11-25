@@ -8,6 +8,8 @@ import { css } from "./css.js";
 export const CLIP_SYNC_ATTR = "data-superimg-clip";
 
 export interface ClipSyncOptions {
+  /** Stable clip id — required for Media IR compile. */
+  id?: string;
   src: string;
   /** Output timeline position in seconds (default: caller passes timeline.seconds) */
   at?: number;

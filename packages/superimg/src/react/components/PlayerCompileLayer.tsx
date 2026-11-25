@@ -3,11 +3,11 @@
 "use client";
 
 import { useEffect } from "react";
-import type { CompileError, TemplateModule } from "@superimg/types";
-import { useCompiledTemplate } from "../hooks/useCompiledTemplate.js";
+import type { CompileError, MediaDefinition } from "@superimg/types";
+import { useCompiledMedia } from "../hooks/useCompiledMedia.js";
 
 export interface CompileLayerState {
-  template: TemplateModule | null;
+  media: MediaDefinition | null;
   compiling: boolean;
   error: CompileError | null;
 }
@@ -31,7 +31,7 @@ export function PlayerCompileLayer({
   onCompiling,
   onCompileError,
 }: PlayerCompileLayerProps) {
-  const { template, compiling, error } = useCompiledTemplate({
+  const { media, compiling, error } = useCompiledMedia({
     code: code ?? "",
     ...(bundled !== undefined ? { bundled } : {}),
     wasmCompile,
@@ -40,8 +40,8 @@ export function PlayerCompileLayer({
   });
 
   useEffect(() => {
-    onChange({ template, compiling, error });
-  }, [template, compiling, error, onChange]);
+    onChange({ media, compiling, error });
+  }, [media, compiling, error, onChange]);
 
   useEffect(() => {
     onCompiling?.(compiling);

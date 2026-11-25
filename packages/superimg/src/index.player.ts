@@ -1,25 +1,35 @@
-//! SuperImg Player - SSR-safe entry point
-//! Exports only the Player class and related types.
-//! Does NOT include bundler, export, or other browser-global APIs.
+//! Framework-neutral passive playback surface.
+//!
+//! This entrypoint intentionally contains no authoring, compiler, React, or
+//! export-runtime APIs. Hosts may mount the Player directly or build their own
+//! UI around MediaSession and MediaClock.
 
-export { Player, resolveFormat } from "@superimg/player";
+export * from "@superimg/player";
 
-export type {
-  PlayerOptions,
-  PlayerInput,
-  PlayerEvents,
-  LoadOptions,
-  LoadResult,
-  FormatOption,
-  PlayerUpdate,
-} from "@superimg/player";
-export type { PreResolvedFonts } from "@superimg/player";
+export {
+  createMediaSession,
+  MediaClock,
+  MediaSession,
+} from "@superimg/media";
 
 export type {
-  PlaybackMode,
-  LoadMode,
-  HoverBehavior,
-  TemplateModule,
-  RenderContext,
-  TemplateConfig,
-} from "@superimg/types";
+  DomMediaSurface,
+  ExternalEmbedNode,
+  MediaClockOptions,
+  MediaClockState,
+  MediaFrameResult,
+  MediaGraph,
+  MediaGraphNode,
+  MediaPlaybackMode,
+  MediaSessionEvents,
+  MediaSessionOptions,
+  MediaSessionPlayback,
+  MediaSessionState,
+  MediaSessionUpdate,
+  MediaSurface,
+  MediaSurfaceKind,
+  MediaSurfaceMountOptions,
+  RuntimeState,
+  RuntimeStore,
+  VideoMediaNode,
+} from "@superimg/media";

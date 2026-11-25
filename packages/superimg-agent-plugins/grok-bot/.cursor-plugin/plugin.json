@@ -1,0 +1,32 @@
+{
+  "name": "superimg",
+  "version": "0.1.1-media-library.20261022.1",
+  "description": "Perceptual arrangements that externalize identifiable human work. Not a video template pack.",
+  "skills": "./skills",
+  "commands": "./commands",
+  "author": {
+    "name": "anaptfox",
+    "url": "https://github.com/anaptfox"
+  },
+  "homepage": "https://superimg.app",
+  "interface": {
+    "displayName": "SuperImg",
+    "shortDescription": "Arrangements that take work out of the reader's head",
+    "longDescription": "A library of perceptual arrangements for Grok Bot. Each pattern names the human work it removes and fails when its invariants cannot be met. The plugin is design knowledge, not a dispatcher. Grok Bot is a trusted native CLI caller on the Bot computer.",
+    "developerName": "anaptfox",
+    "category": "developer-tools",
+    "capabilities": [
+      "skills"
+    ],
+    "websiteUrl": "https://superimg.app",
+    "defaultPrompt": [
+      "Should this be a picture or a sentence?",
+      "Draw how these services connect, with evidence on each edge",
+      "Make a registered comparison that keeps the frame invariant",
+      "Show whether these deploys overlap on one clock"
+    ],
+    "brandColor": "#667eea",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/logo.svg"
+  }
+}

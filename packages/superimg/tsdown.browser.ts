@@ -10,10 +10,12 @@ export default defineConfig({
   shims: false,
   clean: true,
   entry: {
-    "index.browser": "src/index.browser.ts",
+    "browser-export": "src/index.browser-export.ts",
+    "browser-export.react-server": "src/index.browser-export.react-server.ts",
+    "runtime.browser": "src/runtime.browser.ts",
     "bundler-browser": "src/bundler-browser.ts",
-    player: "src/index.player.ts",
-    media: "src/index.media.ts",
+    "interactive/player": "src/index.interactive-player.ts",
+    "react/interactive": "src/react/interactive.ts",
     "react/index": "src/react/index.ts",
     "react/react-server": "src/react/react-server.ts",
     "react/player": "src/react/player.ts",
@@ -27,5 +29,8 @@ export default defineConfig({
   // overwrite — the node build's package entry (e.g. dist/index.d.ts).
   outputOptions: {
     chunkFileNames: "chunks/browser/[name].js",
+    // Lazy capability chunks re-import bindings from the entry; keep those
+    // internal names readable instead of minified (`n`, `t`).
+    minifyInternalExports: false,
   },
 });

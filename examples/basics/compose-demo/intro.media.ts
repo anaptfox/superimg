@@ -1,32 +1,83 @@
-import { define } from "superimg";
+// Scene 1 — First light. The sun clears the land and the title comes up with it.
 
-export default define({
-  config: {
-    fps: 30,
-    duration: "2s",
-    fonts: ["IBM+Plex+Sans:wght@400;700"],
-    inlineCss: [`
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { width: 100vw; height: 100vh; font-family: 'IBM Plex Sans', sans-serif;
-        color: white; overflow: hidden; }
-      .content { text-align: center; }
-      .title { font-size: 96px; font-weight: 700; text-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-    `],
-  },
-  sample: { title: "Welcome", accentColor: "#667eea" },
+import { video, Frame, Stack, Text } from "@foxworth/superimg";
+import {
+  DAWN,
+  DISPLAY,
+  FILM_FONTS,
+  FILM_SAMPLE,
+  type FilmData,
+  geometry,
+  ground,
+  horizon,
+  lerpSun,
+  sky,
+  slug,
+  sun,
+  sunKey,
+} from "./film";
+
+export default video<FilmData>({
+  duration: "2.2s",
+  fonts: FILM_FONTS,
+  sample: FILM_SAMPLE,
+
   render(ctx) {
-    const { std, data } = ctx;
-    const t = ctx.director({ enter: "35%", hold: "50%", exit: "15%" });
-    const card = t.motion({ during: "enter", y: 24, scale: 0.9, easing: "easeOutCubic" });
+    const { std, width, height, data } = ctx;
+    const g = geometry(width, height);
 
-    return `
-      <div style="${std.css(std.css.fill(), std.css.center())}">
-        <div style="${card.style}">
-          <h1 class="title" style="background: linear-gradient(135deg, ${data.accentColor} 0%, white 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            background-clip: text;">${data.title}</h1>
-        </div>
-      </div>
-    `;
+    // Last act holds — the cut into scene two is the exit.
+    const t = ctx.director({ rise: "48%", hold: "52%" });
+
+    const riseP = std.interpolate(t.in("rise"), [0, 1], [0, 1], "easeOutCubic");
+    const lineP = t.tween(0, 1, {
+      id: "horizon",
+      during: "rise",
+      at: "0%",
+      for: "70%",
+      easing: "easeOutQuint",
+    });
+    const label = t.motion({ id: "slug", during: "rise", at: "6%", for: "40%", y: -14, exit: false });
+    const heading = t.motion({ id: "title", during: "rise", at: "30%", for: "60%", y: 46, exit: false });
+
+    const disc = lerpSun(sunKey(g, width, height, "under"), sunKey(g, width, height, "low"), riseP);
+
+    return Frame(
+      { id: "stage", width, height },
+      sky(DAWN),
+      sun(g, width, { ...disc, color: data.accentColor }),
+      ground(g, width, height, DAWN),
+      horizon(g, { x: 0, width: width * lineP, color: std.color.alpha(DAWN.ink, 0.85) }),
+      Frame(
+        { id: "titles", x: g.margin, y: 0, width: width - g.margin * 2, height: g.horizonY },
+        Stack(
+          { width: "fill", height: "fill", justify: "end", pad: { bottom: Math.round(56 * g.s) } },
+          Text(
+            {
+              id: "title",
+              variant: "display",
+              size: Math.round(148 * g.s),
+              weight: 400,
+              lineHeight: 1.0,
+              letterSpacing: Math.round(-2 * g.s),
+              color: DAWN.ink,
+              fontFamily: DISPLAY,
+              motion: heading,
+            },
+            data.title,
+          ),
+        ),
+      ),
+      Frame(
+        {
+          id: "rail",
+          x: g.margin,
+          y: Math.round(72 * g.s),
+          width: width - g.margin * 2,
+          height: Math.round(30 * g.s),
+        },
+        slug(g, "01 / FIRST LIGHT", std.color.alpha(DAWN.ink, 0.55), label),
+      ),
+    );
   },
 });

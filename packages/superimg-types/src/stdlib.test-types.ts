@@ -7,6 +7,11 @@ import type { Stdlib } from "./stdlib.js";
 declare const std: Stdlib;
 declare const ctx: RenderContext;
 
+// Three worlds are authored as ordinary NativeSurface modules. The old
+// string helper remains available for compatibility at runtime.
+// @ts-expect-error legacy Three string helpers are not part of the public stdlib
+std.viz.three;
+
 const vo = ctx.track({
   words: [{ text: "hello", start: 0, end: 1 }],
 });
@@ -26,8 +31,5 @@ const car = std.carousel(["a", "b", "c"], { during: t.in("features") });
 const _carouselState = car.state(0);
 const stk = std.stack(["a", "b", "c"], { during: t.in("features") });
 const _stackState = stk.state(0);
-const L = std.layers({ width: 1920, height: 1080 });
-const _handoffHtml = L.handoff({
-  shared: [L.bg("bg")],
-  transition: std.reveal.split({ from: "a", to: "b", progress: 0.5 }),
-});
+const _wipe = std.reveal.wipe({ progress: 0.5, direction: "diagonal", color: "#fff" });
+const _beat = t.beats({ during: "features", of: ["a", "b"] as const, cross: "8%" });

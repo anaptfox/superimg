@@ -1,39 +1,35 @@
-//! Browser detection and installation utilities for SuperImg's Playwright runtime
+//! Public Chromium runtime API for SuperImg's Playwright renderer.
 
-import { fork } from "node:child_process";
-import { createRequire } from "node:module";
-import { join } from "node:path";
-import { isModuleNotFoundError } from "@superimg/core/errors";
+import { SuperImgError, type JsonObject } from "@superimg/types";
+import {
+  applyBrowsersDirectory,
+  type BrowsersPathSource,
+} from "./runtime-path.js";
+import { BrowserInstallError, installBrowser, type InstallOptions } from "./runtime-install.js";
+import {
+  findHeadlessShellPresence,
+  getChromium,
+} from "./runtime-probe.js";
 
-const require = createRequire(import.meta.url);
+export { BrowserInstallError, installBrowser };
+export type { InstallOptions };
 
-/** Lazy-load chromium to avoid ERR_MODULE_NOT_FOUND when playwright is not installed. */
-async function getChromium(): Promise<typeof import("playwright").chromium> {
-  try {
-    const pw = await import("playwright");
-    return pw.chromium;
-  } catch (err: unknown) {
-    if (isModuleNotFoundError(err)) {
-      throw new Error("SuperImg's internal Playwright runtime is not installed.");
-    }
-    throw err;
-  }
-}
-
-// =============================================================================
-// TYPES
-// =============================================================================
+export type { BrowsersPathSource };
 
 export interface BrowserStatus {
-  /** Whether Chromium browser is installed and accessible */
+  /** True when headless Chromium launched successfully. */
   installed: boolean;
-  /** Path to the browser executable, or null if not installed */
+  /** True when a headless-shell revision dir contains INSTALLATION_COMPLETE. */
+  markerPresent: boolean;
+  /** Path to the headless-shell binary, or null if not found. */
   executablePath: string | null;
-  /** Custom browsers path if PLAYWRIGHT_BROWSERS_PATH is set */
-  browsersPath: string | null;
-  /** Operating system platform */
+  /** Durable registry SuperImg applied for this process. */
+  browsersPath: string;
+  /** Why that registry was chosen. */
+  browsersPathSource: BrowsersPathSource;
+  /** PLAYWRIGHT_BROWSERS_PATH that was set but not durable (0, relative, or tmp). */
+  ignoredPlaywrightPath: string | null;
   platform: "darwin" | "linux" | "win32";
-  /** CPU architecture */
   architecture: "x64" | "arm64" | string;
 }
 
@@ -46,78 +42,109 @@ export interface EnsureBrowserOptions {
   timeout?: number;
 }
 
-export interface InstallOptions {
-  /** Callback for installation progress messages */
-  onProgress?: (message: string) => void;
-  /** Installation timeout in milliseconds (default: 300000 = 5 minutes) */
-  timeout?: number;
-}
-
-// =============================================================================
-// CUSTOM ERRORS
-// =============================================================================
-
-export class BrowserNotInstalledError extends Error {
+export class BrowserNotInstalledError extends SuperImgError {
   readonly installCommand: string;
   readonly browsersPath: string | null;
 
-  constructor(details: { browsersPath?: string | null }) {
-    super("SuperImg Chromium runtime is not installed");
+  constructor(details: { browsersPath?: string | null; cause?: unknown } = {}) {
+    const installCommand = getBrowserInstallCommand();
+    const browsersPath = details.browsersPath ?? null;
+    const payload: JsonObject = { installCommand };
+    if (typeof browsersPath === "string") payload.browsersPath = browsersPath;
+    super(
+      "SuperImg Chromium runtime is not installed",
+      "CHROMIUM_MISSING",
+      payload,
+      "Install the Chromium runtime with `superimg setup` or call setup().",
+      undefined,
+      details.cause !== undefined ? { cause: details.cause } : undefined,
+    );
     this.name = "BrowserNotInstalledError";
-    this.installCommand = getBrowserInstallCommand();
-    this.browsersPath = details.browsersPath ?? null;
+    this.installCommand = installCommand;
+    this.browsersPath = browsersPath;
   }
 }
 
-export class BrowserInstallError extends Error {
-  readonly exitCode: number;
+export class BrowserLaunchDeniedError extends SuperImgError {
+  readonly browsersPath: string;
 
-  constructor(exitCode: number, message?: string) {
-    super(message ?? `Failed to install browser (exit code ${exitCode})`);
-    this.name = "BrowserInstallError";
-    this.exitCode = exitCode;
+  constructor(details: { browsersPath: string; cause?: unknown }) {
+    const installCommand = getBrowserInstallCommand();
+    super(
+      "SuperImg Chromium runtime is installed but could not launch",
+      "CHROMIUM_LAUNCH_DENIED",
+      { browsersPath: details.browsersPath, installCommand },
+      "Chromium is installed but could not launch. Do not re-run `superimg setup` or setup(); leave the sandbox that blocked the binary.",
+      undefined,
+      details.cause !== undefined ? { cause: details.cause } : undefined,
+    );
+    this.name = "BrowserLaunchDeniedError";
+    this.browsersPath = details.browsersPath;
   }
 }
 
-// =============================================================================
-// PUBLIC API
-// =============================================================================
+/** Chromium section of a doctor report. Marker present and launch failed means launch-denied. */
+export function chromiumHealth(status: Pick<BrowserStatus, "installed" | "markerPresent" | "executablePath" | "browsersPath">): {
+  status: "ok" | "missing" | "launch-denied";
+  executablePath?: string;
+  browsersPath: string;
+  installCommand: string;
+} {
+  const health = status.installed ? "ok" : status.markerPresent ? "launch-denied" : "missing";
+  return {
+    status: health,
+    ...(status.executablePath ? { executablePath: status.executablePath } : {}),
+    browsersPath: status.browsersPath,
+    installCommand: getBrowserInstallCommand(),
+  };
+}
 
 /**
- * Get the command to install the Playwright browser.
- * Useful for error messages and documentation.
+ * Map a failed Chromium launch.
+ * Launch-denied reuses the marker already reported by checkBrowserStatus.
+ * Missing reuses Playwright's "Executable doesn't exist" message.
+ * Any other failure is returned unchanged.
  */
+export function chromiumLaunchError(
+  error: unknown,
+  launch: { browsersPath: string; markerPresent: boolean },
+): unknown {
+  if (launch.markerPresent) {
+    return new BrowserLaunchDeniedError({ browsersPath: launch.browsersPath, cause: error });
+  }
+  if (error instanceof Error && error.message.includes("Executable doesn't exist")) {
+    return new BrowserNotInstalledError({ browsersPath: launch.browsersPath, cause: error });
+  }
+  return error;
+}
+
 export function getBrowserInstallCommand(): string {
   return "superimg setup";
 }
 
-/**
- * Check if the SuperImg Chromium runtime can launch.
- * This does not install anything.
- */
 export async function checkBrowserStatus(): Promise<BrowserStatus> {
+  const resolved = applyBrowsersDirectory();
+  const presence = findHeadlessShellPresence(resolved.path);
   const platform = process.platform as "darwin" | "linux" | "win32";
   const architecture = process.arch;
-  const browsersPath = process.env.PLAYWRIGHT_BROWSERS_PATH ?? null;
 
-  let executablePath: string | null = null;
   let installed = false;
-
   try {
     const chromium = await getChromium();
     const browser = await chromium.launch({ headless: true });
-    executablePath = chromium.executablePath();
     await browser.close();
     installed = true;
   } catch {
-    executablePath = null;
     installed = false;
   }
 
   return {
     installed,
-    executablePath,
-    browsersPath,
+    markerPresent: presence.markerPresent,
+    executablePath: presence.executablePath,
+    browsersPath: resolved.path,
+    browsersPathSource: resolved.source,
+    ignoredPlaywrightPath: resolved.ignoredPlaywrightPath,
     platform,
     architecture,
   };
@@ -126,16 +153,15 @@ export async function checkBrowserStatus(): Promise<BrowserStatus> {
 /**
  * Ensure the Playwright browser is installed.
  *
- * - If browser is already installed, returns immediately.
- * - If not installed and autoInstall is true, installs the browser.
- * - If not installed and autoInstall is false, throws BrowserNotInstalledError.
+ * - Launch ok, or marker present: return (do not re-download).
+ * - Missing and autoInstall: install into the SuperImg-owned registry.
+ * - Missing and not autoInstall: throw BrowserNotInstalledError.
  */
 export async function ensureBrowser(options: EnsureBrowserOptions = {}): Promise<void> {
   const { autoInstall = false, onProgress, timeout } = options;
-
   const status = await checkBrowserStatus();
 
-  if (status.installed) {
+  if (status.installed || status.markerPresent) {
     onProgress?.("Browser already installed");
     return;
   }
@@ -144,71 +170,12 @@ export async function ensureBrowser(options: EnsureBrowserOptions = {}): Promise
     throw new BrowserNotInstalledError({ browsersPath: status.browsersPath });
   }
 
-  // Auto-install
   await installBrowser({
     ...(onProgress !== undefined ? { onProgress } : {}),
     ...(timeout !== undefined ? { timeout } : {}),
   });
 }
 
-/**
- * Install the Playwright Chromium browser.
- * This will download and install even if the browser is already installed.
- */
-export async function installBrowser(options: InstallOptions = {}): Promise<void> {
-  const { onProgress, timeout = 300000 } = options;
-
-  onProgress?.("Installing SuperImg Chromium headless shell...");
-
-  let cliPath: string;
-  try {
-    cliPath = join(require.resolve("playwright/package.json"), "..", "cli.js");
-  } catch {
-    throw new Error("SuperImg's internal Playwright runtime is not installed.");
-  }
-
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const child = fork(cliPath, ["install", "--only-shell", "chromium"], {
-        stdio: onProgress ? "pipe" : "inherit",
-        timeout,
-      });
-
-      if (onProgress && child.stdout) {
-        child.stdout.on("data", (data: Buffer) => {
-          onProgress(data.toString().trim());
-        });
-      }
-      if (onProgress && child.stderr) {
-        child.stderr.on("data", (data: Buffer) => {
-          onProgress(data.toString().trim());
-        });
-      }
-
-      child.on("close", (code) => {
-        if (code === 0) {
-          onProgress?.("SuperImg Chromium runtime installation complete");
-          resolve();
-        } else {
-          reject(new BrowserInstallError(code ?? 1));
-        }
-      });
-
-      child.on("error", (err) => {
-        reject(new BrowserInstallError(1, err.message));
-      });
-    });
-  } catch (err) {
-    if (err instanceof BrowserInstallError) {
-      throw err;
-    }
-    throw new BrowserInstallError(1, err instanceof Error ? err.message : String(err));
-  }
-}
-
-/**
- * Check if we're running in a CI environment.
- */
 export function isCI(): boolean {
   return Boolean(
     process.env.CI ||
@@ -216,6 +183,6 @@ export function isCI(): boolean {
       process.env.GITLAB_CI ||
       process.env.CIRCLECI ||
       process.env.TRAVIS ||
-      process.env.JENKINS_URL
+      process.env.JENKINS_URL,
   );
 }

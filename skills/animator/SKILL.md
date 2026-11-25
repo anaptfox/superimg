@@ -7,6 +7,7 @@ description: >
   or easing curves, choreographing scenes, or when an animation "feels off",
   stiff, robotic, or cluttered. Complements the superimg skill (API mechanics)
   with motion design judgment.
+version: 0.1.1-media-library.20261022.1
 ---
 
 # Animator Skill
@@ -30,7 +31,9 @@ look at — a small moving thing beats a large static one. So:
     the chart animates its point. Ambient motion only.
   - *Resolve* (~15–20%): designed exits, faster than the entrances.
 - **Stillness is a tool.** If everything moves always, nothing feels fast.
-  Budget: motion ≤ ⅓ of any scene's runtime; the rest is held composition.
+  For text/card explainers, budget motion around ⅓ of the scene and hold the
+  rest for reading. Camera travel, process demonstrations, and material
+  transformations may occupy a whole beat when continuous motion is the subject.
 
 ## Timing
 
@@ -41,7 +44,7 @@ look at — a small moving thing beats a large static one. So:
 | Element exit | **~25% shorter than its enter** |
 | Large/full-frame move, hero reveal, scene transition | 400–700ms |
 | Expressive emphasis (logo reveal, count-up) | 500–1000ms |
-| Any single continuous move > 1s | almost always wrong — split or hold |
+| Camera travel / process / material transformation | duration follows the demonstrated action; check orientation and readability |
 
 - Duration is perceived **weight**: big/heavy elements move slower, small/light
   ones snap. Never give every element the same 300ms.
@@ -101,9 +104,10 @@ std.stagger(items, d.in("enter"), { each: 0.08, from: "start" });
 - **Safe areas:** all action inside the central 90%, all text inside the
   central 80%. For 9:16 social, also avoid the top ~12% (username UI),
   bottom ~18% (captions), right ~14% (engagement buttons) — design a centered
-  vertical column. `std.layers` content accepts `safe: "broadcast"`.
-- **Negative space is load-bearing:** a good frame is 40–60% empty. Empty
-  space is where the eye rests and where the next element enters.
+  vertical column. Wrap copy in `Safe({ preset: "broadcast" })`.
+- **Use negative space deliberately:** preserve enough separation for the
+  intended focal subject, while allowing detailed worlds and full-frame art
+  to use the canvas. Judge density at the delivery size, not by a fixed quota.
 - Rule of thirds for multi-element scenes; dead-center is correct for single
   hero moments and most 9:16 content.
 - **Text readability floor:** `max(0.8s, wordCount ÷ 3 seconds)` fully
@@ -134,8 +138,8 @@ Offline frame rendering has **zero motion blur** — fast motion strobes.
 Run this before calling any animation done:
 
 - [ ] One focal element per moment; secondary motion smaller, quieter, offset
-- [ ] Zero `linear` on positional moves; enters ease out, exits ease in & faster
-- [ ] Durations 150–500ms scaled to size/distance; nothing continuous > 1s
+- [ ] Functional enters ease out and exits ease in; intentional steady travel/process motion uses the speed profile its subject needs
+- [ ] Functional element transitions use short durations scaled to size/distance; continuous travel/process beats preserve their subject and orientation
 - [ ] Group entrances staggered 30–80ms, total ≤ 500ms, aimed at the focal point
 - [ ] Every element has a **designed exit** (not a pop-out, not lingering clutter)
 - [ ] Holds exist: after a composition settles, ≥ 1s of stillness before the next beat
@@ -149,25 +153,21 @@ Run this before calling any animation done:
 
 ## Workflow
 
-Iterate cheaply before rendering video:
+Iterate with SuperImg's built-in review loop — **never shell out to `ffmpeg` or `magick montage` to extract frames or assemble contact sheets**:
 
 ```bash
-superimg inspect <name> --pretty                  # phases + multi-progress semantics (JSON)
-superimg inspect <name> --critique --pretty       # craft: hold length, exit vs enter, text settle
-superimg inspect <name> --diff 0.3,0.8            # did the beat land?
-superimg validate <name> --craft                  # NaN + craft warnings
-superimg inspect <name> --at 0.5 --png            # pixel still only if needed
-superimg render <name> --format html --frame 45   # single HTML snapshot
-superimg dev <name>                                # live preview player
-superimg render <name>                             # final MP4
+superimg check <name> --for 1080x1920 --craft                   # layout + craft: hold length, exit vs enter, text settle
+superimg inspect <name> --for 1080x1920 --at 0.8s,1.9s --review # contact-sheet.png + frame PNGs (omit --at to auto-sample director holds)
+superimg inspect <name> --diff 0.3,0.8                          # did the beat land?
+superimg dev <name>                                             # live preview player
+superimg export <name> --for 1080x1920 --review -o out.mp4      # final delivery + post-encode contact-sheet.png from MP4 bytes
 ```
 
-**Timing/content bugs:** start with `inspect` (see superimg skill Debug section), then apply craft judgment here.
+**Timing/content bugs:** start with `inspect --review` (see `skills/superimg/SKILL.md`), then apply craft judgment here.
 
 Check at minimum: first frame, one mid-entrance frame (is the easing visible?),
 the settled hold frame (is the composition right?), one mid-exit frame, and
-the final frame. For rendered MP4s, extract spot frames with ffmpeg and look
-at them.
+the final frame via the generated `contact-sheet.png` and frame PNGs in `.superimg/reviews/...`.
 
 ## References
 
@@ -178,8 +178,8 @@ at them.
   focal hierarchy, phase recipes, scene transitions and momentum
 - **[references/svg-techniques.md](references/svg-techniques.md)** — draw-on,
   morphing, mask reveals, hand-drawn aesthetics, text animation patterns
-- **`skills/superimg/SKILL.md`** — API mechanics (director, layers, stagger,
+- **`skills/superimg/SKILL.md`** — API mechanics (director, layout tree, stagger,
   reveal, viz); read it first if you don't know the framework
 - Live demonstrations: `examples/vector/` (`svg-draw`, `svg-morph`,
   `pelican-bicycle`, `wow-demo`, `perfect-vs-good-enough`), `examples/basics/`
-  (`layer-shots`, `director-clips`), indexed in `examples/_templates.json`
+  (`hello-world`, `compose-demo`), indexed in `examples/_templates.json`

@@ -1,9 +1,10 @@
 import type { Box } from "../../layout.js";
 import { extent } from "../d3-helpers.js";
 import { makeLine, makeArea, type CurveName } from "../d3-helpers.js";
-import { animOpacity, drawDashAttrs } from "./shared.js";
+import { chartClipId, animOpacity, drawDashAttrs } from "./shared.js";
 
 export interface SparklineOpts {
+  id?: string;
   color?: string;
   progress?: number;
   animate?: "draw" | "fade" | "grow";
@@ -19,7 +20,7 @@ interface SparkPt {
 }
 
 export function sparkline(box: Box, values: number[], opts: SparklineOpts = {}): string {
-  if (values.length === 0) return "";
+  if (!values.some(Number.isFinite)) return "";
   const progress = opts.progress ?? 1;
   const color = opts.color ?? "#5b8cff";
   const sw = opts.strokeWidth ?? 2.5;
@@ -27,7 +28,7 @@ export function sparkline(box: Box, values: number[], opts: SparklineOpts = {}):
   const grow = opts.animate === "grow" ? progress : 1;
   const curve = opts.curve ?? "monotone";
 
-  const [min = 0, max = 1] = extent(values) ?? [0, 1];
+  const [min = 0, max = 1] = extent(values.filter(Number.isFinite)) ?? [0, 1];
   const range = Math.max(max - min, 1);
 
   const points: SparkPt[] = values.map((v, i) => {
@@ -38,18 +39,18 @@ export function sparkline(box: Box, values: number[], opts: SparklineOpts = {}):
     };
   });
 
-  const lineGen = makeLine<SparkPt>({ x: (p) => p.px, y: (p) => p.py, curve });
+  const lineGen = makeLine<SparkPt>({ x: (p) => p.px, y: (p) => p.py, curve, defined: p => Number.isFinite(p.py) });
   const d = lineGen(points) ?? "";
   const parts: string[] = [];
   const baseY = box.y + box.height;
 
   if (opts.fill && d) {
-    const areaGen = makeArea<SparkPt>({ x: (p) => p.px, y0: baseY, y1: (p) => p.py, curve });
+    const areaGen = makeArea<SparkPt>({ x: (p) => p.px, y0: baseY, y1: (p) => p.py, curve, defined: p => Number.isFinite(p.py) });
     const areaD = areaGen(points) ?? "";
     const fillOp = opts.animate === "draw" ? opacity * 0.35 : 0.2 * grow;
     if (opts.animate === "draw") {
       // Deterministic id (avoid Math.random — parallel/export stable)
-      const clipId = `spark-fill-${box.x | 0}-${box.y | 0}-${box.width | 0}-${values.length}`;
+      const clipId = chartClipId("spark-fill", opts.id, [box, progress, areaD]);
       parts.push(
         `<defs><clipPath id="${clipId}"><rect x="${box.x}" y="${box.y}" width="${(box.width * progress).toFixed(1)}" height="${box.height}"/></clipPath></defs>`,
         `<path d="${areaD}" fill="${color}" opacity="${fillOp.toFixed(3)}" clip-path="url(#${clipId})"/>`,
@@ -72,7 +73,7 @@ export function sparkline(box: Box, values: number[], opts: SparklineOpts = {}):
 
   if (opts.showDot !== false && progress > 0.85) {
     const dotP = Math.min(1, (progress - 0.85) / 0.15);
-    const last = points[points.length - 1]!;
+    const last = points.filter(p => Number.isFinite(p.py)).at(-1)!;
     parts.push(
       `<circle cx="${last.px.toFixed(1)}" cy="${last.py.toFixed(1)}" r="${(3 * dotP).toFixed(2)}" fill="${color}" opacity="${opacity.toFixed(3)}"/>`,
     );

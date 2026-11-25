@@ -1,62 +1,5 @@
-import { Player } from "superimg/browser";
-import type { RenderContext, TemplateModule } from "superimg";
-
-// Template modules for variety
-const templates: TemplateModule[] = [
-  // Gradient rotation
-  {
-    config: { fps: 24, duration: 2 },
-    render: (ctx: RenderContext) => {
-      const hue = Math.floor(ctx.timeline.progress * 360);
-      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:system-ui;font-size:32px;color:white;background:linear-gradient(120deg, hsl(${hue}, 80%, 40%), #0f0f0f)">Gradient ${(ctx.timeline.progress * 100).toFixed(0)}%</div>`;
-    },
-  },
-  // Pulse animation
-  {
-    config: { fps: 24, duration: 2 },
-    render: (ctx: RenderContext) => {
-      const scale = 0.8 + Math.sin(ctx.timeline.progress * Math.PI * 4) * 0.2;
-      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1a1a2e"><div style="width:80px;height:80px;border-radius:50%;background:#16213e;transform:scale(${scale});box-shadow:0 0 40px rgba(0,149,255,0.8)"></div></div>`;
-    },
-  },
-  // Color bars
-  {
-    config: { fps: 24, duration: 2 },
-    render: (ctx: RenderContext) => {
-      const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
-      const bars = colors
-        .map((c, i) => {
-          const height = 20 + Math.sin(ctx.timeline.progress * Math.PI * 2 + i) * 60;
-          return `<div style="flex:1;background:${c};height:${height}%"></div>`;
-        })
-        .join("");
-      return `<div style="width:100%;height:100%;display:flex;align-items:flex-end;background:#0f0f0f">${bars}</div>`;
-    },
-  },
-  // Spinning squares
-  {
-    config: { fps: 24, duration: 2 },
-    render: (ctx: RenderContext) => {
-      const rotate = ctx.timeline.progress * 360;
-      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%)"><div style="width:60px;height:60px;background:white;transform:rotate(${rotate}deg)"></div></div>`;
-    },
-  },
-  // Wave pattern
-  {
-    config: { fps: 24, duration: 2 },
-    render: (ctx: RenderContext) => {
-      return `<div style="width:100%;height:100%;background:#0a0e27;display:flex;align-items:center;justify-content:center;font-size:24px;color:#64ffda">◆ ◇ ◆ ◇<br>Wave ${Math.floor(ctx.timeline.progress * 100)}%</div>`;
-    },
-  },
-  // Gradient sweep
-  {
-    config: { fps: 24, duration: 2 },
-    render: (ctx: RenderContext) => {
-      const angle = ctx.timeline.progress * 360;
-      return `<div style="width:100%;height:100%;background:linear-gradient(${angle}deg, #ee0979 0%, #ff6a00 100%);display:flex;align-items:center;justify-content:center;font-size:28px;color:white;font-weight:bold">SWEEP</div>`;
-    },
-  },
-];
+import { Player } from "@foxworth/superimg/player";
+import preview, { previews } from "../../_shared/preview.media";
 
 // Sample video data with template assignments
 const videos = [
@@ -78,7 +21,9 @@ interface VideoCard {
   id: number;
   player: Player;
   hoverTimeout?: number;
-  isLoaded: boolean;
+  loading: Promise<void> | null;
+  wantsPlayback: boolean;
+  disposed: boolean;
   observer: IntersectionObserver;
 }
 
@@ -137,68 +82,56 @@ videos.forEach((video) => {
 
   grid.appendChild(cardElement);
 
-  // Create player instance - no need to specify dimensions!
-  // HtmlPresenter uses CSS transform scaling automatically.
-  // Templates render at logical dimensions and scale to fit the container.
-  const player = new Player({
-    container: `#preview-${video.id}`,
-    format: "horizontal", // 1920x1080, scales down via CSS transform
-    playbackMode: "loop",
-    loadMode: "lazy",
-    maxCacheFrames: 30,
-  });
+  // The host owns visibility, loading, and keyboard/pointer intent.
+  const player = new Player({ container: thumbnail, size: { width: 640, height: 360 }, playbackMode: "loop" });
+  cardElement.tabIndex = 0;
+  cardElement.setAttribute("aria-label", `${video.title}: focus to preview`);
+  const card: VideoCard = { id: video.id, player, loading: null, wantsPlayback: false, disposed: false, observer: null! };
+  function load(): Promise<void> {
+    if (card.disposed || player.isReady) return Promise.resolve();
+    if (card.loading) return card.loading;
+    card.loading = (async () => {
+      const result = await player.load(preview, { data: previews[video.template] });
+      if (card.disposed) return;
+      if (result.status !== "success") throw new Error(result.message);
+      if (card.wantsPlayback) player.play();
+      card.observer.unobserve(cardElement);
+    })().catch(error => {
+      if (!card.disposed) thumbnail.textContent = `Preview unavailable: ${error instanceof Error ? error.message : String(error)}`;
+    }).finally(() => { card.loading = null; });
+    return card.loading;
+  }
+  card.observer = new IntersectionObserver(entries => {
+    if (entries.some(entry => entry.isIntersecting)) void load();
+  }, { rootMargin: "100px" });
+  card.observer.observe(cardElement);
+  const enter = () => {
+    clearTimeout(card.hoverTimeout);
+    card.hoverTimeout = window.setTimeout(() => {
+      card.wantsPlayback = true;
+      if (player.isReady) player.play();
+      else void load();
+    }, 200);
+  };
+  const leave = () => {
+    if (cardElement.matches(":hover, :focus-within")) return;
+    clearTimeout(card.hoverTimeout);
+    card.wantsPlayback = false;
+    if (player.isReady) { player.pause(); void player.seek({ frame: 0 }); }
+  };
+  cardElement.addEventListener("mouseenter", enter);
+  cardElement.addEventListener("mouseleave", leave);
+  cardElement.addEventListener("focusin", enter);
+  cardElement.addEventListener("focusout", leave);
+  videoCards.push(card);
+});
 
-  // Intersection Observer for lazy loading
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        const card = videoCards.find((c) => c.id === video.id);
-        if (entry.isIntersecting && card && !card.isLoaded) {
-          card.isLoaded = true;
-          const template = templates[video.template];
-          player.load(template).then((result) => {
-            if (result.status === "success") {
-              player.seekToFrame(0);
-            }
-          });
-        }
-      });
-    },
-    { rootMargin: "100px" }
-  );
-
-  observer.observe(cardElement);
-
-  // Hover with 200ms debounce delay
-  cardElement.addEventListener("mouseenter", () => {
-    const card = videoCards.find((c) => c.id === video.id);
-    if (card) {
-      card.hoverTimeout = window.setTimeout(() => {
-        if (card.player.isReady) {
-          card.player.play();
-        }
-      }, 200);
-    }
-  });
-
-  cardElement.addEventListener("mouseleave", () => {
-    const card = videoCards.find((c) => c.id === video.id);
-    if (card) {
-      if (card.hoverTimeout) {
-        clearTimeout(card.hoverTimeout);
-        card.hoverTimeout = undefined;
-      }
-      if (card.player.isReady) {
-        card.player.pause();
-        card.player.seekToFrame(0);
-      }
-    }
-  });
-
-  videoCards.push({
-    id: video.id,
-    player,
-    isLoaded: false,
-    observer,
-  });
+if (import.meta.hot) import.meta.hot.dispose(() => {
+  for (const card of videoCards) {
+    card.disposed = true;
+    clearTimeout(card.hoverTimeout);
+    card.observer.disconnect();
+    card.player.dispose();
+  }
+  grid.replaceChildren();
 });

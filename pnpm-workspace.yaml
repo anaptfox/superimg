@@ -1,27 +1,184 @@
 packages:
   - packages/*
+  - examples/reach-demo
+  - examples/marketing/code-galaxy
+  - examples/showcase/celadon-pavilion
+  - examples/showcase/recurring-subjects-3d
+  - examples/showcase/recurring-subjects-clearance
   - apps/*
   - examples/apps/*
+  - examples/apps/_portable
   - tooling/*
   - tests/integration
+  - tests/fixtures/framework-portability
 
 allowBuilds:
-  '@parcel/watcher': set this to true or false
-  '@rolldown/browser': set this to true or false
-  core-js: set this to true or false
-  esbuild: set this to true or false
-  node-av: set this to true or false
-  sharp: set this to true or false
+  agent-browser: true
+  '@parcel/watcher': true
+  '@rolldown/browser': true
+  better-sqlite3: true
+  core-js: true
+  esbuild: true
+  node-av: true
+  sharp: true
+  workerd: true
 
 catalog:
-  react: ^19.2.7
-  react-dom: ^19.2.7
-  "@types/react": 19.2.17
-  "@types/react-dom": 19.2.3
+  "typescript": "^6.0.3"
+  "vitest": "^5.1.0"
+  "@mediabunny/dts": "^1.66.2"
+  "@resvg/resvg-wasm": "2.6.2"
+  "@vitest/browser": "^5.1.0"
+  "@vitest/browser-playwright": "^5.1.0"
+  "@vitest/ui": "^5.1.0"
+  "@hono/node-server": "^2.1.11"
+  "@mediabunny/server": "^1.66.2"
+  "@oxc-parser/binding-darwin-arm64": "^0.158.0"
+  "@oxc-parser/binding-darwin-x64": "^0.158.0"
+  "@oxc-parser/binding-linux-arm64-gnu": "^0.158.0"
+  "@oxc-parser/binding-linux-arm64-musl": "^0.158.0"
+  "@oxc-parser/binding-linux-x64-gnu": "^0.158.0"
+  "@oxc-parser/binding-linux-x64-musl": "^0.158.0"
+  "@oxc-parser/binding-win32-arm64-msvc": "^0.158.0"
+  "@oxc-parser/binding-win32-x64-msvc": "^0.158.0"
+  "@rolldown/browser": "1.3.1"
+  "@tailwindcss/vite": "^4.3.5"
+  "@types/node": "^26.6.6"
+  "@types/react": "19.3.0"
+  "@types/react-dom": "19.3.0"
+  "@vitejs/plugin-react": "^6.3.0"
+  "@zumer/snapdom": "^3.7.4"
+  "colord": "^2.11.0"
+  "eslint": "^10.14.0"
+  "happy-dom": "^21.0.4"
+  "hono": "^4.13.19"
+  "mediabunny": "^1.66.2"
+  "next": "^16.4.6"
+  "oxc-parser": "^0.158.0"
+  "playwright": "^1.65.0"
+  "react": "^19.3.1"
+  "react-dom": "^19.3.1"
+  "rolldown": "1.3.1"
+  "sharp": "^0.35.5"
+  "tailwindcss": "^4.3.5"
+  "tsdown": "^0.23.7"
+  "tsx": "^4.23.15"
+  "vite": "^8.3.7"
+
+minimumReleaseAgeExclude:
+  - '@ai-sdk/gateway@4.0.75'
+  - '@mediabunny/prores@1.55.7'
+  - '@mediabunny/server@1.55.7'
+  - "@posthog/core@1.50.5 || 1.66.0"
+  - "@posthog/types@1.409.0 || 1.423.0"
+  - "@rive-app/react-webgl2@4.34.1 || 4.39.0"
+  - ai@7.0.93
+  - eslint@10.10.0
+  - hono@4.13.7
+  - lucide-react@1.41.0 || 1.71.0
+  - mediabunny@1.55.7
+  - playwright-core@1.63.0
+  - playwright@1.63.0
+  - posthog-js@1.427.2 || 1.447.7
+  - '@mediabunny/dts@1.55.7'
+  - "@rolldown/binding-android-arm-eabi@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-android-arm64@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-darwin-arm64@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-darwin-x64@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-freebsd-x64@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-linux-arm-gnueabihf@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-linux-arm64-gnu@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-linux-arm64-musl@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-linux-ppc64-gnu@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-linux-s390x-gnu@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-linux-x64-gnu@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-linux-x64-musl@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-openharmony-arm64@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-win32-arm64-msvc@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/binding-win32-x64-msvc@1.2.14 || 1.2.18 || 1.3.1"
+  - "@rolldown/browser@1.2.14 || 1.3.1"
+  - rolldown@1.2.14 || 1.2.18 || 1.3.1
+  - astro@7.4.8
+  - "@clack/core@1.6.0"
+  - "@clack/prompts@1.9.0"
+  - "@cloudflare/vitest-plugin@1.6.1"
+  - "@next/env@16.4.6"
+  - "@next/mdx@16.4.6"
+  - "@next/swc-darwin-arm64@16.4.6"
+  - "@next/swc-darwin-x64@16.4.6"
+  - "@next/swc-linux-arm64-gnu@16.4.6"
+  - "@next/swc-linux-arm64-musl@16.4.6"
+  - "@next/swc-linux-x64-gnu@16.4.6"
+  - "@next/swc-linux-x64-musl@16.4.6"
+  - "@next/swc-win32-arm64-msvc@16.4.6"
+  - "@next/swc-win32-x64-msvc@16.4.6"
+  - "@oxc-parser/binding-android-arm-eabi@0.158.0"
+  - "@oxc-parser/binding-android-arm64@0.158.0"
+  - "@oxc-parser/binding-darwin-arm64@0.158.0"
+  - "@oxc-parser/binding-darwin-x64@0.158.0"
+  - "@oxc-parser/binding-freebsd-x64@0.158.0"
+  - "@oxc-parser/binding-linux-arm-gnueabihf@0.158.0"
+  - "@oxc-parser/binding-linux-arm-musleabihf@0.158.0"
+  - "@oxc-parser/binding-linux-arm64-gnu@0.158.0"
+  - "@oxc-parser/binding-linux-arm64-musl@0.158.0"
+  - "@oxc-parser/binding-linux-ppc64-gnu@0.158.0"
+  - "@oxc-parser/binding-linux-riscv64-gnu@0.158.0"
+  - "@oxc-parser/binding-linux-riscv64-musl@0.158.0"
+  - "@oxc-parser/binding-linux-s390x-gnu@0.158.0"
+  - "@oxc-parser/binding-linux-x64-gnu@0.158.0"
+  - "@oxc-parser/binding-linux-x64-musl@0.158.0"
+  - "@oxc-parser/binding-openharmony-arm64@0.158.0"
+  - "@oxc-parser/binding-win32-arm64-msvc@0.158.0"
+  - "@oxc-parser/binding-win32-ia32-msvc@0.158.0"
+  - "@oxc-parser/binding-win32-x64-msvc@0.158.0"
+  - "@oxc-project/types@0.158.0"
+  - "@rive-app/webgl2@2.50.0"
+  - "@rolldown/binding-wasm32-wasi@1.3.1"
+  - "@typescript-eslint/eslint-plugin@8.72.2"
+  - "@typescript-eslint/parser@8.72.2"
+  - "@typescript-eslint/project-service@8.72.2"
+  - "@typescript-eslint/scope-manager@8.72.2"
+  - "@typescript-eslint/tsconfig-utils@8.72.2"
+  - "@typescript-eslint/type-utils@8.72.2"
+  - "@typescript-eslint/types@8.72.2"
+  - "@typescript-eslint/typescript-estree@8.72.2"
+  - "@typescript-eslint/utils@8.72.2"
+  - "@typescript-eslint/visitor-keys@8.72.2"
+  - "@zumer/snapdom-plugins@5.0.0"
+  - "@zumer/snapdom@3.7.4"
+  - agent-browser@0.42.0
+  - miniflare@5.20261109.0-beta
+  - next@16.4.6
+  - oxc-parser@0.158.0
+  - typescript-eslint@8.72.2
+  - vite@8.3.7
+  - wrangler@4.159.0
+  - "@zumer/snapdom-pdf@1.0.1"
+  - "@zumer/snapdom-vector@1.0.0"
+  - "@hono/node-server@2.1.11"
 
 onlyBuiltDependencies:
+  - better-sqlite3
   - core-js
   - rolldown
   - node-av
   - protobufjs
   - sharp
+
+overrides:
+  "@docusaurus/core>tinypool": 2.1.2
+  "@streamdown/math>katex": 0.19.1
+  "@tailwindcss/typography>postcss-selector-parser": 6.1.6
+  "ansi-to-react>linkify-it": 5.0.2
+  "copy-webpack-plugin>serialize-javascript": 7.1.4
+  "css-minimizer-webpack-plugin>serialize-javascript": 7.1.4
+  "mermaid>katex": 0.19.1
+  "micromark-extension-math>katex": 0.19.1
+  "minimatch@^10": 11.0.5
+  "rehype-katex>katex": 0.19.1
+  "sockjs>uuid": 11.1.1
+  "@bytecodealliance/jco": 1.37.0
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
+  env-runner: 0.1.14
+  "@foxworth/boundary": file:vendor/boundary/5d13447139fa16f67089d7c972eb00aae91b7c34d8d01428c1218fe494b5e5cc/foxworth-boundary-0.2.0.tgz

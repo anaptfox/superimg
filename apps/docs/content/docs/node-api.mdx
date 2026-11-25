@@ -1,0 +1,159 @@
+# Runtime and Interactions
+
+SuperImg has two deliberately different library surfaces:
+
+- `@foxworth/superimg/runtime` evaluates authored media values and returns portable
+  reports, render results, and unpublished export bundles.
+- `@foxworth/superimg-interactions` (the `@foxworth/superimg-cli` package) is a Node-only Host seam for source discovery,
+  provider snapshots, filesystem publication, and durable publication receipts.
+
+## Value runtime
+
+Import the authored value from its native `*.media.ts` module and pass it to the
+runtime. Source paths are not part of the runtime contract.
+
+```ts
+import launch from "./launch.media";
+import {
+  init,
+  check,
+  inspect,
+  render,
+  exportMedia,
+  shutdown,
+} from "@foxworth/superimg/runtime";
+
+const report = await check(launch);
+const description = await inspect(launch);
+const html = await render(launch, {
+  as: "html",
+  data: { title: "Release notes" },
+});
+const bundle = await exportMedia(launch, {
+  for: ["youtube", "instagram-square"],
+});
+
+try {
+  for (const artifact of bundle.artifacts) {
+    console.log(artifact.path, artifact.mimeType, artifact.sha256);
+  }
+} finally {
+  await bundle.dispose();
+}
+await shutdown();
+
+const runtime = await init();
+await render(launch, { runtime, as: "png" });
+await runtime.dispose();
+```
+
+Calls are media-first. Omit `runtime` to use one shared runtime created by the
+platform `init()`. Node disposes that runtime after 2 seconds idle. Pass
+`options.runtime` to keep a runtime you created with `init()`. `shutdown()`
+disposes the shared runtime.
+
+`check()` and `inspect()` accept deterministic, collection, and interactive
+values. Collection providers are not executed by default. `render()` produces
+one exact HTML, SVG, PNG, JPEG, WebP, MP4, WebM, MOV, or GIF result. `data` is
+typed as a partial of the media value's data. `exportMedia()` performs its own
+complete preflight; earlier checks are optional.
+
+The same declaration surface selects a capability-honest Node, browser, or
+edge implementation through package export conditions. Heavy renderers and
+encoders initialize lazily. Unsupported work fails during preflight with a
+typed `SuperImgError`; capabilities describe semantic work rather than a
+platform name.
+
+### Portable export bundles
+
+Every artifact path is normalized and relative. Artifacts and render results
+expose `stream()`, `bytes()`, `blob()`, and `text()`, plus MIME type, byte
+length, SHA-256, and coordinates. `text()` rejects with code `NOT_TEXT` when
+the MIME type is not text. No `Buffer`, absolute filesystem path, public URL,
+or browser download is stored on the value. `blob()` builds a `Blob` when asked.
+
+The bundle owns its memory or temporary backing and remains valid after runtime
+disposal. Disposing the bundle is idempotent and invalidates future artifact
+reads. Failed or cancelled exports return no partial bundle.
+
+## Node interaction seam
+
+Project hosts compose the runtime with `@foxworth/superimg-interactions` explicitly.
+Trusted CLI and build stages stay on `mount.dispatch`. Checked callers install,
+project, and bind separately:
+
+```ts
+import { init } from "@foxworth/superimg/runtime";
+import {
+  createNodeMediaInteractionMount,
+  MEDIA_INTERACTION_IDS,
+} from "@foxworth/superimg-interactions";
+
+type BuildContext = Readonly<{ signal?: AbortSignal }>;
+
+const runtime = await init();
+const media = createNodeMediaInteractionMount<BuildContext>({
+  projectRoot: process.cwd(),
+  runtime,
+  executionOptions: ({ signal }) => ({ signal }),
+});
+
+try {
+  const discovery = await media.dispatch(
+    { interactionId: MEDIA_INTERACTION_IDS.discover, input: {} },
+    {},
+  );
+
+  const snapshot = await media.dispatch(
+    {
+      interactionId: MEDIA_INTERACTION_IDS.snapshot,
+      input: { source: "episodes" },
+    },
+    {},
+  );
+
+  const receipt = await media.dispatch(
+    {
+      interactionId: MEDIA_INTERACTION_IDS.export,
+      input: {
+        source: "episodes",
+        destinations: ["youtube"],
+        snapshot,
+      },
+    },
+    {},
+  );
+
+  console.log(discovery.sources, receipt.manifestDigest);
+} finally {
+  await runtime.dispose();
+}
+```
+
+The Media Program interactions are:
+
+- `media.project.discover` finds sources without evaluating modules or providers.
+- `media.source.describe` compiles one trusted projection without running a provider.
+- `media.source.check` validates one source without implicitly running a provider.
+- `media.source.inspect` returns portable source and runtime evidence.
+- `media.collection.snapshot` executes a provider once and freezes its entries.
+- `media.artifact.compile` publishes one schema-0 Media IR artifact.
+- `media.export` consumes the portable runtime bundle, publishes atomically,
+  and returns a serializable receipt.
+
+Discovery, description, check, and inspect are direct-only. Snapshot, compile,
+and export are direct for trusted CLI/build stages and can be request-mode when
+a host contributes Control requests at install time and projects those modes
+through `projectMediaInteractions()`. SuperImg does not create an application,
+mint grants, store attempts, or expose `control.*`; those lifecycles remain
+host-owned and direct-only. Request mode creates a proposal only.
+
+`MEDIA_COMPILED_INTERACTIONS`, `EDIT_COMPILED_INTERACTIONS`,
+`RENDER_COMPILED_INTERACTIONS`, and `program.lock` bind the interaction vocabulary.
+Typed references come from a successful Binding via `@foxworth/boundary/build`.
+The package peer-depends on compatible `@foxworth/boundary/program`, `@foxworth/boundary`,
+and `@foxworth/boundary/control` foundations. Structural contract compatibility and
+evidence digests remain separate concerns.
+
+The repository guide `docs/interactions.md` contains the full composition and
+recovery boundary.

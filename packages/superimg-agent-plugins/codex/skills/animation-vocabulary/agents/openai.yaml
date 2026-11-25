@@ -1,0 +1,7 @@
+interface:
+  display_name: '/animation-vocabulary'
+  short_description: 'Reverse-lookup glossary that turns a vague description of a web animation or motion eff...'
+  icon_small: './assets/icon.svg'
+  icon_large: './assets/icon.svg'
+  brand_color: '#667eea'
+  default_prompt: '$animation-vocabulary: What is the bouncy popover effect called?'

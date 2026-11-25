@@ -1,0 +1,37 @@
+{
+  "name": "@superimg/edge-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capability-honest edge runtime adapter for SuperImg",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./document": {
+      "import": "./dist/document.js",
+      "types": "./dist/document.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@superimg/core": "workspace:*",
+    "@superimg/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@superimg/build-config": "workspace:*",
+    "vitest": "catalog:"
+  }
+}

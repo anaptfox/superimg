@@ -4,10 +4,17 @@ import type * as math from "@superimg/stdlib/math";
 import type * as color from "@superimg/stdlib/color";
 import type * as text from "@superimg/stdlib/text";
 import type * as date from "@superimg/stdlib/date";
-import type { css, fill, center, column, row } from "@superimg/stdlib/css";
+import type {
+  css,
+  fill,
+  center,
+  column,
+  row,
+  ditherNoise,
+  appleGlass,
+} from "@superimg/stdlib/css";
 import type * as responsive from "@superimg/stdlib/responsive";
 import type * as subtitle from "@superimg/stdlib/subtitle";
-import type * as presets from "@superimg/stdlib/presets";
 import type * as code from "@superimg/stdlib/code";
 import type {
   MotionResult,
@@ -44,7 +51,6 @@ import type {
 import type * as layout from "@superimg/stdlib/layout";
 import type { oscillate, loop, pingpong, wiggle } from "@superimg/stdlib/oscillate";
 import type * as viz from "@superimg/stdlib/viz";
-import type { layers, LayerStack } from "@superimg/stdlib/layers";
 import type { revealFx } from "@superimg/stdlib/reveal";
 import type { ready } from "@superimg/stdlib/ready";
 import type { sync as videoSync, ClipSyncOptions, ClipSyncResult } from "@superimg/stdlib/video";
@@ -69,10 +75,11 @@ export interface Stdlib {
     center: typeof center;
     column: typeof column;
     row: typeof row;
+    ditherNoise: typeof ditherNoise;
+    appleGlass: typeof appleGlass;
   };
   responsive: typeof responsive;
   subtitle: typeof subtitle;
-  presets: typeof presets;
   code: typeof code;
   carousel: typeof carousel;
   stack: typeof stack;
@@ -86,7 +93,6 @@ export interface Stdlib {
     youtube: (opts: MediaYoutubeOptions) => MediaYoutubeResult;
   };
   mergeMotion: typeof mergeMotion;
-  layers: typeof layers;
   reveal: typeof revealFx;
   backgrounds: typeof backgrounds;
   montage: typeof montage;
@@ -144,7 +150,6 @@ export type {
   StackOpts,
   StackItemState,
   LayoutTimelineResult,
-  LayerStack,
 };
 
 export type ImageStdlib = Omit<

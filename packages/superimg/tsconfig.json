@@ -1,26 +1,80 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@superimg/cli": ["../superimg-cli/src/cli/index.ts"],
-      "@superimg/cli/server": ["../superimg-cli/src/server.ts"],
-      "@superimg/browser-export": ["../superimg-browser-export/src/index.ts"],
-      "@superimg/core": ["../superimg-core/src/index.ts"],
-      "@superimg/core/*": ["../superimg-core/src/*.ts", "../superimg-core/src/*/index.ts"],
-      "@superimg/media": ["../superimg-media/src/index.ts"],
-      "@superimg/player": ["../superimg-player/src/index.ts"],
-      "@superimg/playwright": ["../superimg-playwright/src/index.ts"],
-      "@superimg/runtime-web": ["../superimg-runtime-web/src/index.ts"],
-      "@superimg/runtime-web/*": ["../superimg-runtime-web/src/*.ts"],
-      "@superimg/skill": ["../superimg-skill/src/index.ts"],
-      "@superimg/stdlib": ["../superimg-stdlib/src/index.ts"],
-      "@superimg/stdlib/*": ["../superimg-stdlib/src/*.ts", "../superimg-stdlib/src/*/index.ts"],
-      "@superimg/types": ["../superimg-types/src/index.ts"]
+      "@superimg/browser-export": [
+        "../superimg-browser-export/src/index.ts"
+      ],
+      "@superimg/browser-export/runtime": [
+        "../superimg-browser-export/src/runtime/index.ts"
+      ],
+      "@superimg/core": [
+        "../superimg-core/src/index.ts"
+      ],
+      "@superimg/core/edge": [
+        "../superimg-core/src/index.edge.ts"
+      ],
+      "@superimg/core/*": [
+        "../superimg-core/src/*.ts",
+        "../superimg-core/src/*/index.ts"
+      ],
+      "@superimg/edge-runtime": [
+        "../superimg-edge-runtime/src/index.ts"
+      ],
+      "@superimg/edge-runtime/document": [
+        "../superimg-edge-runtime/src/document.ts"
+      ],
+      "@superimg/media": [
+        "../superimg-media/src/index.ts"
+      ],
+      "@superimg/node": [
+        "../superimg-node/src/index.ts"
+      ],
+      "@superimg/node/runtime": [
+        "../superimg-node/src/runtime/index.ts"
+      ],
+      "@superimg/player": [
+        "../superimg-player/src/index.ts"
+      ],
+      "@superimg/player/program": [
+        "../superimg-player/src/index.program.ts"
+      ],
+      "@superimg/player/inspection": [
+        "../superimg-player/src/index.inspection.ts"
+      ],
+      "@superimg/playwright": [
+        "../superimg-playwright/src/index.ts"
+      ],
+      "@superimg/blitz": [
+        "../superimg-blitz/src/index.ts"
+      ],
+      "@superimg/skill": [
+        "../superimg-skill/src/index.ts"
+      ],
+      "@superimg/stdlib": [
+        "../superimg-stdlib/src/index.ts"
+      ],
+      "@superimg/stdlib/*": [
+        "../superimg-stdlib/src/*.ts",
+        "../superimg-stdlib/src/*/index.ts"
+      ],
+      "@superimg/types": [
+        "../superimg-types/src/index.ts"
+      ],
+      "@superimg/player/dom": [
+        "../superimg-player/src/index.dom.ts"
+      ]
     },
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }
